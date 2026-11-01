@@ -54,8 +54,11 @@ func TestTerminalClosedAfterMaxDuration(t *testing.T) {
 	if !strings.Contains(out.text(), "maximum session duration") {
 		t.Errorf("the user must be told why: %q", out.text())
 	}
-	if m.terminalSessions.Get("t1") != nil {
-		t.Error("the session must be removed")
+	// Отчёт уходит до закрытия сессии: удаление из реестра следует за ним.
+	for end := time.Now().Add(2 * time.Second); m.terminalSessions.Get("t1") != nil; time.Sleep(5 * time.Millisecond) {
+		if time.Now().After(end) {
+			t.Fatal("the session must be removed")
+		}
 	}
 }
 
