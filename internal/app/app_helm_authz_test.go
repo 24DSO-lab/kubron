@@ -51,7 +51,8 @@ current-context: ctx
 // хотя бы одной команды» не годится: админ Blue с ролью «пользователь» в Red не должен менять репозитории Red.
 // Заодно проверяем, что события аудита несут команду и кластер.
 func TestHelmManagementIsCheckedAgainstTheTeamOfTheActiveCluster(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
+	k8s.SetKubronDir(t.TempDir())
+	t.Cleanup(func() { k8s.SetKubronDir("") })
 	a := newAuditedApp(t)
 	a.auth.SetOnLogout(nil)
 
