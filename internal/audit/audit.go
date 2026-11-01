@@ -129,6 +129,7 @@ func (l *Logger) Record(e Event) {
 	e.Time = e.Time.UTC()
 	e.User, e.Role, e.Action, e.Result, e.Detail = clip(e.User), clip(e.Role), clip(e.Action), clip(e.Result), clip(e.Detail)
 
+	mirrorEvent(e) // во внешний поток — даже если хранилище отказало: сборщик должен увидеть действие
 	if err := l.append(e); err != nil {
 		l.writeErr = err.Error()
 		return

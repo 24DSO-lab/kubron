@@ -5,7 +5,7 @@ package server
 
 import (
 	"encoding/json"
-	"log"
+	"log/slog"
 	"sync"
 )
 
@@ -73,7 +73,7 @@ func (h *Hub) deliver(session string, addressed bool, event string, data []any) 
 			}
 			if frame, err = json.Marshal(eventFrame{Event: event, Data: data}); err != nil {
 				h.mu.RUnlock()
-				log.Printf("hub: event %s cannot be serialized: %v", event, err)
+				slog.Warn("hub: the event cannot be serialized", "event", event, "error", err)
 				return
 			}
 		}

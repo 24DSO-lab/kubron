@@ -22,6 +22,15 @@ data:
   {{- with .Values.kubron.sessionTTL }}
   KUBRON_SESSION_TTL: {{ . | quote }}
   {{- end }}
+  {{- with .Values.kubron.logLevel }}
+  KUBRON_LOG_LEVEL: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.kubron.logFormat }}
+  KUBRON_LOG_FORMAT: {{ . | quote }}
+  {{- end }}
+  {{- if .Values.kubron.auditStdout }}
+  KUBRON_AUDIT_STDOUT: "1"
+  {{- end }}
   {{- if not (kindIs "invalid" .Values.kubron.maxTerminals) }}
   KUBRON_MAX_TERMINALS: {{ .Values.kubron.maxTerminals | quote }}
   {{- end }}

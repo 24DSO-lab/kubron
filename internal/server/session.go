@@ -11,7 +11,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
-	"log"
+	"log/slog"
 	"net/http"
 	"net/netip"
 	"sync"
@@ -253,7 +253,7 @@ func (s *Sessions) revalidate(k [sha256.Size]byte, it *Session) (Session, error)
 		}
 		return Session{}, websession.ErrNotFound
 	case err != nil:
-		log.Printf("sessions: the store is unavailable: %v", err)
+		slog.Warn("sessions: the store is unavailable", "error", err)
 		if it != nil {
 			s.mu.Lock()
 			stale := now.Sub(it.checked) < sessionStaleGrace
@@ -341,7 +341,7 @@ func (s *Sessions) SetActiveCluster(sessionID, clusterID string) {
 	ctx, cancel := storeCtx()
 	defer cancel()
 	if err := s.Backend.SetActiveCluster(ctx, sessionID, clusterID); err != nil {
-		log.Printf("sessions: active cluster was not saved: %v", err)
+		slog.Warn("sessions: the active cluster was not saved", "error", err)
 	}
 }
 
@@ -368,7 +368,7 @@ func (s *Sessions) Activity(sessionID string) {
 	ctx, cancel := storeCtx()
 	defer cancel()
 	if err := s.Backend.Touch(ctx, sessionID, now); err != nil {
-		log.Printf("sessions: activity was not saved: %v", err)
+		slog.Warn("sessions: the activity was not saved", "error", err)
 	}
 }
 
