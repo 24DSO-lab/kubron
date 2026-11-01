@@ -7,14 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.4.0] - 2026-10-31
-
 ### Added
 
-- **Deploy:** `Dockerfile` for kubron-server (distroless, non-root, read-only rootfs) and the Helm chart
-  `deploy/helm/kubron` (Deployment, Service, Ingress, NetworkPolicy, PodDisruptionBudget, optional
-  read-only RBAC for in-cluster mode). Guide: `docs/deploy.md`. The chart still defaults to `replicaCount: 1`
-  and warns above it; the server itself now supports several replicas (see the HA entries below).
 - **Repository:** OpenSSF Scorecard workflow (`scorecard.yml`, results in Code scanning) and
   `.github/CODEOWNERS`.
 - **Release:** `publish.yml` publishes the kubron-server image (`ghcr.io/24dso-labs/kubron`) and the Helm
@@ -50,17 +44,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   tool-neutral and the comparison table was replaced with a short "Why Kubron" list.
 - **Deploy:** the Helm chart now defaults to `image.repository: ghcr.io/24dso-labs/kubron` (it still pointed
   to the previous account).
-
+- **Deploy:** the chart still defaults to `replicaCount: 1` and warns above it; the server itself now
+  supports several replicas (see the HA entries above).
 
 ### Security
 
-- **HTTP:** `kubron-server` now sends `Content-Security-Policy` (scripts `'self'`, no `unsafe-inline`/`unsafe-eval`),
-  `Strict-Transport-Security` (secure non-loopback requests only), `Permissions-Policy`, COOP and CORP.
-  `KUBRON_CSP_REPORT_ONLY=1` switches the policy to report-only. See `docs/http-security.md`.
-- **Rate limit:** the client address behind a proxy is read from the right of `X-Forwarded-For`
-  (`KUBRON_TRUSTED_PROXY_HOPS`, `KUBRON_TRUSTED_PROXIES`); IPv6 is keyed by /64; a flood of unique logins or
-  addresses no longer wipes active lockouts; `ChangePassword` guessing is limited; anonymous RPC calls get a
-  per-address token bucket (`429` with `Retry-After`).
 - **Helm (SSRF):** Helm HTTP and OCI traffic goes through an address policy (`KUBRON_HELM_ADDR_POLICY`,
   `strict` by default; exceptions via `KUBRON_HELM_ALLOW_CIDRS`): loopback, link-local and cloud metadata
   addresses are always blocked, redirects are re-checked, and a blocked address looks to the user like a
@@ -71,6 +59,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   add and on every connect, and all REST, discovery, informer, Helm, terminal and port-forward connections go
   through the policy dialer; `proxy-url` is rejected while the policy is on.
 
+## [0.4.0] - 2026-10-31
+
+### Added
+
+- **Deploy:** `Dockerfile` for kubron-server (distroless, non-root, read-only rootfs) and the Helm chart
+  `deploy/helm/kubron` (Deployment, Service, Ingress, NetworkPolicy, PodDisruptionBudget, optional
+  read-only RBAC for in-cluster mode). Guide: `docs/deploy.md`. Single replica only until HA.
+
+### Security
+
+- **HTTP:** `kubron-server` now sends `Content-Security-Policy` (scripts `'self'`, no `unsafe-inline`/`unsafe-eval`),
+  `Strict-Transport-Security` (secure non-loopback requests only), `Permissions-Policy`, COOP and CORP.
+  `KUBRON_CSP_REPORT_ONLY=1` switches the policy to report-only. See `docs/http-security.md`.
+- **Rate limit:** the client address behind a proxy is read from the right of `X-Forwarded-For`
+  (`KUBRON_TRUSTED_PROXY_HOPS`, `KUBRON_TRUSTED_PROXIES`); IPv6 is keyed by /64; a flood of unique logins or
+  addresses no longer wipes active lockouts; `ChangePassword` guessing is limited; anonymous RPC calls get a
+  per-address token bucket (`429` with `Retry-After`).
 ## [0.3.0] - 2026-10-29
 
 ### Added
