@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Deploy:** `Dockerfile` for kubron-server (distroless, non-root, read-only rootfs) and the Helm chart
   `deploy/helm/kubron` (Deployment, Service, Ingress, NetworkPolicy, PodDisruptionBudget, optional
   read-only RBAC for in-cluster mode). Guide: `docs/deploy.md`. Single replica only until HA.
+- **Repository:** OpenSSF Scorecard workflow (`scorecard.yml`, results in Code scanning) and
+  `.github/CODEOWNERS`.
 
 ### Changed
 
