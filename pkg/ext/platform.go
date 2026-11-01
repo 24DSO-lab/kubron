@@ -26,7 +26,7 @@ type Capabilities struct {
 	PortForwardMode string `json:"portForwardMode"`
 	NodeShell       bool   `json:"nodeShell"`       // оболочка на узле
 	LocalKubeconfig bool   `json:"localKubeconfig"` // чтение kubeconfig с диска машины, где запущено ядро
-	SSO             bool   `json:"sso"`             // вход через SSO/OIDC (платный модуль, этап 6)
+	SSO             bool   `json:"sso"`             // вход через SSO/OIDC (модуль SSO, этап 6)
 	InCluster       bool   `json:"inCluster"`       // сервер работает внутри Kubernetes: можно добавить его кластер (режим in-cluster)
 	Teams           bool   `json:"teams"`           // команды и кластеры по командам (сервисный режим; выставляет ядро по хранилищу)
 }
