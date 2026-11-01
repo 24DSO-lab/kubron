@@ -40,7 +40,7 @@ func runAdmin(ctx context.Context, cmd string, args []string, out io.Writer) err
 		if err != nil {
 			return err
 		}
-		_, err = fmt.Fprintf(out, "re-encrypted with key %q: %d kubeconfigs, %d cluster secrets, %d Argo CD tokens\n", cfg.SecretKey[:idLen(cfg.SecretKey)], rep.Clusters, rep.Secrets, rep.Tokens)
+		_, err = fmt.Fprintf(out, "re-encrypted with key %q: %d kubeconfigs, %d cluster secrets, %d Argo CD tokens, %d Helm repository secrets\n", cfg.SecretKey[:idLen(cfg.SecretKey)], rep.Clusters, rep.Secrets, rep.Tokens, rep.Helm)
 		return err
 	case "import-files":
 		fs := flag.NewFlagSet("import-files", flag.ContinueOnError)

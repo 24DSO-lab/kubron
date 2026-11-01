@@ -14,6 +14,7 @@ type RekeyReport struct {
 	Clusters int // kubeconfig'и кластеров, перешифрованные текущим ключом
 	Tokens   int // токены Argo CD
 	Secrets  int // секреты подключения кластеров (пароль oidc-password)
+	Helm     int // пароли репозиториев и OCI-реестров Helm
 }
 
 // Rekey перешифровывает текущим ключом все секреты, зашифрованные другим ключом (ротация, задача 3.1c).
@@ -105,6 +106,10 @@ func (s *Store) Rekey(ctx context.Context) (RekeyReport, error) {
 			return rep, err
 		}
 		rep.Tokens += int(tag.RowsAffected())
+	}
+
+	if rep.Helm, err = s.rekeyHelm(ctx, cur); err != nil {
+		return rep, err
 	}
 	return rep, nil
 }
