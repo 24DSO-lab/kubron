@@ -12,7 +12,7 @@ func TestDefaultLimitsAndInheritance(t *testing.T) {
 	}
 	m.SetLimits(DefaultLimits())
 	v := m.ForSession()
-	if v.Limits() != (Limits{Terminals: 8, LogStreams: 20, PortForwards: 10}) {
+	if v.Limits() != DefaultLimits() || v.Limits().Terminals != 8 || v.Limits().LogStreams != 20 || v.Limits().PortForwards != 10 {
 		t.Fatalf("the view did not inherit the limits: %+v", v.Limits())
 	}
 	// Виды независимы: терминалы и логи у каждого свои.
@@ -62,7 +62,8 @@ func TestTerminalTryAddLimit(t *testing.T) {
 
 func TestValidStreamID(t *testing.T) {
 	for id, want := range map[string]bool{
-		"log_6f1c2d3e-aaaa-bbbb-cccc-0123456789ab": true,
+		"log_6f1c2d3e-aaaa-bbbb-cccc-0123456789ab":                   true,
+		"kubron-0_ab12cd34.log_6f1c2d3e-aaaa-bbbb-cccc-0123456789ab": true, // с префиксом реплики (ADR-0016)
 		"": false, "a b": false, "logs:data:1": false, "../x": false,
 		"line\nbreak": false,
 	} {
@@ -70,11 +71,11 @@ func TestValidStreamID(t *testing.T) {
 			t.Errorf("validStreamID(%q) != %v", id, want)
 		}
 	}
-	long := make([]byte, 65)
+	long := make([]byte, 129)
 	for i := range long {
 		long[i] = 'a'
 	}
 	if validStreamID(string(long)) {
-		t.Error("an id longer than 64 characters must be rejected")
+		t.Error("an id longer than 128 characters must be rejected")
 	}
 }

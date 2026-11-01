@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/24DSO-labs/kubron/internal/streamid"
 	"github.com/gorilla/websocket"
 )
 
@@ -59,6 +60,10 @@ func TerminalHandler(g *Guard) http.Handler {
 			return
 		}
 		id := r.PathValue("id")
+		if err := streamid.Check(g.Lifecycle.ReplicaID(), id); err != nil { // терминал открыт на другой реплике
+			writeError(w, http.StatusConflict, "stream_elsewhere", "stream is on another replica")
+			return
+		}
 		if !g.Terminals.OwnedBy(id, sess.ID) { // чужой терминал неотличим от несуществующего
 			writeError(w, http.StatusNotFound, "not_found", "terminal not found")
 			return
@@ -70,7 +75,7 @@ func TerminalHandler(g *Guard) http.Handler {
 		defer ws.Close()
 
 		sink := &wsSink{ws: ws}
-		att, err := g.Terminals.Attach(id, sink)
+		att, err := g.Terminals.AttachAs(id, sess.ID, sink)
 		if err != nil {
 			_ = ws.WriteControl(websocket.CloseMessage,
 				websocket.FormatCloseMessage(websocket.ClosePolicyViolation, termCloseMaxed), time.Now().Add(time.Second))
@@ -113,6 +118,10 @@ func TerminalHandler(g *Guard) http.Handler {
 				return
 			}
 			_ = ws.SetReadDeadline(time.Now().Add(wsPongWait))
+			// Каждый кадр: веб-сессия жива и терминал всё ещё принадлежит ей (Input/Resize проверяют владельца сами).
+			if _, ok := g.Sessions.Get(token); !ok {
+				return
+			}
 			switch typ {
 			case websocket.BinaryMessage:
 				if err := att.Input(msg); err != nil {
@@ -124,7 +133,9 @@ func TerminalHandler(g *Guard) http.Handler {
 					log.Printf("terminal %s: %v", id[:8], err)
 					continue
 				}
-				_ = att.Resize(cols, rows)
+				if att.Resize(cols, rows) != nil {
+					return
+				}
 			}
 		}
 	})

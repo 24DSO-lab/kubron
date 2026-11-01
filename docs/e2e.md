@@ -16,6 +16,18 @@
    (нужен `E2E_LOG_POD=namespace/pod/container` — под, пишущий в stdout), выход одного не затрагивает другого.
    Файл выполняется после `smoke.spec.ts` (по алфавиту) и использует созданные им администратора и кластер `e2e-kind`.
 
+## Этап 5: port-forward, терминалы и флаги (`pf-terminals.spec.ts`)
+Нужны два дополнительных сервера с пустыми каталогами данных (в CI их поднимает `ci.yml`):
+- `E2E_PF_URL` — `KUBRON_PF_BASE_DOMAIN=localhost:8081 KUBRON_PF_SCHEME=http KUBRON_TERMINAL_IDLE_TIMEOUT=10s`, `--listen 127.0.0.1:8081`
+  (браузер открывает `http://localhost:8081`; `*.localhost` Chromium разрешает в loopback);
+- `E2E_LOCKED_URL` — `KUBRON_DISABLE_EXEC=1 KUBRON_DISABLE_PORT_FORWARD=1`, `--listen 127.0.0.1:8082`.
+Также `E2E_KUBECONFIG`, `E2E_TERMINAL_POD` и `E2E_HTTP_POD=namespace/pod` (HTTP на порту 8080 отвечает `kubron-pf-ok`, в CI — `busybox httpd`).
+Проверяется: `GetCapabilities` в режиме proxy; `StartPortForward` не открывает порт на хосте (`mode=proxy`, `localPort=0`), адрес из
+`GetPortForwardURL` открывается в браузере на `{id}.pf.localhost`, cookie потока `kpf` есть, cookie сессии Kubron на хосте потока нет, API Kubron
+там недоступен; адрес одноразовый, чужой контекст и чужой пользователь потока не получают; остановка закрывает поток; `portforward.start/stop`
+в аудите; `terminal.start/stop` в аудите с причиной и длительностью, закрытие по idle-таймауту; флаги `KUBRON_DISABLE_*` отражены в
+`GetCapabilities` и дают понятную ошибку.
+
 ## Gate этапа 3: команды на PostgreSQL (`frontend/e2e-pg`)
 Отдельный набор: сервер работает на PostgreSQL с **пустой** базой, первым пользователем становится администратор организации.
 `teams.spec.ts` проверяет:

@@ -9,7 +9,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -22,18 +24,47 @@ import (
 
 // TerminalOutput принимает вывод терминальной сессии. По умолчанию (десктоп) вывод уходит
 // событиями terminal:data:<id> / terminal:exit:<id>; веб подставляет буфер с WebSocket (internal/termbuf).
-// Data вызывается из одной горутины, p переиспользуется после возврата — реализация копирует, если хранит.
+// Data вызывается из горутины чтения вывода, а при закрытии по сроку — ещё и из сторожа (сообщение о причине),
+// поэтому реализация должна быть безопасна для параллельных вызовов. p переиспользуется после возврата.
 type TerminalOutput interface {
 	Data(p []byte)
 	Exit()
 }
 
+// Причины завершения терминала, которые получает TerminalObserver.
+const (
+	TerminalEndExit        = "exit"         // процесс в контейнере завершился
+	TerminalEndClosed      = "closed"       // закрыт пользователем, выходом из системы или остановкой сервера
+	TerminalEndMaxDuration = "max-duration" // исчерпан абсолютный срок
+	TerminalEndIdle        = "idle"         // долго не было ввода
+)
+
+// TerminalObserver вызывается при старте сессии и возвращает функцию, которую менеджер вызовет ровно один раз
+// при завершении с причиной (TerminalEnd*). Пользователя и команду наблюдатель определяет при старте и
+// запоминает: завершение наступает, когда вызова пользователя уже нет.
+type TerminalObserver func(s *TerminalSession) (ended func(reason string))
+
+// SetTerminalObserver задаёт наблюдателя сессий; вызывать до первого старта.
+func (m *Manager) SetTerminalObserver(o TerminalObserver) {
+	m.viewMu.Lock()
+	m.termObserver = o
+	m.viewMu.Unlock()
+}
+
+// IsNodeShellPod — под, созданный StartNodeShell: привилегированный под с оболочкой хоста. Подключение к нему
+// равносильно доступу к узлу, поэтому требует права nodeshell, а не exec.
+func IsNodeShellPod(namespace, pod string) bool {
+	return namespace == nodeShellNamespace && strings.HasPrefix(pod, nodeShellPrefix)
+}
+
 type TerminalSession struct {
 	ID        string
+	ClusterID string
 	Namespace string
 	Pod       string
 	Container string
 	Shell     string
+	Started   time.Time
 
 	out      TerminalOutput
 	stdinW   io.WriteCloser
@@ -45,6 +76,19 @@ type TerminalSession struct {
 
 	mu     sync.Mutex
 	closed bool
+
+	lastInput atomic.Int64 // unix-наносекунды последнего ввода пользователя
+	endOnce   sync.Once
+	onEnd     func(reason string)
+}
+
+// finish сообщает наблюдателю о завершении; повторные вызовы игнорируются, причина — от первого.
+func (s *TerminalSession) finish(reason string) {
+	s.endOnce.Do(func() {
+		if s.onEnd != nil {
+			s.onEnd(reason)
+		}
+	})
 }
 
 type TerminalSessionManager struct {
@@ -209,6 +253,8 @@ func (m *Manager) startTerminal(sessionID, namespace, pod, container, shell stri
 	}
 	session := &TerminalSession{
 		ID:        sessionID,
+		ClusterID: conn.Name,
+		Started:   time.Now(),
 		Namespace: namespace,
 		Pod:       pod,
 		Container: container,
@@ -235,7 +281,16 @@ func (m *Manager) startTerminal(sessionID, namespace, pod, container, shell stri
 		return fmt.Errorf("too many open terminals (maximum %d)", m.Limits().Terminals)
 	}
 
+	session.lastInput.Store(time.Now().UnixNano())
+	m.viewMu.RLock()
+	obs := m.termObserver
+	m.viewMu.RUnlock()
+	if obs != nil {
+		session.onEnd = obs(session)
+	}
+
 	go m.pumpTerminal(session)
+	m.watchTerminal(session)
 
 	go func() {
 		opts := remotecommand.StreamOptions{
@@ -290,6 +345,7 @@ func (m *Manager) WriteTerminal(sessionID string, data []byte) error {
 		return fmt.Errorf("session closed: %s", sessionID)
 	}
 
+	session.lastInput.Store(time.Now().UnixNano())
 	_, err := session.stdinW.Write(data)
 	return err
 }
@@ -348,6 +404,7 @@ func (m *Manager) CloseTerminal(sessionID string) error {
 	}
 
 	session.closed = true
+	session.finish(TerminalEndClosed)
 	session.cancel()
 	session.stdinW.Close()
 	session.stdoutR.Close()
@@ -361,6 +418,50 @@ func (m *Manager) CloseTerminal(sessionID string) error {
 	m.terminalSessions.Remove(sessionID)
 
 	return nil
+}
+
+// ─── Сроки сессии ──────────────────────────────────────────
+
+// watchTerminal закрывает сессию по истечении абсолютного срока или простоя (Limits). Без сроков не запускается.
+func (m *Manager) watchTerminal(s *TerminalSession) {
+	lim := m.Limits()
+	maxDur, idle := lim.TerminalMaxDuration, lim.TerminalIdleTimeout
+	if maxDur <= 0 && idle <= 0 {
+		return
+	}
+	every := 5 * time.Second
+	for _, d := range []time.Duration{maxDur, idle} {
+		if d > 0 && d/4 < every {
+			every = d / 4
+		}
+	}
+	if every < 10*time.Millisecond {
+		every = 10 * time.Millisecond
+	}
+	go func() {
+		t := time.NewTicker(every)
+		defer t.Stop()
+		for {
+			select {
+			case <-s.done:
+				return
+			case <-t.C:
+			}
+			reason, note := "", ""
+			switch {
+			case maxDur > 0 && time.Since(s.Started) >= maxDur:
+				reason, note = TerminalEndMaxDuration, "maximum session duration reached"
+			case idle > 0 && time.Since(time.Unix(0, s.lastInput.Load())) >= idle:
+				reason, note = TerminalEndIdle, "closed after being idle"
+			default:
+				continue
+			}
+			s.finish(reason)
+			s.out.Data([]byte("\r\n[session closed: " + note + "]\r\n"))
+			_ = m.CloseTerminal(s.ID)
+			return
+		}
+	}()
 }
 
 // ─── DetectShell ───────────────────────────────────────────

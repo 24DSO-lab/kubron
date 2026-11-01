@@ -141,7 +141,7 @@ test('терминал: OpenTerminal и бинарный WebSocket выполн�
   const open = await (await rpc(page, 'OpenTerminal', [namespace, pod, container, '/bin/sh', 80, 24], csrf)).json()
   expect(open.error, JSON.stringify(open.error)).toBeUndefined()
   const id: string = open.result
-  expect(id).toMatch(/^[0-9a-f]{32}$/)
+  expect(id).toMatch(/^([\w-]+\.)?[0-9a-f]{32}$/) // с префиксом реплики-владельца (ADR-0016)
 
   // Команда выполняется в поде; результат вычислен оболочкой (в эхо ввода его нет)
   const output = await page.evaluate(

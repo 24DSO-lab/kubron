@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-01
+
+### Added
+
+- **Terminals:** separate `nodeshell` permission for the node shell (admin only by default), flags
+  `KUBRON_DISABLE_EXEC`, `KUBRON_DISABLE_NODE_SHELL`, `KUBRON_DISABLE_PORT_FORWARD` (reflected in
+  `GetCapabilities`), `KUBRON_TERMINAL_MAX_DURATION` / `KUBRON_TERMINAL_IDLE_TIMEOUT`, audit of terminal
+  start and end, and a per-frame owner check on the terminal WebSocket.
+- **Operations:** `/readyz` checks the database (when PostgreSQL is used) and answers `503` while the replica
+  is draining; the Helm chart uses it for `readinessProbe` (`/healthz` stays for liveness and startup).
+
+- **Operations:** Prometheus metrics on a separate port (`KUBRON_METRICS_LISTEN`, off by default): RPC
+  requests, errors and latency by method, sessions, WebSocket connections, terminals, log streams,
+  port-forwards, cluster health states, health-check leader, login lockouts and `429`, DB pool, build info.
+  No user, team or cluster names in labels. The chart adds a separate metrics Service (not reachable through
+  the Ingress), an optional `ServiceMonitor` and a NetworkPolicy rule for the monitoring namespace.
+  See `docs/metrics.md`.
+
 ## [0.5.0] - 2026-11-01
 
 ### Added
@@ -138,7 +156,8 @@ First public release.
 - Experimental web mode (`cmd/kubron-server`): several concurrent sessions, per-session
   cluster managers with per-user resource limits, idle informers released after a TTL.
 
-[Unreleased]: https://github.com/24DSO-labs/kubron/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/24DSO-labs/kubron/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/24DSO-labs/kubron/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/24DSO-labs/kubron/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/24DSO-labs/kubron/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/24DSO-labs/kubron/compare/v0.2.0...v0.3.0

@@ -27,7 +27,10 @@ for f in "$chart"/ci/*-values.yaml; do
   name="$(basename "$f" .yaml)"
   render -f "$f" > "$tmp/$name.yaml"
   if command -v kubeconform >/dev/null; then
-    kubeconform -strict -summary -kubernetes-version "$k8s_version" "$tmp/$name.yaml"
+    # ServiceMonitor — CRD Prometheus Operator: схемы берутся из каталога CRD
+    kubeconform -strict -summary -kubernetes-version "$k8s_version" -schema-location default \
+      -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
+      "$tmp/$name.yaml"
   else
     echo "kubeconform not found: schema validation of $name skipped"
   fi
@@ -39,6 +42,7 @@ ing="$tmp/ingress-values.yaml"
 inc="$tmp/incluster-values.yaml"
 rep="$tmp/replicas-values.yaml"
 dev="$tmp/dev-secret-values.yaml"
+met="$tmp/metrics-values.yaml"
 has() { grep -qE -- "$2" "$1" || fail "$3"; }
 hasnt() { ! grep -qE -- "$2" "$1" || fail "$3"; }
 
@@ -77,8 +81,23 @@ has   "$dev" 'helm.sh/resource-policy: keep' "dev Secret must survive uninstall"
 # Writable-каталоги под emptyDir (HOME и TMPDIR)
 has   "$min" 'mountPath: /home/nonroot' "HOME emptyDir missing"
 has   "$min" 'mountPath: /tmp' "TMPDIR emptyDir missing"
-# Пробы: пока только /healthz
-has   "$min" 'path: /healthz' "probes must use /healthz"
+# Пробы: liveness и startup — /healthz (без БД), readiness — /readyz (проверка БД, draining)
+has   "$min" 'path: /healthz' "liveness/startup probes must use /healthz"
+has   "$min" 'path: /readyz' "readiness probe must use /readyz"
+# Метрики: по умолчанию выключены; включённые живут на отдельном порту, вне основного Service и Ingress
+hasnt "$min" 'KUBRON_METRICS_LISTEN' "metrics enabled by default"
+hasnt "$min" 'name: metrics' "metrics port/Service rendered by default"
+hasnt "$min" '^kind: ServiceMonitor' "ServiceMonitor rendered by default"
+has   "$met" 'KUBRON_METRICS_LISTEN: "0.0.0.0:9090"' "metrics listener missing when enabled"
+has   "$met" 'name: .*-metrics$' "separate metrics Service missing"
+has   "$met" '^kind: ServiceMonitor' "ServiceMonitor missing when enabled"
+svc="$(render -f "$chart/ci/metrics-values.yaml" --show-only templates/service.yaml)"
+! grep -q 'metrics' <<<"$svc" || fail "the main Service must not expose the metrics port"
+np="$(render -f "$chart/ci/metrics-values.yaml" --show-only templates/networkpolicy.yaml)"
+grep -q 'port: metrics' <<<"$np" || fail "NetworkPolicy rule for the metrics port missing"
+# правило для порта метрик идёт отдельным пунктом и не берёт источники правила основного порта
+rule="$(grep -A8 'port: metrics' <<<"$np")"
+! grep -q 'ingress-nginx' <<<"$rule" || fail "the metrics port must not be reachable from the ingress namespace"
 
 echo "== negative cases (must fail)"
 expect_fail() { # <ожидаемый фрагмент сообщения> <аргументы helm template…>
@@ -90,5 +109,6 @@ expect_fail 'secrets.existingSecret is required'
 expect_fail 'secrets.values.secretKey is required' --set secrets.create=true --set secrets.values.databaseUrl=x
 expect_fail 'rbac.create requires inCluster.enabled' --set secrets.existingSecret=s --set rbac.create=true
 expect_fail 'replicaCount' --set secrets.existingSecret=s --set replicaCount=0
+expect_fail 'metrics.port must differ' --set secrets.existingSecret=s --set metrics.enabled=true --set metrics.port=8080
 
 echo "OK: chart checks passed"

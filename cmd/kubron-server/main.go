@@ -92,6 +92,7 @@ func main() {
 	platform.SetEmitter(hub.Emit)
 	platform.SetSessionEmitter(hub.EmitTo)
 	core := app.NewApp(platform)
+	app.SetReplicaID(core, replicaID) // потоки терминала и логов несут реплику-владельца в идентификаторе
 	// Общее хранилище веб-сессий: с PostgreSQL сессия, выданная одной репликой, действует на всех (ADR-0016).
 	// Файловое хранилище его не имеет, сессии остаются в памяти процесса.
 	var sessionBackend websession.Backend
@@ -143,7 +144,9 @@ func main() {
 	guard := &server.Guard{Sessions: sessions, TrustProxy: cfg.TrustProxy, Hub: hub, Terminals: terminals,
 		TrustedProxyHops: cfg.TrustedProxyHops, TrustedProxies: cfg.TrustedProxies,
 		AnonLimiter: server.NewRateLimiter(server.DefaultAnonRate, server.DefaultAnonBurst), Lifecycle: lifecycle}
-	app.SetResourceLimits(core, k8s.Limits{Terminals: cfg.MaxTerminals, LogStreams: cfg.MaxLogStreams, PortForwards: cfg.MaxPortForwards})
+	app.SetResourceLimits(core, k8s.Limits{Terminals: cfg.MaxTerminals, LogStreams: cfg.MaxLogStreams, PortForwards: cfg.MaxPortForwards,
+		TerminalMaxDuration: cfg.TerminalMaxDuration, TerminalIdleTimeout: cfg.TerminalIdleTimeout})
+	app.SetInteractivePolicy(core, app.InteractivePolicy{DisableExec: cfg.DisableExec, DisableNodeShell: cfg.DisableNodeShell})
 	app.SetClusterIdleTTL(core, 2*time.Minute)
 	enforceAccess := func() { // права могли измениться: закрыть то, что осталось открытым у потерявших доступ
 		for _, v := range sessions.Views() {
@@ -185,7 +188,10 @@ func main() {
 	}()
 	defer terminals.CloseAll()
 
-	handler := server.NewHandler(dispatcher, dist, guard, server.WithCSPReportOnly(cfg.CSPReportOnly))
+	handler := server.NewHandler(dispatcher, dist, guard,
+		server.WithCSPReportOnly(cfg.CSPReportOnly), readyzOption(pgStore, lifecycle))
+	handler = setupMetrics(ctx, cfg, metricsDeps{Core: core, Sessions: sessions, Hub: hub, Terminals: terminals,
+		PG: pgStore, Lifecycle: lifecycle}, handler, dispatcher)
 	if pf != nil {
 		go pf.Run(ctx)
 		// Закрытая веб-сессия закрывает и свои потоки port-forward (ReleaseView → StopAll); дополнительно

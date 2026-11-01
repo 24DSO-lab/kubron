@@ -1,0 +1,24 @@
+{{- if .Values.metrics.enabled }}
+{{- /* Отдельный Service только под порт метрик: Ingress ссылается на основной Service и до этого порта
+       не доходит. Доступ ограничивает NetworkPolicy (networkPolicy.metrics.from). */ -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "kubron.fullname" . }}-metrics
+  labels:
+    {{- include "kubron.labels" . | nindent 4 }}
+    app.kubernetes.io/component: metrics
+  {{- with .Values.metrics.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: ClusterIP
+  ports:
+    - name: metrics
+      port: {{ int .Values.metrics.port }}
+      targetPort: metrics
+      protocol: TCP
+  selector:
+    {{- include "kubron.selectorLabels" . | nindent 4 }}
+{{- end }}

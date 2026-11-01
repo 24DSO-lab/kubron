@@ -19,6 +19,9 @@ import (
 //     на хосте сервера, а сам порт был бы открыт всем локальным процессам.
 func setupPortForward(cfg server.Config, core *app.App, sessions *server.Sessions) *pfproxy.Service {
 	switch {
+	case cfg.DisablePortForward:
+		app.SetPortForwardMode(core, k8s.PortForwardModeOff)
+		log.Printf("port-forward: disabled by KUBRON_DISABLE_PORT_FORWARD")
 	case cfg.PFBaseDomain != "":
 		var secret []byte
 		if cfg.SecretKey != "" {

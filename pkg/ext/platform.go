@@ -24,6 +24,7 @@ type Capabilities struct {
 	// PortForwardMode — как открывается проброс: "local" (порт на localhost, десктоп и режим одного пользователя),
 	// "proxy" (через прокси сервера на отдельном origin, ADR-0016) или "off". Адрес всегда приходит в ответе методов.
 	PortForwardMode string `json:"portForwardMode"`
+	Exec            bool   `json:"exec"`            // терминалы подов (exec/attach)
 	NodeShell       bool   `json:"nodeShell"`       // оболочка на узле
 	LocalKubeconfig bool   `json:"localKubeconfig"` // чтение kubeconfig с диска машины, где запущено ядро
 	SSO             bool   `json:"sso"`             // вход через SSO/OIDC (модуль SSO, этап 6)

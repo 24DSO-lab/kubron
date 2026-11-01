@@ -21,6 +21,7 @@
     "noLogs": "No logs",
     "noPods": "No pods found",
     "streamClosed": "[{pod}stream closed{reason}]",
+    "streamRestored": "[stream restored: continuing from now]",
     "error": "Error: {message}"
   },
   "terminal": {

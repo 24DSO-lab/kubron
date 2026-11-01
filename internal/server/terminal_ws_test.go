@@ -13,11 +13,14 @@ import (
 
 	"github.com/gorilla/websocket"
 
+	"github.com/24DSO-labs/kubron/internal/streamid"
 	"github.com/24DSO-labs/kubron/internal/termbuf"
 )
 
 type termFixture struct {
 	srv    *httptest.Server
+	g      *Guard
+	sid    string
 	reg    *termbuf.Registry
 	ss     *Sessions
 	cookie string
@@ -33,9 +36,11 @@ func newTermFixture(t *testing.T) *termFixture {
 	t.Helper()
 	f := &termFixture{reg: termbuf.NewRegistry(), ss: NewSessions(time.Hour, true), id: termbuf.NewID()}
 	g := &Guard{Sessions: f.ss, Terminals: f.reg}
+	f.g = g
 	f.ss.OnEnd = g.CloseSession
 	tok, sess := f.ss.Create("u1", nil)
 	f.cookie = cookieName + "=" + tok
+	f.sid = sess.ID
 	buf, err := f.reg.Register(f.id, termbuf.Hooks{
 		Owner:  sess.ID,
 		Input:  func(p []byte) error { f.mu.Lock(); f.input = append(f.input, p...); f.mu.Unlock(); return nil },
@@ -165,4 +170,59 @@ func TestTerminalWSForeignSessionGetsNotFound(t *testing.T) {
 	if _, resp, err := f.dial(f.id, hdr); err == nil || resp.StatusCode != 404 {
 		t.Errorf("a foreign terminal must be indistinguishable from a missing one: %v %v", err, resp)
 	}
+}
+
+// Терминал другой реплики: 409 stream_elsewhere (ADR-0016), а не 404 — клиент открывает поток заново.
+func TestTerminalWSStreamOnAnotherReplica(t *testing.T) {
+	f := newTermFixture(t)
+	f.g.Lifecycle = NewLifecycle("a")
+	own := streamid.New("a")
+	if _, err := f.reg.Register(own, termbuf.Hooks{Owner: f.sid}); err != nil {
+		t.Fatal(err)
+	}
+	for _, id := range []string{streamid.New("b"), f.id /* без префикса */} {
+		_, resp, err := f.dial(id, nil)
+		if err == nil || resp == nil || resp.StatusCode != http.StatusConflict {
+			t.Errorf("%s: want 409, got err=%v resp=%v", id, err, resp)
+		}
+	}
+	ws, _, err := f.dial(own, nil)
+	if err != nil {
+		t.Fatalf("the owner replica must accept its own stream: %v", err)
+	}
+	ws.Close()
+}
+
+func TestTerminalWSInputRefusedAfterSessionRemoved(t *testing.T) {
+	f := newTermFixture(t)
+	ws, _, err := f.dial(f.id, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ws.Close()
+	if err := ws.WriteMessage(websocket.BinaryMessage, []byte("a")); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, func() bool { f.mu.Lock(); defer f.mu.Unlock(); return string(f.input) == "a" })
+	f.reg.Remove(f.id) // терминал больше не принадлежит сессии
+	_ = ws.WriteMessage(websocket.BinaryMessage, []byte("b"))
+	_ = ws.SetReadDeadline(time.Now().Add(2 * time.Second))
+	if _, _, err := ws.ReadMessage(); err == nil {
+		t.Error("the connection must be closed once the terminal is gone")
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if string(f.input) != "a" {
+		t.Errorf("input after removal reached the terminal: %q", f.input)
+	}
+}
+
+func waitFor(t *testing.T, cond func() bool) {
+	t.Helper()
+	for end := time.Now().Add(2 * time.Second); time.Now().Before(end); time.Sleep(10 * time.Millisecond) {
+		if cond() {
+			return
+		}
+	}
+	t.Fatal("condition not met in time")
 }

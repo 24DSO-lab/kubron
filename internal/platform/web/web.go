@@ -80,6 +80,7 @@ func (p *Platform) Capabilities() ext.Capabilities {
 	return ext.Capabilities{
 		FileDialog:      false,
 		PortForward:     true,
+		Exec:            true,
 		NodeShell:       true,
 		LocalKubeconfig: false,
 		SSO:             false,

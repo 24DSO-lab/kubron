@@ -29,6 +29,7 @@ const RESTART_RECONNECT_MS = 1000 // верхняя граница случай�
 const handlers = new Map<string, Set<Handler>>()
 let ws: WebSocket | null = null
 let ready = false // получен кадр ready: сервер готов принимать подписки
+let replica = '' // реплика, на которой открыт сокет: владелец потоков этого браузера (ADR-0016)
 let enabled = true // false после выхода/потери сессии, пока не будет нового входа
 let attempt = 0
 let hadConnection = false
@@ -63,6 +64,7 @@ function connect() {
     try { msg = JSON.parse(String(ev.data)) } catch { return }
     if (msg.op === 'ready') {
       ready = true
+      replica = typeof msg.replica === 'string' ? msg.replica : ''
       attempt = 0
       const names = [...handlers.keys()]
       if (names.length && send({ op: 'sub', events: names })) unacked++
@@ -79,6 +81,7 @@ function connect() {
     if (ws !== sock) return
     ws = null
     ready = false
+    replica = ''
     unacked = 0
     settle()
     scheduleReconnect(ev?.code === CLOSE_SERVICE_RESTART)
@@ -139,9 +142,15 @@ export function closeEvents() {
   const sock = ws
   ws = null
   ready = false
+  replica = ''
   unacked = 0
   settle()
   sock?.close()
+}
+
+/** Реплика, с которой установлен сокет событий; пусто — неизвестна (нет соединения или реплика одна). */
+export function eventsReplica(): string {
+  return ready ? replica : ''
 }
 
 /**
@@ -159,6 +168,17 @@ export function flushSubscriptions(): Promise<void> {
   })
 }
 
+/**
+ * Реплика, с которой установлен сокет событий; при необходимости открывает соединение и ждёт его (не дольше
+ * FLUSH_TIMEOUT_MS). Нужна до первого потока: его идентификатор несёт реплику-владельца.
+ */
+export async function waitReplica(): Promise<string> {
+  if (!enabled) return ''
+  const off = onEvent(RECONNECTED, () => { }) // временная подписка заставляет открыть соединение
+  try { await flushSubscriptions() } finally { off() }
+  return eventsReplica()
+}
+
 /** Только для тестов: сброс состояния модуля. */
 export function __resetForTests() {
   closeEvents()
@@ -166,5 +186,6 @@ export function __resetForTests() {
   enabled = true
   attempt = 0
   hadConnection = false
+  replica = ''
   waiters = []
 }

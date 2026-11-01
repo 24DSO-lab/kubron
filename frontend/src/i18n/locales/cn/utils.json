@@ -21,6 +21,7 @@
     "noLogs": "无日志",
     "noPods": "未找到 Pod",
     "streamClosed": "[{pod}流已关闭{reason}]",
+    "streamRestored": "[流已恢复：从当前时刻继续]",
     "error": "错误：{message}"
   },
   "terminal": {

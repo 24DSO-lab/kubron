@@ -31,7 +31,7 @@ const (
 
 // validStreamID: id приходит от клиента и входит в имя события, поэтому длина и алфавит ограничены.
 func validStreamID(id string) bool {
-	if id == "" || len(id) > 64 {
+	if id == "" || len(id) > 128 {
 		return false
 	}
 	for _, r := range id {

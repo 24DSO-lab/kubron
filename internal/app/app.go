@@ -18,6 +18,7 @@ import (
 	"github.com/24DSO-labs/kubron/internal/pfproxy"
 	"github.com/24DSO-labs/kubron/internal/replicaevents"
 	"github.com/24DSO-labs/kubron/internal/store"
+	"github.com/24DSO-labs/kubron/internal/streamid"
 	"github.com/24DSO-labs/kubron/internal/termbuf"
 )
 
@@ -39,6 +40,11 @@ type App struct {
 	// health — монитор проверок кластеров (для немедленного чтения результатов лидера).
 	publish func(replicaevents.Message)
 	health  *clusterhealth.Monitor
+	// replicaID — идентификатор этой реплики (ADR-0016): потоки терминала и логов несут его в идентификаторе, чужие
+	// отклоняются. Пусто — реплика одна (десктоп, режим без PostgreSQL): идентификаторы принимаются любые.
+	replicaID string
+	// interactive — отключённые администратором терминалы и оболочка узла (KUBRON_DISABLE_*).
+	interactive InteractivePolicy
 }
 
 // SetStore задаёт хранилище вместо файлового; вызывается до OnStartup. Это функция пакета, а не метод App:
@@ -58,6 +64,7 @@ func NewApp(p Platform) *App {
 		pfMgr:    k8s.NewPortForwardManager(mgr),
 	}
 	a.pfMgr.SetObserver(a.portForwardObserver())
+	a.configureTerminals()
 	return a
 }
 
@@ -93,6 +100,12 @@ func (a *App) GetCapabilities() Capabilities {
 		if c.PortForwardMode == k8s.PortForwardModeOff {
 			c.PortForward = false
 		}
+	}
+	if a.interactive.DisableExec {
+		c.Exec, c.NodeShell = false, false
+	}
+	if a.interactive.DisableNodeShell {
+		c.NodeShell = false
 	}
 	c.Teams = a.dir != nil // команды есть там, где хранилище умеет их хранить, а не в оболочке
 	c.InCluster = c.Teams && k8s.InClusterAvailable()
@@ -333,8 +346,14 @@ func (a *App) DrainNode(name string) error {
 }
 
 func (a *App) StartNodeShell(name string) (*k8s.NodeShellSession, error) {
-	if err := a.authz(auth.PermExec, "node", name); err != nil {
+	if err := a.authz(auth.PermNodeShell, "node", name); err != nil {
 		return nil, err
+	}
+	if a.interactive.DisableExec {
+		return nil, errExecDisabled
+	}
+	if a.interactive.DisableNodeShell {
+		return nil, errNodeShellDisabled
 	}
 	return a.k8sMgr.StartNodeShell(name)
 }
@@ -1365,11 +1384,17 @@ func (a *App) DetectShell(namespace, pod, container string) (string, error) {
 	if err := a.authz(auth.PermExec, "namespace", namespace, "pod", pod, "container", container); err != nil {
 		return "", err
 	}
+	if err := a.checkTerminalTarget(namespace, pod); err != nil {
+		return "", err
+	}
 	return a.k8sMgr.DetectShell(namespace, pod, container)
 }
 
 func (a *App) StartTerminalSession(sessionID, namespace, pod, container, shell string, cols, rows uint16) error {
 	if err := a.authz(auth.PermExec, "namespace", namespace, "pod", pod, "container", container, "shell", shell); err != nil {
+		return err
+	}
+	if err := a.checkTerminalTarget(namespace, pod); err != nil {
 		return err
 	}
 	return a.k8sMgr.StartTerminalSession(sessionID, namespace, pod, container, shell, cols, rows)
@@ -1385,12 +1410,15 @@ func (a *App) OpenTerminal(namespace, pod, container, shell string, cols, rows u
 	if err := a.authz(auth.PermExec, "namespace", namespace, "pod", pod, "container", container, "shell", shell); err != nil {
 		return "", err
 	}
+	if err := a.checkTerminalTarget(namespace, pod); err != nil {
+		return "", err
+	}
 	host, ok := a.platform.(terminalHost)
 	if !ok {
 		return "", errors.New("web terminal is unavailable in this shell")
 	}
 	reg := host.Terminals()
-	id := termbuf.NewID()
+	id := streamid.New(a.replicaID)
 	buf, err := reg.Register(id, termbuf.Hooks{
 		Input:  func(p []byte) error { return a.k8sMgr.WriteTerminal(id, p) },
 		Resize: func(c, r uint16) error { return a.k8sMgr.ResizeTerminal(id, c, r) },
@@ -1459,11 +1487,17 @@ func (a *App) StartLogStream(streamID, namespace, pod, container string, tail in
 	if err := a.authz(auth.PermRead); err != nil {
 		return err
 	}
+	if err := streamid.Check(a.replicaID, streamID); err != nil { // поток должен открыться там, где браузер держит WebSocket событий
+		return err
+	}
 	return a.k8sMgr.StartLogStream(streamID, namespace, pod, container, tail)
 }
 
 func (a *App) StopLogStream(streamID string) error {
 	if err := a.authz(auth.PermRead); err != nil {
+		return err
+	}
+	if err := streamid.Check(a.replicaID, streamID); err != nil {
 		return err
 	}
 	a.k8sMgr.StopLogStream(streamID)
