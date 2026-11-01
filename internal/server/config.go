@@ -28,6 +28,9 @@ type Config struct {
 	// DatabaseURL — строка подключения к PostgreSQL (KUBRON_DATABASE_URL или --database-url). Пусто — файловое
 	// хранилище в каталоге данных. Пароль лучше передавать через переменную окружения: аргументы видны в списке процессов.
 	DatabaseURL string
+	// DBListenURL — прямой адрес PostgreSQL для LISTEN/NOTIFY между репликами (только KUBRON_DB_LISTEN_URL: в адресе
+	// может быть пароль). LISTEN не работает через pgbouncer в режиме transaction; пусто — используется DatabaseURL.
+	DBListenURL string
 	// SecretKey — ключ шифрования секретов в БД «id:base64» (только KUBRON_SECRET_KEY; флага нет).
 	// PreviousSecretKeys — прежние ключи для чтения после ротации (KUBRON_SECRET_KEY_PREVIOUS, через запятую).
 	SecretKey          string
@@ -137,6 +140,7 @@ func LoadConfig(args []string, getenv func(string) string, out io.Writer) (Confi
 	}
 	trusted := getenv("KUBRON_TRUSTED_PROXIES")
 	cfg.DatabaseURL = getenv("KUBRON_DATABASE_URL")
+	cfg.DBListenURL = strings.TrimSpace(getenv("KUBRON_DB_LISTEN_URL"))
 	cfg.SecretKey = strings.TrimSpace(getenv("KUBRON_SECRET_KEY"))
 	for _, k := range strings.Split(getenv("KUBRON_SECRET_KEY_PREVIOUS"), ",") {
 		if k = strings.TrimSpace(k); k != "" {

@@ -512,7 +512,7 @@
   "tooManyRequestsTryAgainIn": "请求过多，请在 {p0} 秒后重试",
 
   "webSessionNotFound": "未找到 Web 会话",
-  "sessionStoreIsUnavailable": "会话存储不可用"
+  "sessionStoreIsUnavailable": "会话存储不可用",
   "kubronDrainDelay": "KUBRON_DRAIN_DELAY {p0}: {p1}",
   "drainDelayMustBeBetween0And": "排空延迟必须在 0 到 60 秒之间",
   "replicaIdMustBe1To63": "副本标识长度必须为 1 到 63 个字符",
@@ -534,6 +534,9 @@
   "ticketAlreadyUsed": "ticket 已被使用",
   "kubronPfSchemeMustBeHttpsOrHttp": "KUBRON_PF_SCHEME 必须为 https 或 http",
   "portForwardTimeoutsCannotBeNegative": "port-forward 超时不能为负数",
-  "kubronPfSchemeHttpIsAllowedOnlyForALocalhostBaseDomain": "KUBRON_PF_SCHEME=http 仅允许用于 localhost 基础域名"
+  "kubronPfSchemeHttpIsAllowedOnlyForALocalhostBaseDomain": "KUBRON_PF_SCHEME=http 仅允许用于 localhost 基础域名",
 
+  "replicaEventIsTooLargeBytes": "副本事件过大：{p0} 字节",
+  "replicaEventCannotBeDecoded": "无法解析副本事件：{p0}",
+  "replicaEventHasAnUnsupportedVersion": "副本事件的版本不受支持：{p0}"
 }

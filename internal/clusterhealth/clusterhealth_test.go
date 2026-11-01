@@ -240,3 +240,37 @@ func TestTrim(t *testing.T) {
 		t.Fatalf("got %d runes", n)
 	}
 }
+
+// Лидер сообщает остальным репликам об изменениях (OnPublish), читающая реплика — нет (иначе сообщения ходили бы
+// по кругу); Refresh подтягивает результаты лидера немедленно, не дожидаясь круга.
+func TestLeaderPublishesAndFollowerRefreshes(t *testing.T) {
+	sink := &memSink{}
+	var published, leaderChanged, followerChanged atomic.Int32
+	leader := &Monitor{
+		Board: NewBoard(), Sink: sink, Interval: time.Hour,
+		List:     func() ([]string, error) { return []string{"c1"}, nil },
+		Probe:    func(context.Context, string) Health { return Health{State: OK} },
+		OnChange: func() { leaderChanged.Add(1) }, OnPublish: func() { published.Add(1) },
+	}
+	follower := &Monitor{
+		Board: NewBoard(), Sink: sink, Interval: time.Hour, Leader: &fakeLeader{},
+		List:     func() ([]string, error) { return nil, nil },
+		OnChange: func() { followerChanged.Add(1) }, OnPublish: func() { published.Add(100) },
+	}
+	leader.Tick(context.Background())
+	if published.Load() != 1 || leaderChanged.Load() != 1 {
+		t.Fatalf("the leader must publish once: published=%d changed=%d", published.Load(), leaderChanged.Load())
+	}
+	follower.Refresh(context.Background())
+	if followerChanged.Load() != 1 || published.Load() != 1 {
+		t.Errorf("the follower must pick up the result without publishing: changed=%d published=%d", followerChanged.Load(), published.Load())
+	}
+	if h, ok := follower.Board.Get("c1"); !ok || h.State != OK {
+		t.Errorf("follower board: %+v %v", h, ok)
+	}
+	// второй круг без изменений ничего не публикует
+	leader.Tick(context.Background())
+	if published.Load() != 1 {
+		t.Errorf("an unchanged round must not publish: %d", published.Load())
+	}
+}

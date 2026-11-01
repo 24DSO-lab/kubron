@@ -35,6 +35,7 @@ type Store struct {
 	accessMu          sync.Mutex
 	accessSnap        *accessSnap
 	accessTTLOverride *time.Duration // тесты
+	accessNotify      func()         // сообщает другим репликам об изменении прав (SetAccessNotifier)
 }
 
 // Open подключается к БД. Схему создаёт Migrate; без неё Open сразу создавать организацию не станет:

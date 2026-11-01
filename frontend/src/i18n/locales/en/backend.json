@@ -512,8 +512,7 @@
   "tooManyRequestsTryAgainIn": "too many requests, try again in {p0} s",
 
   "webSessionNotFound": "web session not found",
-  "sessionStoreIsUnavailable": "session store is unavailable"
-
+  "sessionStoreIsUnavailable": "session store is unavailable",
   "kubronDrainDelay": "KUBRON_DRAIN_DELAY {p0}: {p1}",
   "drainDelayMustBeBetween0And": "drain delay must be between 0 and 60s",
   "replicaIdMustBe1To63": "replica id must be 1 to 63 characters long",
@@ -535,6 +534,9 @@
   "ticketAlreadyUsed": "ticket already used",
   "kubronPfSchemeMustBeHttpsOrHttp": "KUBRON_PF_SCHEME must be https or http",
   "portForwardTimeoutsCannotBeNegative": "port-forward timeouts cannot be negative",
-  "kubronPfSchemeHttpIsAllowedOnlyForALocalhostBaseDomain": "KUBRON_PF_SCHEME=http is allowed only for a localhost base domain"
+  "kubronPfSchemeHttpIsAllowedOnlyForALocalhostBaseDomain": "KUBRON_PF_SCHEME=http is allowed only for a localhost base domain",
 
+  "replicaEventIsTooLargeBytes": "replica event is too large: {p0} bytes",
+  "replicaEventCannotBeDecoded": "replica event cannot be decoded: {p0}",
+  "replicaEventHasAnUnsupportedVersion": "replica event has an unsupported version {p0}"
 }

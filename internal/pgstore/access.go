@@ -57,10 +57,32 @@ func (s *Store) accessTTL() time.Duration {
 	return accessTTL
 }
 
-// invalidateAccess сбрасывает снимок после изменения прав или кластеров этим процессом.
+// invalidateAccess сбрасывает снимок после изменения прав или кластеров этим процессом и сообщает об этом другим
+// репликам (SetAccessNotifier): им не нужно ждать истечения своего снимка. Вызывается после фиксации изменения.
 func (s *Store) invalidateAccess() {
+	s.dropAccessSnapshot()
+	s.accessMu.Lock()
+	fn := s.accessNotify
+	s.accessMu.Unlock()
+	if fn != nil {
+		fn()
+	}
+}
+
+func (s *Store) dropAccessSnapshot() {
 	s.accessMu.Lock()
 	s.accessSnap = nil
+	s.accessMu.Unlock()
+}
+
+// ApplyRemoteAccessChange сбрасывает снимок прав по сообщению другой реплики (без повторной рассылки).
+func (s *Store) ApplyRemoteAccessChange() { s.dropAccessSnapshot() }
+
+// SetAccessNotifier задаёт функцию, которую вызывает каждое локальное изменение прав, команд, кластеров или
+// пользователей (после фиксации в БД). Функция не должна блокироваться.
+func (s *Store) SetAccessNotifier(fn func()) {
+	s.accessMu.Lock()
+	s.accessNotify = fn
 	s.accessMu.Unlock()
 }
 
