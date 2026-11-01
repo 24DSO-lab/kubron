@@ -17,7 +17,8 @@ func TestNewCarriesOwner(t *testing.T) {
 	if rest := strings.SplitN(id, ".", 2)[1]; len(rest) != 32 {
 		t.Fatalf("random part must be 128 bits in hex, got %q", rest)
 	}
-	if New("a") == New("a") {
+	a, b := New("a"), New("a")
+	if a == b {
 		t.Fatal("ids must be unique")
 	}
 }
