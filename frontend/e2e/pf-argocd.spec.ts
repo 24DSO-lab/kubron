@@ -36,7 +36,7 @@ async function result<T = unknown>(page: Page, method: string, args: unknown[] =
   return body.result as T
 }
 
-test('Argo CD открывается через прокси потока, порт на хосте не открывается', async ({ page }) => {
+test('Argo CD открывается через прокси потока: UI, API, вход и SSE, порт на хосте не открывается', async ({ page }) => {
   await page.goto('/')
   const setup = await page.request.post('/api/rpc/SetupAdmin', { data: [ADMIN.name, ADMIN.pass], headers: JSON_HEADERS })
   const res = setup.status() === 200
@@ -63,12 +63,8 @@ test('Argo CD открывается через прокси потока, по�
   const ui = await page.goto(streamUrl)
   expect(ui!.status()).toBe(200)
   await expect(page).toHaveTitle(/Argo CD/)
-})
 
-test('API Argo CD и вход работают на origin потока, cookie приложения не теряется', async ({ page }) => {
-  await page.goto(streamUrl)
-  await expect(page).toHaveTitle(/Argo CD/)
-
+  // Дальше та же страница: адрес входа одноразовый, дальше работает cookie потока (kpf)
   const version = await page.evaluate(async () => {
     const r = await fetch('/api/version')
     return { status: r.status, body: await r.json() }
@@ -111,6 +107,9 @@ test('API Argo CD и вход работают на origin потока, cookie 
 
 test('остановка потока закрывает доступ', async ({ page }) => {
   await page.goto('/')
+  const login = await page.request.post('/api/rpc/Login', { data: [ADMIN.name, ADMIN.pass], headers: JSON_HEADERS })
+  expect(login.status()).toBe(200)
+  csrf = login.headers()['x-csrf-token']
   await result(page, 'StopPortForward', [streamId])
   const stopped = await page.request.get(streamUrl.replace(/\?.*$/, ''), { failOnStatusCode: false }).catch(() => null)
   if (stopped) expect(stopped.status()).not.toBe(200)
