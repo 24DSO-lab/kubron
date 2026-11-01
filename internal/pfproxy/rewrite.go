@@ -58,8 +58,9 @@ func rewriteLocation(loc, requestHost string, t Target) (string, bool) {
 	if out == "" || out[0] != '/' { // путь без ведущего «/» ("http://h") — корень
 		out = "/" + strings.TrimPrefix(out, "/")
 	}
-	if strings.HasPrefix(out, "//") { // «//evil.example» иначе стал бы адресом другого хоста
-		out = "/" + strings.TrimLeft(out, "/")
+	// «//evil.example» и «/\evil.example» иначе стали бы адресом другого хоста: браузер трактует «\» как «/».
+	if strings.HasPrefix(out, "//") || strings.HasPrefix(out, `/\`) {
+		out = "/" + strings.TrimLeft(out, `/\`)
 	}
 	return out, true
 }

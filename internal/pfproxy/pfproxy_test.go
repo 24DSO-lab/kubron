@@ -606,6 +606,9 @@ func TestLocationRewriteTable(t *testing.T) {
 		{"https://8.8.8.8/a", "h.pf.x", "https://8.8.8.8/a", false},
 		{"https://login.example.com/a", "h.pf.x", "https://login.example.com/a", false},
 		{"javascript://localhost/%0aalert(1)", "h.pf.x", "javascript://localhost/%0aalert(1)", false},
+		{"http://localhost//evil.com", "h.pf.x", "/evil.com", true},
+		// Бэкслеш не доходит до выхода сырым: url.URL.String() экранирует его как %5C (CodeQL этого не видит).
+		{"http://localhost/\\evil.com", "h.pf.x", "/%5Cevil.com", true},
 	}
 	for _, c := range cases {
 		got, changed := rewriteLocation(c.in, c.host, tg)

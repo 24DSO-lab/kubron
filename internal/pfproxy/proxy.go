@@ -271,7 +271,8 @@ func (s *Service) proxyFor(t Target) *streamProxy {
 		},
 		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
 			// В журнал — только метод, путь без query и текст ошибки: в query могут быть токены приложения.
-			log.Printf("port-forward %s: %s %s: %v", id[:8], r.Method, r.URL.Path, err)
+			// Путь — в экранированном виде (EscapedPath): декодированный путь мог содержать управляющие символы (%0A).
+			log.Printf("port-forward %s: %s %s: %v", id[:8], r.Method, r.URL.EscapedPath(), err)
 			http.Error(w, "bad gateway", http.StatusBadGateway)
 		},
 	}
