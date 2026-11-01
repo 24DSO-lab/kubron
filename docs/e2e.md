@@ -33,7 +33,7 @@
 `argocd-initial-admin-secret`). В CI Argo CD v2.13.3 ставится шагом «Argo CD». Файл идёт до `pf-terminals.spec.ts` и сам создаёт
 администратора и кластер. Проверяется: `OpenArgoUI` в режиме proxy (`mode=proxy`, `localPort=0`, сервис `argocd-server`), UI на
 origin потока открывается по https с самоподписанным сертификатом пода, `/api/version`, вход `admin` (`/api/v1/session`), список
-приложений с токеном, поток событий `/api/v1/stream/applications` отдаётся как `text/event-stream`, остановка закрывает доступ.
+приложений с токеном, поток событий `/api/v1/stream/applications` отдаётся как `text/event-stream` и приносит первое событие (CI создаёт приложение `e2e-guestbook`), остановка закрывает доступ.
 
 ## Gate этапа 3: команды на PostgreSQL (`frontend/e2e-pg`)
 Отдельный набор: сервер работает на PostgreSQL с **пустой** базой, первым пользователем становится администратор организации.

@@ -89,13 +89,16 @@ test('Argo CD открывается через прокси потока: UI, A
   }, login.token)
   expect(apps).toBe(200)
 
-  // Поток событий (SSE) отдаётся без буферизации: заголовки приходят, не дожидаясь конца ответа
+  // Поток событий (SSE) отдаётся без буферизации: заголовки и первые события приходят, не дожидаясь конца ответа
+  // (в кластере есть приложение e2e-guestbook: Argo CD начинает с событий по существующим приложениям)
   const sse = await page.evaluate(async (token) => {
     const ctl = new AbortController()
-    const timer = setTimeout(() => ctl.abort(), 30000)
+    const timer = setTimeout(() => ctl.abort(), 45000)
     try {
       const r = await fetch('/api/v1/stream/applications', { headers: { Authorization: `Bearer ${token}` }, signal: ctl.signal })
-      return { status: r.status, type: r.headers.get('content-type') ?? '' }
+      const reader = r.body!.getReader()
+      const first = await reader.read() // первый кусок данных, поток остаётся открытым
+      return { status: r.status, type: r.headers.get('content-type') ?? '', data: new TextDecoder().decode(first.value) }
     } finally {
       clearTimeout(timer)
       ctl.abort()
@@ -103,6 +106,7 @@ test('Argo CD открывается через прокси потока: UI, A
   }, login.token)
   expect(sse.status).toBe(200)
   expect(sse.type).toContain('text/event-stream')
+  expect(sse.data).toContain('e2e-guestbook')
 })
 
 test('остановка потока закрывает доступ', async ({ page }) => {
