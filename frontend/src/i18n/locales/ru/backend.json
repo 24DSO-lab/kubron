@@ -545,5 +545,6 @@
   "helmRecordNotFoundDb": "Запись Helm не найдена",
   "aHelmRepositoryWithThisNameAlreadyExists": "Репозиторий Helm с таким именем уже существует",
   "helmRepositoryOptionsAreCorrupted": "Настройки репозитория Helm повреждены: {p0}",
-  "proxyUrlInTheKubeconfigIsNotAllowedWhileTheClusterAddressPolicyIsEnabled": "proxy-url в kubeconfig не допускается, пока включена политика адресов кластеров"
+  "proxyUrlInTheKubeconfigIsNotAllowedWhileTheClusterAddressPolicyIsEnabled": "proxy-url в kubeconfig не допускается, пока включена политика адресов кластеров",
+  "streamIsOnAnotherReplica": "поток открыт на другой реплике"
 }

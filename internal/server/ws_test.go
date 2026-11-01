@@ -95,3 +95,24 @@ func TestWSClosedWhenSessionEnds(t *testing.T) {
 		}
 	}
 }
+
+// Кадр ready называет реплику сокета: браузер выдаёт потокам идентификаторы с этим префиксом (ADR-0016).
+func TestWSReadyNamesTheReplica(t *testing.T) {
+	hub := NewHub()
+	ss := NewSessions(time.Hour, true)
+	d, err := NewDispatcher(&guardTarget{}, []string{"Login"}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv := httptest.NewServer(NewHandler(d, nil, &Guard{Sessions: ss, Hub: hub, Lifecycle: NewLifecycle("kubron-0_ab12")}))
+	defer srv.Close()
+	tok, _ := ss.Create("u1", nil)
+	ws, _, err := dial(srv, http.Header{"Cookie": {cookieName + "=" + tok}, "Origin": {srv.URL}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ws.Close()
+	if m := readJSON(t, ws); m["op"] != "ready" || m["replica"] != "kubron-0_ab12" {
+		t.Fatalf("ready: %v", m)
+	}
+}

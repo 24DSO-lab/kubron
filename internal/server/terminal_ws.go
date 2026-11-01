@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/24DSO-labs/kubron/internal/streamid"
 	"github.com/gorilla/websocket"
 )
 
@@ -59,6 +60,10 @@ func TerminalHandler(g *Guard) http.Handler {
 			return
 		}
 		id := r.PathValue("id")
+		if err := streamid.Check(g.Lifecycle.ReplicaID(), id); err != nil { // терминал открыт на другой реплике
+			writeError(w, http.StatusConflict, "stream_elsewhere", "stream is on another replica")
+			return
+		}
 		if !g.Terminals.OwnedBy(id, sess.ID) { // чужой терминал неотличим от несуществующего
 			writeError(w, http.StatusNotFound, "not_found", "terminal not found")
 			return

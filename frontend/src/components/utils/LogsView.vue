@@ -65,7 +65,8 @@ import timestampIcon from '../../assets/icons/timestamp.svg'
 import wrapLinesIcon from '../../assets/icons/wrap-lines.svg'
 import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue'
 import { onEvent } from '../../platform/events'
-import { uid } from '../../resources/uid'
+import { RECONNECTED } from '../../platform/events.web'
+import { newStreamId, retryElsewhere } from '../../platform/streams'
 import { callApp } from '../../platform/api'
 
 const props = defineProps<{ tab: LogsTab; active: boolean }>()
@@ -188,7 +189,8 @@ const contentEl = ref<HTMLElement | null>(null)
 
 function stopStream(s: LiveStream) {
   s.unsubscribe.forEach(off => off())
-  callApp('StopLogStream', s.id).catch(() => { })
+  // Поток мог остаться на другой реплике: запрос повторяется, пока не попадёт к владельцу (ошибки не важны)
+  retryElsewhere(() => callApp('StopLogStream', s.id), 4).catch(() => { })
 }
 function stopStreams() {
   generation++
@@ -217,19 +219,24 @@ function append(text: string) {
 const tagPod = (pod: string, chunk: string) => chunk.replace(TS_PREFIXED, `$1 [${pod}] $2`)
 
 /** (Пере)запуск потоков: один под — один поток */
-async function loadLogs() {
+async function loadLogs(resume = false) {
   const tab = props.tab
   stopStreams()
   const gen = generation
-  tab.rawLogs = ''
-  follow.value = true
+  if (resume) { // потоки потеряны вместе с репликой: подписка заново с текущего момента, прежний текст остаётся
+    append(`\n${t('utils.logs.streamRestored')}\n`)
+  } else {
+    tab.rawLogs = ''
+    follow.value = true
+  }
   const targets = tab.selectedPodName ? tab.pods.filter(p => p.name === tab.selectedPodName) : tab.pods
   if (!targets.length) return
   const multi = !tab.selectedPodName && targets.length > 1
 
   for (const pod of targets) {
     const container = tab.selectedContainer || defaultContainer(pod)
-    const id = `log_${uid()}`
+    const id = await newStreamId('log')
+    if (gen !== generation) return // пока ждали готовности сокета событий, запустили новую загрузку
     const s: LiveStream = { id, unsubscribe: [] }
     s.unsubscribe.push(
       onEvent(`logs:data:${id}`, (chunk: string) => append(multi ? tagPod(pod.name, chunk) : chunk)),
@@ -241,7 +248,7 @@ async function loadLogs() {
     )
     streams.push(s)
     try {
-      await callApp('StartLogStream', id, tab.namespace, pod.name, container, logLines.value)
+      await retryElsewhere(() => callApp('StartLogStream', id, tab.namespace, pod.name, container, resume ? 0 : logLines.value))
     } catch (e: any) {
       if (gen === generation) append(`\n[${pod.name}: ${errorText(e)}]\n`)
       dropStream(s)
@@ -271,7 +278,10 @@ watch(() => props.active, active => {
   if (active && !started) { started = true; loadResourcePods() }
 }, { immediate: true })
 
-onBeforeUnmount(stopStreams)
+// Сокет событий восстановлен (например, реплика с потоками остановилась): открытые потоки больше ничего не
+// присылают, открываем их заново на живой реплике.
+const offReconnected = onEvent(RECONNECTED, () => { if (streams.length > 0) loadLogs(true) })
+onBeforeUnmount(() => { offReconnected(); stopStreams() })
 
 
 
