@@ -22,6 +22,6 @@ export async function getPortForwardUrl(id: string, secure = false): Promise<str
 }
 
 /** Останавливает проброс; повторяет запрос, пока он не попадёт на реплику-владельца потока. */
-export function stopPortForward(id: string): Promise<unknown> {
-  return retryElsewhere(() => callApp('StopPortForward', id))
+export async function stopPortForward(id: string): Promise<void> {
+  await retryElsewhere(() => callApp('StopPortForward', id))
 }
