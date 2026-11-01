@@ -549,5 +549,7 @@
   "streamIsOnAnotherReplica": "stream is on another replica",
   "terminalsAreDisabledByTheAdministrator": "terminals are disabled by the administrator",
   "nodeShellIsDisabledByTheAdministrator": "node shell is disabled by the administrator",
-  "terminalTimeoutsCannotBeNegative": "terminal timeouts cannot be negative"
+  "terminalTimeoutsCannotBeNegative": "terminal timeouts cannot be negative",
+  "theArgoCdAddressIsLongerThan": "the Argo CD address is longer than {p0} characters",
+  "theArgoCdAddressMustBeAn": "the Argo CD address must be an http or https URL without credentials, query or fragment"
 }

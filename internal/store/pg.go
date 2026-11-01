@@ -90,7 +90,7 @@ func toPG(m *k8s.ClusterMeta) *pgstore.Cluster {
 	return &pgstore.Cluster{
 		ID: m.ID, DisplayName: m.DisplayName, Icon: m.Icon, Color: m.Color, Environment: m.Environment,
 		DefaultNamespace: m.DefaultNamespace, ContextName: m.ContextName, AddedAt: m.AddedAt, TeamID: m.TeamID,
-		Mode: m.Mode,
+		Mode: m.Mode, ArgoURL: m.ArgoURL,
 	}
 }
 
@@ -100,7 +100,7 @@ func toMeta(c *pgstore.Cluster) k8s.ClusterMeta {
 	return k8s.ClusterMeta{
 		ID: c.ID, DisplayName: c.DisplayName, Icon: c.Icon, Color: c.Color, Environment: c.Environment,
 		DefaultNamespace: c.DefaultNamespace, ContextName: c.ContextName, AddedAt: c.AddedAt, TeamID: c.TeamID,
-		Mode: c.Mode,
+		Mode: c.Mode, ArgoURL: c.ArgoURL,
 	}
 }
 

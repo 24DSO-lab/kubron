@@ -36,6 +36,8 @@ type ClusterMeta struct {
 	TeamID string `json:"teamId,omitempty"`
 	// Mode — способ подключения: kubeconfig (пусто), in-cluster, oidc-password (только сервисное хранилище).
 	Mode string `json:"mode,omitempty"`
+	// ArgoURL — опубликованный адрес Argo CD; пусто — открытие через port-forward или прокси (ADR-0017).
+	ArgoURL string `json:"argoUrl,omitempty"`
 }
 
 type ClusterStatus struct {
@@ -218,6 +220,7 @@ func addClusterFromData(data []byte, settings ClusterSettings, teamID string, oi
 		Color:            settings.Color,
 		Environment:      settings.Environment,
 		DefaultNamespace: settings.DefaultNamespace,
+		ArgoURL:          settings.ArgoURL,
 		KubeconfigFile:   id + ".kubeconfig",
 		AddedAt:          time.Now().Format(time.RFC3339),
 		ContextName:      contextName,

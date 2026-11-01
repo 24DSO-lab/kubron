@@ -235,7 +235,7 @@ func AddInClusterToTeam(settings ClusterSettings, teamID string) (*ClusterMeta, 
 	id := uniqueClusterID(settings.DisplayName)
 	meta := &ClusterMeta{
 		ID: id, DisplayName: settings.DisplayName, Icon: settings.Icon, Color: settings.Color,
-		Environment: settings.Environment, DefaultNamespace: settings.DefaultNamespace,
+		Environment: settings.Environment, DefaultNamespace: settings.DefaultNamespace, ArgoURL: settings.ArgoURL,
 		AddedAt: time.Now().Format(time.RFC3339), TeamID: teamID, Mode: ModeInCluster,
 	}
 	if err := ms.SaveWithSecret(meta, nil, nil); err != nil {
