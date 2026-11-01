@@ -123,7 +123,15 @@ test('события и логи доходят только владельцу'
   const target = process.env.E2E_LOG_POD // namespace/pod/container, под пишет в stdout
   test.skip(!process.env.E2E_KUBECONFIG || !target, 'нужны E2E_KUBECONFIG и E2E_LOG_POD')
   const [namespace, pod, container] = target!.split('/')
-  const streamId = `log_e2e_${Date.now()}`
+  // Идентификатор потока несёт реплику-владельца, названную в кадре ready сокета событий (ADR-0016)
+  const replica = await admin.page.evaluate(() => new Promise<string>((resolve) => {
+    const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/api/ws`)
+    ws.onmessage = e => {
+      const m = JSON.parse(e.data as string)
+      if (m.op === 'ready') { ws.close(); resolve(typeof m.replica === 'string' ? m.replica : '') }
+    }
+  }))
+  const streamId = `${replica ? replica + '.' : ''}log_e2e_${Date.now()}`
 
   // Обе стороны подписываются на один и тот же поток; bob — «чужой», он событий получить не должен
   const listen = (c: Client) => c.page.evaluate(
