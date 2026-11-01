@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-01
+
 ### Added
 
 - **Terminals:** separate `nodeshell` permission for the node shell (admin only by default), flags
@@ -22,7 +24,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   No user, team or cluster names in labels. The chart adds a separate metrics Service (not reachable through
   the Ingress), an optional `ServiceMonitor` and a NetworkPolicy rule for the monitoring namespace.
   See `docs/metrics.md`.
-
 
 ## [0.5.0] - 2026-11-01
 
@@ -155,7 +156,8 @@ First public release.
 - Experimental web mode (`cmd/kubron-server`): several concurrent sessions, per-session
   cluster managers with per-user resource limits, idle informers released after a TTL.
 
-[Unreleased]: https://github.com/24DSO-labs/kubron/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/24DSO-labs/kubron/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/24DSO-labs/kubron/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/24DSO-labs/kubron/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/24DSO-labs/kubron/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/24DSO-labs/kubron/compare/v0.2.0...v0.3.0
