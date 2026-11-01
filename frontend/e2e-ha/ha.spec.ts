@@ -84,8 +84,10 @@ test('любая реплика обслуживает любой запрос',
   }
   // Пользователь, созданный на одной реплике, виден на другой
   await ok(admin, A, 'CreateUser', ['ha-bob', TMP, 'user'])
-  const seen = await ok<{ username: string }[]>(admin, B, 'ListUsers')
-  expect(seen.map(u => u.username)).toContain('ha-bob')
+  // Пользователей реплика перечитывает из PostgreSQL раз в 2 с (отдельного сообщения на создание пользователя нет),
+  // поэтому появление на B ждём до нескольких секунд; сессии и права распространяются сообщениями быстрее
+  await expect.poll(async () => (await ok<{ username: string }[]>(admin, B, 'ListUsers')).map(u => u.username),
+    { timeout: 8_000, intervals: [250] }).toContain('ha-bob')
 })
 
 test('завершение сессии на одной реплике закрывает сокет на другой, чужие сессии не затрагиваются', async ({ browser }) => {
