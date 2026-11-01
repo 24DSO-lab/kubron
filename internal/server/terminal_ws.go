@@ -4,7 +4,7 @@
 package server
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
 	"sync"
 	"time"
@@ -130,7 +130,7 @@ func TerminalHandler(g *Guard) http.Handler {
 			case websocket.TextMessage:
 				cols, rows, err := parseTermControl(msg)
 				if err != nil {
-					log.Printf("terminal %s: %v", id[:8], err)
+					slog.Warn("terminal: bad control message", "terminal", id[:8], "error", err)
 					continue
 				}
 				if att.Resize(cols, rows) != nil {

@@ -43,6 +43,7 @@ inc="$tmp/incluster-values.yaml"
 rep="$tmp/replicas-values.yaml"
 dev="$tmp/dev-secret-values.yaml"
 met="$tmp/metrics-values.yaml"
+logv="$tmp/logging-values.yaml"
 has() { grep -qE -- "$2" "$1" || fail "$3"; }
 hasnt() { ! grep -qE -- "$2" "$1" || fail "$3"; }
 
@@ -98,6 +99,11 @@ grep -q 'port: metrics' <<<"$np" || fail "NetworkPolicy rule for the metrics por
 # правило для порта метрик идёт отдельным пунктом и не берёт источники правила основного порта
 rule="$(grep -A8 'port: metrics' <<<"$np")"
 ! grep -q 'ingress-nginx' <<<"$rule" || fail "the metrics port must not be reachable from the ingress namespace"
+# Журнал: по умолчанию ничего не добавляется; аудит в stdout и уровень включаются значениями
+hasnt "$min" 'KUBRON_AUDIT_STDOUT' "audit to stdout enabled by default"
+hasnt "$min" 'KUBRON_LOG_LEVEL' "log level set by default"
+has   "$logv" 'KUBRON_AUDIT_STDOUT: "1"' "auditStdout must set KUBRON_AUDIT_STDOUT"
+has   "$logv" 'KUBRON_LOG_LEVEL: "debug"' "logLevel must set KUBRON_LOG_LEVEL"
 
 echo "== negative cases (must fail)"
 expect_fail() { # <ожидаемый фрагмент сообщения> <аргументы helm template…>
@@ -110,5 +116,6 @@ expect_fail 'secrets.values.secretKey is required' --set secrets.create=true --s
 expect_fail 'rbac.create requires inCluster.enabled' --set secrets.existingSecret=s --set rbac.create=true
 expect_fail 'replicaCount' --set secrets.existingSecret=s --set replicaCount=0
 expect_fail 'metrics.port must differ' --set secrets.existingSecret=s --set metrics.enabled=true --set metrics.port=8080
+expect_fail 'logLevel' --set secrets.existingSecret=s --set kubron.logLevel=loud
 
 echo "OK: chart checks passed"

@@ -4,7 +4,7 @@
 package main
 
 import (
-	"log"
+	"log/slog"
 
 	"github.com/24DSO-labs/kubron/internal/app"
 	"github.com/24DSO-labs/kubron/internal/k8s"
@@ -21,7 +21,7 @@ func setupPortForward(cfg server.Config, core *app.App, sessions *server.Session
 	switch {
 	case cfg.DisablePortForward:
 		app.SetPortForwardMode(core, k8s.PortForwardModeOff)
-		log.Printf("port-forward: disabled by KUBRON_DISABLE_PORT_FORWARD")
+		slog.Info("port-forward: disabled by KUBRON_DISABLE_PORT_FORWARD")
 	case cfg.PFBaseDomain != "":
 		var secret []byte
 		if cfg.SecretKey != "" {
@@ -36,14 +36,14 @@ func setupPortForward(cfg server.Config, core *app.App, sessions *server.Session
 			SessionAlive: func(owner string) bool { return sessions.Alive(owner) },
 		}, secret)
 		if err != nil {
-			log.Fatalf("port-forward: %v", err)
+			fatal("port-forward", err)
 		}
 		app.SetPortForwardProxy(core, svc)
-		log.Printf("port-forward: proxy mode, streams on {id}.pf.%s", svc.BaseDomain())
+		slog.Info("port-forward: proxy mode", "streams_on", "{id}.pf."+svc.BaseDomain())
 		return svc
 	case cfg.ServiceMode():
 		app.SetPortForwardMode(core, k8s.PortForwardModeOff)
-		log.Printf("port-forward: disabled (set KUBRON_PF_BASE_DOMAIN to enable the proxy)")
+		slog.Info("port-forward: disabled (set KUBRON_PF_BASE_DOMAIN to enable the proxy)")
 	}
 	return nil
 }

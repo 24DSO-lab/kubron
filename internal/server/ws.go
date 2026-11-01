@@ -4,7 +4,7 @@
 package server
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"time"
@@ -95,7 +95,7 @@ func serveConn(ws *websocket.Conn, c *Conn, replica string, alive func() bool) {
 		case frame := <-c.Out():
 			_ = ws.SetWriteDeadline(time.Now().Add(wsWriteWait))
 			if err := ws.WriteMessage(websocket.TextMessage, frame); err != nil {
-				log.Printf("ws: failed to write: %v", err)
+				slog.Warn("ws: failed to write", "error", err)
 				return
 			}
 		case <-tick.C:

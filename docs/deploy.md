@@ -116,6 +116,12 @@ helm install kubron deploy/helm/kubron -n kubron \
 (по умолчанию namespace `monitoring`). Ingress порт метрик не получает. Для Prometheus Operator
 `metrics.serviceMonitor.enabled=true`. Список метрик и запросы — `docs/metrics.md`.
 
+### Журнал и аудит
+
+Журнал процесса — JSON в stderr (`kubron.logLevel`, `kubron.logFormat`), у каждого запроса есть
+`request_id` (заголовок `X-Request-Id`). `kubron.auditStdout=true` дублирует аудит JSON-строками в stdout
+для внешнего сборщика. Подробности и гарантии по секретам — `docs/logging.md`.
+
 ### Режим in-cluster и RBAC
 
 `inCluster.enabled=true` монтирует токен ServiceAccount (по умолчанию он не монтируется).

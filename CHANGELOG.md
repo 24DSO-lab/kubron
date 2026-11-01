@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Operations:** structured JSON logging (`log/slog`) in `kubron-server` with a secret redactor (passwords,
+  tokens, `Authorization` headers, URL credentials, encryption key, database passwords), a per-request
+  `request_id` (`X-Request-Id` header), `KUBRON_LOG_LEVEL` and `KUBRON_LOG_FORMAT`. `KUBRON_AUDIT_STDOUT=1`
+  mirrors every audit record to stdout as a JSON line (`"type":"audit"`) for an external collector. See
+  `docs/logging.md`.
+
 ## [0.6.0] - 2026-11-01
 
 - **Argo CD:** published address in cluster settings (`argoUrl`, migration `0006`). If set, `OpenArgoUI` opens it
@@ -25,7 +33,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   No user, team or cluster names in labels. The chart adds a separate metrics Service (not reachable through
   the Ingress), an optional `ServiceMonitor` and a NetworkPolicy rule for the monitoring namespace.
   See `docs/metrics.md`.
-
 
 ## [0.5.0] - 2026-11-01
 
