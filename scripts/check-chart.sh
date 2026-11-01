@@ -71,6 +71,13 @@ has   "$min" 'KUBRON_TRUST_PROXY: "0"' "trustProxy must be off without ingress T
 has   "$ing" 'KUBRON_TRUST_PROXY: "1"' "trustProxy must be on with ingress TLS"
 render -f "$chart/ci/ingress-values.yaml" --set kubron.trustProxy=false | grep -q 'KUBRON_TRUST_PROXY: "0"' \
   || fail "explicit kubron.trustProxy=false must win over auto"
+# Port-forward в браузере (ADR-0017): без домена потоков нет ни переменной, ни wildcard-хоста
+pfv="$tmp/portforward-values.yaml"
+hasnt "$min" 'KUBRON_PF_BASE_DOMAIN' "the port-forward domain must be unset by default"
+hasnt "$ing" 'host: "\*\.pf\.' "the wildcard stream host must not be rendered without portForward.baseDomain"
+has   "$pfv" 'KUBRON_PF_BASE_DOMAIN: "kubron.example.com"' "portForward.baseDomain must set KUBRON_PF_BASE_DOMAIN"
+has   "$pfv" 'KUBRON_PF_IDLE_TIMEOUT: "10m"' "portForward.idleTimeout must set KUBRON_PF_IDLE_TIMEOUT"
+has   "$pfv" 'host: "\*\.pf\.kubron\.example\.com"' "the Ingress must route the wildcard stream host"
 # Токен ServiceAccount только в режиме in-cluster; RBAC только по флагу
 has   "$min" 'automountServiceAccountToken: false' "token must not be mounted by default"
 hasnt "$min" 'automountServiceAccountToken: true' "token mounted by default"
