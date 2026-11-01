@@ -180,7 +180,7 @@ func (m *Manager) startTerminal(sessionID, namespace, pod, container, shell stri
 			}, scheme.ParameterCodec)
 	}
 
-	executor, err := remotecommand.NewSPDYExecutor(conn.Config, "POST", req.URL())
+	executor, err := spdyExecutorFor(conn.Config, "POST", req.URL())
 	if err != nil {
 		return fmt.Errorf("create executor: %w", err)
 	}

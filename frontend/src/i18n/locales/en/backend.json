@@ -544,5 +544,6 @@
   "theClusterDoesNotBelongToATeam": "the cluster does not belong to a team",
   "helmRecordNotFoundDb": "helm record not found",
   "aHelmRepositoryWithThisNameAlreadyExists": "a helm repository with this name already exists",
-  "helmRepositoryOptionsAreCorrupted": "helm repository options are corrupted: {p0}"
+  "helmRepositoryOptionsAreCorrupted": "helm repository options are corrupted: {p0}",
+  "proxyUrlInTheKubeconfigIsNotAllowedWhileTheClusterAddressPolicyIsEnabled": "proxy-url in the kubeconfig is not allowed while the cluster address policy is enabled"
 }

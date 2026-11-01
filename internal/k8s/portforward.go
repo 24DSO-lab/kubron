@@ -426,7 +426,7 @@ func (pfm *PortForwardManager) start(id, namespace, pod, service string, service
 		SubResource("portforward").
 		URL()
 
-	transport, upgrader, err := spdy.RoundTripperFor(conn.Config)
+	transport, upgrader, err := spdyRoundTripperFor(conn.Config)
 	if err != nil {
 		return fail(fmt.Errorf("failed to create transport: %w", err))
 	}

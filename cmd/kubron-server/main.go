@@ -82,6 +82,10 @@ func main() {
 	if err := setupHelmNetPolicy(os.Getenv); err != nil {
 		log.Fatalf("network policy: %v", err)
 	}
+	// Адрес API-сервера кластера из kubeconfig пользователя; по умолчанию выключено (см. helmnet.go).
+	if err := setupClusterAddrPolicy(os.Getenv); err != nil {
+		log.Fatalf("network policy: %v", err)
+	}
 
 	hub := server.NewHub()
 	platform := &webplatform.Platform{}
