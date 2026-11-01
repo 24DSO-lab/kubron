@@ -1,0 +1,17 @@
+name: Wails CLI
+description: >
+  Бинарник wails, устанавливаемый из версии в go.mod, с кэшем между
+  прогонами (go install компилирует его каждый раз). Требует заранее
+  выполненный actions/setup-go: он кладёт ~/go/bin в PATH.
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+      id: cache
+      with:
+        path: ~/go/bin/wails
+        key: wails-${{ runner.os }}-${{ hashFiles('go.sum') }}
+    - shell: bash
+      if: steps.cache.outputs.cache-hit != 'true'
+      run: go install github.com/wailsapp/wails/v2/cmd/wails@$(go list -m -f '{{.Version}}' github.com/wailsapp/wails/v2)

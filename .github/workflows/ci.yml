@@ -99,7 +99,7 @@ jobs:
 
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
-          go-version: stable
+          go-version-file: go.mod
 
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
@@ -112,6 +112,8 @@ jobs:
       - name: Stub frontend/dist
         run: mkdir -p frontend/dist && touch frontend/dist/.keep
 
+      - uses: ./.github/actions/go-build-cache
+
       # Go: только разрешённые лицензии (свой модуль kubron не проверяем).
       # go-licenses v1 не имеет флага --include_tags: теги сборки передаются через GOFLAGS.
       - name: go-licenses
@@ -123,7 +125,7 @@ jobs:
             --allowed_licenses=Apache-2.0,BSD-2-Clause,BSD-3-Clause,MIT,ISC,MPL-2.0
 
       # Фронтенд: только production-зависимости
-      - run: npm ci
+      - run: npm ci --omit=dev
         working-directory: frontend
       - name: license-checker
         working-directory: frontend
@@ -149,6 +151,8 @@ jobs:
       # main.go встраивает frontend/dist (//go:embed): для Go-проверок достаточно заглушки
       - name: Stub frontend/dist
         run: mkdir -p frontend/dist && touch frontend/dist/.keep
+
+      - uses: ./.github/actions/go-build-cache
 
       - name: gofmt
         run: test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
@@ -201,6 +205,7 @@ jobs:
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
           go-version-file: go.mod
+      - uses: ./.github/actions/go-build-cache
       - name: Integration tests of the PostgreSQL store
         env:
           KUBRON_TEST_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/kubron_test?sslmode=disable
@@ -229,7 +234,9 @@ jobs:
   vulncheck:
     name: Vulnerabilities (govulncheck)
     needs: changes
-    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
+    # Job не блокирует (continue-on-error ниже), поэтому на каждый PR не нужен:
+    # гоняется на push в ветки и при вызове из release.yml
+    if: ${{ !cancelled() && github.event_name != 'pull_request' && needs.changes.outputs.code != 'false' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -242,9 +249,13 @@ jobs:
       - uses: ./.github/actions/linux-build-deps
       - name: Stub frontend/dist
         run: mkdir -p frontend/dist && touch frontend/dist/.keep
+      - uses: ./.github/actions/go-build-cache
       - name: govulncheck
         continue-on-error: true
-        run: go run golang.org/x/vuln/cmd/govulncheck@latest -tags $GO_TAGS ./...
+        # Версия зафиксирована: @latest качается каждый раз и недетерминирован
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
+          govulncheck -tags $GO_TAGS ./...
 
   lint:
     name: Go (golangci-lint)
@@ -279,7 +290,7 @@ jobs:
 
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
-          go-version: stable
+          go-version-file: go.mod
 
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
@@ -289,8 +300,9 @@ jobs:
 
       - uses: ./.github/actions/linux-build-deps
 
-      - name: Wails CLI
-        run: go install github.com/wailsapp/wails/v2/cmd/wails@$(go list -m -f '{{.Version}}' github.com/wailsapp/wails/v2)
+      - uses: ./.github/actions/go-build-cache
+
+      - uses: ./.github/actions/wails-cli
 
       - run: npm ci
         working-directory: frontend
@@ -328,7 +340,7 @@ jobs:
 
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
-          go-version: stable
+          go-version-file: go.mod
 
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
@@ -338,8 +350,9 @@ jobs:
 
       - uses: ./.github/actions/linux-build-deps
 
-      - name: Wails CLI
-        run: go install github.com/wailsapp/wails/v2/cmd/wails@$(go list -m -f '{{.Version}}' github.com/wailsapp/wails/v2)
+      - uses: ./.github/actions/go-build-cache
+
+      - uses: ./.github/actions/wails-cli
 
       - run: npm ci
         working-directory: frontend
@@ -398,6 +411,10 @@ jobs:
             curl -fs "http://127.0.0.1:$port/healthz" || { cat "$RUNNER_TEMP"/server-*.log; exit 1; }
           done
 
+      - uses: ./.github/actions/playwright-cache
+        with:
+          browsers: chromium
+
       - run: npx playwright install --with-deps chromium
         working-directory: frontend
 
@@ -452,7 +469,7 @@ jobs:
 
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
-          go-version: stable
+          go-version-file: go.mod
 
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
@@ -462,8 +479,9 @@ jobs:
 
       - uses: ./.github/actions/linux-build-deps
 
-      - name: Wails CLI
-        run: go install github.com/wailsapp/wails/v2/cmd/wails@$(go list -m -f '{{.Version}}' github.com/wailsapp/wails/v2)
+      - uses: ./.github/actions/go-build-cache
+
+      - uses: ./.github/actions/wails-cli
 
       - run: npm ci
         working-directory: frontend
@@ -494,6 +512,10 @@ jobs:
           ./kubron-server --listen 127.0.0.1:8081 > "$RUNNER_TEMP/server-pg.log" 2>&1 &
           for i in $(seq 1 30); do curl -fs http://127.0.0.1:8081/healthz && exit 0; sleep 1; done
           cat "$RUNNER_TEMP/server-pg.log"; exit 1
+
+      - uses: ./.github/actions/playwright-cache
+        with:
+          browsers: chromium
 
       - run: npx playwright install --with-deps chromium
         working-directory: frontend
