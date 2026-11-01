@@ -1,17 +1,57 @@
-# Docker & Kubernetes
+# Docker and Kubernetes deployment
 
-## Build the image
+Kubron publishes a server container image and Helm chart for tagged releases.
 
-```bash
+- Container image: `ghcr.io/24dso-labs/kubron`
+- OCI chart: `oci://ghcr.io/24dso-labs/charts/kubron`
+- Chart source: [deploy/helm/kubron](https://github.com/24DSO-labs/kubron/tree/master/deploy/helm/kubron)
+
+## Prerequisites
+
+- PostgreSQL 14+
+- A TLS-terminating ingress or reverse proxy
+- A persistent, backed-up database
+- A 32-byte encryption key encoded as `id:base64`
+
+Generate a key:
+
+```sh
+echo "k1:$(openssl rand -base64 32)"
+```
+
+Store it securely before deploying. Losing the key means losing access to encrypted kubeconfigs and GitOps tokens.
+
+## Install with Helm
+
+```sh
+kubectl create namespace kubron
+kubectl -n kubron create secret generic kubron-secrets \
+  --from-literal=KUBRON_SECRET_KEY='k1:…' \
+  --from-literal=KUBRON_DATABASE_URL='postgres://kubron:…@db.example.com:5432/kubron?sslmode=verify-full'
+
+helm install kubron oci://ghcr.io/24dso-labs/charts/kubron \
+  --namespace kubron \
+  --set secrets.existingSecret=kubron-secrets \
+  --set image.tag=<release-version>
+```
+
+Review the chart's `values.yaml` and `values.schema.json` before deployment. Configure ingress TLS, trusted proxy settings, network policy, resource requests and limits, and backups for PostgreSQL.
+
+## Build the image yourself
+
+```sh
 docker build -t kubron:dev .
 ```
 
-## Helm chart
+## High availability
 
-The chart lives in the repository at [`deploy/helm/kubron`](https://github.com/24DSO-labs/kubron/tree/master/deploy/helm/kubron).
+Multiple replicas are supported when PostgreSQL is configured. Sessions and user state are shared, changes propagate through PostgreSQL notifications, and replicas drain WebSocket and terminal connections during shutdown. See the [HA operations guide](https://github.com/24DSO-labs/kubron/blob/master/docs/ha.md) and [session design](https://github.com/24DSO-labs/kubron/blob/master/docs/ha-sessions.md).
 
-Detailed deployment notes (key management, backups, current limitations) are in the upstream document:
+## Important operational notes
 
-[docs/deploy.md](https://github.com/24DSO-labs/kubron/blob/master/docs/deploy.md) (currently in Russian).
+- The server expects a TLS proxy; it does not terminate TLS itself.
+- The metrics listener is separate from the application listener and should only be reachable by monitoring infrastructure.
+- Server-mode port-forward requires `KUBRON_PF_BASE_DOMAIN`, wildcard DNS and a wildcard TLS certificate.
+- Configure PostgreSQL backups and encryption-key recovery before production use.
 
-Publishing the image and chart to a registry is on the [roadmap](https://github.com/24DSO-labs/kubron#roadmap).
+For the full list of settings, chart values, network policies and operational procedures, use the [deployment guide](https://github.com/24DSO-labs/kubron/blob/master/docs/deploy.md).
