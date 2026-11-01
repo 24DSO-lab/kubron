@@ -162,8 +162,9 @@ jobs:
           # Вход создаёт запись в PostgreSQL (миграции применены, БД доступна), а не в файлах пода
           curl -fs -X POST -H 'Content-Type: application/json' -d '["kind-admin","kind-password-1"]' \
             http://127.0.0.1:18081/api/rpc/SetupAdmin | grep -q kind-admin
-          kubectl logs deploy/kubron | tee "$RUNNER_TEMP/kubron.log"
-          grep -q 'applied migrations' "$RUNNER_TEMP/kubron.log"
+          # Реплик две: миграции применяет та, что первой взяла блокировку, поэтому смотрим журналы всех подов
+          kubectl logs -l app.kubernetes.io/name=kubron --tail=-1 --prefix | tee "$RUNNER_TEMP/kubron.log"
+          grep -qE 'migrations applied|applied migrations' "$RUNNER_TEMP/kubron.log"
           # Ключ шифрования не попадает в логи
           ! grep -qF "${KUBRON_CI_KEY#*:}" "$RUNNER_TEMP/kubron.log"
           # Токен ServiceAccount не смонтирован (режим in-cluster выключен)
