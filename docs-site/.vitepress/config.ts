@@ -11,6 +11,7 @@ export default defineConfig({
   description: 'A fast, private Kubernetes desktop IDE. Multi-cluster operations, Helm and GitOps in one workspace.',
   lang: 'en-US',
   base: process.env.DOCS_BASE || '/',
+  appearance: 'dark',
   head: [
     ['link', { rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' }],
     ['meta', { name: 'theme-color', content: '#0B0F19' }],
@@ -111,7 +112,7 @@ export default defineConfig({
     }
   },
   themeConfig: {
-    logo: '/logo.svg',
+    logo: null,
     siteTitle: 'Kubron',
     socialLinks: [{ icon: 'github', link: repo }],
     footer: {
