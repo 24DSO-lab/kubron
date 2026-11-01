@@ -520,8 +520,10 @@ func TestUpgradeTrafficCountsAsActivity(t *testing.T) {
 
 func TestConcurrencyAndBodyLimits(t *testing.T) {
 	block := make(chan struct{})
+	entered := make(chan struct{}) // сигнализирует, что медленный запрос захватил семафор
 	svc, id, host := setup(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/slow" {
+			close(entered) // сообщаем, что захватили семафор
 			<-block
 		}
 		b, _ := io.ReadAll(r.Body)
@@ -545,9 +547,16 @@ func TestConcurrencyAndBodyLimits(t *testing.T) {
 			t.Logf("slow request error: %v", err)
 			return
 		}
-		t.Logf("slow request status: %d", resp.StatusCode)
 		resp.Body.Close()
 	}()
+
+	// Ждём, пока медленный запрос захватит семафор, прежде чем начинать опрос
+	select {
+	case <-entered:
+	case <-time.After(5 * time.Second):
+		t.Fatal("slow request did not enter the handler")
+	}
+
 	deadline := time.Now().Add(3 * time.Second)
 	for {
 		resp, err := get("/fast", "")
