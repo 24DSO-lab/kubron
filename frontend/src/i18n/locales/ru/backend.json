@@ -538,5 +538,11 @@
 
   "replicaEventIsTooLargeBytes": "событие между репликами слишком велико: {p0} байт",
   "replicaEventCannotBeDecoded": "событие между репликами не удалось разобрать: {p0}",
-  "replicaEventHasAnUnsupportedVersion": "событие между репликами имеет неподдерживаемую версию {p0}"
+  "replicaEventHasAnUnsupportedVersion": "событие между репликами имеет неподдерживаемую версию {p0}",
+  "helmRepositoryIsAlreadyAdded": "Репозиторий уже добавлен",
+  "helmRecordNotFound": "Запись не найдена",
+  "theClusterDoesNotBelongToATeam": "Кластер не принадлежит команде",
+  "helmRecordNotFoundDb": "Запись Helm не найдена",
+  "aHelmRepositoryWithThisNameAlreadyExists": "Репозиторий Helm с таким именем уже существует",
+  "helmRepositoryOptionsAreCorrupted": "Настройки репозитория Helm повреждены: {p0}"
 }

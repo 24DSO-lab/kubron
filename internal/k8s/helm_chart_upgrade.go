@@ -205,7 +205,7 @@ func (m *Manager) GetHelmUpgradeSources(namespace, name string) (*HelmUpgradeSou
 	return &HelmUpgradeSources{
 		Chart:   rev.Chart,
 		Current: rev.ChartVersion,
-		Sources: findHelmUpgradeSources(helmAllIndexes(), rev.Chart, rev.ChartVersion),
+		Sources: findHelmUpgradeSources(m.helmAllIndexes(), rev.Chart, rev.ChartVersion),
 	}, nil
 }
 
@@ -221,7 +221,11 @@ func (m *Manager) helmUpgradeTarget(ctx context.Context, req *HelmChartUpgradeRe
 			req.Namespace, req.Name, cur.Chart, cur.ChartVersion)
 	}
 
-	chrt, err := loadHelmChart(ctx, req.Repo, cur.Chart, want.Original())
+	sc, err := m.helmScope()
+	if err != nil {
+		return nil, nil, err
+	}
+	chrt, err := loadHelmChart(ctx, sc, req.Repo, cur.Chart, want.Original())
 	if err != nil {
 		return nil, nil, err
 	}

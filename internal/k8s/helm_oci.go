@@ -17,15 +17,17 @@ import (
 	"regexp"
 	"sort"
 	"strings"
-	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/Masterminds/semver/v3"
+	"github.com/24DSO-labs/kubron/internal/netpolicy"
 	chartv2 "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
 	"helm.sh/helm/v4/pkg/registry"
 	repo "helm.sh/helm/v4/pkg/repo/v1"
+	"oras.land/oras-go/v2/registry/remote/auth"
+	"oras.land/oras-go/v2/registry/remote/retry"
 	"sigs.k8s.io/yaml"
 )
 
@@ -63,6 +65,13 @@ type ociRepo struct {
 	Username  string   `json:"username,omitempty"`
 	PlainHTTP bool     `json:"plainHTTP,omitempty"`
 	Charts    []string `json:"charts"`
+	// Password есть только у реестров из хранилища сервиса (пароль зашифрован в БД). В oci.yaml он не попадает никогда.
+	Password string `json:"-"`
+}
+
+// ociFromRecord приводит запись хранилища к виду, в котором с реестром работает остальной код.
+func ociFromRecord(r HelmRepoRecord) ociRepo {
+	return ociRepo{Name: r.Name, URL: r.URL, Username: r.Username, PlainHTTP: r.PlainHTTP, Charts: r.Charts, Password: r.Password}
 }
 
 type ociFile struct {
@@ -76,11 +85,9 @@ type ociTagCache struct {
 
 // ─── пути и файлы ───
 
-func ociFilePath() string         { return filepath.Join(helmHomeDir(), "oci.yaml") }
-func ociCredsPath() string        { return filepath.Join(helmHomeDir(), "registry-config.json") }
-func ociTagsPath(n string) string { return filepath.Join(helmCacheDir(), n+"-oci.json") }
+func ociFilePath() string  { return filepath.Join(helmHomeDir(), "oci.yaml") }
+func ociCredsPath() string { return filepath.Join(helmHomeDir(), "registry-config.json") }
 
-// ociLoadLocked читает oci.yaml; вызывать под helmRepoMu. Нет файла — пустой список.
 func ociLoadLocked() (*ociFile, error) {
 	b, err := os.ReadFile(ociFilePath())
 	if errors.Is(err, os.ErrNotExist) {
@@ -116,26 +123,18 @@ func (f *ociFile) find(name string) *ociRepo {
 	return nil
 }
 
-// ociFind возвращает копию OCI-репозитория по имени.
-func ociFind(name string) (ociRepo, bool, error) {
-	if validateHelmRepoName(name) != nil {
-		return ociRepo{}, false, nil
-	}
-	helmRepoMu.Lock()
-	f, err := ociLoadLocked()
-	helmRepoMu.Unlock()
-	if err != nil {
+// ociFind возвращает копию OCI-реестра по имени (для репозитория другого вида — ok == false).
+func (sc *helmScope) ociFind(name string) (ociRepo, bool, error) {
+	r, ok, err := sc.repo(name)
+	if err != nil || !ok || r.Kind != helmKindOCI {
 		return ociRepo{}, false, err
 	}
-	if r := f.find(name); r != nil {
-		return *r, true, nil
-	}
-	return ociRepo{}, false, nil
+	return ociFromRecord(r), true, nil
 }
 
-func ociReadTags(name string) (ociTagCache, error) {
+func (sc *helmScope) ociReadTags(name string) (ociTagCache, error) {
 	var c ociTagCache
-	b, err := os.ReadFile(ociTagsPath(name))
+	b, err := os.ReadFile(sc.tagsPath(name))
 	if err != nil {
 		return c, err
 	}
@@ -143,15 +142,15 @@ func ociReadTags(name string) (ociTagCache, error) {
 	return c, err
 }
 
-func ociWriteTags(name string, c ociTagCache) error {
+func (sc *helmScope) ociWriteTags(name string, c ociTagCache) error {
 	b, err := yaml.Marshal(c)
 	if err != nil {
 		return err
 	}
-	if err := os.MkdirAll(helmCacheDir(), 0o700); err != nil {
+	if err := os.MkdirAll(sc.cacheDir(), 0o700); err != nil {
 		return err
 	}
-	return writeFileAtomic(ociTagsPath(name), b, 0o600)
+	return writeFileAtomic(sc.tagsPath(name), b, 0o600)
 }
 
 // ─── валидация ───
@@ -275,23 +274,40 @@ func (l *limitBody) Read(p []byte) (int, error) {
 
 func (l *limitBody) Close() error { return l.rc.Close() }
 
-func newOCIClient(plainHTTP bool, limit int64) (*registry.Client, error) {
+// ociClient создаёт клиент реестра для одного запроса. Соединения и редиректы идут через политику netpolicy.
+// Файловое хранилище: учётные данные берёт клиент из registry-config.json (туда их кладёт Login).
+// Хранилище сервиса: пароль лежит зашифрованным в БД и передаётся клиенту из памяти, только хосту этого реестра;
+// на диск он не попадает, а Docker-конфигурация сервера не читается.
+func (sc *helmScope) ociClient(r *ociRepo, limit int64) (*registry.Client, error) {
 	if err := os.MkdirAll(helmHomeDir(), 0o700); err != nil {
 		return nil, err
 	}
 	b := &byteBudget{}
 	b.left.Store(limit)
-	hc := &http.Client{Transport: limitTransport{base: registry.NewTransport(false), b: b}, Timeout: helmOCITimeout}
+	pol := netpolicy.For(netpolicy.ScopeHelm)
+	var base http.RoundTripper = registry.NewTransport(false)
+	if pol != nil {
+		base = retry.NewTransport(pol.NewTransport())
+	}
+	hc := &http.Client{Transport: limitTransport{base: base, b: b}, Timeout: helmOCITimeout, CheckRedirect: pol.CheckRedirect}
 	opts := []registry.ClientOption{registry.ClientOptHTTPClient(hc), registry.ClientOptCredentialsFile(ociCredsPath())}
-	if plainHTTP {
+	if sc.store.CredentialsInStore() {
+		az := auth.Client{Client: hc}
+		az.SetUserAgent("kubron")
+		if r != nil && r.Username != "" {
+			az.Credential = auth.StaticCredential(ociRepoHost(*r), auth.Credential{Username: r.Username, Password: r.Password})
+		}
+		opts = append(opts, registry.ClientOptAuthorizer(az))
+	}
+	if r != nil && r.PlainHTTP {
 		opts = append(opts, registry.ClientOptPlainHTTP())
 	}
 	return registry.NewClient(opts...)
 }
 
 // ociFetchTags возвращает версии чарта (по убыванию), не больше helmOCIMaxTags.
-func ociFetchTags(r *ociRepo, chart string) ([]string, error) {
-	c, err := newOCIClient(r.PlainHTTP, helmOCITagsMaxBytes)
+func (sc *helmScope) ociFetchTags(r *ociRepo, chart string) ([]string, error) {
+	c, err := sc.ociClient(r, helmOCITagsMaxBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -313,38 +329,22 @@ func ociRepoHost(r ociRepo) string {
 	return h
 }
 
-func ociHostInUse(f *ociFile, host string) bool {
-	for _, r := range f.Repositories {
-		if ociRepoHost(r) == host {
+func ociHostInUse(list []HelmRepoRecord, host string) bool {
+	for _, r := range list {
+		if r.Kind == helmKindOCI && ociRepoHost(ociFromRecord(r)) == host {
 			return true
 		}
 	}
 	return false
 }
 
-func ociLogout(host string, plainHTTP bool) {
-	if c, err := newOCIClient(plainHTTP, helmOCITagsMaxBytes); err == nil {
+func (sc *helmScope) ociLogout(host string, plainHTTP bool) {
+	if c, err := sc.ociClient(&ociRepo{PlainHTTP: plainHTTP}, helmOCITagsMaxBytes); err == nil {
 		_ = c.Logout(host)
 	}
 }
 
 // ─── управление ───
-
-func nameTaken(name string) error {
-	helmRepoMu.Lock()
-	defer helmRepoMu.Unlock()
-	if hf, err := loadHelmRepoFile(); err == nil && hf.Has(name) {
-		return fmt.Errorf("repository %q is already added", name)
-	}
-	of, err := ociLoadLocked()
-	if err != nil {
-		return err
-	}
-	if of.find(name) != nil {
-		return fmt.Errorf("repository %q is already added", name)
-	}
-	return nil
-}
 
 // AddHelmOCIRepo добавляет OCI-реестр с набором чартов и проверяет доступ, получив теги каждого чарта.
 func (m *Manager) AddHelmOCIRepo(name, rawURL string, charts []string, username, password string) error {
@@ -362,14 +362,20 @@ func (m *Manager) AddHelmOCIRepo(name, rawURL string, charts []string, username,
 	if password != "" && username == "" {
 		return errors.New("password without a username")
 	}
-	if err := nameTaken(name); err != nil {
+	sc, err := m.helmScope()
+	if err != nil {
+		return err
+	}
+	if err := sc.nameTaken(name); err != nil {
 		return err
 	}
 
-	r := ociRepo{Name: name, URL: u, Username: username, PlainHTTP: ociLoopbackHost(host), Charts: list}
+	r := ociRepo{Name: name, URL: u, Username: username, PlainHTTP: ociLoopbackHost(host), Charts: list, Password: password}
+	// Файловое хранилище: пароль проверяется и сохраняется входом в реестр (registry-config.json).
+	// Хранилище сервиса: пароль уходит в БД зашифрованным, а доступ проверяет запрос тегов ниже.
 	loggedIn := false
-	if username != "" {
-		c, err := newOCIClient(r.PlainHTTP, helmOCITagsMaxBytes)
+	if username != "" && !sc.store.CredentialsInStore() {
+		c, err := sc.ociClient(&r, helmOCITagsMaxBytes)
 		if err != nil {
 			return err
 		}
@@ -380,12 +386,8 @@ func (m *Manager) AddHelmOCIRepo(name, rawURL string, charts []string, username,
 	}
 	fail := func(err error) error {
 		if loggedIn {
-			helmRepoMu.Lock()
-			f, lerr := ociLoadLocked()
-			inUse := lerr == nil && ociHostInUse(f, host)
-			helmRepoMu.Unlock()
-			if !inUse {
-				ociLogout(host, r.PlainHTTP)
+			if rest, lerr := sc.repos(); lerr == nil && !ociHostInUse(rest, host) {
+				sc.ociLogout(host, r.PlainHTTP)
 			}
 		}
 		return err
@@ -393,7 +395,7 @@ func (m *Manager) AddHelmOCIRepo(name, rawURL string, charts []string, username,
 
 	cache := ociTagCache{Updated: time.Now().UTC(), Tags: map[string][]string{}}
 	for _, ch := range list {
-		tags, err := ociFetchTags(&r, ch)
+		tags, err := sc.ociFetchTags(&r, ch)
 		if err != nil {
 			return fail(fmt.Errorf("registry %q is unavailable: %w", name, err))
 		}
@@ -403,22 +405,18 @@ func (m *Manager) AddHelmOCIRepo(name, rawURL string, charts []string, username,
 		cache.Tags[ch] = tags
 	}
 
-	helmRepoMu.Lock()
-	defer helmRepoMu.Unlock()
-	f, err := ociLoadLocked()
-	if err != nil {
+	rec := &HelmRepoRecord{Name: name, Kind: helmKindOCI, URL: u, Username: username, PlainHTTP: r.PlainHTTP, Charts: list}
+	if sc.store.CredentialsInStore() {
+		rec.Password = password
+	}
+	if err := sc.create(rec); err != nil {
 		return fail(err)
 	}
-	if f.find(name) != nil {
-		return fail(fmt.Errorf("repository %q is already added", name))
-	}
-	if err := ociWriteTags(name, cache); err != nil {
+	helmCacheMu.Lock()
+	defer helmCacheMu.Unlock()
+	if err := sc.ociWriteTags(name, cache); err != nil {
+		_, _ = sc.store.DeleteRepo(sc.team, name)
 		return fail(err)
-	}
-	f.Repositories = append(f.Repositories, r)
-	if err := ociSaveLocked(f); err != nil {
-		_ = os.Remove(ociTagsPath(name))
-		return fail(fmt.Errorf("failed to save the OCI registry list: %w", err))
 	}
 	return nil
 }
@@ -428,7 +426,11 @@ func (m *Manager) AddHelmOCIChart(repoName, chart string) error {
 	if err := validateHelmOCIChartName(chart); err != nil {
 		return err
 	}
-	r, ok, err := ociFind(repoName)
+	sc, err := m.helmScope()
+	if err != nil {
+		return err
+	}
+	r, ok, err := sc.ociFind(repoName)
 	if err != nil {
 		return err
 	}
@@ -438,7 +440,7 @@ func (m *Manager) AddHelmOCIChart(repoName, chart string) error {
 	if len(r.Charts) >= helmOCIMaxCharts {
 		return fmt.Errorf("at most %d charts per registry", helmOCIMaxCharts)
 	}
-	tags, err := ociFetchTags(&r, chart)
+	tags, err := sc.ociFetchTags(&r, chart)
 	if err != nil {
 		return err
 	}
@@ -446,14 +448,13 @@ func (m *Manager) AddHelmOCIChart(repoName, chart string) error {
 		return fmt.Errorf("chart %q has no versions (semver tags) or access is denied", chart)
 	}
 
-	helmRepoMu.Lock()
-	defer helmRepoMu.Unlock()
-	f, err := ociLoadLocked()
+	helmCacheMu.Lock()
+	defer helmCacheMu.Unlock()
+	cur, ok, err := sc.ociFind(repoName) // набор чартов мог измениться, пока шёл запрос тегов
 	if err != nil {
 		return err
 	}
-	cur := f.find(repoName)
-	if cur == nil {
+	if !ok {
 		return fmt.Errorf("OCI registry %q not found", repoName)
 	}
 	for _, c := range cur.Charts {
@@ -461,35 +462,41 @@ func (m *Manager) AddHelmOCIChart(repoName, chart string) error {
 			return fmt.Errorf("chart %q is already added", chart)
 		}
 	}
-	cur.Charts = append(cur.Charts, chart)
-	sort.Strings(cur.Charts)
-	cache, _ := ociReadTags(repoName)
+	charts := append(append([]string(nil), cur.Charts...), chart)
+	sort.Strings(charts)
+	cache, _ := sc.ociReadTags(repoName)
 	if cache.Tags == nil {
 		cache.Tags = map[string][]string{}
 	}
 	cache.Tags[chart] = tags
 	cache.Updated = time.Now().UTC()
-	if err := ociWriteTags(repoName, cache); err != nil {
+	if err := sc.ociWriteTags(repoName, cache); err != nil {
 		return err
 	}
-	return ociSaveLocked(f)
+	if err := sc.store.SetOCICharts(sc.team, repoName, charts); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (m *Manager) RemoveHelmOCIChart(repoName, chart string) error {
 	if err := validateHelmOCIChartName(chart); err != nil {
 		return err
 	}
-	helmRepoMu.Lock()
-	defer helmRepoMu.Unlock()
-	f, err := ociLoadLocked()
+	sc, err := m.helmScope()
 	if err != nil {
 		return err
 	}
-	cur := f.find(repoName)
-	if cur == nil {
+	helmCacheMu.Lock()
+	defer helmCacheMu.Unlock()
+	cur, ok, err := sc.ociFind(repoName)
+	if err != nil {
+		return err
+	}
+	if !ok {
 		return fmt.Errorf("OCI registry %q not found", repoName)
 	}
-	kept := cur.Charts[:0]
+	kept := make([]string, 0, len(cur.Charts))
 	found := false
 	for _, c := range cur.Charts {
 		if c == chart {
@@ -501,91 +508,24 @@ func (m *Manager) RemoveHelmOCIChart(repoName, chart string) error {
 	if !found {
 		return fmt.Errorf("chart %q not found in registry %q", chart, repoName)
 	}
-	cur.Charts = kept
-	if cache, err := ociReadTags(repoName); err == nil {
+	if cache, err := sc.ociReadTags(repoName); err == nil {
 		delete(cache.Tags, chart)
-		_ = ociWriteTags(repoName, cache)
+		_ = sc.ociWriteTags(repoName, cache)
 	}
-	return ociSaveLocked(f)
+	return sc.store.SetOCICharts(sc.team, repoName, kept)
 }
 
-func ociRemove(name string) error {
-	helmRepoMu.Lock()
-	f, err := ociLoadLocked()
-	if err != nil {
-		helmRepoMu.Unlock()
-		return err
-	}
-	var removed *ociRepo
-	kept := f.Repositories[:0]
-	for i := range f.Repositories {
-		if f.Repositories[i].Name == name {
-			c := f.Repositories[i]
-			removed = &c
-			continue
-		}
-		kept = append(kept, f.Repositories[i])
-	}
-	if removed == nil {
-		helmRepoMu.Unlock()
-		return fmt.Errorf("repository %q not found", name)
-	}
-	f.Repositories = kept
-	if err := ociSaveLocked(f); err != nil {
-		helmRepoMu.Unlock()
-		return err
-	}
-	_ = os.Remove(ociTagsPath(name))
-	host := ociRepoHost(*removed)
-	inUse := ociHostInUse(f, host)
-	helmRepoMu.Unlock()
-	if removed.Username != "" && !inUse {
-		ociLogout(host, removed.PlainHTTP)
-	}
-	return nil
-}
-
-// ociUpdate обновляет теги: name == "" — всех OCI-реестров. Сбой одного чарта не стирает его прежние теги.
-func ociUpdate(name string) ([]HelmRepoUpdateResult, error) {
-	helmRepoMu.Lock()
-	f, err := ociLoadLocked()
-	helmRepoMu.Unlock()
-	if err != nil {
-		return nil, err
-	}
-	var out []HelmRepoUpdateResult
-	var wg sync.WaitGroup
-	var mu sync.Mutex
-	sem := make(chan struct{}, helmUpdateParallel)
-	for _, r := range f.Repositories {
-		if name != "" && r.Name != name {
-			continue
-		}
-		wg.Add(1)
-		go func(r ociRepo) {
-			defer wg.Done()
-			sem <- struct{}{}
-			defer func() { <-sem }()
-			res := ociUpdateOne(r)
-			mu.Lock()
-			out = append(out, res)
-			mu.Unlock()
-		}(r)
-	}
-	wg.Wait()
-	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
-	return out, nil
-}
-
-func ociUpdateOne(r ociRepo) HelmRepoUpdateResult {
+// ociUpdateOne обновляет теги одного реестра. Сбой одного чарта не стирает его прежние теги.
+func (sc *helmScope) ociUpdateOne(rec HelmRepoRecord) HelmRepoUpdateResult {
+	r := ociFromRecord(rec)
 	res := HelmRepoUpdateResult{Name: r.Name}
-	cache, _ := ociReadTags(r.Name)
+	cache, _ := sc.ociReadTags(r.Name)
 	if cache.Tags == nil {
 		cache.Tags = map[string][]string{}
 	}
 	var errs []string
 	for _, ch := range r.Charts {
-		tags, err := ociFetchTags(&r, ch)
+		tags, err := sc.ociFetchTags(&r, ch)
 		if err != nil {
 			errs = append(errs, err.Error())
 			continue
@@ -595,14 +535,14 @@ func ociUpdateOne(r ociRepo) HelmRepoUpdateResult {
 	}
 	if res.Charts > 0 {
 		cache.Updated = time.Now().UTC()
-		helmRepoMu.Lock()
+		helmCacheMu.Lock()
 		// реестр могли удалить, пока шло обновление
-		if f, err := ociLoadLocked(); err == nil && f.find(r.Name) != nil {
-			if err := ociWriteTags(r.Name, cache); err != nil {
+		if _, ok, err := sc.ociFind(r.Name); err == nil && ok {
+			if err := sc.ociWriteTags(r.Name, cache); err != nil {
 				errs = append(errs, err.Error())
 			}
 		}
-		helmRepoMu.Unlock()
+		helmCacheMu.Unlock()
 	}
 	res.Error = strings.Join(errs, "; ")
 	return res
@@ -610,27 +550,17 @@ func ociUpdateOne(r ociRepo) HelmRepoUpdateResult {
 
 // ─── чтение каталога ───
 
-func ociInfos() ([]HelmRepoInfo, error) {
-	helmRepoMu.Lock()
-	f, err := ociLoadLocked()
-	helmRepoMu.Unlock()
-	if err != nil {
-		return nil, err
+// ociInfo — строка списка репозиториев для OCI-реестра (пароль наружу не отдаётся).
+func (sc *helmScope) ociInfo(r HelmRepoRecord) HelmRepoInfo {
+	info := HelmRepoInfo{Name: r.Name, URL: r.URL, Username: r.Username, Kind: "oci", Charts: len(r.Charts), ChartNames: r.Charts}
+	if c, err := sc.ociReadTags(r.Name); err == nil {
+		info.Updated = c.Updated.UTC().Format(time.RFC3339)
+	} else {
+		info.Error = "tags are not loaded: run Update"
 	}
-	out := make([]HelmRepoInfo, 0, len(f.Repositories))
-	for _, r := range f.Repositories {
-		info := HelmRepoInfo{Name: r.Name, URL: r.URL, Username: r.Username, Kind: "oci", Charts: len(r.Charts), ChartNames: r.Charts}
-		if c, err := ociReadTags(r.Name); err == nil {
-			info.Updated = c.Updated.UTC().Format(time.RFC3339)
-		} else {
-			info.Error = "tags are not loaded: run Update"
-		}
-		out = append(out, info)
-	}
-	return out, nil
+	return info
 }
 
-// latestStable — первая версия без пререлиза (иначе первая вообще); теги отсортированы по убыванию.
 func latestStable(tags []string) string {
 	for _, t := range tags {
 		if v, err := semver.NewVersion(t); err == nil && v.Prerelease() == "" {
@@ -643,19 +573,13 @@ func latestStable(tags []string) string {
 	return ""
 }
 
-func ociSearch(terms []string, repoName string) []HelmCatalogChart {
-	helmRepoMu.Lock()
-	f, err := ociLoadLocked()
-	helmRepoMu.Unlock()
-	if err != nil {
-		return nil
-	}
+func (sc *helmScope) ociSearch(recs []HelmRepoRecord, terms []string, repoName string) []HelmCatalogChart {
 	var out []HelmCatalogChart
-	for _, r := range f.Repositories {
-		if repoName != "" && r.Name != repoName {
+	for _, r := range recs {
+		if r.Kind != helmKindOCI || (repoName != "" && r.Name != repoName) {
 			continue
 		}
-		cache, err := ociReadTags(r.Name)
+		cache, err := sc.ociReadTags(r.Name)
 		if err != nil {
 			continue
 		}
@@ -670,8 +594,8 @@ func ociSearch(terms []string, repoName string) []HelmCatalogChart {
 	return out
 }
 
-func ociVersions(r ociRepo, chart string) ([]HelmChartVersionInfo, error) {
-	cache, err := ociReadTags(r.Name)
+func (sc *helmScope) ociVersions(r ociRepo, chart string) ([]HelmChartVersionInfo, error) {
+	cache, err := sc.ociReadTags(r.Name)
 	if err != nil {
 		return nil, fmt.Errorf("tags of registry %q are not loaded: run Update", r.Name)
 	}
@@ -687,16 +611,13 @@ func ociVersions(r ociRepo, chart string) ([]HelmChartVersionInfo, error) {
 }
 
 // ociIndexes строит из кеша тегов «индексы» для поиска обновлений установленных релизов.
-func ociIndexes() []helmRepoIndex {
-	helmRepoMu.Lock()
-	f, err := ociLoadLocked()
-	helmRepoMu.Unlock()
-	if err != nil {
-		return nil
-	}
+func (sc *helmScope) ociIndexes(recs []HelmRepoRecord) []helmRepoIndex {
 	var out []helmRepoIndex
-	for _, r := range f.Repositories {
-		cache, err := ociReadTags(r.Name)
+	for _, r := range recs {
+		if r.Kind != helmKindOCI {
+			continue
+		}
+		cache, err := sc.ociReadTags(r.Name)
 		if err != nil {
 			continue
 		}
@@ -717,7 +638,7 @@ func ociIndexes() []helmRepoIndex {
 
 // ociPull скачивает чарт по тегу. Pull не принимает контекст, поэтому ждём его в горутине и отпускаем
 // вызывающего при отмене (загрузка завершится сама по таймауту клиента).
-func ociPull(ctx context.Context, r ociRepo, chart, version string) (*chartv2.Chart, error) {
+func (sc *helmScope) ociPull(ctx context.Context, r ociRepo, chart, version string) (*chartv2.Chart, error) {
 	if err := validateHelmOCIChartName(chart); err != nil {
 		return nil, err
 	}
@@ -731,7 +652,7 @@ func ociPull(ctx context.Context, r ociRepo, chart, version string) (*chartv2.Ch
 		return nil, fmt.Errorf("chart %q is not added to registry %q", chart, r.Name)
 	}
 	if version == "" {
-		cache, err := ociReadTags(r.Name)
+		cache, err := sc.ociReadTags(r.Name)
 		if err != nil || len(cache.Tags[chart]) == 0 {
 			return nil, fmt.Errorf("versions of chart %q are not loaded: run Update", chart)
 		}
@@ -741,7 +662,7 @@ func ociPull(ctx context.Context, r ociRepo, chart, version string) (*chartv2.Ch
 		return nil, fmt.Errorf("invalid version %q: %w", version, err)
 	}
 
-	c, err := newOCIClient(r.PlainHTTP, helmOCIChartMaxBytes)
+	c, err := sc.ociClient(&r, helmOCIChartMaxBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -780,15 +701,15 @@ func ociPull(ctx context.Context, r ociRepo, chart, version string) (*chartv2.Ch
 }
 
 // loadHelmChart скачивает чарт из репозитория любого типа (HTTP или OCI).
-func loadHelmChart(ctx context.Context, repoName, chartName, version string) (*chartv2.Chart, error) {
-	r, isOCI, err := ociFind(repoName)
+func loadHelmChart(ctx context.Context, sc *helmScope, repoName, chartName, version string) (*chartv2.Chart, error) {
+	r, isOCI, err := sc.ociFind(repoName)
 	if err != nil {
 		return nil, err
 	}
 	if isOCI {
-		return ociPull(ctx, r, chartName, version)
+		return sc.ociPull(ctx, r, chartName, version)
 	}
-	e, cv, err := lookupHelmChartVersion(repoName, chartName, version)
+	e, cv, err := lookupHelmChartVersion(sc, repoName, chartName, version)
 	if err != nil {
 		return nil, err
 	}
@@ -823,20 +744,20 @@ func helmPackageFromChart(repoName string, c *chartv2.Chart) *HelmChartPackage {
 	return pkg
 }
 
-func ociPackage(r ociRepo, chart, version string) (*HelmChartPackage, error) {
+func (sc *helmScope) ociPackage(r ociRepo, chart, version string) (*HelmChartPackage, error) {
 	if version == "" {
-		if cache, err := ociReadTags(r.Name); err == nil {
+		if cache, err := sc.ociReadTags(r.Name); err == nil {
 			version = latestStable(cache.Tags[chart])
 		}
 	}
-	key := r.Name + "/" + chart + "/" + version + "/oci"
+	key := sc.key(r.Name) + "/" + chart + "/" + version + "/oci"
 	helmPkgMu.Lock()
 	cached := helmPkgCache[key]
 	helmPkgMu.Unlock()
 	if cached != nil {
 		return cached, nil
 	}
-	c, err := ociPull(context.Background(), r, chart, version)
+	c, err := sc.ociPull(context.Background(), r, chart, version)
 	if err != nil {
 		return nil, err
 	}

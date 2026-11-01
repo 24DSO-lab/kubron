@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -90,6 +91,8 @@ type Manager struct {
 	notifier func(event string, data ...any)
 	logs     logStreams
 	limits   Limits // лимиты ресурсов вида; наследуются видами сессий
+
+	helmActor atomic.Pointer[string] // пользователь вида: created_by репозиториев Helm (сервис)
 }
 
 // Limits — ограничения на ресурсы одного вида (пользователя). 0 — без ограничения.

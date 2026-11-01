@@ -22,6 +22,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/24DSO-labs/kubron/internal/netpolicy"
 	chartv2 "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
 	repo "helm.sh/helm/v4/pkg/repo/v1"
@@ -50,7 +51,8 @@ const (
 var helmHomeDir = func() string { return filepath.Join(GetKubronDir(), "helm") }
 
 var (
-	helmRepoMu     sync.Mutex // сериализует read-modify-write repositories.yaml и подмену index-файлов
+	helmRepoMu     sync.Mutex // сериализует read-modify-write файлов состояния (fileHelmStore); хранилище целиком под ним, наружу не вызывать
+	helmCacheMu    sync.Mutex // сериализует подмену файлов кэша (индексы, теги); под ним можно обращаться к хранилищу
 	helmRepoNameRe = regexp.MustCompile(`^[a-z0-9]([a-z0-9_.-]{0,61}[a-z0-9])?$`)
 
 	helmIndexMu    sync.Mutex
@@ -207,10 +209,15 @@ func sameHost(a, b string) bool {
 
 // helmGet скачивает URL с ограничением размера. Basic-авторизация отправляется только на хост репозитория;
 // Go сам убирает заголовок Authorization при редиректе на другой домен.
+// Соединения и редиректы проходят через политику netpolicy (сервис: профиль strict, SSRF); в десктопе её нет.
 func helmGet(ctx context.Context, e *repo.Entry, rawURL string, limit int64) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(ctx, helmRepoHTTPTimeout)
 	defer cancel()
 
+	pol := netpolicy.For(netpolicy.ScopeHelm)
+	if err := pol.CheckURL(rawURL); err != nil {
+		return nil, fmt.Errorf("request to %s: %w", redactURLUser(rawURL), err)
+	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
 	if err != nil {
 		return nil, err
@@ -218,7 +225,7 @@ func helmGet(ctx context.Context, e *repo.Entry, rawURL string, limit int64) ([]
 	if e.Username != "" && sameHost(rawURL, e.URL) {
 		req.SetBasicAuth(e.Username, e.Password)
 	}
-	tr := http.DefaultTransport.(*http.Transport).Clone()
+	tr := pol.NewTransport()
 	if e.InsecureSkipTLSVerify {
 		tr.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} //nolint:gosec // явный выбор пользователя в настройках репозитория
 	}
@@ -229,6 +236,10 @@ func helmGet(ctx context.Context, e *repo.Entry, rawURL string, limit int64) ([]
 		CheckRedirect: func(r *http.Request, via []*http.Request) error {
 			if len(via) >= 10 {
 				return errors.New("too many redirects")
+			}
+			// каждый переход проверяется политикой заново (редирект на внутренний адрес)
+			if err := pol.CheckRedirect(r, via); err != nil {
+				return err
 			}
 			// https -> http отправил бы пароль открытым текстом
 			if r.URL.Scheme == "http" && via[len(via)-1].URL.Scheme == "https" {
@@ -265,17 +276,22 @@ func redactURLUser(raw string) string {
 	return u.String()
 }
 
+// entryOf превращает запись хранилища в repo.Entry (тип Helm для HTTP-запросов).
+func entryOf(r HelmRepoRecord) *repo.Entry {
+	return &repo.Entry{Name: r.Name, URL: r.URL, Username: r.Username, Password: r.Password, InsecureSkipTLSVerify: r.InsecureTLS}
+}
+
 // downloadHelmIndex скачивает index.yaml во временный файл и проверяет его разбором.
 // Подмена рабочего индекса — отдельным шагом (commitHelmIndex), под мьютексом.
-func downloadHelmIndex(ctx context.Context, e *repo.Entry) (tmpPath string, idx *repo.IndexFile, err error) {
+func downloadHelmIndex(ctx context.Context, sc *helmScope, e *repo.Entry) (tmpPath string, idx *repo.IndexFile, err error) {
 	data, err := helmGet(ctx, e, e.URL+"/index.yaml", helmIndexMaxBytes)
 	if err != nil {
 		return "", nil, err
 	}
-	if err := os.MkdirAll(helmCacheDir(), 0o700); err != nil {
+	if err := os.MkdirAll(sc.cacheDir(), 0o700); err != nil {
 		return "", nil, err
 	}
-	tmp, err := os.CreateTemp(helmCacheDir(), ".idx-*")
+	tmp, err := os.CreateTemp(sc.cacheDir(), ".idx-*")
 	if err != nil {
 		return "", nil, err
 	}
@@ -294,27 +310,28 @@ func downloadHelmIndex(ctx context.Context, e *repo.Entry) (tmpPath string, idx 
 	return tmpPath, idx, nil
 }
 
-// commitHelmIndex подменяет рабочий индекс; вызывать под helmRepoMu.
-func commitHelmIndex(name, tmpPath string) error {
-	if err := os.Rename(tmpPath, helmIndexPath(name)); err != nil {
+// commitHelmIndex подменяет рабочий индекс; вызывать под helmCacheMu.
+func commitHelmIndex(sc *helmScope, name, tmpPath string) error {
+	if err := os.Rename(tmpPath, sc.indexPath(name)); err != nil {
 		_ = os.Remove(tmpPath)
 		return err
 	}
 	helmIndexMu.Lock()
-	delete(helmIndexCache, name)
+	delete(helmIndexCache, sc.key(name))
 	helmIndexMu.Unlock()
 	return nil
 }
 
 // loadHelmIndex отдаёт индекс репозитория из памяти (по mtime файла) или с диска.
-func loadHelmIndex(name string) (*repo.IndexFile, time.Time, error) {
-	path := helmIndexPath(name)
+func loadHelmIndex(sc *helmScope, name string) (*repo.IndexFile, time.Time, error) {
+	path := sc.indexPath(name)
 	st, err := os.Stat(path)
 	if err != nil {
 		return nil, time.Time{}, err
 	}
+	key := sc.key(name)
 	helmIndexMu.Lock()
-	c, ok := helmIndexCache[name]
+	c, ok := helmIndexCache[key]
 	helmIndexMu.Unlock()
 	if ok && c.mod.Equal(st.ModTime()) {
 		return c.idx, c.mod, nil
@@ -324,7 +341,7 @@ func loadHelmIndex(name string) (*repo.IndexFile, time.Time, error) {
 		return nil, time.Time{}, err
 	}
 	helmIndexMu.Lock()
-	helmIndexCache[name] = helmCachedIndex{mod: st.ModTime(), idx: idx}
+	helmIndexCache[key] = helmCachedIndex{mod: st.ModTime(), idx: idx}
 	helmIndexMu.Unlock()
 	return idx, st.ModTime(), nil
 }
@@ -342,19 +359,22 @@ func countHelmCharts(idx *repo.IndexFile) int {
 // ─── управление репозиториями ───
 
 func (m *Manager) ListHelmRepos() ([]HelmRepoInfo, error) {
-	helmRepoMu.Lock()
-	f, err := loadHelmRepoFile()
-	helmRepoMu.Unlock()
+	sc, err := m.helmScope()
 	if err != nil {
 		return nil, err
 	}
-	out := make([]HelmRepoInfo, 0, len(f.Repositories))
-	for _, e := range f.Repositories {
-		if e == nil || validateHelmRepoName(e.Name) != nil {
+	recs, err := sc.repos()
+	if err != nil {
+		return nil, err
+	}
+	out := make([]HelmRepoInfo, 0, len(recs))
+	for _, r := range recs {
+		if r.Kind == helmKindOCI {
+			out = append(out, sc.ociInfo(r))
 			continue
 		}
-		info := HelmRepoInfo{Name: e.Name, URL: e.URL, Username: e.Username, InsecureTLS: e.InsecureSkipTLSVerify, Kind: "http"}
-		idx, mod, err := loadHelmIndex(e.Name)
+		info := HelmRepoInfo{Name: r.Name, URL: r.URL, Username: r.Username, InsecureTLS: r.InsecureTLS, Kind: "http"}
+		idx, mod, err := loadHelmIndex(sc, r.Name)
 		switch {
 		case err == nil:
 			info.Charts = countHelmCharts(idx)
@@ -365,9 +385,6 @@ func (m *Manager) ListHelmRepos() ([]HelmRepoInfo, error) {
 			info.Error = err.Error()
 		}
 		out = append(out, info)
-	}
-	if oci, err := ociInfos(); err == nil {
-		out = append(out, oci...)
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
 	return out, nil
@@ -385,44 +402,30 @@ func (m *Manager) AddHelmRepo(name, rawURL, username, password string, insecureT
 	if password != "" && username == "" {
 		return errors.New("password without a username")
 	}
-	e := &repo.Entry{Name: name, URL: u, Username: username, Password: password, InsecureSkipTLSVerify: insecureTLS}
-
-	helmRepoMu.Lock()
-	f, err := loadHelmRepoFile()
-	helmRepoMu.Unlock()
+	sc, err := m.helmScope()
 	if err != nil {
 		return err
 	}
-	if f.Has(name) {
-		return fmt.Errorf("repository %q is already added", name)
+	if err := sc.nameTaken(name); err != nil {
+		return err
 	}
-	if _, isOCI, _ := ociFind(name); isOCI {
-		return fmt.Errorf("repository %q is already added", name)
-	}
+	rec := &HelmRepoRecord{Name: name, Kind: helmKindHTTP, URL: u, Username: username, Password: password, InsecureTLS: insecureTLS}
 
-	tmp, _, err := downloadHelmIndex(context.Background(), e)
+	tmp, _, err := downloadHelmIndex(context.Background(), sc, entryOf(*rec))
 	if err != nil {
 		return fmt.Errorf("repository %q is unavailable: %w", name, err)
 	}
-
-	helmRepoMu.Lock()
-	defer helmRepoMu.Unlock()
-	f, err = loadHelmRepoFile() // между проверкой и записью список мог измениться
+	// Имя занимает сама запись (атомарно, на стороне хранилища): между проверкой и записью список мог измениться.
+	if err := sc.create(rec); err != nil {
+		_ = os.Remove(tmp)
+		return err
+	}
+	helmCacheMu.Lock()
+	err = commitHelmIndex(sc, name, tmp)
+	helmCacheMu.Unlock()
 	if err != nil {
-		_ = os.Remove(tmp)
+		_, _ = sc.store.DeleteRepo(sc.team, name)
 		return err
-	}
-	if f.Has(name) {
-		_ = os.Remove(tmp)
-		return fmt.Errorf("repository %q is already added", name)
-	}
-	if err := commitHelmIndex(name, tmp); err != nil {
-		return err
-	}
-	f.Add(e)
-	if err := saveHelmRepoFile(f); err != nil {
-		_ = os.Remove(helmIndexPath(name))
-		return fmt.Errorf("failed to save the repository list: %w", err)
 	}
 	return nil
 }
@@ -431,27 +434,46 @@ func (m *Manager) RemoveHelmRepo(name string) error {
 	if err := validateHelmRepoName(name); err != nil {
 		return err
 	}
-	if _, isOCI, err := ociFind(name); err != nil {
-		return err
-	} else if isOCI {
-		return ociRemove(name)
-	}
-	helmRepoMu.Lock()
-	defer helmRepoMu.Unlock()
-	f, err := loadHelmRepoFile()
+	sc, err := m.helmScope()
 	if err != nil {
 		return err
 	}
-	if !f.Remove(name) {
+	return sc.remove(name)
+}
+
+// remove удаляет репозиторий любого вида вместе с его кэшем.
+func (sc *helmScope) remove(name string) error {
+	removed, err := sc.store.DeleteRepo(sc.team, name)
+	if errors.Is(err, ErrHelmNotFound) {
 		return fmt.Errorf("repository %q not found", name)
 	}
-	if err := saveHelmRepoFile(f); err != nil {
+	if err != nil {
 		return err
 	}
-	_ = os.Remove(helmIndexPath(name))
+	helmCacheMu.Lock()
+	_ = os.Remove(sc.indexPath(name))
+	_ = os.Remove(sc.tagsPath(name))
+	helmCacheMu.Unlock()
 	helmIndexMu.Lock()
-	delete(helmIndexCache, name)
+	delete(helmIndexCache, sc.key(name))
 	helmIndexMu.Unlock()
+	if removed.Kind == helmKindOCI && removed.Username != "" && !sc.store.CredentialsInStore() {
+		// учётные данные реестра лежат в registry-config.json: убираем, если на этот хост больше нет реестров
+		host := ociRepoHost(ociFromRecord(*removed))
+		if rest, err := sc.repos(); err == nil && !ociHostInUse(rest, host) {
+			sc.ociLogout(host, removed.PlainHTTP)
+		}
+	}
+	return nil
+}
+
+// nameTaken — быстрая проверка до скачивания индекса; окончательно имя занимает CreateRepo.
+func (sc *helmScope) nameTaken(name string) error {
+	if _, ok, err := sc.repo(name); err != nil {
+		return err
+	} else if ok {
+		return fmt.Errorf("repository %q is already added", name)
+	}
 	return nil
 }
 
@@ -459,41 +481,22 @@ func (m *Manager) RemoveHelmRepo(name string) error {
 // Ошибка одного репозитория не мешает остальным и возвращается в его результате.
 func (m *Manager) UpdateHelmRepos(name string) ([]HelmRepoUpdateResult, error) {
 	if name != "" {
-		if _, isOCI, err := ociFind(name); err != nil {
-			return nil, err
-		} else if isOCI {
-			return ociUpdate(name)
-		}
-	}
-	res, err := m.updateHTTPRepos(name)
-	if err != nil {
-		return nil, err
-	}
-	if name == "" {
-		if more, err := ociUpdate(""); err == nil {
-			res = append(res, more...)
-			sort.Slice(res, func(i, j int) bool { return res[i].Name < res[j].Name })
-		}
-	}
-	return res, nil
-}
-
-func (m *Manager) updateHTTPRepos(name string) ([]HelmRepoUpdateResult, error) {
-	if name != "" {
 		if err := validateHelmRepoName(name); err != nil {
 			return nil, err
 		}
 	}
-	helmRepoMu.Lock()
-	f, err := loadHelmRepoFile()
-	helmRepoMu.Unlock()
+	sc, err := m.helmScope()
 	if err != nil {
 		return nil, err
 	}
-	var targets []*repo.Entry
-	for _, e := range f.Repositories {
-		if e != nil && validateHelmRepoName(e.Name) == nil && (name == "" || e.Name == name) {
-			targets = append(targets, e)
+	recs, err := sc.repos()
+	if err != nil {
+		return nil, err
+	}
+	var targets []HelmRepoRecord
+	for _, r := range recs {
+		if name == "" || r.Name == name {
+			targets = append(targets, r)
 		}
 	}
 	if name != "" && len(targets) == 0 {
@@ -503,37 +506,41 @@ func (m *Manager) updateHTTPRepos(name string) ([]HelmRepoUpdateResult, error) {
 	results := make([]HelmRepoUpdateResult, len(targets))
 	sem := make(chan struct{}, helmUpdateParallel)
 	var wg sync.WaitGroup
-	for i, e := range targets {
+	for i, r := range targets {
 		wg.Add(1)
-		go func(i int, e *repo.Entry) {
+		go func(i int, r HelmRepoRecord) {
 			defer wg.Done()
 			sem <- struct{}{}
 			defer func() { <-sem }()
-			results[i] = updateOneHelmRepo(e)
-		}(i, e)
+			if r.Kind == helmKindOCI {
+				results[i] = sc.ociUpdateOne(r)
+			} else {
+				results[i] = sc.updateOneHelmRepo(entryOf(r))
+			}
+		}(i, r)
 	}
 	wg.Wait()
 	sort.Slice(results, func(i, j int) bool { return results[i].Name < results[j].Name })
 	return results, nil
 }
 
-func updateOneHelmRepo(e *repo.Entry) HelmRepoUpdateResult {
+func (sc *helmScope) updateOneHelmRepo(e *repo.Entry) HelmRepoUpdateResult {
 	res := HelmRepoUpdateResult{Name: e.Name}
-	tmp, idx, err := downloadHelmIndex(context.Background(), e)
+	tmp, idx, err := downloadHelmIndex(context.Background(), sc, e)
 	if err != nil {
 		res.Error = err.Error()
 		return res
 	}
-	helmRepoMu.Lock()
-	defer helmRepoMu.Unlock()
 	// репозиторий могли удалить или переназначить, пока шла загрузка
-	cur, err := loadHelmRepoFile()
-	if err != nil || cur.Get(e.Name) == nil || cur.Get(e.Name).URL != e.URL {
+	cur, ok, err := sc.repo(e.Name)
+	if err != nil || !ok || cur.Kind != helmKindHTTP || cur.URL != e.URL {
 		_ = os.Remove(tmp)
 		res.Error = "repository was changed during the update"
 		return res
 	}
-	if err := commitHelmIndex(e.Name, tmp); err != nil {
+	helmCacheMu.Lock()
+	defer helmCacheMu.Unlock()
+	if err := commitHelmIndex(sc, e.Name, tmp); err != nil {
 		res.Error = err.Error()
 		return res
 	}
@@ -549,19 +556,21 @@ func (m *Manager) SearchHelmCharts(query, repoName string) (*HelmCatalogResult, 
 			return nil, err
 		}
 	}
-	helmRepoMu.Lock()
-	f, err := loadHelmRepoFile()
-	helmRepoMu.Unlock()
+	sc, err := m.helmScope()
+	if err != nil {
+		return nil, err
+	}
+	recs, err := sc.repos()
 	if err != nil {
 		return nil, err
 	}
 	terms := strings.Fields(strings.ToLower(query))
 	var all []HelmCatalogChart
-	for _, e := range f.Repositories {
-		if e == nil || validateHelmRepoName(e.Name) != nil || (repoName != "" && e.Name != repoName) {
+	for _, e := range recs {
+		if e.Kind != helmKindHTTP || (repoName != "" && e.Name != repoName) {
 			continue
 		}
-		idx, _, err := loadHelmIndex(e.Name)
+		idx, _, err := loadHelmIndex(sc, e.Name)
 		if err != nil {
 			continue // индекс не скачан или повреждён: виден в списке репозиториев
 		}
@@ -579,7 +588,7 @@ func (m *Manager) SearchHelmCharts(query, repoName string) (*HelmCatalogResult, 
 			})
 		}
 	}
-	all = append(all, ociSearch(terms, repoName)...)
+	all = append(all, sc.ociSearch(recs, terms, repoName)...)
 	sort.Slice(all, func(i, j int) bool {
 		if all[i].Name != all[j].Name {
 			return all[i].Name < all[j].Name
@@ -609,33 +618,34 @@ func helmMatches(terms []string, name, desc string, keywords []string) bool {
 	return true
 }
 
-func helmRepoEntry(name string) (*repo.Entry, error) {
+func helmRepoEntry(sc *helmScope, name string) (*repo.Entry, error) {
 	if err := validateHelmRepoName(name); err != nil {
 		return nil, err
 	}
-	helmRepoMu.Lock()
-	f, err := loadHelmRepoFile()
-	helmRepoMu.Unlock()
+	r, ok, err := sc.repo(name)
 	if err != nil {
 		return nil, err
 	}
-	e := f.Get(name)
-	if e == nil {
+	if !ok || r.Kind != helmKindHTTP {
 		return nil, fmt.Errorf("repository %q not found", name)
 	}
-	return e, nil
+	return entryOf(r), nil
 }
 
 func (m *Manager) GetHelmChartVersions(repoName, chartName string) ([]HelmChartVersionInfo, error) {
-	if r, isOCI, err := ociFind(repoName); err != nil {
+	sc, err := m.helmScope()
+	if err != nil {
+		return nil, err
+	}
+	if r, isOCI, err := sc.ociFind(repoName); err != nil {
 		return nil, err
 	} else if isOCI {
-		return ociVersions(r, chartName)
+		return sc.ociVersions(r, chartName)
 	}
-	if _, err := helmRepoEntry(repoName); err != nil {
+	if _, err := helmRepoEntry(sc, repoName); err != nil {
 		return nil, err
 	}
-	idx, _, err := loadHelmIndex(repoName)
+	idx, _, err := loadHelmIndex(sc, repoName)
 	if err != nil {
 		return nil, fmt.Errorf("index of repository %q is unavailable: %w", repoName, err)
 	}
@@ -679,12 +689,12 @@ func resolveChartURL(repoURL, ref string) (string, error) {
 }
 
 // lookupHelmChartVersion находит запись чарта в индексе репозитория (version == "" — последняя).
-func lookupHelmChartVersion(repoName, chartName, version string) (*repo.Entry, *repo.ChartVersion, error) {
-	e, err := helmRepoEntry(repoName)
+func lookupHelmChartVersion(sc *helmScope, repoName, chartName, version string) (*repo.Entry, *repo.ChartVersion, error) {
+	e, err := helmRepoEntry(sc, repoName)
 	if err != nil {
 		return nil, nil, err
 	}
-	idx, _, err := loadHelmIndex(repoName)
+	idx, _, err := loadHelmIndex(sc, repoName)
 	if err != nil {
 		return nil, nil, fmt.Errorf("index of repository %q is unavailable: %w", repoName, err)
 	}
@@ -723,17 +733,22 @@ func downloadHelmChart(ctx context.Context, e *repo.Entry, cv *repo.ChartVersion
 
 // GetHelmChartPackage скачивает архив чарта из репозитория и отдаёт README и values.yaml.
 func (m *Manager) GetHelmChartPackage(repoName, chartName, version string) (*HelmChartPackage, error) {
-	if r, isOCI, err := ociFind(repoName); err != nil {
+	sc, err := m.helmScope()
+	if err != nil {
+		return nil, err
+	}
+	if r, isOCI, err := sc.ociFind(repoName); err != nil {
 		return nil, err
 	} else if isOCI {
-		return ociPackage(r, chartName, version)
+		return sc.ociPackage(r, chartName, version)
 	}
-	e, cv, err := lookupHelmChartVersion(repoName, chartName, version)
+	e, cv, err := lookupHelmChartVersion(sc, repoName, chartName, version)
 	if err != nil {
 		return nil, err
 	}
 
-	key := repoName + "/" + chartName + "/" + cv.Version + "/" + cv.Digest
+	// у каждой команды свой набор репозиториев: одноимённые репозитории разных команд — разные
+	key := sc.key(repoName) + "/" + chartName + "/" + cv.Version + "/" + cv.Digest
 	helmPkgMu.Lock()
 	cached := helmPkgCache[key]
 	helmPkgMu.Unlock()

@@ -805,6 +805,7 @@ func (a *App) AddHelmRepo(name, url, username, password string, insecureTLS bool
 	if err := a.authz(auth.PermClusterManage, "name", name); err != nil {
 		return err
 	}
+	a.rememberHelmActor()
 	return a.k8sMgr.AddHelmRepo(name, url, username, password, insecureTLS)
 }
 
@@ -928,6 +929,7 @@ func (a *App) AddHelmOCIRepo(name, url string, charts []string, username, passwo
 	if err := a.authz(auth.PermClusterManage, "name", name); err != nil {
 		return err
 	}
+	a.rememberHelmActor()
 	return a.k8sMgr.AddHelmOCIRepo(name, url, charts, username, password)
 }
 
@@ -1466,4 +1468,14 @@ func (a *App) StopLogStream(streamID string) error {
 	}
 	a.k8sMgr.StopLogStream(streamID)
 	return nil
+}
+
+// rememberHelmActor сообщает ядру, кто добавляет репозиторий (created_by в сервисе). Вызывается после authz.
+func (a *App) rememberHelmActor() {
+	if a.auth == nil {
+		return
+	}
+	if u, err := a.auth.Current(); err == nil && u != nil {
+		a.k8sMgr.SetHelmActor(u.ID)
+	}
 }

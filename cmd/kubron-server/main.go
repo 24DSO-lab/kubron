@@ -78,6 +78,10 @@ func main() {
 	k8s.SetKubronDir(cfg.DataDir)
 	// Веб-сервер не запускает команды из kubeconfig и не читает по ним файлы сервера (задача 3.7).
 	k8s.SetConnectionPolicy(k8s.ConnectionPolicy{AllowExec: false, AllowLocalFiles: false})
+	// Запросы Helm к адресам, которые задаёт пользователь (репозитории, OCI), проходят через защиту от SSRF (ADR-0015).
+	if err := setupHelmNetPolicy(os.Getenv); err != nil {
+		log.Fatalf("network policy: %v", err)
+	}
 
 	hub := server.NewHub()
 	platform := &webplatform.Platform{}

@@ -27,6 +27,10 @@ func (a *App) initAuth(dir string) {
 func (a *App) initAuthWith(st store.Store) {
 	k8s.SetTokenStore(st.ArgoTokens())
 	k8s.SetClusterStore(st.Clusters())
+	// Состояние Helm в сервисе — в БД по командам (ADR-0015); без этого метода Helm остаётся на файлах.
+	if hp, ok := st.(interface{ HelmState() k8s.HelmStateStore }); ok {
+		k8s.SetHelmStateStore(hp.HelmState())
+	}
 	a.audit = audit.New(st.Audit())
 	svc, err := auth.NewServiceWithBackend(st.Users())
 	if err != nil {

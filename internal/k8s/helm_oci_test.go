@@ -211,7 +211,7 @@ func TestOCIRemoveCleansUp(t *testing.T) {
 	if err := m.RemoveHelmRepo("demo"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := os.Stat(ociTagsPath("demo")); !os.IsNotExist(err) {
+	if _, err := os.Stat((&helmScope{store: fileHelmStore{}}).tagsPath("demo")); !os.IsNotExist(err) {
 		t.Errorf("the tag cache must be deleted: %v", err)
 	}
 	if repos, _ := m.ListHelmRepos(); len(repos) != 0 {
@@ -231,11 +231,11 @@ func TestOCIIndexesFeedUpdateFinder(t *testing.T) {
 	if err := m.AddHelmOCIRepo("demo", base, []string{"podinfo"}, "", ""); err != nil {
 		t.Fatal(err)
 	}
-	u := helmUpdateFinder()("podinfo", "1.5.0")
+	u := m.helmUpdateFinder()("podinfo", "1.5.0")
 	if u == nil || u.Latest != "2.0.0" || u.Repo != "demo" {
 		t.Errorf("update: %+v", u)
 	}
-	if u := helmUpdateFinder()("podinfo", "9.9.9"); u != nil {
+	if u := m.helmUpdateFinder()("podinfo", "9.9.9"); u != nil {
 		t.Errorf("unknown version: %+v", u)
 	}
 }

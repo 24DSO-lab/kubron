@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/VadimIl224/kubron/internal/secretbox"
+	"github.com/24DSO-labs/kubron/internal/secretbox"
 )
 
 func newBlueTeam(t *testing.T, s *Store) string {

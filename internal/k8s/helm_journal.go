@@ -82,19 +82,6 @@ func journalSaveLocked(recs []HelmOperationRecord) error {
 	return writeFileAtomic(helmJournalPath(), b, 0o600)
 }
 
-// journalAdd дописывает запись в начало журнала. Сбой записи не должен ломать саму операцию: он молча игнорируется.
-// Повреждённый файл заменяется новым журналом.
-func journalAdd(r HelmOperationRecord) {
-	helmJournalMu.Lock()
-	defer helmJournalMu.Unlock()
-	recs, _ := journalLoadLocked()
-	recs = append([]HelmOperationRecord{r}, recs...)
-	if len(recs) > helmJournalMax {
-		recs = recs[:helmJournalMax]
-	}
-	_ = journalSaveLocked(recs)
-}
-
 func matchesJournal(r *HelmOperationRecord, q *HelmOperationQuery, search string) bool {
 	if q.Op != "" && r.Op != q.Op {
 		return false
@@ -115,6 +102,7 @@ func matchesJournal(r *HelmOperationRecord, q *HelmOperationQuery, search string
 }
 
 // ListHelmOperations возвращает записи без журнала Helm (он тяжёлый и запрашивается отдельно).
+// Это журнал команды активного кластера: операции других команд не видны.
 func (m *Manager) ListHelmOperations(q HelmOperationQuery) ([]HelmOperationRecord, error) {
 	if q.Op != "" && !helmJournalOps[q.Op] {
 		return nil, fmt.Errorf("unknown operation %q", q.Op)
@@ -131,9 +119,11 @@ func (m *Manager) ListHelmOperations(q HelmOperationQuery) ([]HelmOperationRecor
 	}
 	search := strings.ToLower(strings.TrimSpace(q.Search))
 
-	helmJournalMu.Lock()
-	recs, err := journalLoadLocked()
-	helmJournalMu.Unlock()
+	sc, err := m.helmScope()
+	if err != nil {
+		return nil, err
+	}
+	recs, err := sc.store.ListOperations(sc.team)
 	if err != nil {
 		return nil, err
 	}
@@ -152,32 +142,27 @@ func (m *Manager) ListHelmOperations(q HelmOperationQuery) ([]HelmOperationRecor
 	return out, nil
 }
 
-// GetHelmOperation возвращает запись целиком, вместе с журналом Helm.
+// GetHelmOperation возвращает запись целиком, вместе с журналом Helm. Запись другой команды — «не найдена».
 func (m *Manager) GetHelmOperation(id string) (*HelmOperationRecord, error) {
 	if !helmOpIDRe.MatchString(id) {
 		return nil, errors.New("invalid operation ID")
 	}
-	helmJournalMu.Lock()
-	recs, err := journalLoadLocked()
-	helmJournalMu.Unlock()
+	sc, err := m.helmScope()
 	if err != nil {
 		return nil, err
 	}
-	for i := range recs {
-		if recs[i].ID == id {
-			r := recs[i]
-			return &r, nil
-		}
+	r, err := sc.store.GetOperation(sc.team, id)
+	if errors.Is(err, ErrHelmNotFound) {
+		return nil, errors.New("entry not found (the journal keeps only recent operations)")
 	}
-	return nil, errors.New("entry not found (the journal keeps only recent operations)")
+	return r, err
 }
 
-// ClearHelmOperations стирает историю операций.
+// ClearHelmOperations стирает историю операций команды активного кластера.
 func (m *Manager) ClearHelmOperations() error {
-	helmJournalMu.Lock()
-	defer helmJournalMu.Unlock()
-	if err := os.Remove(helmJournalPath()); err != nil && !errors.Is(err, os.ErrNotExist) {
+	sc, err := m.helmScope()
+	if err != nil {
 		return err
 	}
-	return nil
+	return sc.store.ClearOperations(sc.team)
 }
