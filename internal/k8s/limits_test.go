@@ -62,7 +62,7 @@ func TestTerminalTryAddLimit(t *testing.T) {
 
 func TestValidStreamID(t *testing.T) {
 	for id, want := range map[string]bool{
-		"log_6f1c2d3e-aaaa-bbbb-cccc-0123456789ab": true,
+		"log_6f1c2d3e-aaaa-bbbb-cccc-0123456789ab":                   true,
 		"kubron-0_ab12cd34.log_6f1c2d3e-aaaa-bbbb-cccc-0123456789ab": true, // с префиксом реплики (ADR-0016)
 		"": false, "a b": false, "logs:data:1": false, "../x": false,
 		"line\nbreak": false,
