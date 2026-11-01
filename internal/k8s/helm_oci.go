@@ -20,8 +20,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/Masterminds/semver/v3"
 	"github.com/24DSO-labs/kubron/internal/netpolicy"
+	"github.com/Masterminds/semver/v3"
 	chartv2 "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
 	"helm.sh/helm/v4/pkg/registry"
