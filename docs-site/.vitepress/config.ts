@@ -10,7 +10,8 @@ export default defineConfig({
 
   // Change to '/kubron/' if deploying to https://24dso-labs.github.io/kubron/
   // Leave as '/' for custom domain or Cloudflare Pages / project root.
-  base: ignoreDeadLinks: true, process.env.DOCS_BASE || '/',
+  base: process.env.DOCS_BASE || '/',
+  ignoreDeadLinks: true,
 
   head: [
     ['link', { rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' }],
