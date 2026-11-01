@@ -5,9 +5,6 @@ hero:
   name: Kubron
   text: Kubernetes, under control.
   tagline: A fast, private Kubernetes desktop IDE. Manage clusters, workloads, Helm and GitOps from one focused workspace.
-  image:
-    src: /social-preview.svg
-    alt: Kubron brand artwork with Kubernetes desktop IDE messaging
   actions:
     - theme: brand
       text: Download Kubron
