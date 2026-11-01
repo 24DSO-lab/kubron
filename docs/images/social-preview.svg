@@ -21,7 +21,7 @@
 
   <text x="400" y="228" font-family="Poppins" font-weight="700" font-size="120" letter-spacing="3"><tspan fill="#F8FAFC">KUB</tspan><tspan fill="url(#g-text)">RON</tspan></text>
   <text x="404" y="292" font-family="Poppins" font-weight="500" font-size="38" fill="#E2E8F0">Fast, private Kubernetes desktop IDE</text>
-  <text x="404" y="344" font-family="Poppins" font-weight="400" font-size="27" fill="#94A3B8">Multi-cluster · Helm · Argo CD built in · Logs, exec, port-forward</text>
+  <text x="404" y="344" font-family="Poppins" font-weight="400" font-size="27" fill="#94A3B8">Multi-cluster · Helm · GitOps · Logs, exec, port-forward</text>
 
   <!-- feature chips -->
   <g font-family="Poppins" font-weight="500" font-size="24" fill="#CBD5E1">

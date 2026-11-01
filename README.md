@@ -18,14 +18,14 @@
 
 </div>
 
-Kubron is a lightweight, open-source Kubernetes desktop IDE built with **Go** and **Wails**: a fast, private alternative to Lens with **Argo CD built in**. No telemetry, no mandatory account, your kubeconfig never leaves your machine.
+Kubron is a lightweight, open-source Kubernetes desktop IDE built with **Go** and **Wails**: fast and private, with Helm and GitOps tooling built in. No telemetry, no mandatory account, your kubeconfig never leaves your machine.
 
 <p align="center">
   <img src="docs/images/screenshots/overview.png" alt="Kubron cluster overview: node and pod counts, CPU and memory usage, pods closest to their limits, workloads, recent changes, blockers and certificate expiry" width="100%">
 </p>
 
 <details>
-<summary><b>More screenshots</b>: pods, YAML editor, Argo CD</summary>
+<summary><b>More screenshots</b>: pods, YAML editor, GitOps</summary>
 
 <br>
 
@@ -37,22 +37,19 @@ Kubron is a lightweight, open-source Kubernetes desktop IDE built with **Go** an
 
 <img src="docs/images/screenshots/yaml-editor.png" alt="Kubron YAML editor with a pod manifest, Reload and Review & Save buttons" width="100%">
 
-**Argo CD**: applications with sync and health status, revision, destination and last sync.
+**GitOps**: applications with sync and health status, revision, destination and last sync.
 
-<img src="docs/images/screenshots/argocd-applications.png" alt="Kubron Argo CD applications list with sync and health status" width="100%">
+<img src="docs/images/screenshots/gitops-applications.png" alt="Kubron GitOps applications list with sync and health status" width="100%">
 
 </details>
 
 ## Why Kubron
 
-| | Kubron | Lens | k9s |
-|---|---|---|---|
-| UI | Desktop + web (WIP) | Desktop | Terminal |
-| Built with | Go + Wails (native webview) | Electron | Go TUI |
-| Argo CD support | Built in | Paid extension | Via plugins |
-| Account required | No | Yes | No |
-| Telemetry | None | Yes | None |
-| License | Apache-2.0 | Proprietary + OSS | Apache-2.0 |
+- **Lightweight and native** — written in Go with Wails: a compact desktop app that uses the system webview
+- **Private by default** — no telemetry and no mandatory account; your kubeconfig never leaves your machine
+- **Desktop and web** — the same UI as a desktop app or served over HTTP for teams (web mode is experimental)
+- **Helm and GitOps built in** — manage releases and applications without installing extra plugins
+- **Open source** — Apache-2.0, with a public `pkg/ext` API for extensions
 
 ## Features
 
@@ -76,7 +73,7 @@ Kubron is a lightweight, open-source Kubernetes desktop IDE built with **Go** an
 - **Wide resource coverage** — workloads (Pods, Deployments, StatefulSets, DaemonSets, ReplicaSets, Jobs, CronJobs), networking (Services, Endpoints, EndpointSlices, Ingresses, IngressClasses, NetworkPolicies), config (ConfigMaps, Secrets, ResourceQuotas, LimitRanges, HPA, PDB), storage (PV, PVC, StorageClasses), RBAC (Roles, ClusterRoles, bindings, ServiceAccounts), webhooks, leases, priority and runtime classes
 - **Custom resources** — CRDs are discovered automatically and shown with their `additionalPrinterColumns`, like `kubectl get`
 - **Detail panels** — conditions, events, owners, containers, volumes, affinity, tolerations and more, one click away
-- **YAML editor** — Monaco-based view/edit with diff; apply changes or create new objects from a manifest
+- **YAML editor** — view/edit with diff; apply changes or create new objects from a manifest
 - **Bulk actions** — act on many objects at once; one failure doesn't stop the rest
 - **Keyboard shortcuts** — `Alt+P/D/N/E/S` to jump to Pods, Deployments, Nodes, Events and Settings
 
@@ -84,7 +81,7 @@ Kubron is a lightweight, open-source Kubernetes desktop IDE built with **Go** an
 - **Pod tools** — live logs, terminal (exec) in containers, port forwarding to pods and services, eviction
 - **Deployments** — scale, restart, view revision history and roll back
 - **Nodes** — cordon/uncordon, drain, and open a shell on a node
-- **Metrics** — one-click optional metrics stack (Prometheus, kube-state-metrics, node-exporter) with charts for pods, workloads, nodes, PVCs and ingresses
+- **Metrics** — one-click optional metrics stack with charts for pods, workloads, nodes, PVCs and ingresses
 
 ### Helm
 - **Releases** — list, inspect values/manifest/notes, view history, diff revisions, roll back, uninstall
@@ -92,11 +89,11 @@ Kubron is a lightweight, open-source Kubernetes desktop IDE built with **Go** an
 - **Install & upgrade** — dry-run preview before installing; upgrade a release to another chart version (pick the repository and version, carry over or edit values, review the manifest diff first) or change only its values
 - **Update hints** — see which installed releases have a newer chart available
 
-### Argo CD
-- **Built in, no extra install** — applications, ApplicationSets and projects with sync and health status in the UI
+### GitOps
+- **Built in, no extra install** — applications, application sets and projects with sync and health status in the UI
 - **Actions** — sync (with options), refresh / hard refresh, terminate operation, roll back, suspend/resume auto-sync, delete with or without cascade
 - **Diff & graph** — live-vs-desired diff and a resource graph for each application
-- **Project access** — roles and access of Argo CD projects
+- **Project access** — roles and access of projects
 
 ### Security & access control
 - **Local users & roles** — `admin`, `operator` and `user` roles built on fine-grained permissions (read, secrets, operate, write, exec, port-forward, cluster and user management, audit)
@@ -145,7 +142,7 @@ On Linux add `-tags webkit2_41` to `wails dev` / `wails build` (WebKitGTK 4.1, a
 
 ## Documentation
 
-- **User guides** (PDF): Helm — [English](docs/DOCS/EN/Kubron-Helm-User-Guide-EN.pdf), [Русский](docs/DOCS/RU/Kubron-Helm-User-Guide.pdf); Argo CD — [English](docs/DOCS/EN/Kubron-ArgoCD-User-Guide-EN.pdf), [Русский](docs/DOCS/RU/Kubron-ArgoCD-User-Guide.pdf)
+- **User guides** (PDF): Helm — [English](docs/DOCS/EN/Kubron-Helm-User-Guide-EN.pdf), [Русский](docs/DOCS/RU/Kubron-Helm-User-Guide.pdf); GitOps — [English](docs/DOCS/EN/Kubron-ArgoCD-User-Guide-EN.pdf), [Русский](docs/DOCS/RU/Kubron-ArgoCD-User-Guide.pdf)
 - **Server deployment** — [docs/deploy.md](docs/deploy.md) (Russian)
 - **Localization** — [docs/i18n.md](docs/i18n.md), [ADR-0014](docs/adr/0014-i18n.md)
 - **Architecture decisions** — [docs/adr](docs/adr)
@@ -153,7 +150,7 @@ On Linux add `-tags webkit2_41` to `wails dev` / `wails build` (WebKitGTK 4.1, a
 
 ## Server mode (experimental)
 
-Besides the desktop app, Kubron ships `kubron-server`: the same UI served over HTTP for teams. It stores users, clusters and the audit log in **PostgreSQL 14+**, encrypts kubeconfigs and Argo CD tokens at rest (`KUBRON_SECRET_KEY`) and is meant to run behind a TLS-terminating reverse proxy.
+Besides the desktop app, Kubron ships `kubron-server`: the same UI served over HTTP for teams. It stores users, clusters and the audit log in **PostgreSQL 14+**, encrypts kubeconfigs and GitOps integration tokens at rest (`KUBRON_SECRET_KEY`) and is meant to run behind a TLS-terminating reverse proxy.
 
 The container image and the Helm chart ([`deploy/helm/kubron`](deploy/helm/kubron)) are built from this repository; publishing them to a registry is still on the [roadmap](#roadmap), so build the image yourself:
 
@@ -178,21 +175,20 @@ go run ./cmd/kubron-server --listen 127.0.0.1:8080
 
 - [x] Desktop app (Wails + Go + Vue) with local auth and audit log
 - [x] Helm releases management
-- [x] Argo CD integration
+- [x] GitOps applications management
+- [ ] Support for more GitOps tools
 - [ ] Web mode with multi-user support and session auth — *in progress, experimental (Docker image and Helm chart are available)*
 - [ ] High availability for the server (more than one replica)
 - [ ] Shared, persistent Helm catalog in server mode
 - [ ] Publish the container image and Helm chart to a registry
 - [ ] Code-signed Windows and macOS builds
-- [ ] SSO/OIDC (planned as a commercial add-on)
+- [ ] SSO/OIDC login for organizations
 
 Have an idea? Open a [feature request](https://github.com/24DSO-labs/kubron/issues/new/choose).
 
 ## License
 
-The Kubron core is open source under [Apache-2.0](LICENSE).
-
-Paid subscription features are planned. The first one — **SSO/OIDC login for organizations** — will ship as a separate commercial module. The open core will always include local users, roles, audit log and emergency admin access.
+Kubron is open source under [Apache-2.0](LICENSE). Local users, roles, the audit log and emergency admin access are part of the core.
 
 ## Contributing
 
