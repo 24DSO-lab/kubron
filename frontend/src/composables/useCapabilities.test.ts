@@ -23,9 +23,15 @@ describe('normalizeCapabilities', () => {
     expect(c.sso).toBe(true)
     expect('unknown' in c).toBe(false)
   })
+  it('режим port-forward берётся только из известных значений', () => {
+    expect(normalizeCapabilities({ portForwardMode: 'proxy' }).portForwardMode).toBe('proxy')
+    expect(normalizeCapabilities({ portForwardMode: 'off' }).portForwardMode).toBe('off')
+    expect(normalizeCapabilities({ portForwardMode: 'x' }).portForwardMode).toBe('local')
+    expect(normalizeCapabilities({ portForwardMode: true }).portForwardMode).toBe('local')
+  })
   it('по умолчанию десктопное поведение: всё локальное доступно, SSO нет', () => {
     expect(DEFAULT_CAPABILITIES).toEqual({
-      fileDialog: true, portForward: true, nodeShell: true, localKubeconfig: true, sso: false, inCluster: false, teams: false,
+      fileDialog: true, portForward: true, portForwardMode: 'local', nodeShell: true, localKubeconfig: true, sso: false, inCluster: false, teams: false,
     })
   })
 })

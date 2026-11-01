@@ -512,8 +512,7 @@
   "tooManyRequestsTryAgainIn": "слишком много запросов, повторите через {p0} с",
 
   "webSessionNotFound": "веб-сессия не найдена",
-  "sessionStoreIsUnavailable": "хранилище сессий недоступно"
-
+  "sessionStoreIsUnavailable": "хранилище сессий недоступно",
   "kubronDrainDelay": "KUBRON_DRAIN_DELAY {p0}: {p1}",
   "drainDelayMustBeBetween0And": "пауза перед остановкой должна быть от 0 до 60 с",
   "replicaIdMustBe1To63": "идентификатор реплики должен содержать от 1 до 63 символов",

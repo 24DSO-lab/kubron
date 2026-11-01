@@ -216,6 +216,8 @@
     "started": "Проброс порта: localhost:{port} → {target}",
     "startError": "Проброс порта: {error}",
     "stopped": "Port forward остановлен",
-    "stopError": "Остановка port forward: {error}"
+    "stopError": "Остановка port forward: {error}",
+    "viaProxy": "через Kubron",
+    "startedProxy": "Port forward запущен: {target}"
   }
 }
