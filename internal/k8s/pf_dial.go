@@ -59,7 +59,7 @@ func NewPodDialer(conn *ClusterConnection, namespace, pod string, port int) (*Po
 		Name(pod).
 		SubResource("portforward").
 		URL()
-	transport, upgrader, err := spdy.RoundTripperFor(conn.Config)
+	transport, upgrader, err := spdyRoundTripperFor(conn.Config) // через политику адреса API-сервера
 	if err != nil {
 		return nil, fmt.Errorf("failed to create transport: %w", err)
 	}

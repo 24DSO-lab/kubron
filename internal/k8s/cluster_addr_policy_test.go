@@ -6,6 +6,8 @@ package k8s
 import (
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -222,3 +224,39 @@ func mustRESTConfig(t *testing.T, api *fakeKubeAPI) *rest.Config {
 }
 
 func mustRESTConfigFor(host string) *rest.Config { return &rest.Config{Host: host, BearerToken: "t"} }
+
+// Любое соединение с API-сервером кластера должно идти через политику адреса. Стандартные SPDY- и WebSocket-дайлеры
+// client-go rest.Config.Dial не учитывают, поэтому их прямые вызовы разрешены только в cluster_addr_policy.go
+// (spdyRoundTripperFor и spdyExecutorFor). Тест не даёт новому коду (терминал, port-forward, прокси) обойти защиту.
+func TestNoDirectSPDYOrWebSocketDialers(t *testing.T) {
+	forbidden := []string{
+		"spdy.RoundTripperFor(", "remotecommand.NewSPDYExecutor(", "remotecommand.NewSPDYExecutorForTransports(",
+		"remotecommand.NewWebSocketExecutor", "remotecommand.NewFallbackExecutor(", "websocket.RoundTripperFor(",
+		"portforward.NewSPDYOverWebsocketDialer(", "portforward.NewFallbackDialer(",
+	}
+	entries, err := os.ReadDir(".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range entries {
+		name := e.Name()
+		if e.IsDir() || !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") || name == "cluster_addr_policy.go" {
+			continue
+		}
+		data, err := os.ReadFile(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for n, line := range strings.Split(string(data), "\n") {
+			code := strings.TrimSpace(line)
+			if strings.HasPrefix(code, "//") {
+				continue
+			}
+			for _, f := range forbidden {
+				if strings.Contains(code, f) {
+					t.Errorf("%s:%d calls %s directly: use spdyRoundTripperFor/spdyExecutorFor so that the cluster address policy applies", name, n+1, f)
+				}
+			}
+		}
+	}
+}
