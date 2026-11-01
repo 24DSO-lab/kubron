@@ -18,6 +18,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (ADR-0017) and terminals open their connection to the API server through the address policy as well; a test
   forbids calling the stock SPDY/WebSocket dialers directly.
 
+### Fixed
+
+- **Helm with several replicas:** the repository index and OCI tag caches live in each replica's `emptyDir`; a
+  repository added on one replica is now fetched on first use on the others (the list and update checks fill the cache
+  in the background). Cache file names include a hash of the URL, so a repository re-added under the same name with
+  another address does not pick up a stale cache.
+
 ### Added
 
 - **Chart:** `portForward` values (`baseDomain`, `scheme`, `idleTimeout`, `maxDuration`) set the `KUBRON_PF_*` variables and add the
@@ -26,7 +33,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `kubron.drainDelay`, optional `secrets.keys.dbListenUrl`, `kubron.auditRetention`); the "several replicas are not
   supported" warning is gone. New CI job `e2e-ha` runs two replicas on one PostgreSQL: login on one replica and a request
   on the other, session end and login lockouts across replicas, 50 sessions, and killing a replica during a session.
-
+- **Network policy:** the `oidc-password` identity provider address (issuer and the `token_endpoint` from its answer)
+  follows `KUBRON_CLUSTER_ADDR_POLICY` as well.
+- **Decision log:** `docs/decisions/` records the decisions taken without a separate discussion, who took them and
+  how to revert.
 - **Tests:** Helm through the PostgreSQL store end to end, and `kubron-server rekey` re-encrypting the Helm secrets.
 
 - **Operations:** structured JSON logging (`log/slog`) in `kubron-server` with a secret redactor (passwords,
