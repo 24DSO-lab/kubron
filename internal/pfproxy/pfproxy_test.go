@@ -645,3 +645,64 @@ func TestNewServiceValidation(t *testing.T) {
 		t.Error("unknown scheme must be rejected")
 	}
 }
+
+func TestStreamIDCarriesTheOwnerAsOneDNSLabel(t *testing.T) {
+	a, b := NewIDFor("kubron-0_ab12"), NewIDFor("kubron-1_cd34")
+	for _, id := range []string{a, b, NewID()} {
+		if !ValidID(id) || len(id) > 63 || strings.Contains(id, ".") {
+			t.Errorf("%q must be a valid single DNS label", id)
+		}
+	}
+	if !OwnedBy("kubron-0_ab12", a) || OwnedBy("kubron-0_ab12", b) || OwnedBy("kubron-1_cd34", a) {
+		t.Error("a stream belongs only to the replica that issued it")
+	}
+	if !OwnedBy("", a) || !OwnedBy("", NewID()) {
+		t.Error("a single replica accepts any stream")
+	}
+	if OwnedBy("kubron-0_ab12", NewID()) {
+		t.Error("an untagged stream does not belong to a replica that tags its streams")
+	}
+	if !OwnedBy("kubron-0_ab12", "pf-local-1") {
+		t.Error("a local-mode id is not a proxy stream: the check does not apply")
+	}
+	if NewIDFor("kubron-0_ab12") == a {
+		t.Error("ids must be unique")
+	}
+}
+
+// Запрос к потоку другой реплики получает 421 и не расходует одноразовый ticket: повтор на владельце проходит.
+func TestStreamOnAnotherReplicaGets421WithoutSpendingTheTicket(t *testing.T) {
+	up := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { _, _ = io.WriteString(w, "ok") }))
+	t.Cleanup(up.Close)
+	mk := func(replica string) *Service {
+		s, err := NewService(Config{BaseDomain: "kubron.test", Scheme: "https", ReplicaID: replica}, []byte("shared-key"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return s
+	}
+	a, b := mk("a"), mk("b")
+	id := a.NewStreamID()
+	if err := a.Registry.Add(Target{ID: id, Owner: "alice", Namespace: "ns", Pod: "p", Port: 80, Dial: dialer(up.Listener.Addr().String())}, nil); err != nil {
+		t.Fatal(err)
+	}
+	entry, err := a.EntryURL("alice", id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	u, _ := url.Parse(entry)
+
+	w := do(b, u.Host, u.RequestURI(), nil)
+	if w.Code != http.StatusMisdirectedRequest {
+		t.Fatalf("a foreign replica must answer 421, got %d", w.Code)
+	}
+	if w.Header().Get("Set-Cookie") != "" || strings.Contains(w.Body.String(), "ok") {
+		t.Errorf("nothing must be issued or proxied: %v %q", w.Header(), w.Body.String())
+	}
+	if w := do(b, u.Host, "/", nil); w.Code != http.StatusMisdirectedRequest {
+		t.Errorf("a plain request is also misdirected: %d", w.Code)
+	}
+	if w := do(a, u.Host, u.RequestURI(), nil); w.Code != http.StatusFound {
+		t.Fatalf("the ticket must still work on the owner: %d", w.Code)
+	}
+}

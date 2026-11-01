@@ -11,8 +11,9 @@ import (
 	"context"
 	"errors"
 	"flag"
+	"fmt"
 	"io/fs"
-	"log"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
@@ -35,12 +36,16 @@ import (
 const userRefreshEvery = 2 * time.Second
 
 func main() {
+	if err := setupLogging(os.Getenv, os.Stderr); err != nil {
+		fmt.Fprintln(os.Stderr, "configuration:", err)
+		os.Exit(2)
+	}
 	if len(os.Args) > 1 && adminCommands[os.Args[1]] {
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		err := runAdmin(ctx, os.Args[1], os.Args[2:], os.Stdout)
 		stop()
 		if err != nil {
-			log.Fatalf("%s: %v", os.Args[1], err)
+			fatal(os.Args[1], err)
 		}
 		return
 	}
@@ -49,7 +54,12 @@ func main() {
 		if errors.Is(err, flag.ErrHelp) {
 			return
 		}
-		log.Fatalf("configuration: %v", err)
+		fatal("configuration", err)
+	}
+
+	registerSecrets(cfg)
+	if enableAuditStdout(os.Getenv, os.Stdout) {
+		slog.Info("audit: records are also written to stdout as JSON lines (type=audit)")
 	}
 
 	hostname, _ := os.Hostname()
@@ -58,21 +68,21 @@ func main() {
 	}
 	replicaID, err := server.ResolveReplicaID(cfg.ReplicaID, hostname)
 	if err != nil {
-		log.Fatalf("configuration: %v", err)
+		fatal("configuration", err)
 	}
 	lifecycle := server.NewLifecycle(replicaID)
 
-	log.Printf("kubron-server %s, replica %s", version, replicaID)
+	slog.Info("kubron-server starting", "version", version, "replica", replicaID)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
 	dist, err := fs.Sub(frontend.Dist, "dist")
 	if err != nil {
-		log.Fatalf("frontend: %v", err)
+		fatal("frontend", err)
 	}
 	if err := server.CheckWebBuild(dist); err != nil {
-		log.Fatalf("frontend: %v", err)
+		fatal("frontend", err)
 	}
 
 	// Каталог данных задаётся до запуска ядра: хранилища открываются в OnStartup
@@ -81,11 +91,11 @@ func main() {
 	k8s.SetConnectionPolicy(k8s.ConnectionPolicy{AllowExec: false, AllowLocalFiles: false})
 	// Запросы Helm к адресам, которые задаёт пользователь (репозитории, OCI), проходят через защиту от SSRF (ADR-0015).
 	if err := setupHelmNetPolicy(os.Getenv); err != nil {
-		log.Fatalf("network policy: %v", err)
+		fatal("network policy", err)
 	}
 	// Адрес API-сервера кластера из kubeconfig пользователя; по умолчанию выключено (см. helmnet.go).
 	if err := setupClusterAddrPolicy(os.Getenv); err != nil {
-		log.Fatalf("network policy: %v", err)
+		fatal("network policy", err)
 	}
 
 	hub := server.NewHub()
@@ -102,7 +112,7 @@ func main() {
 	if cfg.DatabaseURL != "" {
 		pg, err := openPostgres(ctx, cfg)
 		if err != nil {
-			log.Fatalf("database: %v", err)
+			fatal("database", err)
 		}
 		defer pg.Close()
 		pgStore = pg
@@ -111,7 +121,7 @@ func main() {
 		if listenURL == "" {
 			listenURL = cfg.DatabaseURL
 		}
-		notifier = pg.NewNotifier(listenURL, log.Printf)
+		notifier = pg.NewNotifier(listenURL, logf)
 		st := store.FromPostgres(pg)
 		app.SetStore(core, st)
 		if p, ok := st.(websession.Provider); ok {
@@ -124,7 +134,7 @@ func main() {
 
 	dispatcher, err := server.NewAppDispatcher(core)
 	if err != nil {
-		log.Fatalf("dispatcher: %v", err)
+		fatal("dispatcher", err)
 	}
 	// У каждой веб-сессии свой вид ядра (пользователь, права, кластер, терминалы, логи, события):
 	// одновременно могут работать несколько пользователей.
@@ -158,7 +168,7 @@ func main() {
 	if notifier != nil {
 		startEvents = setupReplicaEvents(ctx, notifier, pgStore, core, sessions, replicaID, enforceAccess)
 	}
-	pf := setupPortForward(cfg, core, sessions)
+	pf := setupPortForward(cfg, core, sessions, replicaID)
 	guard.NewView = func(src string) any { return app.NewSessionView(core, src) }
 	guard.Bind = func(v any, id string) { app.BindView(v.(*app.App), id) }
 	guard.ActiveCluster = func(v any) string { return app.ViewActiveCluster(v.(*app.App)) }
@@ -203,11 +213,12 @@ func main() {
 		// владелец проверяется на каждом запросе.
 		handler = server.WithPortForwardHosts(handler, pf.Handler(), pf.IsPortForwardHost)
 	}
+	handler = server.WithRequestID(handler) // снаружи всех: каждая запись журнала запроса несёт request_id
 	// SIGTERM: draining (новые соединения не принимаются, /readyz смотрит на lifecycle.Draining()),
 	// пауза для балансировщика, затем закрытие WebSocket кадром 1012 и остановка HTTP-сервера.
 	plan := server.ShutdownPlan{Drain: guard.BeginDrain, DrainDelay: cfg.DrainDelay, CloseConns: guard.CloseConnections}
 	if err := server.RunWith(ctx, cfg, handler, plan); err != nil {
-		log.Fatalf("server: %v", err)
+		fatal("server", err)
 	}
 }
 
@@ -227,10 +238,10 @@ func openPostgres(ctx context.Context, cfg server.Config) (*pgstore.Store, error
 		return nil, err
 	}
 	if len(res.Applied) > 0 {
-		log.Printf("database: applied migrations %v", res.Applied)
+		slog.Info("database: migrations applied", "versions", res.Applied)
 	}
 	if len(res.Ahead) > 0 {
-		log.Printf("database: the schema is newer than this build (versions %v); running in compatibility mode", res.Ahead)
+		slog.Warn("database: the schema is newer than this build; running in compatibility mode", "versions", res.Ahead)
 	}
 	if err := pg.Init(ctx); err != nil {
 		pg.Close()
@@ -247,7 +258,7 @@ func setupReplicaEvents(ctx context.Context, n *pgstore.Notifier, pg *pgstore.St
 	publish := func(m replicaevents.Message) {
 		payload, err := m.Encode(replicaID)
 		if err != nil {
-			log.Printf("replica events: %v", err)
+			slog.Warn("replica events: the message was not encoded", "error", err)
 			return
 		}
 		n.Publish(payload)
@@ -256,7 +267,7 @@ func setupReplicaEvents(ctx context.Context, n *pgstore.Notifier, pg *pgstore.St
 	app.SetReplicaPublisher(core, publish)
 	pg.SetAccessNotifier(func() { publish(replicaevents.Message{Kind: replicaevents.AccessChanged}) })
 
-	ev := replicaevents.NewDispatcher(replicaID, log.Printf)
+	ev := replicaevents.NewDispatcher(replicaID, logf)
 	ev.Handle(replicaevents.SessionEnded, func(m replicaevents.Message) { sessions.EndRemote(m.Session) })
 	ev.Handle(replicaevents.UserSessionsEnded, func(m replicaevents.Message) { sessions.EndUserRemote(m.User, m.Session) })
 	accessChanged := func(replicaevents.Message) {

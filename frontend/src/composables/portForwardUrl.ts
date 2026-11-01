@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { callApp } from '../platform/api'
+import { retryElsewhere } from '../platform/streams'
 import { useCapabilities } from './useCapabilities'
 
 /** Проброс идёт через прокси сервера (адрес одноразовый), а не на localhost браузера. */
@@ -15,6 +16,12 @@ export function isProxyForward(session?: { mode?: string } | null): boolean {
  * secure — открыть по https (локальный проброс на TLS-порт; режим proxy выбирает схему сам).
  */
 export async function getPortForwardUrl(id: string, secure = false): Promise<string> {
-  const url: string = await callApp('GetPortForwardURL', id)
+  // Поток живёт на одной реплике: если балансировщик направил запрос на другую, он повторяется (stream_elsewhere)
+  const url: string = await retryElsewhere(() => callApp('GetPortForwardURL', id))
   return secure && url.startsWith('http://') ? 'https://' + url.slice('http://'.length) : url
+}
+
+/** Останавливает проброс; повторяет запрос, пока он не попадёт на реплику-владельца потока. */
+export async function stopPortForward(id: string): Promise<void> {
+  await retryElsewhere(() => callApp('StopPortForward', id))
 }

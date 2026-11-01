@@ -3,7 +3,13 @@
 
 package app
 
-import "testing"
+import (
+	"errors"
+	"testing"
+
+	"github.com/24DSO-labs/kubron/internal/pfproxy"
+	"github.com/24DSO-labs/kubron/internal/streamid"
+)
 
 type capsPlatform struct{ nopPlatform }
 
@@ -86,5 +92,25 @@ func TestDisabledTerminalsReturnClearErrors(t *testing.T) {
 	}
 	if err := a.checkTerminalTarget("kube-system", "kubron-node-shell-abc12"); err != errNodeShellDisabled {
 		t.Errorf("the node shell pod must be refused: %v", err)
+	}
+}
+
+func TestPortForwardMethodsRefuseAStreamOfAnotherReplica(t *testing.T) {
+	a := NewApp(pfPlatform{})
+	a.initAuth(t.TempDir())
+	if _, err := a.SetupAdmin("admin", "correct-horse-battery-1"); err != nil { // создаёт администратора и входит
+		t.Fatal(err)
+	}
+	SetReplicaID(a, "replica-a")
+	foreign := pfproxy.NewIDFor("replica-b")
+	if _, err := a.GetPortForwardURL(foreign); !errors.Is(err, streamid.ErrElsewhere) {
+		t.Errorf("GetPortForwardURL must answer stream_elsewhere: %v", err)
+	}
+	if err := a.StopPortForward(foreign); !errors.Is(err, streamid.ErrElsewhere) {
+		t.Errorf("StopPortForward must answer stream_elsewhere: %v", err)
+	}
+	own := pfproxy.NewIDFor("replica-a") // свой, но не существующий поток — обычная ошибка, а не «на другой реплике»
+	if _, err := a.GetPortForwardURL(own); err == nil || errors.Is(err, streamid.ErrElsewhere) {
+		t.Errorf("an own unknown stream is simply not found: %v", err)
 	}
 }

@@ -21,6 +21,7 @@ type Cluster struct {
 	Environment      string
 	DefaultNamespace string
 	ContextName      string
+	ArgoURL          string // опубликованный адрес Argo CD; пусто — через port-forward
 	Mode             string // kubeconfig | in-cluster | oidc-password; пусто → kubeconfig
 	AddedAt          string // RFC3339; пусто → текущее время
 }
@@ -36,13 +37,13 @@ func (s *Store) Clusters() *Clusters { return &Clusters{s} }
 // Clusters — кластеры поверх таблицы clusters.
 type Clusters struct{ s *Store }
 
-const clusterCols = `id, team_id, display_name, icon, color, environment, default_namespace, context_name, mode, added_at`
+const clusterCols = `id, team_id, display_name, icon, color, environment, default_namespace, context_name, mode, argo_url, added_at`
 
 func scanCluster(row pgx.Row) (*Cluster, error) {
 	var c Cluster
 	var added time.Time
 	if err := row.Scan(&c.ID, &c.TeamID, &c.DisplayName, &c.Icon, &c.Color, &c.Environment, &c.DefaultNamespace,
-		&c.ContextName, &c.Mode, &added); err != nil {
+		&c.ContextName, &c.Mode, &c.ArgoURL, &added); err != nil {
 		return nil, err
 	}
 	c.AddedAt = added.UTC().Format(time.RFC3339)
@@ -167,12 +168,12 @@ func (c *Clusters) SaveWithSecret(cl *Cluster, kubeconfig, secret []byte) error 
 		// вставка строки без kubeconfig в ON CONFLICT не прошла бы даже для существующего кластера.
 		tag, err := c.s.pool.Exec(ctx, `
 			UPDATE clusters SET display_name = $2, icon = $3, color = $4, environment = $5, default_namespace = $6,
-				context_name = $7, mode = $8, updated_at = now(),
+				context_name = $7, mode = $8, argo_url = $11, updated_at = now(),
 				secret_enc = COALESCE($9::bytea, secret_enc),
 				secret_key_id = CASE WHEN $9::bytea IS NULL THEN secret_key_id ELSE $10::text END
 			WHERE id = $1`,
 			cl.ID, cl.DisplayName, cl.Icon, cl.Color, cl.Environment, cl.DefaultNamespace, cl.ContextName, mode,
-			secEnc, secKeyID)
+			secEnc, secKeyID, cl.ArgoURL)
 		if err != nil {
 			return clusterErr(cl, err)
 		}
@@ -182,16 +183,16 @@ func (c *Clusters) SaveWithSecret(cl *Cluster, kubeconfig, secret []byte) error 
 	}
 	_, err = c.s.pool.Exec(ctx, `
 		INSERT INTO clusters (id, team_id, display_name, icon, color, environment, default_namespace, context_name, mode,
-			kubeconfig_enc, key_id, secret_enc, secret_key_id, added_at)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+			kubeconfig_enc, key_id, secret_enc, secret_key_id, added_at, argo_url)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
 		ON CONFLICT (id) DO UPDATE SET display_name = EXCLUDED.display_name, icon = EXCLUDED.icon, color = EXCLUDED.color,
 			environment = EXCLUDED.environment, default_namespace = EXCLUDED.default_namespace,
-			context_name = EXCLUDED.context_name, mode = EXCLUDED.mode, updated_at = now(),
+			context_name = EXCLUDED.context_name, mode = EXCLUDED.mode, argo_url = EXCLUDED.argo_url, updated_at = now(),
 			kubeconfig_enc = EXCLUDED.kubeconfig_enc, key_id = EXCLUDED.key_id,
 			secret_enc = COALESCE(EXCLUDED.secret_enc, clusters.secret_enc),
 			secret_key_id = CASE WHEN EXCLUDED.secret_enc IS NULL THEN clusters.secret_key_id ELSE EXCLUDED.secret_key_id END`,
 		cl.ID, team, cl.DisplayName, cl.Icon, cl.Color, cl.Environment, cl.DefaultNamespace, cl.ContextName, mode,
-		enc, keyID, secEnc, secKeyID, added)
+		enc, keyID, secEnc, secKeyID, added, cl.ArgoURL)
 	return clusterErr(cl, err)
 }
 

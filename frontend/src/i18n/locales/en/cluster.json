@@ -54,7 +54,12 @@
     "oidcPassword": "Password",
     "oidcStored": "The password is stored encrypted and is never shown again. You can change it later in the cluster settings.",
     "authCodeUnsupported": "This kubeconfig signs in through a browser (oidc-login, authcode). That cannot work on the server. Use a kubeconfig with the password grant, a token or a client certificate.",
-    "execForbidden": "This kubeconfig runs an external command to get credentials (exec). That is not allowed on the server. Use a token or a client certificate."
+    "execForbidden": "This kubeconfig runs an external command to get credentials (exec). That is not allowed on the server. Use a token or a client certificate.",
+    "sectionArgo": "Argo CD",
+    "argoUrl": "Argo CD address",
+    "argoUrlPlaceholder": "https://argocd.example.com",
+    "argoUrlHint": "Published address of Argo CD (for example, an Ingress). If set, Kubron opens it instead of forwarding a port. Leave empty to open Argo CD through the cluster API.",
+    "argoUrlInvalid": "Enter an http or https address without credentials, query or fragment."
   },
   "edit": {
     "kubeconfig": "Kubeconfig",

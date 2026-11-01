@@ -105,7 +105,7 @@ export async function rollbackArgo(app: Pick<ArgoApplicationInfo, 'namespace' | 
 export async function openArgoUI(): Promise<void> {
   try {
     const info = await callApp('OpenArgoUI')
-    await useK8s().refreshPortForwards()
+    if (info.mode !== 'external') await useK8s().refreshPortForwards() // внешний адрес — потока нет
     openUrl(info.url)
     // В режиме proxy адрес одноразовый и пользователю бесполезен: показываем, что именно открыто
     if (!info.reused) notifications.notifySuccess(t('argo.actions.uiOpened', { url: info.mode === 'proxy' ? `${info.namespace}/${info.service}` : info.url }))

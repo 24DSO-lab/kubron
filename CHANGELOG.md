@@ -7,10 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.6.0] - 2026-11-01
+
+### Security
+
+- **Helm:** managing Helm repositories, OCI registries and the operation journal is now checked against the team
+  of the **active cluster**. Before, `clusters.manage` was accepted from an admin of *any* team, so an admin of
+  one team with a read-only role in another could change that team's repositories while its cluster was active.
+  No new permission was introduced.
+- **Port-forward proxy and terminals:** with `KUBRON_CLUSTER_ADDR_POLICY` enabled, the HTTP port-forward proxy
+  (ADR-0017) and terminals open their connection to the API server through the address policy as well; a test
+  forbids calling the stock SPDY/WebSocket dialers directly.
 
 ### Added
 
+- **Tests:** Helm through the PostgreSQL store end to end, and `kubron-server rekey` re-encrypting the Helm secrets.
+
+- **Operations:** structured JSON logging (`log/slog`) in `kubron-server` with a secret redactor (passwords,
+  tokens, `Authorization` headers, URL credentials, encryption key, database passwords), a per-request
+  `request_id` (`X-Request-Id` header), `KUBRON_LOG_LEVEL` and `KUBRON_LOG_FORMAT`. `KUBRON_AUDIT_STDOUT=1`
+  mirrors every audit record to stdout as a JSON line (`"type":"audit"`) for an external collector. See
+  `docs/logging.md`.
+- **Port-forward:** with several replicas a stream carries its owner in the id (one DNS label); a request to a stream of
+  another replica gets `421` before the one-time ticket is spent, and `GetPortForwardURL`/`StopPortForward` answer
+  `409 stream_elsewhere` (the UI retries). See ADR-0017, section 7.
+
+## [0.6.0] - 2026-11-01
+
+- **Argo CD:** published address in cluster settings (`argoUrl`, migration `0007`). If set, `OpenArgoUI` opens it
+  (`mode=external`) and does not create a port-forward or a proxy stream; works even with
+  `KUBRON_DISABLE_PORT_FORWARD`. Only `http(s)` addresses without credentials, query or fragment are accepted.
 - **Terminals:** separate `nodeshell` permission for the node shell (admin only by default), flags
   `KUBRON_DISABLE_EXEC`, `KUBRON_DISABLE_NODE_SHELL`, `KUBRON_DISABLE_PORT_FORWARD` (reflected in
   `GetCapabilities`), `KUBRON_TERMINAL_MAX_DURATION` / `KUBRON_TERMINAL_IDLE_TIMEOUT`, audit of terminal

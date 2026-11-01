@@ -66,6 +66,13 @@ kubron:
   disablePortForward: false
   disableNodeShell: false
   disableExec: false
+  # Журнал процесса (stderr, JSON): debug | info | warn | error; пусто — info (KUBRON_LOG_LEVEL).
+  # Формат text (KUBRON_LOG_FORMAT) нужен только для разработки.
+  logLevel: ""
+  logFormat: ""
+  # Дублировать журнал аудита строками JSON в stdout для внешнего сборщика (KUBRON_AUDIT_STDOUT=1).
+  # Журнал аудита в БД остаётся; stdout содержит только строки аудита ("type":"audit").
+  auditStdout: false
   # Дополнительные переменные окружения (список как в container.env)
   extraEnv: []
 

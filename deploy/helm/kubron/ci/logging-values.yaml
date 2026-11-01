@@ -1,0 +1,6 @@
+# Журнал: уровень, формат и дублирование аудита в stdout
+secrets:
+  existingSecret: kubron-secrets
+kubron:
+  logLevel: debug
+  auditStdout: true

@@ -499,7 +499,7 @@ func (m *Manager) execRaw(namespace, pod, container string, command []string) (s
 			Stderr:    true,
 		}, scheme.ParameterCodec)
 
-	exec, err := remotecommand.NewSPDYExecutor(conn.Config, "POST", req.URL())
+	exec, err := spdyExecutorFor(conn.Config, "POST", req.URL()) // через политику адреса API-сервера
 	if err != nil {
 		return "", err
 	}

@@ -210,6 +210,27 @@
         },
         "extraEnv": {
           "$ref": "#/definitions/k8sObjectList"
+        },
+        "logLevel": {
+          "type": "string",
+          "enum": [
+            "",
+            "debug",
+            "info",
+            "warn",
+            "error"
+          ]
+        },
+        "logFormat": {
+          "type": "string",
+          "enum": [
+            "",
+            "json",
+            "text"
+          ]
+        },
+        "auditStdout": {
+          "type": "boolean"
         }
       }
     },

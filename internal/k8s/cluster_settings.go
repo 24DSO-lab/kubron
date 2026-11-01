@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -53,6 +54,29 @@ type ClusterSettings struct {
 	DefaultNamespace string `json:"defaultNamespace"`
 	// ContextName — контекст kubeconfig; пусто — current-context.
 	ContextName string `json:"contextName"`
+	// ArgoURL — опубликованный адрес Argo CD (Ingress). Если задан, OpenArgoUI открывает его и не создаёт
+	// port-forward; пусто — открытие через port-forward или прокси потоков (ADR-0017).
+	ArgoURL string `json:"argoUrl"`
+}
+
+const maxArgoURLLen = 512
+
+// normalizeArgoURL проверяет адрес Argo CD: только http(s) с хостом, без учётных данных, query и fragment.
+// Адрес открывается в браузере пользователя, поэтому другие схемы (javascript:, data:, file:) недопустимы.
+func normalizeArgoURL(raw string) (string, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return "", nil
+	}
+	if len(raw) > maxArgoURLLen {
+		return "", fmt.Errorf("the Argo CD address is longer than %d characters", maxArgoURLLen)
+	}
+	u, err := url.Parse(raw)
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Hostname() == "" ||
+		u.User != nil || u.RawQuery != "" || u.Fragment != "" || u.Opaque != "" {
+		return "", errors.New("the Argo CD address must be an http or https URL without credentials, query or fragment")
+	}
+	return strings.TrimRight(u.String(), "/"), nil
 }
 
 // normalize проверяет настройки и приводит их к каноничному виду.
@@ -89,6 +113,11 @@ func (s ClusterSettings) normalize(legacyIcon string) (ClusterSettings, error) {
 	}
 
 	s.ContextName = strings.TrimSpace(s.ContextName)
+
+	var err error
+	if s.ArgoURL, err = normalizeArgoURL(s.ArgoURL); err != nil {
+		return s, err
+	}
 	return s, nil
 }
 
@@ -382,6 +411,7 @@ func UpdateClusterSettings(id string, settings ClusterSettings, replace Kubeconf
 	meta.Color = settings.Color
 	meta.Environment = settings.Environment
 	meta.DefaultNamespace = settings.DefaultNamespace
+	meta.ArgoURL = settings.ArgoURL
 	meta.ContextName = contextName
 
 	// Хранилище заменяет kubeconfig и метаданные вместе и при сбое возвращает прежний kubeconfig.

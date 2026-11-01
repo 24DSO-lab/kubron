@@ -552,5 +552,8 @@
   "panic": "паника: {p0}",
   "terminalsAreDisabledByTheAdministrator": "Терминалы отключены администратором",
   "nodeShellIsDisabledByTheAdministrator": "Оболочка на узле отключена администратором",
-  "terminalTimeoutsCannotBeNegative": "Сроки терминала не могут быть отрицательными"
+  "terminalTimeoutsCannotBeNegative": "Сроки терминала не могут быть отрицательными",
+  "theArgoCdAddressIsLongerThan": "Адрес Argo CD длиннее {p0} символов",
+  "theArgoCdAddressMustBeAn": "Адрес Argo CD должен быть URL http или https без учётных данных, query и fragment",
+  "unknownLogLevelExpectedDebugInfo": "неизвестный уровень логирования {p0} (допустимо: debug, info, warn или error)"
 }
