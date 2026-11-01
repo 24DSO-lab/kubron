@@ -17,8 +17,13 @@ updates:
       interval: weekly
     groups:
       vue:
-        patterns: ["vue", "vue-*", "@vitejs/*", "vite", "typescript"]
+        patterns: ["vue", "vue-*", "@vitejs/*", "vite"]
     open-pull-requests-limit: 5
+    # TypeScript 7 (нативный) несовместим с vue-tsc (нет ./lib/tsc в exports) —
+    # мажорные бампы typescript игнорируем, пока vue-tsc не поддержит TS 7
+    ignore:
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
     directory: /
