@@ -6,8 +6,8 @@ hero:
   text: Kubernetes, under control.
   tagline: A fast, private Kubernetes desktop IDE. Manage clusters, workloads, Helm and GitOps from one focused workspace.
   image:
-    src: https://raw.githubusercontent.com/24DSO-labs/kubron/master/docs/images/screenshots/overview.png
-    alt: Kubron cluster overview dashboard
+    src: /social-preview.svg
+    alt: Kubron brand artwork with Kubernetes desktop IDE messaging
   actions:
     - theme: brand
       text: Download Kubron
