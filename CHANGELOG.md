@@ -11,12 +11,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Deploy:** `Dockerfile` for kubron-server (distroless, non-root, read-only rootfs) and the Helm chart
   `deploy/helm/kubron` (Deployment, Service, Ingress, NetworkPolicy, PodDisruptionBudget, optional
-  read-only RBAC for in-cluster mode). Guide: `docs/deploy.md`. Single replica only until HA.
+  read-only RBAC for in-cluster mode). Guide: `docs/deploy.md`. The chart still defaults to `replicaCount: 1`
+  and warns above it; the server itself now supports several replicas (see the HA entries below).
 - **Repository:** OpenSSF Scorecard workflow (`scorecard.yml`, results in Code scanning) and
   `.github/CODEOWNERS`.
 - **Release:** `publish.yml` publishes the kubron-server image (`ghcr.io/24dso-labs/kubron`) and the Helm
   chart (`oci://ghcr.io/24dso-labs/charts/kubron`) for `vX.Y.Z` tags, with build provenance for the image.
   A manual run is a dry run unless `push` is ticked.
+- **HA:** with `KUBRON_DATABASE_URL` web sessions and users live in PostgreSQL and are shared by all
+  `kubron-server` replicas: a cookie issued by one replica works on any other, a user created or changed on
+  one replica is visible on the rest within ~2 s, and a DB outage of up to 30 s is served from cache without
+  logging anyone out (then `503` with `Retry-After`). See `docs/ha-sessions.md`.
+- **HA:** replica identity (`KUBRON_REPLICA_ID` / `--replica-id`) and graceful shutdown: on SIGTERM the replica
+  drains (`/readyz` reports not ready, `503` for new WebSocket and terminal connections, `KUBRON_DRAIN_DELAY`
+  pause), then closes event and terminal sockets with code `1012` (Service Restart); the web client reconnects
+  quickly and restores its subscriptions. See `docs/ha.md`.
+- **HA:** changes propagate between replicas over PostgreSQL `LISTEN/NOTIFY` (logout, password change, access
+  changes, cluster health); a direct connection for the listener can be set with `KUBRON_DB_LISTEN_URL`
+  (pgbouncer in transaction mode does not support `LISTEN`). Missed messages are repaired by a full resync.
+- **Web mode:** HTTP port-forward proxy (ADR-0017, `docs/adr/0017-http-port-forward-web.md`): each stream gets
+  its own origin `{id}.pf.<base-domain>` (`KUBRON_PF_BASE_DOMAIN`; needs a DNS wildcard and certificate), a
+  one-time ticket, a host-only cookie and idle/max duration limits; `portforward.start/stop` are audited. The
+  UI opens the URL returned by the backend (`portForwardMode`: `local` / `proxy` / `off`); in proxy mode the
+  local-port field is hidden. Port-forward can be disabled with `KUBRON_DISABLE_PORT_FORWARD`.
+- **Helm:** repositories, OCI registries and the operations journal are stored in PostgreSQL per team in
+  service mode (desktop and single-user mode keep the files) with registry passwords encrypted (secretbox,
+  AAD) and covered by `kubron-server rekey`; Helm now also works for clusters stored in the database (no
+  kubeconfig file is written). See `docs/deploy.md`, section "Helm: состояние и доступ к сети".
 
 ### Changed
 
@@ -28,6 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Deploy:** the Helm chart now defaults to `image.repository: ghcr.io/24dso-labs/kubron` (it still pointed
   to the previous account).
 
+
 ### Security
 
 - **HTTP:** `kubron-server` now sends `Content-Security-Policy` (scripts `'self'`, no `unsafe-inline`/`unsafe-eval`),
@@ -37,6 +59,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`KUBRON_TRUSTED_PROXY_HOPS`, `KUBRON_TRUSTED_PROXIES`); IPv6 is keyed by /64; a flood of unique logins or
   addresses no longer wipes active lockouts; `ChangePassword` guessing is limited; anonymous RPC calls get a
   per-address token bucket (`429` with `Retry-After`).
+- **Helm (SSRF):** Helm HTTP and OCI traffic goes through an address policy (`KUBRON_HELM_ADDR_POLICY`,
+  `strict` by default; exceptions via `KUBRON_HELM_ALLOW_CIDRS`): loopback, link-local and cloud metadata
+  addresses are always blocked, redirects are re-checked, and a blocked address looks to the user like a
+  connection refused. OCI registry passwords are passed to the registry host from memory and are no longer
+  written to `registry-config.json` in service mode.
+- **Clusters:** optional address policy for the cluster API server taken from a user kubeconfig
+  (`KUBRON_CLUSTER_ADDR_POLICY`, off by default; `KUBRON_CLUSTER_ADDR_ALLOW_CIDRS`): the address is checked on
+  add and on every connect, and all REST, discovery, informer, Helm, terminal and port-forward connections go
+  through the policy dialer; `proxy-url` is rejected while the policy is on.
 
 ## [0.3.0] - 2026-10-29
 
