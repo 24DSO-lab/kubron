@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-31
+
 ### Added
 
 - **Deploy:** `Dockerfile` for kubron-server (distroless, non-root, read-only rootfs) and the Helm chart
