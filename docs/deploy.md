@@ -109,6 +109,13 @@ helm install kubron deploy/helm/kubron -n kubron \
 «Адрес API-сервера кластера»); при желании сузьте и egress в NetworkPolicy.
 Политика требует CNI с поддержкой NetworkPolicy.
 
+### Метрики
+
+`metrics.enabled=true` включает `/metrics` на отдельном порту (`metrics.port`, 9090), отдельный Service
+`<release>-metrics` и правило NetworkPolicy, пускающее на этот порт только `networkPolicy.metrics.from`
+(по умолчанию namespace `monitoring`). Ingress порт метрик не получает. Для Prometheus Operator
+`metrics.serviceMonitor.enabled=true`. Список метрик и запросы — `docs/metrics.md`.
+
 ### Режим in-cluster и RBAC
 
 `inCluster.enabled=true` монтирует токен ServiceAccount (по умолчанию он не монтируется).
@@ -151,6 +158,18 @@ helm install kubron deploy/helm/kubron -n kubron \
 `KUBRON_PF_IDLE_TIMEOUT` и `KUBRON_PF_MAX_DURATION`; начало и конец потока попадают в аудит
 (`portforward.start/stop`). Трафик потока идёт через API-сервер кластера (SPDY), поэтому
 дополнительного egress в NetworkPolicy не нужно.
+
+## Терминалы и оболочка узла
+
+Терминал пода (exec/attach) требует права `exec`. Оболочка на узле — привилегированный под с оболочкой
+хоста — требует отдельного права `nodeshell`, по умолчанию его есть только у роли администратора.
+Администратор сервера может отключить возможности для всех независимо от ролей:
+`KUBRON_DISABLE_EXEC` (терминалы подов и оболочка узла), `KUBRON_DISABLE_NODE_SHELL`,
+`KUBRON_DISABLE_PORT_FORWARD`; интерфейс скрывает недоступное по `GetCapabilities`, а методы отвечают
+понятной ошибкой. Терминал закрывается по абсолютному сроку `KUBRON_TERMINAL_MAX_DURATION` (по умолчанию
+8h) и после простоя без ввода `KUBRON_TERMINAL_IDLE_TIMEOUT` (30m); `0` снимает ограничение. Начало и конец
+сессии пишутся в аудит (`terminal.start/stop`, `nodeshell.start/stop`: пользователь, кластер, namespace/под,
+причина и длительность).
 
 ## Helm: состояние и доступ к сети
 
@@ -230,11 +249,14 @@ helm install kubron deploy/helm/kubron -n kubron \
   Helm лежат в PostgreSQL (см. «Helm: состояние и доступ к сети»), поэтому PVC под Helm не нужен.
   В `HOME` пода (`emptyDir`) остаётся только кэш индексов и списков тегов: он воспроизводим и после
   пересоздания пода скачивается заново (кнопка «Обновить» в разделе репозиториев).
-- **Пробы.** Пока есть только `/healthz`; liveness и readiness используют его. Состояние draining
-  при остановке реплики уже отдаётся (`Lifecycle.Draining()`), но эндпоинта `/readyz` ещё нет, поэтому
-  readiness-проба не сообщает балансировщику о снятии реплики — рассчитывайте на `KUBRON_DRAIN_DELAY`
-  и закрытие соединений кодом `1012`. После появления `/readyz` (проверка БД) readiness переключится
-  на него.
+- **Пробы.** `startupProbe` и `livenessProbe` — `/healthz`: процесс жив, порт слушается; БД он не
+  проверяет, поэтому её недоступность не приводит к перезапуску подов. `readinessProbe` — `/readyz`:
+  `200`, если реплика принимает трафик, и `503`, если БД не отвечает (проверка до 2 с, результат
+  кэшируется на 1 с) или реплика останавливается (draining после SIGTERM, см. `docs/ha.md`). Ответ —
+  JSON без подробностей ошибки (эндпоинт открыт без входа):
+  `{"status":"not_ready","draining":false,"checks":{"database":"fail"}}`. Без PostgreSQL
+  (файловое хранилище) проверка БД пропускается (`"skipped"`). Поэтому при остановке реплика снимается
+  с Service сразу, а `KUBRON_DRAIN_DELAY` лишь оставляет время на распространение изменения.
 
 ## Проверка перед выкладкой
 

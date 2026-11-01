@@ -192,3 +192,37 @@ func TestTerminalWSStreamOnAnotherReplica(t *testing.T) {
 	}
 	ws.Close()
 }
+
+func TestTerminalWSInputRefusedAfterSessionRemoved(t *testing.T) {
+	f := newTermFixture(t)
+	ws, _, err := f.dial(f.id, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ws.Close()
+	if err := ws.WriteMessage(websocket.BinaryMessage, []byte("a")); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, func() bool { f.mu.Lock(); defer f.mu.Unlock(); return string(f.input) == "a" })
+	f.reg.Remove(f.id) // терминал больше не принадлежит сессии
+	_ = ws.WriteMessage(websocket.BinaryMessage, []byte("b"))
+	_ = ws.SetReadDeadline(time.Now().Add(2 * time.Second))
+	if _, _, err := ws.ReadMessage(); err == nil {
+		t.Error("the connection must be closed once the terminal is gone")
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if string(f.input) != "a" {
+		t.Errorf("input after removal reached the terminal: %q", f.input)
+	}
+}
+
+func waitFor(t *testing.T, cond func() bool) {
+	t.Helper()
+	for end := time.Now().Add(2 * time.Second); time.Now().Before(end); time.Sleep(10 * time.Millisecond) {
+		if cond() {
+			return
+		}
+	}
+	t.Fatal("condition not met in time")
+}

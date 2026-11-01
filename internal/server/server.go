@@ -33,6 +33,7 @@ func NewHandler(d *Dispatcher, static fs.FS, g *Guard, opts ...HandlerOption) ht
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		_, _ = w.Write([]byte("ok\n"))
 	})
+	registerReadyz(mux, g, o)
 	mux.HandleFunc("/api/", func(w http.ResponseWriter, _ *http.Request) {
 		writeError(w, http.StatusNotFound, "not_found", "no such API endpoint")
 	})

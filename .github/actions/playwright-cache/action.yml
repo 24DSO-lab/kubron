@@ -1,0 +1,19 @@
+name: Playwright browsers cache
+description: >
+  Кэш браузеров Playwright (~/.cache/ms-playwright) по версии Playwright
+  из frontend/package-lock.json. Ставится перед `npx playwright install`:
+  при попадании в кэш скачивание браузеров пропускается (--with-deps всё
+  равно ставит системные пакеты, это быстро).
+
+inputs:
+  browsers:
+    description: Браузеры job'а для ключа кэша (chromium или chromium-firefox)
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-${{ inputs.browsers }}-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}

@@ -447,6 +447,8 @@
   "extAuthenticatorIsAlreadyRegistered": "ext: authenticator {p0} is 已 registered",
   "kubronSessionTtl": "KUBRON_SESSION_TTL {p0}: {p1}",
   "listenAddress": "监听 {p0}：{p1}",
+  "metricsListenAddress": "metrics 监听 {p0}：{p1}",
+  "metricsListenAddressMustDifferFromTheMainListenAddressMetricsMustNotBeServedOnThePublicPort": "metrics 监听地址必须与主监听地址不同：/metrics 不能在公共端口上提供服务",
   "encryptionKeyIsNotSet": "encryption key 不是 set",
   "ciphertextWasEncryptedWithAnUnknownKey": "ciphertext was encrypted with an 未知 key",
   "failedToDecryptTheSecret": "失败： decrypt the secret",
@@ -510,7 +512,6 @@
   "trustedProxyHopsCannotBeNegative": "可信代理数量不能为负数",
   "trustedProxiesAndHopsAreUsed": "可信代理及其数量仅与 trust-proxy 一起生效 (KUBRON_TRUST_PROXY=1)",
   "tooManyRequestsTryAgainIn": "请求过多，请在 {p0} 秒后重试",
-
   "webSessionNotFound": "未找到 Web 会话",
   "sessionStoreIsUnavailable": "会话存储不可用",
   "kubronDrainDelay": "KUBRON_DRAIN_DELAY {p0}: {p1}",
@@ -535,7 +536,6 @@
   "kubronPfSchemeMustBeHttpsOrHttp": "KUBRON_PF_SCHEME 必须为 https 或 http",
   "portForwardTimeoutsCannotBeNegative": "port-forward 超时不能为负数",
   "kubronPfSchemeHttpIsAllowedOnlyForALocalhostBaseDomain": "KUBRON_PF_SCHEME=http 仅允许用于 localhost 基础域名",
-
   "replicaEventIsTooLargeBytes": "副本事件过大：{p0} 字节",
   "replicaEventCannotBeDecoded": "无法解析副本事件：{p0}",
   "replicaEventHasAnUnsupportedVersion": "副本事件的版本不受支持：{p0}",
@@ -549,5 +549,8 @@
   "streamIsOnAnotherReplica": "该流位于另一个副本上",
   "kubronAuditRetention": "KUBRON_AUDIT_RETENTION {p0}：{p1}",
   "auditRetentionMustBe0ForeverOr": "审计保留期必须为 0（永久）或至少 24 小时",
-  "panic": "panic：{p0}"
+  "panic": "panic：{p0}",
+  "terminalsAreDisabledByTheAdministrator": "终端已被管理员禁用",
+  "nodeShellIsDisabledByTheAdministrator": "节点 Shell 已被管理员禁用",
+  "terminalTimeoutsCannotBeNegative": "终端超时时间不能为负数"
 }

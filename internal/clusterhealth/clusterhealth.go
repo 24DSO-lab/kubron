@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 	"unicode/utf8"
 )
@@ -78,6 +79,17 @@ func (b *Board) Get(id string) (Health, bool) {
 	defer b.mu.RUnlock()
 	h, ok := b.m[id]
 	return h, ok
+}
+
+// Counts возвращает число кластеров по состояниям (для метрик: без имён и идентификаторов кластеров).
+func (b *Board) Counts() map[State]int {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	out := make(map[State]int, len(b.m))
+	for _, h := range b.m {
+		out[h.State]++
+	}
+	return out
 }
 
 // Set записывает результат; возвращает true, если состояние или причина изменились.
@@ -165,7 +177,14 @@ type Monitor struct {
 	Logf func(format string, args ...any)
 	// Now — часы (тесты).
 	Now func() time.Time
+
+	follower atomic.Bool // true: на последнем круге эта реплика читала результаты лидера
+	ticked   atomic.Bool // был хотя бы один круг
 }
+
+// IsLeader — эта реплика сама проверяет кластеры (без Leader — единственная, значит лидер). До первого
+// круга false: состояние ещё неизвестно.
+func (m *Monitor) IsLeader() bool { return m.ticked.Load() && !m.follower.Load() }
 
 func (m *Monitor) interval() time.Duration {
 	if m.Interval > 0 {
@@ -224,10 +243,13 @@ func (m *Monitor) Tick(ctx context.Context) {
 	if ctx.Err() != nil {
 		return
 	}
+	m.ticked.Store(true)
 	if m.Leader != nil && !m.Leader.Acquire(ctx) {
+		m.follower.Store(true)
 		m.follow(ctx)
 		return
 	}
+	m.follower.Store(false)
 	ids, err := m.List()
 	if err != nil {
 		m.logf("cluster health: list clusters: %v", err)

@@ -120,6 +120,10 @@ type shared struct {
 	access   Access                // nil — прежняя модель: глобальная роль пользователя
 	sessions map[*Service]struct{} // живые сессии, включая неявную сессию десктопа
 
+	// Счётчики для метрик (только числа, без имён пользователей и адресов).
+	loginBlocked    atomic.Int64 // попытки входа, отклонённые из-за действующей блокировки
+	lockoutsStarted atomic.Int64 // сколько раз серия неудач привела к блокировке
+
 	missAt atomic.Int64 // когда последний раз перечитывали пользователей из-за неизвестного логина (UnixNano)
 
 	dummyOnce sync.Once
@@ -538,6 +542,7 @@ func (s *Service) Login(username, password string) (*UserInfo, error) {
 
 	ipKey := s.ipKey()
 	if remaining := max(s.lockRemainingLocked(key), shared, s.lockRemainingLocked(ipKey)); remaining > 0 {
+		s.loginBlocked.Add(1)
 		s.record(&UserRecord{Username: username}, "Login", audit.ResultDenied, "login temporarily blocked after failed attempts")
 
 		s.mu.Unlock()
@@ -828,6 +833,9 @@ func (s *Service) recordFailureLocked(key string, free int) {
 	f.count++
 	f.last = s.now()
 	if f.count >= free {
+		if !f.lockedUntil.After(s.now()) {
+			s.lockoutsStarted.Add(1) // новый период блокировки (первый или повторный после истечения прежнего)
+		}
 		exp := f.count - free
 		if exp > 6 {
 			exp = 6
@@ -1173,4 +1181,16 @@ func validateCredentialsPassword(username, password string) error {
 		return ErrWeakPassword
 	}
 	return nil
+}
+
+// Stats — счётчики защиты входа для метрик: сколько попыток отклонено блокировкой и сколько блокировок
+// началось с запуска процесса. Только числа: ни логинов, ни адресов.
+type Stats struct{ LoginBlocked, LockoutsStarted int64 }
+
+// Stats возвращает счётчики общего состояния; безопасно вызывать из любого вида.
+func (s *Service) Stats() Stats {
+	if s == nil || s.shared == nil {
+		return Stats{}
+	}
+	return Stats{LoginBlocked: s.loginBlocked.Load(), LockoutsStarted: s.lockoutsStarted.Load()}
 }

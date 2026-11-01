@@ -15,6 +15,7 @@ import NodePodsTab from '../../components/resource/sections/NodePodsTab.vue'
 import { Perm } from '../../types/auth'
 import { t } from '../../i18n'
 import { errorText } from '../../composables/errorText'
+import { hasCapability } from '../../composables/useCapabilities'
 
 /** Цвет Conditions: зелёный — Ready без проблем, жёлтый — Ready с pressure, красный — NotReady */
 const conditionsColor = (n: any): string => {
@@ -98,7 +99,8 @@ export const node = defineResource<k8s.NodeInfo, k8s.NodeDetail>({
       id: 'shell',
       label: 'defs.menu.shell',
       icon: 'terminal',
-      permission: Perm.Exec,
+      permission: Perm.NodeShell,
+      when: () => hasCapability('nodeShell'),
       run: async (n, ctx) => {
         if (!(await ctx.confirm(
           t('defs.node.shellConfirm', { name: n.name }),

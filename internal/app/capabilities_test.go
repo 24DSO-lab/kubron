@@ -49,3 +49,42 @@ func TestGetCapabilitiesReportsPortForwardMode(t *testing.T) {
 		t.Fatalf("off must hide port-forward: %+v", c)
 	}
 }
+
+type shellPlatform struct{ nopPlatform }
+
+func (shellPlatform) Capabilities() Capabilities { return Capabilities{Exec: true, NodeShell: true} }
+
+func TestGetCapabilitiesReflectsDisableFlags(t *testing.T) {
+	cases := []struct {
+		name      string
+		p         InteractivePolicy
+		exec, nsh bool
+	}{
+		{"nothing disabled", InteractivePolicy{}, true, true},
+		{"node shell only", InteractivePolicy{DisableNodeShell: true}, true, false},
+		{"exec takes the node shell with it", InteractivePolicy{DisableExec: true}, false, false},
+	}
+	for _, tc := range cases {
+		root := NewApp(shellPlatform{})
+		SetInteractivePolicy(root, tc.p)
+		if c := root.GetCapabilities(); c.Exec != tc.exec || c.NodeShell != tc.nsh {
+			t.Errorf("%s: exec=%v nodeShell=%v, expected %v/%v", tc.name, c.Exec, c.NodeShell, tc.exec, tc.nsh)
+		}
+	}
+}
+
+func TestDisabledTerminalsReturnClearErrors(t *testing.T) {
+	a := NewApp(shellPlatform{})
+	SetInteractivePolicy(a, InteractivePolicy{DisableExec: true})
+	if err := a.checkTerminalTarget("default", "web"); err != errExecDisabled {
+		t.Errorf("a pod terminal must be refused when exec is disabled: %v", err)
+	}
+	a = NewApp(shellPlatform{})
+	SetInteractivePolicy(a, InteractivePolicy{DisableNodeShell: true})
+	if err := a.checkTerminalTarget("default", "web"); err != nil {
+		t.Errorf("a pod terminal must stay available when only the node shell is disabled: %v", err)
+	}
+	if err := a.checkTerminalTarget("kube-system", "kubron-node-shell-abc12"); err != errNodeShellDisabled {
+		t.Errorf("the node shell pod must be refused: %v", err)
+	}
+}

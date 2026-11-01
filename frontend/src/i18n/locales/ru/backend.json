@@ -447,6 +447,8 @@
   "extAuthenticatorIsAlreadyRegistered": "ext: аутентификатор {p0} уже зарегистрирован",
   "kubronSessionTtl": "KUBRON_SESSION_TTL {p0}: {p1}",
   "listenAddress": "адрес прослушивания {p0}: {p1}",
+  "metricsListenAddress": "адрес прослушивания метрик {p0}: {p1}",
+  "metricsListenAddressMustDifferFromTheMainListenAddressMetricsMustNotBeServedOnThePublicPort": "адрес прослушивания метрик должен отличаться от основного адреса прослушивания: /metrics не должен обслуживаться на публичном порту",
   "encryptionKeyIsNotSet": "ключ шифрования не задан",
   "ciphertextWasEncryptedWithAnUnknownKey": "данные зашифрованы неизвестным ключом",
   "failedToDecryptTheSecret": "не удалось расшифровать секрет",
@@ -510,7 +512,6 @@
   "trustedProxyHopsCannotBeNegative": "число доверенных прокси не может быть отрицательным",
   "trustedProxiesAndHopsAreUsed": "доверенные прокси и их число действуют только вместе с trust-proxy (KUBRON_TRUST_PROXY=1)",
   "tooManyRequestsTryAgainIn": "слишком много запросов, повторите через {p0} с",
-
   "webSessionNotFound": "веб-сессия не найдена",
   "sessionStoreIsUnavailable": "хранилище сессий недоступно",
   "kubronDrainDelay": "KUBRON_DRAIN_DELAY {p0}: {p1}",
@@ -535,7 +536,6 @@
   "kubronPfSchemeMustBeHttpsOrHttp": "KUBRON_PF_SCHEME должен быть https или http",
   "portForwardTimeoutsCannotBeNegative": "таймауты port-forward не могут быть отрицательными",
   "kubronPfSchemeHttpIsAllowedOnlyForALocalhostBaseDomain": "KUBRON_PF_SCHEME=http допустим только для localhost-домена",
-
   "replicaEventIsTooLargeBytes": "событие между репликами слишком велико: {p0} байт",
   "replicaEventCannotBeDecoded": "событие между репликами не удалось разобрать: {p0}",
   "replicaEventHasAnUnsupportedVersion": "событие между репликами имеет неподдерживаемую версию {p0}",
@@ -549,5 +549,8 @@
   "streamIsOnAnotherReplica": "поток открыт на другой реплике",
   "kubronAuditRetention": "KUBRON_AUDIT_RETENTION {p0}: {p1}",
   "auditRetentionMustBe0ForeverOr": "срок хранения аудита должен быть 0 (бессрочно) или не меньше 24 часов",
-  "panic": "паника: {p0}"
+  "panic": "паника: {p0}",
+  "terminalsAreDisabledByTheAdministrator": "Терминалы отключены администратором",
+  "nodeShellIsDisabledByTheAdministrator": "Оболочка на узле отключена администратором",
+  "terminalTimeoutsCannotBeNegative": "Сроки терминала не могут быть отрицательными"
 }

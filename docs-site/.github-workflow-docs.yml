@@ -1,0 +1,60 @@
+# Copy this file to: .github/workflows/docs.yml  (in the main kubron repository)
+
+name: Deploy docs
+
+on:
+  push:
+    branches: [master, main]
+    paths:
+      - 'docs-site/**'
+      - '.github/workflows/docs.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: docs-site/package-lock.json
+
+      - name: Install & build
+        working-directory: docs-site
+        env:
+          # Use '/kubron/' for https://24dso-labs.github.io/kubron/
+          # Use '/' for a custom domain or when the site is the only Pages content.
+          DOCS_BASE: /kubron/
+        run: |
+          npm ci
+          npm run docs:build
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs-site/.vitepress/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

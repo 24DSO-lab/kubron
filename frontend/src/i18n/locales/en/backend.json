@@ -447,6 +447,8 @@
   "extAuthenticatorIsAlreadyRegistered": "ext: authenticator {p0} is already registered",
   "kubronSessionTtl": "KUBRON_SESSION_TTL {p0}: {p1}",
   "listenAddress": "listen {p0}: {p1}",
+  "metricsListenAddress": "metrics listen {p0}: {p1}",
+  "metricsListenAddressMustDifferFromTheMainListenAddressMetricsMustNotBeServedOnThePublicPort": "metrics listen address must differ from the main listen address: /metrics must not be served on the public port",
   "encryptionKeyIsNotSet": "encryption key is not set",
   "ciphertextWasEncryptedWithAnUnknownKey": "ciphertext was encrypted with an unknown key",
   "failedToDecryptTheSecret": "failed to decrypt the secret",
@@ -510,7 +512,6 @@
   "trustedProxyHopsCannotBeNegative": "trusted proxy hops cannot be negative",
   "trustedProxiesAndHopsAreUsed": "trusted proxies and hops are used only together with trust-proxy (KUBRON_TRUST_PROXY=1)",
   "tooManyRequestsTryAgainIn": "too many requests, try again in {p0} s",
-
   "webSessionNotFound": "web session not found",
   "sessionStoreIsUnavailable": "session store is unavailable",
   "kubronDrainDelay": "KUBRON_DRAIN_DELAY {p0}: {p1}",
@@ -535,7 +536,6 @@
   "kubronPfSchemeMustBeHttpsOrHttp": "KUBRON_PF_SCHEME must be https or http",
   "portForwardTimeoutsCannotBeNegative": "port-forward timeouts cannot be negative",
   "kubronPfSchemeHttpIsAllowedOnlyForALocalhostBaseDomain": "KUBRON_PF_SCHEME=http is allowed only for a localhost base domain",
-
   "replicaEventIsTooLargeBytes": "replica event is too large: {p0} bytes",
   "replicaEventCannotBeDecoded": "replica event cannot be decoded: {p0}",
   "replicaEventHasAnUnsupportedVersion": "replica event has an unsupported version {p0}",
@@ -549,5 +549,8 @@
   "streamIsOnAnotherReplica": "stream is on another replica",
   "kubronAuditRetention": "KUBRON_AUDIT_RETENTION {p0}: {p1}",
   "auditRetentionMustBe0ForeverOr": "audit retention must be 0 (forever) or at least 24h",
-  "panic": "panic: {p0}"
+  "panic": "panic: {p0}",
+  "terminalsAreDisabledByTheAdministrator": "terminals are disabled by the administrator",
+  "nodeShellIsDisabledByTheAdministrator": "node shell is disabled by the administrator",
+  "terminalTimeoutsCannotBeNegative": "terminal timeouts cannot be negative"
 }

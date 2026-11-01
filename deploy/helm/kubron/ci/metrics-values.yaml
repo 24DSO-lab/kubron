@@ -1,0 +1,9 @@
+# Метрики: отдельный порт, Service, ServiceMonitor и правило NetworkPolicy для namespace мониторинга
+secrets:
+  existingSecret: kubron-secrets
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    labels:
+      release: kube-prometheus-stack
