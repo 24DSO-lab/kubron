@@ -447,6 +447,8 @@
   "extAuthenticatorIsAlreadyRegistered": "ext: аутентификатор {p0} уже зарегистрирован",
   "kubronSessionTtl": "KUBRON_SESSION_TTL {p0}: {p1}",
   "listenAddress": "адрес прослушивания {p0}: {p1}",
+  "metricsListenAddress": "адрес прослушивания метрик {p0}: {p1}",
+  "metricsListenAddressMustDifferFromTheMainListenAddressMetricsMustNotBeServedOnThePublicPort": "адрес прослушивания метрик должен отличаться от основного адреса прослушивания: /metrics не должен обслуживаться на публичном порту",
   "encryptionKeyIsNotSet": "ключ шифрования не задан",
   "ciphertextWasEncryptedWithAnUnknownKey": "данные зашифрованы неизвестным ключом",
   "failedToDecryptTheSecret": "не удалось расшифровать секрет",

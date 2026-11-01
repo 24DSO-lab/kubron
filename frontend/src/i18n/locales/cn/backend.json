@@ -447,6 +447,8 @@
   "extAuthenticatorIsAlreadyRegistered": "ext: authenticator {p0} is 已 registered",
   "kubronSessionTtl": "KUBRON_SESSION_TTL {p0}: {p1}",
   "listenAddress": "监听 {p0}：{p1}",
+  "metricsListenAddress": "metrics 监听 {p0}：{p1}",
+  "metricsListenAddressMustDifferFromTheMainListenAddressMetricsMustNotBeServedOnThePublicPort": "metrics 监听地址必须与主监听地址不同：/metrics 不能在公共端口上提供服务",
   "encryptionKeyIsNotSet": "encryption key 不是 set",
   "ciphertextWasEncryptedWithAnUnknownKey": "ciphertext was encrypted with an 未知 key",
   "failedToDecryptTheSecret": "失败： decrypt the secret",

@@ -188,7 +188,8 @@ func main() {
 	}()
 	defer terminals.CloseAll()
 
-	handler := server.NewHandler(dispatcher, dist, guard, server.WithCSPReportOnly(cfg.CSPReportOnly))
+	handler := server.NewHandler(dispatcher, dist, guard,
+		server.WithCSPReportOnly(cfg.CSPReportOnly), readyzOption(pgStore, lifecycle))
 	handler = setupMetrics(ctx, cfg, metricsDeps{Core: core, Sessions: sessions, Hub: hub, Terminals: terminals,
 		PG: pgStore, Lifecycle: lifecycle}, handler, dispatcher)
 	if pf != nil {
