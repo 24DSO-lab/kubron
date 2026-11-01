@@ -520,10 +520,12 @@ func TestUpgradeTrafficCountsAsActivity(t *testing.T) {
 
 func TestConcurrencyAndBodyLimits(t *testing.T) {
 	block := make(chan struct{})
-	entered := make(chan struct{}) // сигнализирует, что медленный запрос захватил семафор
+
+	started := make(chan struct{}, 1)
 	svc, id, host := setup(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/slow" {
-			close(entered) // сообщаем, что захватили семафор
+			started <- struct{}{}
+
 			<-block
 		}
 		b, _ := io.ReadAll(r.Body)
@@ -544,38 +546,30 @@ func TestConcurrencyAndBodyLimits(t *testing.T) {
 		defer close(done)
 		resp, err := get("/slow", "")
 		if err != nil {
-			t.Logf("slow request error: %v", err)
+			t.Errorf("slow request: %v", err)
 			return
 		}
 		resp.Body.Close()
 	}()
 
-	// Ждём, пока медленный запрос захватит семафор, прежде чем начинать опрос
 	select {
-	case <-entered:
+	case <-started: // медленный запрос держит единственный слот
 	case <-time.After(5 * time.Second):
-		t.Fatal("slow request did not enter the handler")
+		t.Fatal("the slow request never reached the application")
 	}
+	resp, err := get("/fast", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusServiceUnavailable {
+		t.Fatalf("the concurrency limit was not applied: status %d", resp.StatusCode)
 
-	deadline := time.Now().Add(3 * time.Second)
-	for {
-		resp, err := get("/fast", "")
-		if err != nil {
-			t.Fatal(err)
-		}
-		resp.Body.Close()
-		if resp.StatusCode == http.StatusServiceUnavailable {
-			break
-		}
-		if time.Now().After(deadline) {
-			t.Fatalf("the concurrency limit was not applied (last status %d)", resp.StatusCode)
-		}
-		time.Sleep(10 * time.Millisecond)
 	}
 	close(block)
 	<-done
 
-	resp, err := get("/fast", strings.Repeat("a", 100))
+	resp, err = get("/fast", strings.Repeat("a", 100))
 	if err != nil {
 		t.Fatal(err)
 	}
