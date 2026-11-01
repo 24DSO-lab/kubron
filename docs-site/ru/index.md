@@ -34,7 +34,7 @@ features:
     details: Репозитории и чарты, установка и обновление релизов, история ревизий и rollback.
   - icon: ⟲
     title: GitOps в том же интерфейсе
-    details: Приложения Argo CD, ApplicationSet и проекты: sync, diff и граф ресурсов.
+    details: "Приложения Argo CD, ApplicationSet и проекты: sync, diff и граф ресурсов."
   - icon: ◉
     title: Приватность по умолчанию
     details: В desktop-режиме нет телеметрии и обязательной учётной записи. Kubeconfig остаётся на вашей машине.
