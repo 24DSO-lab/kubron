@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/24DSO-labs/kubron/internal/netpolicy"
+	"github.com/24DSO-labs/kubron/internal/oidcpassword"
 	"k8s.io/client-go/rest"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 )
@@ -258,5 +259,53 @@ func TestNoDirectSPDYOrWebSocketDialers(t *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+// Адрес IdP (issuer из kubeconfig пользователя) и token_endpoint из ответа самого IdP — тот же SSRF-вектор, что и
+// адрес API-сервера: запросы к IdP идут через политику.
+func TestIdPRequestsHonorAddressPolicy(t *testing.T) {
+	idp := newFakeIdP(t)
+	sec := &oidcSecret{IssuerURL: idp.srv.URL, ClientID: "kubernetes", Username: "alice", Password: "s3cret"}
+	token := func() error { _, _, err := sec.source().Token(t.Context()); return err }
+
+	if err := token(); err != nil {
+		t.Fatalf("without a policy the IdP works: %v", err)
+	}
+
+	useClusterAddrPolicy(t, netpolicy.ProfilePermissive, "")
+	idp.passwordN.Store(0)
+	if err := token(); err == nil || !netpolicy.IsBlocked(err) {
+		t.Errorf("an IdP on loopback must be blocked: %v", err)
+	}
+	if idp.passwordN.Load() != 0 {
+		t.Error("the IdP must not receive the request")
+	}
+
+	useClusterAddrPolicy(t, netpolicy.ProfilePermissive, "127.0.0.0/8")
+	if err := token(); err != nil {
+		t.Errorf("an allowed IdP must work: %v", err)
+	}
+
+	// Недоверенный IdP подсовывает в discovery внутренний token_endpoint.
+	var metaHits atomic.Int32
+	var evil *httptest.Server
+	evil = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		metaHits.Add(1)
+		writeJSON(w, 200, map[string]string{"issuer": evil.URL, "token_endpoint": "http://169.254.169.254/latest/api/token"})
+	}))
+	defer evil.Close()
+	bad := &oidcSecret{IssuerURL: evil.URL, ClientID: "k", Username: "u", Password: "p"}
+	if _, _, err := bad.source().Token(t.Context()); err == nil || !netpolicy.IsBlocked(err) || netpolicy.BlockReason(err) != netpolicy.ReasonMetadata {
+		t.Errorf("a token_endpoint on the metadata address must be blocked: %v", err)
+	}
+	if metaHits.Load() != 1 {
+		t.Errorf("only the discovery request must reach the IdP: %d", metaHits.Load())
+	}
+
+	// При сохранении литерал IP проверяется сразу.
+	useClusterAddrPolicy(t, netpolicy.ProfilePermissive, "")
+	if _, err := newOIDCSecret(oidcpassword.ExecParams{IssuerURL: "https://169.254.169.254/", ClientID: "k"}, OIDCCredentials{Username: "u", Password: "p"}); err == nil {
+		t.Error("an issuer on the metadata address must be rejected when saving")
 	}
 }

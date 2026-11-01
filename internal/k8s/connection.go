@@ -18,6 +18,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 
+	"github.com/24DSO-labs/kubron/internal/netpolicy"
 	"github.com/24DSO-labs/kubron/internal/oidcpassword"
 )
 
@@ -165,6 +166,10 @@ type oidcSecret struct {
 }
 
 func newOIDCSecret(p oidcpassword.ExecParams, cred OIDCCredentials) (*oidcSecret, error) {
+	// Адрес IdP проверяется политикой адресов до сохранения (литерал IP, схема); имена проверяет соединение.
+	if err := netpolicy.For(netpolicy.ScopeClusterAPI).CheckURL(p.IssuerURL); err != nil {
+		return nil, err
+	}
 	cred.Username = strings.TrimSpace(cred.Username)
 	if cred.Username == "" || cred.Password == "" {
 		return nil, errors.New("login and password are required")
@@ -182,6 +187,7 @@ func (s *oidcSecret) source() *oidcpassword.Source {
 	return oidcpassword.New(oidcpassword.Config{
 		IssuerURL: s.IssuerURL, ClientID: s.ClientID, ClientSecret: s.ClientSecret,
 		Username: s.Username, Password: s.Password, Scopes: append([]string{"openid"}, s.Scopes...),
+		HTTPClient: idpHTTPClient(),
 	})
 }
 

@@ -68,6 +68,17 @@ func applyClusterAddrPolicy(cfg *rest.Config) {
 	cfg.Proxy = func(*http.Request) (*url.URL, error) { return nil, nil }
 }
 
+// idpHTTPClient — HTTP-клиент для запросов к провайдеру аутентификации oidc-password. Адрес IdP (issuer) берётся из
+// kubeconfig пользователя, а token_endpoint — из ответа самого IdP, поэтому это тот же SSRF-вектор, что и адрес
+// API-сервера: соединения и редиректы идут через ту же политику. Без политики возвращается nil (клиент по умолчанию).
+func idpHTTPClient() *http.Client {
+	pol := netpolicy.For(netpolicy.ScopeClusterAPI)
+	if pol == nil {
+		return nil
+	}
+	return pol.NewHTTPClient(15 * time.Second)
+}
+
 // spdyRoundTripperFor — как spdy.RoundTripperFor, но терминал и port-forward открывают соединение через политику:
 // стандартная версия использует собственный дайлер и прокси из окружения и rest.Config.Dial не учитывает.
 func spdyRoundTripperFor(config *rest.Config) (http.RoundTripper, spdy.Upgrader, error) {
