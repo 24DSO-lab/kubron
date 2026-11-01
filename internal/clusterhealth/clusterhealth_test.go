@@ -274,3 +274,50 @@ func TestLeaderPublishesAndFollowerRefreshes(t *testing.T) {
 		t.Errorf("an unchanged round must not publish: %d", published.Load())
 	}
 }
+
+func TestBoardCounts(t *testing.T) {
+	b := NewBoard()
+	b.Set("a", Health{State: OK})
+	b.Set("b", Health{State: OK})
+	b.Set("c", Health{State: Unreachable})
+	got := b.Counts()
+	if got[OK] != 2 || got[Unreachable] != 1 || len(got) != 2 {
+		t.Fatalf("counts: %v", got)
+	}
+	if len(NewBoard().Counts()) != 0 {
+		t.Error("an empty board has no counts")
+	}
+}
+
+func TestIsLeader(t *testing.T) {
+	probe := func(context.Context, string) Health { return Health{State: OK} }
+	list := func() ([]string, error) { return []string{"a"}, nil }
+
+	// Без Leader монитор единственный: он лидер, но только после первого круга
+	alone := &Monitor{Board: NewBoard(), List: list, Probe: probe}
+	if alone.IsLeader() {
+		t.Error("before the first tick the state is unknown, not leader")
+	}
+	alone.Tick(context.Background())
+	if !alone.IsLeader() {
+		t.Error("a monitor without a Leader works alone and is the leader")
+	}
+
+	// С блокировкой лидерство следует за ней в обе стороны
+	l := &fakeLeader{}
+	m := &Monitor{Board: NewBoard(), List: list, Probe: probe, Leader: l, Sink: &memSink{}}
+	m.Tick(context.Background())
+	if m.IsLeader() {
+		t.Error("a replica that does not hold the lock is a follower")
+	}
+	l.lead.Store(true)
+	m.Tick(context.Background())
+	if !m.IsLeader() {
+		t.Error("the replica that took the lock is the leader")
+	}
+	l.lead.Store(false)
+	m.Tick(context.Background())
+	if m.IsLeader() {
+		t.Error("a replica that lost the lock stops being the leader")
+	}
+}

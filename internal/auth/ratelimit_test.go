@@ -241,3 +241,43 @@ func TestLoginLockoutAuditHasSource(t *testing.T) {
 	}
 	t.Fatal("no lockout event in the audit log")
 }
+
+// Счётчики для метрик: сколько блокировок началось и сколько попыток отклонено блокировкой.
+func TestStatsCountLockoutsAndBlockedLogins(t *testing.T) {
+	s, _ := setupWithUser(t)
+	clock := fixedClock(s)
+	if st := s.Stats(); st != (Stats{}) {
+		t.Fatalf("fresh service: %+v", st)
+	}
+	v := s.NewSession("203.0.113.9")
+	for i := 0; i < freeAttempts; i++ {
+		if _, err := v.Login("bob", "wrong"); !errors.Is(err, ErrInvalidCredentials) {
+			t.Fatalf("attempt %d: %v", i, err)
+		}
+	}
+	if st := s.Stats(); st.LockoutsStarted != 1 || st.LoginBlocked != 0 {
+		t.Fatalf("after the lockout started: %+v", st)
+	}
+	if _, err := v.Login("bob", "bobs-own-pass"); !lockedFor(err) {
+		t.Fatalf("must be locked: %v", err)
+	}
+	if st := s.Stats(); st.LoginBlocked != 1 {
+		t.Fatalf("a rejected attempt must be counted: %+v", st)
+	}
+	// после истечения блокировки следующая неудача начинает новый период
+	*clock = clock.Add(2 * maxLockout)
+	if _, err := v.Login("bob", "wrong"); !errors.Is(err, ErrInvalidCredentials) {
+		t.Fatal(err)
+	}
+	if st := s.Stats(); st.LockoutsStarted != 2 {
+		t.Fatalf("a repeated lockout must be counted: %+v", st)
+	}
+	// счётчики общие для видов: другой вид видит те же числа
+	if other := s.NewSession("198.51.100.1").Stats(); other != s.Stats() {
+		t.Fatalf("Stats must be shared by all views: %+v vs %+v", other, s.Stats())
+	}
+	var nilSvc *Service
+	if nilSvc.Stats() != (Stats{}) {
+		t.Error("Stats on a nil Service must be zero")
+	}
+}

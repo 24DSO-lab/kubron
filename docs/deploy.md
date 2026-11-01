@@ -109,6 +109,13 @@ helm install kubron deploy/helm/kubron -n kubron \
 «Адрес API-сервера кластера»); при желании сузьте и egress в NetworkPolicy.
 Политика требует CNI с поддержкой NetworkPolicy.
 
+### Метрики
+
+`metrics.enabled=true` включает `/metrics` на отдельном порту (`metrics.port`, 9090), отдельный Service
+`<release>-metrics` и правило NetworkPolicy, пускающее на этот порт только `networkPolicy.metrics.from`
+(по умолчанию namespace `monitoring`). Ingress порт метрик не получает. Для Prometheus Operator
+`metrics.serviceMonitor.enabled=true`. Список метрик и запросы — `docs/metrics.md`.
+
 ### Режим in-cluster и RBAC
 
 `inCluster.enabled=true` монтирует токен ServiceAccount (по умолчанию он не монтируется).

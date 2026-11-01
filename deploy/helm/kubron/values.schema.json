@@ -496,6 +496,15 @@
               "$ref": "#/definitions/k8sObjectList"
             }
           }
+        },
+        "metrics": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "from": {
+              "$ref": "#/definitions/k8sObjectList"
+            }
+          }
         }
       }
     },
@@ -525,6 +534,56 @@
     },
     "extraVolumeMounts": {
       "$ref": "#/definitions/k8sObjectList"
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "service": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "annotations": {
+              "$ref": "#/definitions/stringMap"
+            }
+          }
+        },
+        "serviceMonitor": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "namespace": {
+              "type": "string"
+            },
+            "labels": {
+              "$ref": "#/definitions/stringMap"
+            },
+            "interval": {
+              "type": "string"
+            },
+            "scrapeTimeout": {
+              "type": "string"
+            },
+            "relabelings": {
+              "$ref": "#/definitions/k8sObjectList"
+            },
+            "metricRelabelings": {
+              "$ref": "#/definitions/k8sObjectList"
+            }
+          }
+        }
+      }
     }
   }
 }

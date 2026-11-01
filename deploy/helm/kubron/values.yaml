@@ -77,6 +77,28 @@ service:
   port: 80
   annotations: {}
 
+# ── Метрики Prometheus ───────────────────────────────────────────────────────
+# Сервер отдаёт /metrics на отдельном порту (KUBRON_METRICS_LISTEN), не на публичном. Порт
+# не входит в основной Service и Ingress; для него создаётся отдельный Service <имя>-metrics.
+# У эндпоинта нет аутентификации, поэтому доступ ограничивает NetworkPolicy (networkPolicy.metrics.from).
+# В метриках нет имён пользователей, команд и кластеров (см. docs/metrics.md).
+metrics:
+  enabled: false
+  port: 9090
+  service:
+    annotations: {}
+  # Требует CRD Prometheus Operator (monitoring.coreos.com/v1)
+  serviceMonitor:
+    enabled: false
+    # Namespace ServiceMonitor; пусто — namespace релиза
+    namespace: ""
+    # Метки, по которым Prometheus выбирает ServiceMonitor (например, release: kube-prometheus-stack)
+    labels: {}
+    interval: 30s
+    scrapeTimeout: 10s
+    relabelings: []
+    metricRelabelings: []
+
 # ── Ingress ──────────────────────────────────────────────────────────────────
 # WebSocket (/api/ws, /api/terminal/*) не требует отдельной настройки у большинства контроллеров,
 # но у ingress-nginx нужны большие таймауты: иначе терминал и события рвутся через 60 секунд.
@@ -262,6 +284,13 @@ networkPolicy:
       - namespaceSelector:
           matchLabels:
             kubernetes.io/metadata.name: ingress-nginx
+  metrics:
+    # Откуда разрешён доступ к порту метрик (при metrics.enabled). По умолчанию — namespace monitoring.
+    # Пустой список разрешит доступ всем источникам кластера: так не делайте.
+    from:
+      - namespaceSelector:
+          matchLabels:
+            kubernetes.io/metadata.name: monitoring
   egress:
     dns:
       # Адресаты DNS. Пустой список — порт 53 куда угодно (если DNS нестандартный, например NodeLocal).

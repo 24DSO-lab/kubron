@@ -206,23 +206,24 @@ func TestLoadConfigProxyTrustAndCSP(t *testing.T) {
 	}
 }
 
-func TestLoadConfigInteractiveFlags(t *testing.T) {
+func TestLoadConfigMetricsListen(t *testing.T) {
 	cfg, err := LoadConfig(nil, env(nil), io.Discard)
-	if err != nil || cfg.DisableExec || cfg.DisableNodeShell || cfg.DisablePortForward ||
-		cfg.TerminalMaxDuration != DefaultTerminalMaxDuration || cfg.TerminalIdleTimeout != DefaultTerminalIdleTimeout {
-		t.Fatalf("defaults: %+v %v", cfg, err)
+	if err != nil || cfg.MetricsListen != "" {
+		t.Fatalf("metrics must be off by default: %+v %v", cfg, err)
 	}
-	cfg, err = LoadConfig([]string{"--disable-node-shell"}, env(map[string]string{
-		"KUBRON_DISABLE_EXEC": "1", "KUBRON_DISABLE_PORT_FORWARD": "true",
-		"KUBRON_TERMINAL_MAX_DURATION": "2h", "KUBRON_TERMINAL_IDLE_TIMEOUT": "0"}), io.Discard)
-	if err != nil || !cfg.DisableExec || !cfg.DisableNodeShell || !cfg.DisablePortForward ||
-		cfg.TerminalMaxDuration != 2*time.Hour || cfg.TerminalIdleTimeout != 0 {
-		t.Fatalf("env and flags: %+v %v", cfg, err)
+	cfg, err = LoadConfig(nil, env(map[string]string{"KUBRON_METRICS_LISTEN": " 127.0.0.1:9090 "}), io.Discard)
+	if err != nil || cfg.MetricsListen != "127.0.0.1:9090" {
+		t.Fatalf("env: %+v %v", cfg, err)
 	}
-	if _, err := LoadConfig(nil, env(map[string]string{"KUBRON_TERMINAL_IDLE_TIMEOUT": "-1m"}), io.Discard); err == nil {
-		t.Error("a negative timeout must be rejected")
+	cfg, err = LoadConfig([]string{"--metrics-listen", "127.0.0.1:9100"}, env(map[string]string{"KUBRON_METRICS_LISTEN": "127.0.0.1:9090"}), io.Discard)
+	if err != nil || cfg.MetricsListen != "127.0.0.1:9100" {
+		t.Fatalf("flag takes precedence over env: %+v %v", cfg, err)
 	}
-	if _, err := LoadConfig(nil, env(map[string]string{"KUBRON_TERMINAL_MAX_DURATION": "soon"}), io.Discard); err == nil {
-		t.Error("a malformed duration must be rejected")
+	// Метрики на публичном порту не допускаются; адрес без порта — ошибка конфигурации
+	if _, err := LoadConfig([]string{"--listen", "127.0.0.1:8080", "--metrics-listen", "127.0.0.1:8080"}, env(nil), io.Discard); err == nil {
+		t.Error("metrics on the main listen address must be rejected")
+	}
+	if _, err := LoadConfig([]string{"--metrics-listen", "not-an-address"}, env(nil), io.Discard); err == nil {
+		t.Error("a metrics address without a port must be rejected")
 	}
 }

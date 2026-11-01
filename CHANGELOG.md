@@ -16,6 +16,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Operations:** `/readyz` checks the database (when PostgreSQL is used) and answers `503` while the replica
   is draining; the Helm chart uses it for `readinessProbe` (`/healthz` stays for liveness and startup).
 
+- **Operations:** Prometheus metrics on a separate port (`KUBRON_METRICS_LISTEN`, off by default): RPC
+  requests, errors and latency by method, sessions, WebSocket connections, terminals, log streams,
+  port-forwards, cluster health states, health-check leader, login lockouts and `429`, DB pool, build info.
+  No user, team or cluster names in labels. The chart adds a separate metrics Service (not reachable through
+  the Ingress), an optional `ServiceMonitor` and a NetworkPolicy rule for the monitoring namespace.
+  See `docs/metrics.md`.
+
+
 ## [0.5.0] - 2026-11-01
 
 ### Added

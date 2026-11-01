@@ -55,6 +55,10 @@ type Config struct {
 	// ClusterCheckInterval — как часто сервер проверяет соединение с кластерами в фоне
 	// (KUBRON_CLUSTER_CHECK_INTERVAL, по умолчанию 30s; 0 — не проверять).
 	ClusterCheckInterval time.Duration
+	// MetricsListen — адрес отдельного листенера /metrics (KUBRON_METRICS_LISTEN, --metrics-listen). Пусто —
+	// метрики выключены (по умолчанию). Это не публичный порт: Ingress на него не смотрит, доступ к нему
+	// ограничивается сетью (NetworkPolicy), аутентификации у эндпоинта нет.
+	MetricsListen string
 	// ReplicaID — идентификатор реплики (KUBRON_REPLICA_ID): буквы, цифры, «-», «_», до 63 символов, без точки.
 	// Пусто — «<имя узла>-<случайный суффикс процесса>». Заданный вручную должен быть уникален среди реплик.
 	ReplicaID string
@@ -127,6 +131,7 @@ func LoadConfig(args []string, getenv func(string) string, out io.Writer) (Confi
 	}
 	cfg.AllowRemote = truthy(getenv("KUBRON_ALLOW_REMOTE"))
 	cfg.ReplicaID = strings.TrimSpace(getenv("KUBRON_REPLICA_ID"))
+	cfg.MetricsListen = strings.TrimSpace(getenv("KUBRON_METRICS_LISTEN"))
 	cfg.DataDir = getenv("KUBRON_DATA_DIR")
 	cfg.TrustProxy = truthy(getenv("KUBRON_TRUST_PROXY"))
 	cfg.CSPReportOnly = truthy(getenv("KUBRON_CSP_REPORT_ONLY"))
@@ -220,6 +225,8 @@ func LoadConfig(args []string, getenv func(string) string, out io.Writer) (Confi
 	fs.BoolVar(&cfg.CSPReportOnly, "csp-report-only", cfg.CSPReportOnly,
 		"send Content-Security-Policy as Report-Only: violations are logged by the browser, nothing is blocked (env KUBRON_CSP_REPORT_ONLY)")
 	fs.DurationVar(&cfg.SessionTTL, "session-ttl", cfg.SessionTTL, "web session lifetime (env KUBRON_SESSION_TTL)")
+	fs.StringVar(&cfg.MetricsListen, "metrics-listen", cfg.MetricsListen,
+		"address of the separate Prometheus /metrics listener, empty disables it; not exposed through the Ingress (env KUBRON_METRICS_LISTEN)")
 	fs.StringVar(&cfg.ReplicaID, "replica-id", cfg.ReplicaID,
 		"replica identifier: letters, digits, '-' and '_', up to 63 characters; empty means hostname plus a random suffix (env KUBRON_REPLICA_ID)")
 	fs.DurationVar(&cfg.DrainDelay, "drain-delay", cfg.DrainDelay,
@@ -295,6 +302,14 @@ func (c Config) Validate() error {
 		}
 		if h != "localhost" && !strings.HasSuffix(h, ".localhost") {
 			return errors.New("KUBRON_PF_SCHEME=http is allowed only for a localhost base domain")
+		}
+	}
+	if c.MetricsListen != "" {
+		if _, _, err := net.SplitHostPort(c.MetricsListen); err != nil {
+			return fmt.Errorf("metrics listen %q: %w", c.MetricsListen, err)
+		}
+		if c.MetricsListen == c.Listen {
+			return errors.New("metrics listen address must differ from the main listen address: /metrics must not be served on the public port")
 		}
 	}
 	if c.DatabaseURL != "" && c.SecretKey == "" {

@@ -9,6 +9,13 @@ data:
   KUBRON_LISTEN: {{ printf "0.0.0.0:%d" (int .Values.containerPort) | quote }}
   # Сервер слушает не loopback: без этого флага он не запустится. TLS завершает прокси/ingress.
   KUBRON_ALLOW_REMOTE: "1"
+  {{- if .Values.metrics.enabled }}
+  {{- if eq (int .Values.metrics.port) (int .Values.containerPort) }}
+  {{- fail "metrics.port must differ from containerPort: /metrics must not be served on the public port" }}
+  {{- end }}
+  # Метрики Prometheus на отдельном порту; Ingress до него не доходит (см. metrics-service.yaml)
+  KUBRON_METRICS_LISTEN: {{ printf "0.0.0.0:%d" (int .Values.metrics.port) | quote }}
+  {{- end }}
   KUBRON_TRUST_PROXY: {{ include "kubron.trustProxy" . | quote }}
   # Данные в PostgreSQL; каталог данных нужен только как рабочий (внутри emptyDir)
   KUBRON_DATA_DIR: "/home/nonroot/.kubron"
