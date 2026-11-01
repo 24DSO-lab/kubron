@@ -213,6 +213,49 @@ jobs:
           psql -c 'CREATE DATABASE kubron_test'
           go test -race -count=1 ./internal/pgstore/ ./internal/migrate/ ./internal/secretbox/
 
+  # Резервная копия восстанавливается (docs/backup.md): данные (пользователь, команда, кластер с секретом) →
+  # pg_dump → пустая БД → сервер с тем же ключом входит и расшифровывает секрет; неверный ключ даёт понятную
+  # ошибку; ротация ключа и rekey. Тот же сценарий запускается локально: scripts/restore-check.sh.
+  restore-check:
+    name: Restore check (pg_dump, restore, key)
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: 127.0.0.1
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: postgres
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+      - name: Build the server
+        # Заглушка вместо собранного фронтенда: для проверки данных он не нужен
+        run: |
+          mkdir -p frontend/dist && touch frontend/dist/.keep
+          go build -o kubron-server ./cmd/kubron-server
+      - name: Restore check
+        env:
+          KUBRON_SERVER_BIN: ./kubron-server
+        run: scripts/restore-check.sh
+
   # Windows-код (ConPTY и т.п.) Linux-job не компилирует
   windows:
     name: Go (Windows)

@@ -806,3 +806,47 @@ func mustKeyring(t *testing.T, cur string, prev ...string) *secretbox.Keyring {
 	}
 	return k
 }
+
+func TestCheckKey(t *testing.T) {
+	ctx := context.Background()
+	oldK, newK := keyString("2026-01"), keyString("2026-07")
+	s := newTestStore(t, oldK)
+	if err := s.CheckKey(ctx); err != nil {
+		t.Fatalf("a database without encrypted data must pass: %v", err)
+	}
+	saveCluster(t, s, "a", "A", []byte("kc"))
+
+	url := os.Getenv("KUBRON_TEST_DATABASE_URL")
+	open := func(cur string, prev ...string) *Store {
+		keys, err := secretbox.ParseKeyring(cur, prev...)
+		if err != nil {
+			t.Fatal(err)
+		}
+		n, err := Open(ctx, url, keys)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(n.Close)
+		return n
+	}
+	if err := open(oldK).CheckKey(ctx); err != nil {
+		t.Errorf("the right key: %v", err)
+	}
+	if err := open(newK, oldK).CheckKey(ctx); err != nil {
+		t.Errorf("a rotated keyring that still holds the old key: %v", err)
+	}
+	// Ключа, которым зашифрованы данные, нет в связке (потерян или не передан).
+	err := open(newK).CheckKey(ctx)
+	if !errors.Is(err, secretbox.ErrUnknownKey) || !strings.Contains(err.Error(), `"2026-01"`) {
+		t.Errorf("an unknown key must be reported with its id: %v", err)
+	}
+	// Тот же идентификатор, другие байты (ключ перепутан с другим окружением).
+	err = open(keyString("2026-01")).CheckKey(ctx)
+	if !errors.Is(err, secretbox.ErrDecrypt) {
+		t.Errorf("same id, different key bytes: %v", err)
+	}
+	// Ни ключ, ни расшифрованные данные в тексте ошибки не светятся.
+	if err != nil && (strings.Contains(err.Error(), oldK[strings.Index(oldK, ":")+1:])) {
+		t.Errorf("the error leaks key material: %v", err)
+	}
+}

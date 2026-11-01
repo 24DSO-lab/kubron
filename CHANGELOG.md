@@ -34,6 +34,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `request_id` (`X-Request-Id` header), `KUBRON_LOG_LEVEL` and `KUBRON_LOG_FORMAT`. `KUBRON_AUDIT_STDOUT=1`
   mirrors every audit record to stdout as a JSON line (`"type":"audit"`) for an external collector. See
   `docs/logging.md`.
+- **Operations:** `docs/backup.md` (order of backup, restore, key rotation and `rekey`) and a CI job
+  `restore-check` (`scripts/restore-check.sh`: data → `pg_dump` → empty database → same key reads the secret;
+  a wrong key gives a clear error). The server now checks at startup that `KUBRON_SECRET_KEY` reads the
+  encrypted data in the database and refuses to start otherwise; `KUBRON_ALLOW_KEY_MISMATCH=1` starts it
+  without access to cluster secrets.
 - **Port-forward:** with several replicas a stream carries its owner in the id (one DNS label); a request to a stream of
   another replica gets `421` before the one-time ticket is spent, and `GetPortForwardURL`/`StopPortForward` answer
   `409 stream_elsewhere` (the UI retries). See ADR-0017, section 7.

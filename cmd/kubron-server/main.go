@@ -115,6 +115,9 @@ func main() {
 			fatal("database", err)
 		}
 		defer pg.Close()
+		if err := checkSecretKey(ctx, pg); err != nil {
+			fatal("database", err)
+		}
 		pgStore = pg
 		// События между репликами (LISTEN/NOTIFY, ADR-0016): прямой адрес БД, не pgbouncer в режиме transaction.
 		listenURL := cfg.DBListenURL
