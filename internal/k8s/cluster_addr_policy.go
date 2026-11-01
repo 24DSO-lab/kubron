@@ -11,12 +11,12 @@ import (
 	"time"
 
 	"github.com/24DSO-labs/kubron/internal/netpolicy"
-	"k8s.io/apimachinery/pkg/util/httpstream"
-	httpstreamspdy "k8s.io/apimachinery/pkg/util/httpstream/spdy"
 	"k8s.io/client-go/rest"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/client-go/tools/remotecommand"
 	"k8s.io/client-go/transport/spdy"
+	"k8s.io/streaming/pkg/httpstream"
+	httpstreamspdy "k8s.io/streaming/pkg/httpstream/spdy"
 )
 
 // Политика адреса API-сервера кластера (ADR-0015). Адрес сервера берётся из kubeconfig, который прислал пользователь,
@@ -90,7 +90,19 @@ func spdyRoundTripperFor(config *rest.Config) (http.RoundTripper, spdy.Upgrader,
 	if err != nil {
 		return nil, nil, err
 	}
-	return wrapper, upgrader, nil
+	return wrapper, &policySPDYUpgrader{Upgrader: spdy.NewUpgraderForStreaming(upgrader), rt: upgrader}, nil
+}
+
+// policySPDYUpgrader — upgrader для client-go (адаптер его compat-интерфейса к k8s.io/streaming-типам)
+// и одновременно RoundTripper через SPDY-транспорт с политикой — как прежний SpdyRoundTripper
+// из apimachinery, совмещавший обе роли.
+type policySPDYUpgrader struct {
+	spdy.Upgrader
+	rt http.RoundTripper
+}
+
+func (u *policySPDYUpgrader) RoundTrip(req *http.Request) (*http.Response, error) {
+	return u.rt.RoundTrip(req)
 }
 
 // spdyExecutorFor создаёт исполнитель exec: без политики — прежним remotecommand.NewSPDYExecutor, с политикой — через
