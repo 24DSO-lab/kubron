@@ -20,7 +20,7 @@ export interface Capabilities {
   nodeShell: boolean
   /** чтение kubeconfig с диска машины, где запущен бэкенд */
   localKubeconfig: boolean
-  /** вход через SSO/OIDC (платный модуль) */
+  /** вход через SSO/OIDC (модуль SSO) */
   sso: boolean
   /** сервер работает внутри Kubernetes: можно добавить его собственный кластер (in-cluster) */
   inCluster: boolean
