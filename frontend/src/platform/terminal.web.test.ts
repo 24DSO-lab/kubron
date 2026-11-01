@@ -84,13 +84,38 @@ describe('openWebTerminal', () => {
     expect(handlers.onExit).not.toHaveBeenCalled()
   })
 
-  it('ошибка подключения сокета → исключение', async () => {
-    vi.mocked(callApp).mockResolvedValueOnce('id' as never)
-    const p = openWebTerminal(params, { onData: vi.fn(), onExit: vi.fn() })
-    await vi.waitFor(() => expect(FakeWS.last).toBeDefined())
-    await Promise.resolve()
-    FakeWS.last.serverClose(1006, '')
-    await expect(p).rejects.toThrow('Could not connect')
+  it('ошибка подключения сокета после всех попыток → исключение', async () => {
+    vi.useFakeTimers()
+    try {
+      vi.mocked(callApp).mockResolvedValueOnce('id' as never)
+      const p = openWebTerminal(params, { onData: vi.fn(), onExit: vi.fn() })
+      const rejected = expect(p).rejects.toThrow('Could not connect')
+      for (let i = 0; i < 8; i++) {
+        await vi.advanceTimersByTimeAsync(400)
+        FakeWS.last.serverClose(1006, '')
+      }
+      await rejected
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('сокет не открылся на реплике без терминала (409) → повтор, затем подключение', async () => {
+    vi.useFakeTimers()
+    try {
+      vi.mocked(callApp).mockResolvedValueOnce('r1.abc' as never)
+      const p = openWebTerminal(params, { onData: vi.fn(), onExit: vi.fn() })
+      await vi.advanceTimersByTimeAsync(0)
+      const first = FakeWS.last
+      first.serverClose(1006, '') // ответ 409 от другой реплики виден браузеру как сбой подключения
+      await vi.advanceTimersByTimeAsync(400)
+      expect(FakeWS.last).not.toBe(first)
+      expect(FakeWS.last.url).toBe(first.url)
+      FakeWS.last.open()
+      await expect(p).resolves.toBeDefined()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('ошибка OpenTerminal пробрасывается', async () => {

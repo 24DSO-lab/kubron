@@ -21,6 +21,7 @@
     "noLogs": "Нет логов",
     "noPods": "Поды не найдены",
     "streamClosed": "[{pod}поток закрыт{reason}]",
+    "streamRestored": "[поток восстановлен: продолжение с текущего момента]",
     "error": "Ошибка: {message}"
   },
   "terminal": {

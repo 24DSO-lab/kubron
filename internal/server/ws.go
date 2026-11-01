@@ -42,7 +42,7 @@ func WSHandler(g *Guard) http.Handler {
 		}
 		c := g.Hub.Register(sess.ID)
 		defer c.Close()
-		serveConn(ws, c, func() bool { _, ok := g.Sessions.Get(token); return ok })
+		serveConn(ws, c, g.Lifecycle.ReplicaID(), func() bool { _, ok := g.Sessions.Get(token); return ok })
 	})
 }
 
@@ -61,7 +61,7 @@ func newUpgrader() websocket.Upgrader {
 	}
 }
 
-func serveConn(ws *websocket.Conn, c *Conn, alive func() bool) {
+func serveConn(ws *websocket.Conn, c *Conn, replica string, alive func() bool) {
 	defer ws.Close()
 	ws.SetReadLimit(wsReadLimit)
 	_ = ws.SetReadDeadline(time.Now().Add(wsPongWait))
@@ -81,7 +81,13 @@ func serveConn(ws *websocket.Conn, c *Conn, alive func() bool) {
 		}
 	}()
 
-	_ = c.Send(mustJSON(map[string]any{"op": "ready"}))
+	// replica — владелец потоков этого соединения: браузер даёт им идентификаторы с этим префиксом (ADR-0016),
+	// чтобы события потока шли в тот же сокет.
+	ready := map[string]any{"op": "ready"}
+	if replica != "" {
+		ready["replica"] = replica
+	}
+	_ = c.Send(mustJSON(ready))
 	tick := time.NewTicker(wsPingPeriod)
 	defer tick.Stop()
 	for { // запись: единственная горутина пишет в сокет
