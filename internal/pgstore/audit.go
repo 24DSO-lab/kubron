@@ -4,6 +4,7 @@
 package pgstore
 
 import (
+	"context"
 	"encoding/json"
 	"time"
 
