@@ -7,7 +7,7 @@ vi.mock('../platform/api', () => ({ callApp: vi.fn() }))
 
 import { callApp } from '../platform/api'
 import {
-  DEFAULT_CAPABILITIES, loadCapabilities, normalizeCapabilities, useCapabilities,
+  DEFAULT_CAPABILITIES, hasCapability, loadCapabilities, normalizeCapabilities, useCapabilities,
 } from './useCapabilities'
 
 describe('normalizeCapabilities', () => {
@@ -31,7 +31,7 @@ describe('normalizeCapabilities', () => {
   })
   it('по умолчанию десктопное поведение: всё локальное доступно, SSO нет', () => {
     expect(DEFAULT_CAPABILITIES).toEqual({
-      fileDialog: true, portForward: true, portForwardMode: 'local', nodeShell: true, localKubeconfig: true, sso: false, inCluster: false, teams: false,
+      fileDialog: true, portForward: true, portForwardMode: 'local', exec: true, nodeShell: true, localKubeconfig: true, sso: false, inCluster: false, teams: false,
     })
   })
 })
@@ -48,6 +48,13 @@ describe('loadCapabilities', () => {
     expect(capabilities.value.fileDialog).toBe(false)
     expect(capabilities.value.sso).toBe(true)
     expect(loaded.value).toBe(true)
+  })
+
+  it('hasCapability читает флаги, отключённые администратором', async () => {
+    vi.mocked(callApp).mockResolvedValue({ exec: false, nodeShell: false } as never)
+    await loadCapabilities()
+    expect(hasCapability('exec')).toBe(false)
+    expect(hasCapability('nodeShell')).toBe(false)
   })
 
   it('при ошибке возвращает значения по умолчанию и не бросает', async () => {

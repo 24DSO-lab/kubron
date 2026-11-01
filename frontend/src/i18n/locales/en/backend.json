@@ -510,7 +510,6 @@
   "trustedProxyHopsCannotBeNegative": "trusted proxy hops cannot be negative",
   "trustedProxiesAndHopsAreUsed": "trusted proxies and hops are used only together with trust-proxy (KUBRON_TRUST_PROXY=1)",
   "tooManyRequestsTryAgainIn": "too many requests, try again in {p0} s",
-
   "webSessionNotFound": "web session not found",
   "sessionStoreIsUnavailable": "session store is unavailable",
   "kubronDrainDelay": "KUBRON_DRAIN_DELAY {p0}: {p1}",
@@ -535,7 +534,6 @@
   "kubronPfSchemeMustBeHttpsOrHttp": "KUBRON_PF_SCHEME must be https or http",
   "portForwardTimeoutsCannotBeNegative": "port-forward timeouts cannot be negative",
   "kubronPfSchemeHttpIsAllowedOnlyForALocalhostBaseDomain": "KUBRON_PF_SCHEME=http is allowed only for a localhost base domain",
-
   "replicaEventIsTooLargeBytes": "replica event is too large: {p0} bytes",
   "replicaEventCannotBeDecoded": "replica event cannot be decoded: {p0}",
   "replicaEventHasAnUnsupportedVersion": "replica event has an unsupported version {p0}",
@@ -546,5 +544,8 @@
   "aHelmRepositoryWithThisNameAlreadyExists": "a helm repository with this name already exists",
   "helmRepositoryOptionsAreCorrupted": "helm repository options are corrupted: {p0}",
   "proxyUrlInTheKubeconfigIsNotAllowedWhileTheClusterAddressPolicyIsEnabled": "proxy-url in the kubeconfig is not allowed while the cluster address policy is enabled",
-  "streamIsOnAnotherReplica": "stream is on another replica"
+  "streamIsOnAnotherReplica": "stream is on another replica",
+  "terminalsAreDisabledByTheAdministrator": "terminals are disabled by the administrator",
+  "nodeShellIsDisabledByTheAdministrator": "node shell is disabled by the administrator",
+  "terminalTimeoutsCannotBeNegative": "terminal timeouts cannot be negative"
 }

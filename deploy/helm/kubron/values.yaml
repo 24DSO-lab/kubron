@@ -58,6 +58,14 @@ kubron:
   maxTerminals: null
   maxLogStreams: null
   maxPortForwards: null
+  # Срок терминала и срок без ввода (например "8h", "30m"; "0" — без ограничения); пусто — 8h и 30m
+  terminalMaxDuration: ""
+  terminalIdleTimeout: ""
+  # Отключить для всех пользователей: port-forward, оболочку на узле, терминалы подов (exec/attach;
+  # оболочка узла работает через exec и отключается вместе с ними)
+  disablePortForward: false
+  disableNodeShell: false
+  disableExec: false
   # Дополнительные переменные окружения (список как в container.env)
   extraEnv: []
 

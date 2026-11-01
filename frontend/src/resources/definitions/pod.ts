@@ -18,6 +18,7 @@ import ContainersTab from '../../components/resource/sections/ContainersTab.vue'
 import TolerationsSection from '../../components/resource/sections/TolerationsSection.vue'
 import ConditionsSection from '../../components/resource/sections/ConditionsSection.vue'
 import { t } from '../../i18n'
+import { hasCapability } from '../../composables/useCapabilities'
 
 const k8s = useK8s()
 
@@ -123,6 +124,7 @@ export const pod = defineResource<models.PodInfo, models.PodDetail>({
     {
       id: 'attach',
       permission: Perm.Exec,
+      when: () => hasCapability('exec'),
       label: 'defs.menu.attach',
       icon: 'attach',
       perContainer: true,
@@ -135,6 +137,7 @@ export const pod = defineResource<models.PodInfo, models.PodDetail>({
     {
       id: 'shell',
       permission: Perm.Exec,
+      when: () => hasCapability('exec'),
       label: 'defs.menu.shell',
       icon: 'terminal',
       perContainer: true,

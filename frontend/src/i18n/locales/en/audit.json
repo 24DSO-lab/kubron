@@ -103,6 +103,14 @@
     "portforward": {
       "start": "Port-forward started",
       "stop": "Port-forward stopped"
+    },
+    "terminal": {
+      "start": "Terminal opened",
+      "stop": "Terminal closed"
+    },
+    "nodeshell": {
+      "start": "Node shell opened",
+      "stop": "Node shell closed"
     }
   },
   "export": {

@@ -103,6 +103,14 @@
     "portforward": {
       "start": "Port-forward 已启动",
       "stop": "Port-forward 已停止"
+    },
+    "terminal": {
+      "start": "终端已打开",
+      "stop": "终端已关闭"
+    },
+    "nodeshell": {
+      "start": "节点 Shell 已打开",
+      "stop": "节点 Shell 已关闭"
     }
   },
   "export": {

@@ -103,6 +103,14 @@
     "portforward": {
       "start": "Port-forward запущен",
       "stop": "Port-forward остановлен"
+    },
+    "terminal": {
+      "start": "Терминал открыт",
+      "stop": "Терминал закрыт"
+    },
+    "nodeshell": {
+      "start": "Оболочка на узле открыта",
+      "stop": "Оболочка на узле закрыта"
     }
   },
   "export": {

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Terminals:** separate `nodeshell` permission for the node shell (admin only by default), flags
+  `KUBRON_DISABLE_EXEC`, `KUBRON_DISABLE_NODE_SHELL`, `KUBRON_DISABLE_PORT_FORWARD` (reflected in
+  `GetCapabilities`), `KUBRON_TERMINAL_MAX_DURATION` / `KUBRON_TERMINAL_IDLE_TIMEOUT`, audit of terminal
+  start and end, and a per-frame owner check on the terminal WebSocket.
+
 ## [0.5.0] - 2026-11-01
 
 ### Added
