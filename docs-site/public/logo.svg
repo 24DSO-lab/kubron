@@ -1,12 +1,31 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 220" width="100%" height="100%">
   <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="120" y2="120" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#3B82F6"/>
-      <stop offset="0.5" stop-color="#6366F1"/>
-      <stop offset="1" stop-color="#8B5CF6"/>
+    <linearGradient id="k-grad-main" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38BDF8"/>
+      <stop offset="100%" stop-color="#0284C7"/>
+    </linearGradient>
+    <linearGradient id="k-grad-top" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#22D3EE"/>
+      <stop offset="100%" stop-color="#06B6D4"/>
+    </linearGradient>
+    <linearGradient id="k-grad-bottom" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#818CF8"/>
+      <stop offset="100%" stop-color="#4F46E5"/>
+    </linearGradient>
+    <linearGradient id="text-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#38BDF8"/>
+      <stop offset="100%" stop-color="#818CF8"/>
     </linearGradient>
   </defs>
-  <rect width="120" height="120" rx="28" fill="#0f172a"/>
-  <path d="M28 78V42l22 18 22-18v36" stroke="url(#g)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M72 42h20v36H72" stroke="url(#g)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" opacity="0.85"/>
+  <g transform="translate(15, 0)">
+    <polygon points="48,65 70,52.5 70,142.5 48,155" fill="#0284C7"/>
+    <polygon points="70,52.5 92,40 92,130 70,142.5" fill="url(#k-grad-main)"/>
+    <polygon points="104,33 160,65 160,110 104,78" fill="url(#k-grad-top)"/>
+    <polygon points="104,98 160,130 160,175 104,143" fill="url(#k-grad-bottom)"/>
+  </g>
+  <g transform="translate(210, 0)">
+    <text x="0" y="130" font-family="system-ui, -apple-system, sans-serif" font-size="72" font-weight="800" letter-spacing="2">
+      <tspan fill="#F8FAFC">KUB</tspan><tspan fill="url(#text-grad)">RON</tspan>
+    </text>
+  </g>
 </svg>
