@@ -23,7 +23,7 @@ func FromPostgres(s *pgstore.Store) Store { return pgBackend{s} }
 type pgBackend struct{ s *pgstore.Store }
 
 func (p pgBackend) Users() auth.Backend {
-	return pgUsers{Backend: auth.FromExt(p.s.Users()), d: p.s.UserDelta()}
+	return pgUsers{Backend: auth.FromExt(p.s.Users()), d: p.s.UserDelta(), f: p.s.LoginFailures()}
 }
 func (p pgBackend) Audit() audit.Backend       { return p.s.Audit() }
 func (p pgBackend) ArgoTokens() k8s.TokenStore { return p.s.ArgoTokens() }
@@ -109,9 +109,20 @@ func toMeta(c *pgstore.Cluster) k8s.ClusterMeta {
 type pgUsers struct {
 	auth.Backend
 	d pgstore.UserDelta
+	f *pgstore.LoginFailures
 }
 
-var _ auth.DeltaBackend = pgUsers{}
+var (
+	_ auth.DeltaBackend   = pgUsers{}
+	_ auth.FailureBackend = pgUsers{}
+)
+
+// Блокировки входа по логину общие для реплик (ADR-0016, раздел 5).
+func (u pgUsers) LockRemaining(key string) (time.Duration, error) { return u.f.LockRemaining(key) }
+func (u pgUsers) RecordFailure(key string, free int, base, max time.Duration) error {
+	return u.f.RecordFailure(key, free, base, max)
+}
+func (u pgUsers) ClearFailures(key string) error { return u.f.ClearFailures(key) }
 
 func (u pgUsers) UpsertUser(r auth.UserRecord) error { return u.d.UpsertUser(toExtUser(r)) }
 func (u pgUsers) TouchLogin(id string, at time.Time, passwordHash string) error {

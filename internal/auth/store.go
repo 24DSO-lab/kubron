@@ -58,6 +58,19 @@ type DeltaBackend interface {
 	SaveSettings(SecuritySettings) error
 }
 
+// FailureBackend — необязательное расширение Backend: счётчики неудачных входов по логину в общем хранилище
+// (PostgreSQL), чтобы блокировку нельзя было обойти, перебирая пароли через разные реплики (ADR-0016, раздел 5).
+// Счётчики по адресу клиента остаются в памяти процесса. Ключ — нормализованный логин (в том числе
+// несуществующего: по записи нельзя понять, есть ли такой пользователь); хранилище не должно хранить его открыто.
+type FailureBackend interface {
+	// LockRemaining возвращает, сколько ещё действует блокировка ключа (0 — не заблокирован).
+	LockRemaining(key string) (time.Duration, error)
+	// RecordFailure атомарно учитывает неудачу. С free-й неудачи ключ блокируется на base·2^(n−free), не дольше max.
+	RecordFailure(key string, free int, base, max time.Duration) error
+	// ClearFailures забывает счётчик ключа (успешный вход, смена пароля).
+	ClearFailures(key string) error
+}
+
 // store — пользователи и настройки в памяти поверх Backend. Не потокобезопасно: синхронизацию делает Service.
 type store struct {
 	backend  Backend

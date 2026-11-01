@@ -20,6 +20,7 @@ import (
 
 	"github.com/24DSO-labs/kubron/frontend"
 	"github.com/24DSO-labs/kubron/internal/app"
+	"github.com/24DSO-labs/kubron/internal/jobs"
 	"github.com/24DSO-labs/kubron/internal/k8s"
 	"github.com/24DSO-labs/kubron/internal/pgstore"
 	webplatform "github.com/24DSO-labs/kubron/internal/platform/web"
@@ -165,6 +166,10 @@ func main() {
 	go terminals.Run(ctx.Done(), 5*time.Second)
 	app.StartHealthMonitor(ctx, core, cfg.ClusterCheckInterval)
 	startEvents() // слушатель стартует после монитора: первая сверка читает результаты проверок
+	if pgStore != nil {
+		// Очистка просроченных строк и хранение аудита: исполняет одна реплика (pg_try_advisory_lock).
+		go jobs.Run(ctx, maintenanceJobs(pgStore, sessionBackend, cfg.AuditRetention)...)
+	}
 	// Фоновая уборка веб-сессий: закрывает те, у которых ядро уже завершило пользовательскую сессию
 	// (простой, отключение пользователя) или истёк срок, и освобождает их ресурсы и ссылки пула.
 	go func() {

@@ -205,3 +205,23 @@ func TestLoadConfigProxyTrustAndCSP(t *testing.T) {
 		}
 	}
 }
+
+func TestAuditRetentionConfig(t *testing.T) {
+	cfg, err := LoadConfig(nil, env(nil), io.Discard)
+	if err != nil || cfg.AuditRetention != 0 {
+		t.Fatalf("default must keep the audit log forever: %v %v", cfg.AuditRetention, err)
+	}
+	cfg, err = LoadConfig(nil, env(map[string]string{"KUBRON_AUDIT_RETENTION": "2160h"}), io.Discard)
+	if err != nil || cfg.AuditRetention != 2160*time.Hour {
+		t.Fatalf("env: %v %v", cfg.AuditRetention, err)
+	}
+	cfg, err = LoadConfig([]string{"--audit-retention", "48h"}, env(map[string]string{"KUBRON_AUDIT_RETENTION": "2160h"}), io.Discard)
+	if err != nil || cfg.AuditRetention != 48*time.Hour {
+		t.Fatalf("flag must win: %v %v", cfg.AuditRetention, err)
+	}
+	for _, bad := range []string{"90", "90d", "-24h", "1h"} { // без единиц, дни не поддерживаются, отрицательное, меньше суток
+		if _, err := LoadConfig(nil, env(map[string]string{"KUBRON_AUDIT_RETENTION": bad}), io.Discard); err == nil {
+			t.Errorf("KUBRON_AUDIT_RETENTION=%q must be rejected", bad)
+		}
+	}
+}
