@@ -1,52 +1,45 @@
 # Kubron documentation site
 
-VitePress site for [Kubron](https://github.com/24DSO-labs/kubron).
+VitePress documentation for [Kubron](https://github.com/24DSO-labs/kubron). English is the default locale; Russian is available under `/ru/`.
 
 ## Local development
 
 ```bash
 cd docs-site
-npm install
+npm ci
 npm run docs:dev
 ```
 
-Open the URL printed by VitePress (usually `localhost:5173`).
-
-## Build
+## Production build
 
 ```bash
 npm run docs:build
-# output → .vitepress/dist
+npm run docs:preview
 ```
 
-## Deploy
+The static site is generated into `.vitepress/dist`.
 
-1. Copy the whole `docs-site/` folder into the root of the `kubron` repository.
-2. Copy `.github-workflow-docs.yml` → `.github/workflows/docs.yml`.
-3. In the repository settings:
-   - **Settings → Pages → Build and deployment → Source**: GitHub Actions
-4. Push to `master`/`main` (or run the workflow manually).
+## GitHub Pages
 
-Default `DOCS_BASE` in the workflow is `/kubron/` →  
-**https://24dso-labs.github.io/kubron/**
+The repository workflow is [.github/workflows/docs.yml](../.github/workflows/docs.yml). It builds the site from `docs-site/` and deploys the artifact to GitHub Pages. In repository settings, select **Settings → Pages → Build and deployment → GitHub Actions**.
 
-For a custom domain set `DOCS_BASE=/` and configure the domain in Pages settings.
+The workflow sets `DOCS_BASE=/kubron/` for the project Pages URL. For a custom domain, set `DOCS_BASE=/` and configure the domain in Pages settings.
 
 ## Structure
 
 ```
 docs-site/
-├── .vitepress/          # config + theme
-├── guide/               # English guide
-├── features/
-├── server/
-├── development/
-├── ru/                  # Russian (partial)
-├── public/              # logo, favicon
-├── index.md             # English home
-└── package.json
+├── .vitepress/       # VitePress config and theme
+├── guide/            # English user guide
+├── features/         # English feature reference
+├── server/           # Server mode
+├── development/      # Contributor documentation
+├── ru/               # Russian versions of the sections above
+└── public/           # Brand assets
 ```
 
-## Free domain options
+Screenshots and the social preview are reused from `docs/images/` in the main repository so that documentation reflects the same product imagery as the README.
 
-See `DOMAIN.md` in this folder.
+## Keeping docs accurate
+
+When changing a user-facing feature, update the corresponding English and Russian pages in the same pull request. Avoid documenting roadmap items as shipped functionality. For server deployment details, keep the full operational guide in sync with `docs/deploy.md`.
