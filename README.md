@@ -17,17 +17,30 @@
 
 </div>
 
-<!--
-  TODO: add screenshots here (they are the single biggest README upgrade). Suggested files in docs/images/:
-  dashboard.png, pods.png, yaml-editor.png, argocd.png — light and dark variants via <picture>:
-
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/images/dashboard-dark.png">
-    <img alt="Kubron cluster dashboard" src="docs/images/dashboard-light.png">
-  </picture>
--->
-
 Kubron is a lightweight, open-source Kubernetes desktop IDE built with **Go** and **Wails**: a fast, private alternative to Lens with **Argo CD built in**. No telemetry, no mandatory account, your kubeconfig never leaves your machine.
+
+<p align="center">
+  <img src="docs/images/screenshots/overview.png" alt="Kubron cluster overview: node and pod counts, CPU and memory usage, pods closest to their limits, workloads, recent changes, blockers and certificate expiry" width="100%">
+</p>
+
+<details>
+<summary><b>More screenshots</b>: pods, YAML editor, Argo CD</summary>
+
+<br>
+
+**Pods**: status, restarts, node, controller and QoS at a glance, with CPU and memory per pod, bulk selection and a column chooser.
+
+<img src="docs/images/screenshots/pods.png" alt="Kubron pods list with CPU, memory, containers, status, restarts, node, controller and QoS columns" width="100%">
+
+**YAML editor**: edit any resource in place and review the diff before saving.
+
+<img src="docs/images/screenshots/yaml-editor.png" alt="Kubron YAML editor with a pod manifest, Reload and Review & Save buttons" width="100%">
+
+**Argo CD**: applications with sync and health status, revision, destination and last sync.
+
+<img src="docs/images/screenshots/argocd-applications.png" alt="Kubron Argo CD applications list with sync and health status" width="100%">
+
+</details>
 
 ## Why Kubron
 

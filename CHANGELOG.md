@@ -16,8 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **Docs:** refreshed README (logo, badges, `.deb` download, links to the user guides, server mode section,
-  roadmap with statuses); fixed the local web-server build steps. Added a social preview image
-  (`docs/images/social-preview.png`).
+  roadmap with statuses, screenshots of the overview, pods, YAML editor and Argo CD); fixed the local
+  web-server build steps. Added a social preview image (`docs/images/social-preview.png`).
 
 ### Security
 
