@@ -12,8 +12,8 @@
 replicaCount: 1
 
 image:
-  # TODO: публикация образа в реестр ещё не настроена (release.yml); укажите свой реестр.
-  repository: ghcr.io/vadimil224/kubron
+  # Образ публикует .github/workflows/publish.yml при теге vX.Y.Z; для собственной сборки укажите свой реестр.
+  repository: ghcr.io/24dso-labs/kubron
   # Пусто — appVersion чарта
   tag: ""
   # Если задан, имеет приоритет над tag: repository@sha256:...

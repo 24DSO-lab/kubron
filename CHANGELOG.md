@@ -14,12 +14,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   read-only RBAC for in-cluster mode). Guide: `docs/deploy.md`. Single replica only until HA.
 - **Repository:** OpenSSF Scorecard workflow (`scorecard.yml`, results in Code scanning) and
   `.github/CODEOWNERS`.
+- **Release:** `publish.yml` publishes the kubron-server image (`ghcr.io/24dso-labs/kubron`) and the Helm
+  chart (`oci://ghcr.io/24dso-labs/charts/kubron`) for `vX.Y.Z` tags, with build provenance for the image.
+  A manual run is a dry run unless `push` is ticked.
 
 ### Changed
 
 - **Docs:** refreshed README (logo, badges, `.deb` download, links to the user guides, server mode section,
   roadmap with statuses, screenshots of the overview, pods, YAML editor and Argo CD); fixed the local
   web-server build steps. Added a social preview image (`docs/images/social-preview.png`).
+- **Deploy:** the Helm chart now defaults to `image.repository: ghcr.io/24dso-labs/kubron` (it still pointed
+  to the previous account).
 
 ### Security
 
