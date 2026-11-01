@@ -2,21 +2,21 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { RECONNECTED, __resetForTests, closeEvents, connectEvents, flushSubscriptions, onEvent } from './events.web'
+import { CLOSE_SERVICE_RESTART, RECONNECTED, __resetForTests, closeEvents, connectEvents, flushSubscriptions, onEvent } from './events.web'
 
 class FakeWS {
   static all: FakeWS[] = []
   readyState = 1
   sent: any[] = []
   onmessage: ((e: { data: string }) => void) | null = null
-  onclose: (() => void) | null = null
+  onclose: ((e: { code?: number }) => void) | null = null
   onerror: (() => void) | null = null
   constructor(public url: string) { FakeWS.all.push(this) }
   send(s: string) { this.sent.push(JSON.parse(s)) }
-  close() { this.readyState = 3; this.onclose?.() }
+  close() { this.readyState = 3; this.onclose?.({}) }
   // сервер → клиент
   push(o: object) { this.onmessage?.({ data: JSON.stringify(o) }) }
-  drop() { this.readyState = 3; this.onclose?.() }
+  drop(code?: number) { this.readyState = 3; this.onclose?.({ code }) }
 }
 const last = () => FakeWS.all[FakeWS.all.length - 1]
 
@@ -74,6 +74,36 @@ describe('events.web', () => {
     last().push({ op: 'ready' })
     expect(last().sent[0].events.sort()).toEqual(['a', RECONNECTED].sort())
     expect(rec).toHaveBeenCalledTimes(1)
+  })
+
+  it('после 1012 переподключается быстро и не наращивает паузу', () => {
+    onEvent('a', () => {})
+    last().push({ op: 'ready' })
+    // серия обрывов без успешного ready: обычная пауза выросла бы до 4 с и больше
+    for (let i = 0; i < 3; i++) {
+      last().drop()
+      vi.advanceTimersByTime(60000)
+    }
+    const before = FakeWS.all.length
+    last().drop(CLOSE_SERVICE_RESTART)
+    expect(FakeWS.all).toHaveLength(before)
+    vi.advanceTimersByTime(1200)
+    expect(FakeWS.all).toHaveLength(before + 1)
+    last().push({ op: 'ready' })
+    expect(last().sent[0]).toEqual({ op: 'sub', events: ['a'] }) // подписки восстановлены
+  })
+
+  it('503 при подключении (реплика в draining) повторяется с обычной паузой', () => {
+    onEvent('a', () => {})
+    last().push({ op: 'ready' })
+    last().drop(CLOSE_SERVICE_RESTART)
+    vi.advanceTimersByTime(1200)
+    const n = FakeWS.all.length
+    last().drop(1006) // отказ в рукопожатии: код 1006
+    vi.advanceTimersByTime(100)
+    expect(FakeWS.all).toHaveLength(n) // пауза с нарастанием, а не мгновенный повтор
+    vi.advanceTimersByTime(2000)
+    expect(FakeWS.all).toHaveLength(n + 1)
   })
 
   it('closeEvents не переподключается до connectEvents', () => {

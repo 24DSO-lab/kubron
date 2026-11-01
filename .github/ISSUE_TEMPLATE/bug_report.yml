@@ -7,7 +7,7 @@ body:
       value: |
         Thanks for the report! Please **remove secrets** (tokens, kubeconfig contents,
         Secret values) from anything you paste below.
-        For security problems use [private reporting](https://github.com/VadimIl224/kubron/security/advisories/new) instead.
+        For security problems use [private reporting](https://github.com/24DSO-labs/kubron/security/advisories/new) instead.
   - type: input
     id: version
     attributes:

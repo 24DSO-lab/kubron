@@ -9,7 +9,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/VadimIl224/kubron/pkg/ext"
+	"github.com/24DSO-labs/kubron/pkg/ext"
 )
 
 func tokenAAD(clusterID string) []byte { return []byte("argo-token/" + clusterID) }

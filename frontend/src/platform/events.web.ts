@@ -8,6 +8,8 @@
  *   только при первом/последнем обработчике.
  * - При разрыве соединение восстанавливается с нарастающей паузой, подписки отправляются заново,
  *   а обработчикам псевдособытия RECONNECTED сообщается, что часть событий могла пропасть.
+ * - Код закрытия 1012 «перезапуск сервиса» — реплика остановлена штатно (ADR-0016): другая реплика
+ *   уже готова, поэтому переподключение быстрое (с разбросом) и без нарастания паузы.
  * - flushSubscriptions() — ожидание подтверждения подписок. Вызывается перед каждым RPC:
  *   запрос, запускающий поток (терминал, логи), не должен обогнать подписку на его события.
  */
@@ -20,6 +22,9 @@ export const RECONNECTED = 'platform:reconnected'
 
 const FLUSH_TIMEOUT_MS = 2000
 const MAX_BACKOFF_MS = 30000
+/** Код закрытия WebSocket «Service Restart» (RFC 6455): реплика останавливается штатно. */
+export const CLOSE_SERVICE_RESTART = 1012
+const RESTART_RECONNECT_MS = 1000 // верхняя граница случайной паузы после 1012
 
 const handlers = new Map<string, Set<Handler>>()
 let ws: WebSocket | null = null
@@ -70,19 +75,26 @@ function connect() {
       dispatch(msg.event, Array.isArray(msg.data) ? msg.data : [])
     }
   }
-  sock.onclose = () => {
+  sock.onclose = ev => {
     if (ws !== sock) return
     ws = null
     ready = false
     unacked = 0
     settle()
-    scheduleReconnect()
+    scheduleReconnect(ev?.code === CLOSE_SERVICE_RESTART)
   }
   sock.onerror = () => { /* подробностей браузер не даёт; onclose последует следом */ }
 }
 
-function scheduleReconnect() {
+function scheduleReconnect(restart = false) {
   if (!enabled || handlers.size === 0) return
+  clearTimeout(timer)
+  if (restart) {
+    // Реплика ушла штатно: не наращиваем паузу, но разбрасываем клиентов, чтобы они не пришли разом.
+    attempt = 0
+    timer = setTimeout(connect, 100 + Math.random() * RESTART_RECONNECT_MS)
+    return
+  }
   const base = Math.min(MAX_BACKOFF_MS, 500 * 2 ** attempt++)
   timer = setTimeout(connect, base * (0.5 + Math.random() / 2))
 }

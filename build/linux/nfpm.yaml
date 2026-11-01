@@ -12,7 +12,7 @@ maintainer: Vadim
 description: |
   Kubron: desktop Kubernetes manager.
   Wails + Go + Vue application for working with clusters.
-homepage: https://github.com/VadimIl224/kubron
+homepage: https://github.com/24DSO-labs/kubron
 license: Apache-2.0
 depends:
   - libgtk-3-0

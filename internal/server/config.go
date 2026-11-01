@@ -28,6 +28,9 @@ type Config struct {
 	// DatabaseURL — строка подключения к PostgreSQL (KUBRON_DATABASE_URL или --database-url). Пусто — файловое
 	// хранилище в каталоге данных. Пароль лучше передавать через переменную окружения: аргументы видны в списке процессов.
 	DatabaseURL string
+	// DBListenURL — прямой адрес PostgreSQL для LISTEN/NOTIFY между репликами (только KUBRON_DB_LISTEN_URL: в адресе
+	// может быть пароль). LISTEN не работает через pgbouncer в режиме transaction; пусто — используется DatabaseURL.
+	DBListenURL string
 	// SecretKey — ключ шифрования секретов в БД «id:base64» (только KUBRON_SECRET_KEY; флага нет).
 	// PreviousSecretKeys — прежние ключи для чтения после ротации (KUBRON_SECRET_KEY_PREVIOUS, через запятую).
 	SecretKey          string
@@ -52,11 +55,38 @@ type Config struct {
 	// ClusterCheckInterval — как часто сервер проверяет соединение с кластерами в фоне
 	// (KUBRON_CLUSTER_CHECK_INTERVAL, по умолчанию 30s; 0 — не проверять).
 	ClusterCheckInterval time.Duration
+	// ReplicaID — идентификатор реплики (KUBRON_REPLICA_ID): буквы, цифры, «-», «_», до 63 символов, без точки.
+	// Пусто — «<имя узла>-<случайный суффикс процесса>». Заданный вручную должен быть уникален среди реплик.
+	ReplicaID string
+	// DrainDelay — пауза между переходом в draining (SIGTERM) и закрытием WebSocket кадром 1012: за это время
+	// балансировщик снимает реплику с обслуживания (KUBRON_DRAIN_DELAY, по умолчанию 0; для сервиса за
+	// балансировщиком рекомендуется 5s). Меньше предела ожидания остановки пода (terminationGracePeriodSeconds).
+	DrainDelay time.Duration
 	// Лимиты ресурсов на одного пользователя (0 — без ограничения):
 	// KUBRON_MAX_TERMINALS, KUBRON_MAX_LOG_STREAMS, KUBRON_MAX_PORT_FORWARDS.
 	MaxTerminals    int
 	MaxLogStreams   int
 	MaxPortForwards int
+	// PFBaseDomain — домен потоков port-forward: браузер открывает {id}.pf.<домен> (KUBRON_PF_BASE_DOMAIN, ADR-0017).
+	// Нужны DNS и сертификат на *.pf.<домен>. Пусто: на сервере с БД или не-loopback адресом port-forward выключен,
+	// в режиме одного пользователя на loopback остаётся localhost-порт.
+	PFBaseDomain string
+	// PFScheme — схема адреса потока: https (по умолчанию) или http (KUBRON_PF_SCHEME; только для localhost-домена).
+	PFScheme string
+	// PFIdleTimeout и PFMaxDuration — простой и абсолютный срок потока (KUBRON_PF_IDLE_TIMEOUT, KUBRON_PF_MAX_DURATION);
+	// 0 — значения по умолчанию (15m и 8h).
+	PFIdleTimeout time.Duration
+	PFMaxDuration time.Duration
+}
+
+// ServiceMode — сервер для нескольких пользователей: база данных или адрес не на loopback.
+// Port-forward на localhost хоста сервера в нём недопустим.
+func (c Config) ServiceMode() bool {
+	if c.DatabaseURL != "" || c.AllowRemote {
+		return true
+	}
+	host, _, err := net.SplitHostPort(c.Listen)
+	return err != nil || !isLoopbackHost(host)
 }
 
 // Фоновая проверка кластеров: интервал по умолчанию и нижняя граница (чаще — лишняя нагрузка на API-серверы).
@@ -64,6 +94,9 @@ const (
 	DefaultClusterCheckInterval = 30 * time.Second
 	MinClusterCheckInterval     = 5 * time.Second
 )
+
+// MaxDrainDelay — верхняя граница KUBRON_DRAIN_DELAY (пауза обязана укладываться в время остановки пода).
+const MaxDrainDelay = 60 * time.Second
 
 // Лимиты ресурсов на пользователя по умолчанию (ADR-0005).
 const (
@@ -80,9 +113,24 @@ func LoadConfig(args []string, getenv func(string) string, out io.Writer) (Confi
 		cfg.Listen = v
 	}
 	cfg.AllowRemote = truthy(getenv("KUBRON_ALLOW_REMOTE"))
+	cfg.ReplicaID = strings.TrimSpace(getenv("KUBRON_REPLICA_ID"))
 	cfg.DataDir = getenv("KUBRON_DATA_DIR")
 	cfg.TrustProxy = truthy(getenv("KUBRON_TRUST_PROXY"))
 	cfg.CSPReportOnly = truthy(getenv("KUBRON_CSP_REPORT_ONLY"))
+	cfg.PFBaseDomain = strings.TrimSpace(getenv("KUBRON_PF_BASE_DOMAIN"))
+	cfg.PFScheme = strings.ToLower(strings.TrimSpace(getenv("KUBRON_PF_SCHEME")))
+	for _, d := range []struct {
+		env string
+		dst *time.Duration
+	}{{"KUBRON_PF_IDLE_TIMEOUT", &cfg.PFIdleTimeout}, {"KUBRON_PF_MAX_DURATION", &cfg.PFMaxDuration}} {
+		if v := getenv(d.env); v != "" {
+			dur, err := time.ParseDuration(v)
+			if err != nil {
+				return Config{}, fmt.Errorf("%s %q: %w", d.env, v, err)
+			}
+			*d.dst = dur
+		}
+	}
 	if v := getenv("KUBRON_TRUSTED_PROXY_HOPS"); v != "" {
 		n, err := strconv.Atoi(strings.TrimSpace(v))
 		if err != nil {
@@ -92,6 +140,7 @@ func LoadConfig(args []string, getenv func(string) string, out io.Writer) (Confi
 	}
 	trusted := getenv("KUBRON_TRUSTED_PROXIES")
 	cfg.DatabaseURL = getenv("KUBRON_DATABASE_URL")
+	cfg.DBListenURL = strings.TrimSpace(getenv("KUBRON_DB_LISTEN_URL"))
 	cfg.SecretKey = strings.TrimSpace(getenv("KUBRON_SECRET_KEY"))
 	for _, k := range strings.Split(getenv("KUBRON_SECRET_KEY_PREVIOUS"), ",") {
 		if k = strings.TrimSpace(k); k != "" {
@@ -104,6 +153,13 @@ func LoadConfig(args []string, getenv func(string) string, out io.Writer) (Confi
 			return Config{}, fmt.Errorf("KUBRON_SESSION_TTL %q: %w", v, err)
 		}
 		cfg.SessionTTL = d
+	}
+	if v := getenv("KUBRON_DRAIN_DELAY"); v != "" {
+		d, err := time.ParseDuration(v)
+		if err != nil {
+			return Config{}, fmt.Errorf("KUBRON_DRAIN_DELAY %q: %w", v, err)
+		}
+		cfg.DrainDelay = d
 	}
 	if v := getenv("KUBRON_CLUSTER_CHECK_INTERVAL"); v != "" {
 		d, err := time.ParseDuration(v)
@@ -147,6 +203,10 @@ func LoadConfig(args []string, getenv func(string) string, out io.Writer) (Confi
 	fs.BoolVar(&cfg.CSPReportOnly, "csp-report-only", cfg.CSPReportOnly,
 		"send Content-Security-Policy as Report-Only: violations are logged by the browser, nothing is blocked (env KUBRON_CSP_REPORT_ONLY)")
 	fs.DurationVar(&cfg.SessionTTL, "session-ttl", cfg.SessionTTL, "web session lifetime (env KUBRON_SESSION_TTL)")
+	fs.StringVar(&cfg.ReplicaID, "replica-id", cfg.ReplicaID,
+		"replica identifier: letters, digits, '-' and '_', up to 63 characters; empty means hostname plus a random suffix (env KUBRON_REPLICA_ID)")
+	fs.DurationVar(&cfg.DrainDelay, "drain-delay", cfg.DrainDelay,
+		"pause between SIGTERM and closing WebSocket connections, so a load balancer can stop routing to the replica (env KUBRON_DRAIN_DELAY)")
 	fs.DurationVar(&cfg.ClusterCheckInterval, "cluster-check-interval", cfg.ClusterCheckInterval,
 		"how often cluster connectivity is checked in the background, 0 disables (env KUBRON_CLUSTER_CHECK_INTERVAL)")
 	fs.IntVar(&cfg.MaxTerminals, "max-terminals", cfg.MaxTerminals, "terminals per user, 0 for unlimited (env KUBRON_MAX_TERMINALS)")
@@ -183,11 +243,34 @@ func (c Config) Validate() error {
 	if !c.TrustProxy && (len(c.TrustedProxies) > 0 || c.TrustedProxyHops > 1) {
 		return errors.New("trusted proxies and hops are used only together with trust-proxy (KUBRON_TRUST_PROXY=1)")
 	}
+	if c.ReplicaID != "" {
+		if err := ValidateReplicaID(c.ReplicaID); err != nil {
+			return err
+		}
+	}
+	if c.DrainDelay < 0 || c.DrainDelay > MaxDrainDelay {
+		return errors.New("drain delay must be between 0 and 60s")
+	}
 	if c.ClusterCheckInterval != 0 && c.ClusterCheckInterval < MinClusterCheckInterval {
 		return errors.New("cluster check interval must be 0 (off) or at least 5s")
 	}
 	if c.MaxTerminals < 0 || c.MaxLogStreams < 0 || c.MaxPortForwards < 0 {
 		return errors.New("resource limits cannot be negative (0 means unlimited)")
+	}
+	if c.PFScheme != "" && c.PFScheme != "https" && c.PFScheme != "http" {
+		return errors.New("KUBRON_PF_SCHEME must be https or http")
+	}
+	if c.PFIdleTimeout < 0 || c.PFMaxDuration < 0 {
+		return errors.New("port-forward timeouts cannot be negative")
+	}
+	if c.PFScheme == "http" {
+		h := strings.ToLower(c.PFBaseDomain)
+		if hh, _, err := net.SplitHostPort(h); err == nil {
+			h = hh
+		}
+		if h != "localhost" && !strings.HasSuffix(h, ".localhost") {
+			return errors.New("KUBRON_PF_SCHEME=http is allowed only for a localhost base domain")
+		}
 	}
 	if c.DatabaseURL != "" && c.SecretKey == "" {
 		return errors.New("KUBRON_SECRET_KEY is required when a database is used")

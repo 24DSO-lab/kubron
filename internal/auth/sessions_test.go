@@ -5,10 +5,11 @@ package auth
 
 import (
 	"errors"
-	"github.com/VadimIl224/kubron/internal/audit"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/24DSO-labs/kubron/internal/audit"
 )
 
 const bobPass = "bobs-own-pass"

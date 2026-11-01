@@ -1,0 +1,32 @@
+name: Mirror to GitLab
+
+on:
+  push:
+  delete:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Mirror clone from GitHub
+        run: |
+          git clone --mirror \
+            "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" \
+            repo.git
+
+      - name: Drop pull-request refs
+        run: |
+          cd repo.git
+          git for-each-ref --format='delete %(refname)' refs/pull | git update-ref --stdin
+
+      - name: Push mirror to GitLab
+        run: |
+          cd repo.git
+          git push --force --mirror \
+            "https://oauth2:${{ secrets.GITLAB_TOKEN }}@gitlab.com/224vadim224-group/kubron.git"
+        env:
+          GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}

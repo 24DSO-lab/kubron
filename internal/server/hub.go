@@ -26,7 +26,17 @@ const (
 type Hub struct {
 	mu    sync.RWMutex
 	conns map[*Conn]struct{}
+	// closing задан после CloseAll: подключившиеся позже соединения закрываются сразу с тем же кодом.
+	closing *closeFrame
 }
+
+// closeFrame — код и причина закрытия WebSocket (RFC 6455, раздел 7.4).
+type closeFrame struct {
+	code   int
+	reason string
+}
+
+const closeNormal = 1000
 
 func NewHub() *Hub { return &Hub{conns: map[*Conn]struct{}{}} }
 
@@ -75,11 +85,32 @@ func (h *Hub) deliver(session string, addressed bool, event string, data []any) 
 // Register добавляет соединение сессии session.
 func (h *Hub) Register(session string) *Conn {
 	c := &Conn{hub: h, session: session, out: make(chan []byte, connBuffer),
-		done: make(chan struct{}), subs: map[string]struct{}{}}
+		done: make(chan struct{}), subs: map[string]struct{}{}, frame: closeFrame{code: closeNormal}}
 	h.mu.Lock()
-	h.conns[c] = struct{}{}
+	if h.closing != nil { // реплика останавливается: соединение рождается закрытым
+		c.closed = true
+		c.frame = *h.closing
+		close(c.done)
+	} else {
+		h.conns[c] = struct{}{}
+	}
 	h.mu.Unlock()
 	return c
+}
+
+// CloseAll закрывает все соединения с кодом code (например, 1012 при остановке реплики) и закрывает
+// и все последующие: клиент переподключается к другой реплике.
+func (h *Hub) CloseAll(code int, reason string) {
+	h.mu.Lock()
+	h.closing = &closeFrame{code: code, reason: reason}
+	victims := make([]*Conn, 0, len(h.conns))
+	for c := range h.conns {
+		victims = append(victims, c)
+	}
+	h.mu.Unlock()
+	for _, c := range victims {
+		c.CloseWith(code, reason)
+	}
 }
 
 // CloseSession закрывает все соединения сессии (выход, истечение, вытеснение).
@@ -115,6 +146,7 @@ type Conn struct {
 	mu     sync.Mutex
 	subs   map[string]struct{}
 	closed bool
+	frame  closeFrame // с каким кодом закрыто (задаётся при первом закрытии)
 }
 
 // Out — готовые кадры для записи в сокет.
@@ -122,6 +154,13 @@ func (c *Conn) Out() <-chan []byte { return c.out }
 
 // Done закрывается при закрытии соединения.
 func (c *Conn) Done() <-chan struct{} { return c.done }
+
+// closeInfo — код и причина, с которыми соединение закрыто (имеет смысл после Done).
+func (c *Conn) closeInfo() (int, string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.frame.code, c.frame.reason
+}
 
 // Session — идентификатор веб-сессии владельца.
 func (c *Conn) Session() string { return c.session }
@@ -175,14 +214,18 @@ func (c *Conn) enqueue(frame []byte) bool {
 	}
 }
 
-// Close закрывает соединение и убирает его из хаба (идемпотентно).
-func (c *Conn) Close() {
+// Close закрывает соединение нормально (код 1000) и убирает его из хаба (идемпотентно).
+func (c *Conn) Close() { c.CloseWith(closeNormal, "") }
+
+// CloseWith закрывает соединение с заданным кодом; повторное закрытие ничего не меняет, первый код остаётся.
+func (c *Conn) CloseWith(code int, reason string) {
 	c.mu.Lock()
 	if c.closed {
 		c.mu.Unlock()
 		return
 	}
 	c.closed = true
+	c.frame = closeFrame{code: code, reason: reason}
 	close(c.done)
 	c.mu.Unlock()
 	c.hub.mu.Lock()

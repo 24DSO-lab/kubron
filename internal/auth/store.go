@@ -41,11 +41,30 @@ type Backend interface {
 	Save(*Data) error
 }
 
+// DeltaBackend — необязательное расширение Backend для хранилища, общего для нескольких процессов
+// (PostgreSQL, реплики сервиса). Save заменяет набор целиком и затёр бы изменения других реплик, поэтому Service
+// пишет только то, что изменил: одного пользователя, один вход, удаление, настройки. Файловое хранилище
+// (один процесс) расширения не реализует.
+type DeltaBackend interface {
+	Backend
+	// UpsertUser создаёт или обновляет пользователя целиком (имя занято другим — ошибка).
+	UpsertUser(u UserRecord) error
+	// TouchLogin записывает время входа и, если passwordHash не пуст, новый хэш (обновление параметров хэша).
+	// Остальные поля пользователя не затрагиваются: их могли изменить на другой реплике.
+	TouchLogin(id string, at time.Time, passwordHash string) error
+	// DeleteUser удаляет пользователя (отсутствие — не ошибка).
+	DeleteUser(id string) error
+	// SaveSettings записывает настройки безопасности.
+	SaveSettings(SecuritySettings) error
+}
+
 // store — пользователи и настройки в памяти поверх Backend. Не потокобезопасно: синхронизацию делает Service.
 type store struct {
 	backend  Backend
+	delta    DeltaBackend // не nil, если хранилище общее для нескольких процессов
 	users    []UserRecord
 	settings SecuritySettings
+	gen      uint64 // растёт при каждом локальном изменении: устаревшее чтение не затирает новое
 }
 
 func loadStore(b Backend) (*store, error) {
@@ -53,11 +72,65 @@ func loadStore(b Backend) (*store, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &store{backend: b, users: d.Users, settings: d.Settings}, nil
+	st := &store{backend: b, users: d.Users, settings: d.Settings}
+	st.delta, _ = b.(DeltaBackend)
+	return st, nil
 }
 
 func (s *store) save() error {
+	s.gen++
 	return s.backend.Save(&Data{Users: s.users, Settings: s.settings})
+}
+
+// reload заменяет пользователей и настройки данными из хранилища.
+func (s *store) reload() error {
+	d, err := s.backend.Load()
+	if err != nil {
+		return err
+	}
+	s.users, s.settings = d.Users, d.Settings
+	s.gen++
+	return nil
+}
+
+// saveUser сохраняет одного изменённого пользователя (общее хранилище) или всё целиком (файл).
+func (s *store) saveUser(u *UserRecord) error {
+	if s.delta == nil {
+		return s.save()
+	}
+	s.gen++
+	return s.delta.UpsertUser(*u)
+}
+
+// saveLogin сохраняет вход: время и, если нужно, обновлённый хэш пароля.
+func (s *store) saveLogin(u *UserRecord, newHash string) error {
+	if s.delta == nil {
+		return s.save()
+	}
+	s.gen++
+	var at time.Time
+	if u.LastLoginAt != nil {
+		at = *u.LastLoginAt
+	}
+	return s.delta.TouchLogin(u.ID, at, newHash)
+}
+
+// saveRemoved сохраняет удаление пользователя.
+func (s *store) saveRemoved(id string) error {
+	if s.delta == nil {
+		return s.save()
+	}
+	s.gen++
+	return s.delta.DeleteUser(id)
+}
+
+// saveSettings сохраняет настройки безопасности.
+func (s *store) saveSettings() error {
+	if s.delta == nil {
+		return s.save()
+	}
+	s.gen++
+	return s.delta.SaveSettings(s.settings)
 }
 
 func (s *store) findByID(id string) *UserRecord {

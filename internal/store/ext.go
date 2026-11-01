@@ -4,10 +4,10 @@
 package store
 
 import (
-	"github.com/VadimIl224/kubron/internal/audit"
-	"github.com/VadimIl224/kubron/internal/auth"
-	"github.com/VadimIl224/kubron/internal/k8s"
-	"github.com/VadimIl224/kubron/pkg/ext"
+	"github.com/24DSO-labs/kubron/internal/audit"
+	"github.com/24DSO-labs/kubron/internal/auth"
+	"github.com/24DSO-labs/kubron/internal/k8s"
+	"github.com/24DSO-labs/kubron/pkg/ext"
 )
 
 // FromExt адаптирует публичное хранилище (pkg/ext), например серверное на PostgreSQL из другого

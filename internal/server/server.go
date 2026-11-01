@@ -7,12 +7,10 @@ import (
 	"context"
 	"errors"
 	"io/fs"
-	"log"
 	"net"
 	"net/http"
 	"path"
 	"strings"
-	"time"
 )
 
 // NewHandler собирает маршруты: RPC, служебные ручки, статика фронтенда с SPA-fallback.
@@ -90,6 +88,11 @@ func spaHandler(static fs.FS) http.Handler {
 
 // Run слушает cfg.Listen и обслуживает h до отмены ctx, затем корректно завершает соединения.
 func Run(ctx context.Context, cfg Config, h http.Handler) error {
+	return RunWith(ctx, cfg, h, ShutdownPlan{})
+}
+
+// RunWith — Run с заданным порядком остановки (draining, закрытие WebSocket кадром 1012).
+func RunWith(ctx context.Context, cfg Config, h http.Handler, plan ShutdownPlan) error {
 	if err := cfg.Validate(); err != nil {
 		return err
 	}
@@ -97,34 +100,12 @@ func Run(ctx context.Context, cfg Config, h http.Handler) error {
 	if err != nil {
 		return err
 	}
-	return Serve(ctx, ln, h)
+	return ServeWith(ctx, ln, h, plan)
 }
 
 // Serve обслуживает listener до отмены ctx (graceful shutdown до 10 секунд).
 func Serve(ctx context.Context, ln net.Listener, h http.Handler) error {
-	srv := &http.Server{
-		Handler:           h,
-		ReadHeaderTimeout: 10 * time.Second,
-		IdleTimeout:       120 * time.Second,
-	}
-	errc := make(chan error, 1)
-	go func() { errc <- srv.Serve(ln) }()
-	log.Printf("kubron-server is listening on http://%s", ln.Addr())
-
-	select {
-	case err := <-errc:
-		if errors.Is(err, http.ErrServerClosed) {
-			return nil
-		}
-		return err
-	case <-ctx.Done():
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-		if err := srv.Shutdown(shutdownCtx); err != nil {
-			return err
-		}
-		return nil
-	}
+	return ServeWith(ctx, ln, h, ShutdownPlan{})
 }
 
 // webBuildMarker — метка, которую `vite build --mode web` добавляет в index.html.

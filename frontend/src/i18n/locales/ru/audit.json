@@ -99,7 +99,11 @@
     "RemoveTeamMember": "Исключение из команды",
     "AddClusterToTeam": "Кластер добавлен в команду",
     "MoveCluster": "Кластер передан другой команде",
-    "ExportAuditLog": "Выгрузка журнала аудита"
+    "ExportAuditLog": "Выгрузка журнала аудита",
+    "portforward": {
+      "start": "Port-forward запущен",
+      "stop": "Port-forward остановлен"
+    }
   },
   "export": {
     "csv": "Выгрузить CSV",

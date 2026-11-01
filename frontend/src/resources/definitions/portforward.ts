@@ -10,6 +10,7 @@ import { flatNsCol } from './common'
 import { badgeClass, statusColor } from '../status'
 import { openUrl } from '../../platform/files'
 import { t } from '../../i18n'
+import { getPortForwardUrl } from '../../composables/portForwardUrl'
 
 const k8s = useK8s()
 
@@ -27,7 +28,7 @@ export const portForward = defineResource<models.PortForwardSession>({
   columns: [
     { key: 'target', label: 'defs.columns.target', className: 'resource-name' },
     { ...flatNsCol, link: (pf: any) => pf.namespace ? { id: 'namespace', ns: '', name: pf.namespace } : null },
-    { key: 'localPort', label: 'defs.columns.localPort', formatter: (pf: any) => `localhost:${pf.localPort}` },
+    { key: 'localPort', label: 'defs.columns.localPort', formatter: (pf: any) => (pf.mode === 'proxy' ? t('sections.portForward.viaProxy') : `localhost:${pf.localPort}`) },
     { key: 'podPort', label: 'defs.columns.remotePort' },
     { key: 'status', label: 'common.status', colorFn: pf => statusColor(pf.status) },
   ],
@@ -41,7 +42,7 @@ export const portForward = defineResource<models.PortForwardSession>({
       value: (pf: any) => (pf.service ? `${pf.service}:${pf.servicePort}` : '—'),
       link: (pf: any) => (pf.service ? { id: 'service', ns: pf.namespace, name: pf.service } : null),
     },
-    { label: 'defs.columns.localPort', value: pf => pf.localPort },
+    { label: 'defs.columns.localPort', value: (pf: any) => (pf.mode === 'proxy' ? t('sections.portForward.viaProxy') : pf.localPort) },
     { label: 'defs.columns.remotePort', value: pf => pf.podPort },
     { label: 'common.status', value: pf => pf.status, badge: pf => badgeClass(pf.status) },
     { label: 'common.error', value: (pf: any) => pf.error || '—' },
@@ -54,7 +55,7 @@ export const portForward = defineResource<models.PortForwardSession>({
       label: 'defs.menu.openInBrowser',
       icon: 'open-browser',
       when: (pf: any) => pf.status === 'active',
-      run: (pf: any) => openUrl(`http://localhost:${pf.localPort}`),
+      run: async (pf: any) => openUrl(await getPortForwardUrl(pf.id)),
     },
     {
       id: 'stop',

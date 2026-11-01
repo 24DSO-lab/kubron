@@ -61,6 +61,7 @@ var exactPermission = map[string]Permission{
 	"StartPortForward":        PermPortForward,
 	"StartServicePortForward": PermPortForward,
 	"StopPortForward":         PermPortForward,
+	"GetPortForwardURL":       PermPortForward,
 	"PickKubeconfigFile":      PermClusterManage,
 	"AddClusterFromFile":      PermClusterManage,
 	"AddClusterFromText":      PermClusterManage,

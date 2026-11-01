@@ -4,13 +4,17 @@
 package store
 
 import (
+	"encoding/json"
 	"errors"
+	"time"
 
-	"github.com/VadimIl224/kubron/internal/audit"
-	"github.com/VadimIl224/kubron/internal/auth"
-	"github.com/VadimIl224/kubron/internal/clusterhealth"
-	"github.com/VadimIl224/kubron/internal/k8s"
-	"github.com/VadimIl224/kubron/internal/pgstore"
+	"github.com/24DSO-labs/kubron/internal/audit"
+	"github.com/24DSO-labs/kubron/internal/auth"
+	"github.com/24DSO-labs/kubron/internal/clusterhealth"
+	"github.com/24DSO-labs/kubron/internal/k8s"
+	"github.com/24DSO-labs/kubron/internal/pgstore"
+	"github.com/24DSO-labs/kubron/internal/websession"
+	"github.com/24DSO-labs/kubron/pkg/ext"
 )
 
 // FromPostgres адаптирует хранилище сервиса на PostgreSQL (internal/pgstore) к Store.
@@ -18,7 +22,9 @@ func FromPostgres(s *pgstore.Store) Store { return pgBackend{s} }
 
 type pgBackend struct{ s *pgstore.Store }
 
-func (p pgBackend) Users() auth.Backend        { return auth.FromExt(p.s.Users()) }
+func (p pgBackend) Users() auth.Backend {
+	return pgUsers{Backend: auth.FromExt(p.s.Users()), d: p.s.UserDelta()}
+}
 func (p pgBackend) Audit() audit.Backend       { return p.s.Audit() }
 func (p pgBackend) ArgoTokens() k8s.TokenStore { return p.s.ArgoTokens() }
 
@@ -28,6 +34,9 @@ func (p pgBackend) Access() auth.Access { return p.s.Access() }
 // HealthSink и HealthLeader — общее хранилище состояний кластеров и выбор реплики-проверяющего (3.6).
 func (p pgBackend) HealthSink() clusterhealth.Sink     { return p.s.Health() }
 func (p pgBackend) HealthLeader() clusterhealth.Leader { return p.s.Leader(pgstore.LeaderKey) }
+
+// Sessions — общее хранилище веб-сессий (ADR-0016): сессия, выданная одной репликой, действует на всех.
+func (p pgBackend) Sessions() websession.Backend { return p.s.Sessions() }
 
 // Directory — команды и участники (задача 3.3).
 func (p pgBackend) Directory() auth.Directory  { return p.s.Directory() }
@@ -93,4 +102,129 @@ func toMeta(c *pgstore.Cluster) k8s.ClusterMeta {
 		DefaultNamespace: c.DefaultNamespace, ContextName: c.ContextName, AddedAt: c.AddedAt, TeamID: c.TeamID,
 		Mode: c.Mode,
 	}
+}
+
+// pgUsers — пользователи в PostgreSQL: помимо Load/Save (заменяют набор целиком) реализует auth.DeltaBackend,
+// чтобы несколько реплик не затирали изменения друг друга.
+type pgUsers struct {
+	auth.Backend
+	d pgstore.UserDelta
+}
+
+var _ auth.DeltaBackend = pgUsers{}
+
+func (u pgUsers) UpsertUser(r auth.UserRecord) error { return u.d.UpsertUser(toExtUser(r)) }
+func (u pgUsers) TouchLogin(id string, at time.Time, passwordHash string) error {
+	return u.d.TouchLogin(id, at, passwordHash)
+}
+func (u pgUsers) DeleteUser(id string) error { return u.d.DeleteUser(id) }
+func (u pgUsers) SaveSettings(s auth.SecuritySettings) error {
+	return u.d.SaveSettings(ext.SecuritySettings{IdleTimeoutMinutes: s.IdleTimeoutMinutes})
+}
+
+func toExtUser(r auth.UserRecord) ext.UserRecord {
+	return ext.UserRecord{
+		ID: r.ID, Username: r.Username, Role: string(r.Role), PasswordHash: r.PasswordHash,
+		Disabled: r.Disabled, MustChangePassword: r.MustChangePassword,
+		CreatedAt: r.CreatedAt, UpdatedAt: r.UpdatedAt, LastLoginAt: r.LastLoginAt,
+	}
+}
+
+// HelmState — состояние Helm в БД по командам (ADR-0015). Подключается так же, как Access: сервер проверяет
+// наличие метода и передаёт хранилище в k8s.SetHelmStateStore; в десктопе его нет, и Helm остаётся на файлах.
+func (p pgBackend) HelmState() k8s.HelmStateStore { return pgHelm{p.s.Helm()} }
+
+// pgHelm приводит pgstore.Helm к k8s.HelmStateStore.
+type pgHelm struct{ h *pgstore.Helm }
+
+func (pgHelm) CredentialsInStore() bool { return true }
+
+func (p pgHelm) ListRepos(team string) ([]k8s.HelmRepoRecord, error) {
+	list, err := p.h.List(team)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]k8s.HelmRepoRecord, 0, len(list))
+	for _, r := range list {
+		out = append(out, k8s.HelmRepoRecord{
+			Name: r.Name, Kind: r.Kind, URL: r.URL, Username: r.Username, Password: r.Secret,
+			InsecureTLS: r.Options.InsecureTLS, PlainHTTP: r.Options.PlainHTTP, Charts: r.Options.Charts,
+			CreatedBy: r.CreatedBy, CreatedAt: r.CreatedAt,
+		})
+	}
+	return out, nil
+}
+
+func (p pgHelm) CreateRepo(team string, r *k8s.HelmRepoRecord) error {
+	err := p.h.Create(team, pgstore.HelmRepo{
+		Name: r.Name, Kind: r.Kind, URL: r.URL, Username: r.Username, Secret: r.Password,
+		Options:   pgstore.HelmRepoOptions{InsecureTLS: r.InsecureTLS, PlainHTTP: r.PlainHTTP, Charts: r.Charts},
+		CreatedBy: r.CreatedBy, CreatedAt: r.CreatedAt,
+	})
+	return mapHelmErr(err)
+}
+
+func (p pgHelm) SetOCICharts(team, name string, charts []string) error {
+	return mapHelmErr(p.h.SetCharts(team, name, charts))
+}
+
+func (p pgHelm) DeleteRepo(team, name string) (*k8s.HelmRepoRecord, error) {
+	r, err := p.h.Delete(team, name)
+	if err != nil {
+		return nil, mapHelmErr(err)
+	}
+	return &k8s.HelmRepoRecord{Name: r.Name, Kind: r.Kind, URL: r.URL, Username: r.Username,
+		InsecureTLS: r.Options.InsecureTLS, PlainHTTP: r.Options.PlainHTTP, Charts: r.Options.Charts}, nil
+}
+
+func (p pgHelm) AddOperation(team, clusterID string, r k8s.HelmOperationRecord) error {
+	data, err := json.Marshal(r)
+	if err != nil {
+		return err
+	}
+	finished, err := time.Parse(time.RFC3339, r.FinishedAt)
+	if err != nil {
+		finished = time.Now()
+	}
+	return p.h.AddOperation(team, clusterID, r.ID, finished, data)
+}
+
+func (p pgHelm) ListOperations(team string) ([]k8s.HelmOperationRecord, error) {
+	raw, err := p.h.Operations(team)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]k8s.HelmOperationRecord, 0, len(raw))
+	for _, b := range raw {
+		var r k8s.HelmOperationRecord
+		if err := json.Unmarshal(b, &r); err != nil {
+			continue // повреждённая запись не должна скрывать остальной журнал
+		}
+		out = append(out, r)
+	}
+	return out, nil
+}
+
+func (p pgHelm) GetOperation(team, id string) (*k8s.HelmOperationRecord, error) {
+	b, err := p.h.Operation(team, id)
+	if err != nil {
+		return nil, mapHelmErr(err)
+	}
+	var r k8s.HelmOperationRecord
+	if err := json.Unmarshal(b, &r); err != nil {
+		return nil, err
+	}
+	return &r, nil
+}
+
+func (p pgHelm) ClearOperations(team string) error { return p.h.ClearOperations(team) }
+
+func mapHelmErr(err error) error {
+	switch {
+	case errors.Is(err, pgstore.ErrHelmExists):
+		return k8s.ErrHelmRepoExists
+	case errors.Is(err, pgstore.ErrHelmNotFound):
+		return k8s.ErrHelmNotFound
+	}
+	return err
 }

@@ -567,6 +567,9 @@ export interface PortForwardSession {
   error?: string
   name: string
   target: string
+  /** local — порт на localhost; proxy — через прокси сервера (localPort = 0) */
+  mode: string
+  scheme?: string
 }
 
 export interface ServiceDetail {

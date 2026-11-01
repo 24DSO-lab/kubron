@@ -32,7 +32,7 @@ func (m *Manager) helmConfigForRelease(ctx context.Context, namespace, name stri
 // helmConfigDriver создаёт action.Configuration для активного кластера и namespace релиза с
 // собственным обработчиком журнала Helm (прогресс операций; nil — журнал по умолчанию) и
 // выбором хранилища релизов (secret | configmap).
-// Подключаемся тем же kubeconfig и контекстом, что и основное подключение приложения.
+// Подключаемся к тому же кластеру, что и основное подключение приложения (см. helmRESTClientGetter).
 // Обработчик нужно задать ДО Init: Init раздаёт логгер клиенту Kubernetes и ожидателю готовности.
 func (m *Manager) helmConfigDriver(namespace string, h slog.Handler, storage string) (*action.Configuration, error) {
 	driver, err := helmDriverName(storage)
@@ -47,28 +47,43 @@ func (m *Manager) helmConfigDriver(namespace string, h slog.Handler, storage str
 	if err != nil {
 		return nil, fmt.Errorf("cluster metadata not found: %w", err)
 	}
-	kubeconfig := GetClusterKubeconfigPath(id)
-	if kubeconfig == "" {
-		// Helm читает kubeconfig файлом: для хранилищ без файлов нужен собственный RESTClientGetter (задача 3.1b).
-		return nil, fmt.Errorf("kubeconfig file of cluster %s is unavailable: Helm works only with the file-based cluster store", id)
-	}
-
-	flags := genericclioptions.NewConfigFlags(false)
-	flags.KubeConfig = &kubeconfig
-	flags.Namespace = &namespace
-	if meta.ContextName != "" {
-		ctxName := meta.ContextName
-		flags.Context = &ctxName
+	getter, err := m.helmRESTClientGetter(id, meta, namespace)
+	if err != nil {
+		return nil, err
 	}
 
 	cfg := new(action.Configuration)
 	if h != nil {
 		cfg.SetLogger(h)
 	}
-	if err := cfg.Init(flags, namespace, driver); err != nil {
+	if err := cfg.Init(getter, namespace, driver); err != nil {
 		return nil, fmt.Errorf("failed to initialize Helm: %w", err)
 	}
 	return cfg, nil
+}
+
+// helmRESTClientGetter выбирает, как Helm получает доступ к кластеру:
+//   - личный режим (десктоп): у kubeconfig-кластера есть файл — Helm читает его, как и прежде;
+//   - всё остальное (кластеры из PostgreSQL в любом режиме: kubeconfig, in-cluster, oidc-password): rest.Config
+//     действующего подключения менеджера, без файлов и без выписывания учётных данных на диск.
+func (m *Manager) helmRESTClientGetter(id string, meta *ClusterMeta, namespace string) (genericclioptions.RESTClientGetter, error) {
+	if meta.Mode == "" || meta.Mode == ModeKubeconfig {
+		if kubeconfig := GetClusterKubeconfigPath(id); kubeconfig != "" {
+			flags := genericclioptions.NewConfigFlags(false)
+			flags.KubeConfig = &kubeconfig
+			flags.Namespace = &namespace
+			if meta.ContextName != "" {
+				ctxName := meta.ContextName
+				flags.Context = &ctxName
+			}
+			return flags, nil
+		}
+	}
+	conn, ok := m.pool.get(id)
+	if !ok {
+		return nil, errors.New("no active connection")
+	}
+	return newRESTConfigGetter(conn.helmRESTConfig(), namespace), nil
 }
 
 // RollbackHelmRelease откатывает релиз к ревизии. Helm создаёт НОВУЮ ревизию с содержимым старой.

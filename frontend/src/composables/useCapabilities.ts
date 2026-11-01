@@ -14,11 +14,13 @@ export interface Capabilities {
   fileDialog: boolean
   /** проброс портов */
   portForward: boolean
+  /** как открывается проброс: local — порт на localhost, proxy — через прокси сервера, off — недоступен */
+  portForwardMode: 'local' | 'proxy' | 'off'
   /** оболочка на узле */
   nodeShell: boolean
   /** чтение kubeconfig с диска машины, где запущен бэкенд */
   localKubeconfig: boolean
-  /** вход через SSO/OIDC (платный модуль) */
+  /** вход через SSO/OIDC (модуль SSO) */
   sso: boolean
   /** сервер работает внутри Kubernetes: можно добавить его собственный кластер (in-cluster) */
   inCluster: boolean
@@ -33,6 +35,7 @@ export interface Capabilities {
 export const DEFAULT_CAPABILITIES: Readonly<Capabilities> = Object.freeze({
   fileDialog: true,
   portForward: true,
+  portForwardMode: 'local',
   nodeShell: true,
   localKubeconfig: true,
   sso: false,
@@ -46,7 +49,9 @@ export function normalizeCapabilities(raw: unknown): Capabilities {
   if (raw && typeof raw === 'object') {
     for (const key of Object.keys(out) as (keyof Capabilities)[]) {
       const v = (raw as Record<string, unknown>)[key]
-      if (typeof v === 'boolean') out[key] = v
+      if (key === 'portForwardMode') {
+        if (v === 'local' || v === 'proxy' || v === 'off') out.portForwardMode = v
+      } else if (typeof v === 'boolean') (out as unknown as Record<string, boolean>)[key] = v
     }
   }
   return out

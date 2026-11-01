@@ -3,7 +3,7 @@
 
 package audit
 
-import "github.com/VadimIl224/kubron/pkg/ext"
+import "github.com/24DSO-labs/kubron/pkg/ext"
 
 // Backend — хранилище записей журнала. Реализации: файлы с ротацией (десктоп) и,
 // позже, PostgreSQL (сервер, ADR-0007). Интерфейс публичный (pkg/ext). Вызывается под блокировкой Logger.

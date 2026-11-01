@@ -12,7 +12,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
-	"github.com/VadimIl224/kubron/internal/clusterhealth"
+	"github.com/24DSO-labs/kubron/internal/clusterhealth"
 )
 
 func TestClassifyProbeError(t *testing.T) {

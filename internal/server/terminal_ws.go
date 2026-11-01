@@ -49,6 +49,9 @@ func (s *wsSink) ping() error {
 func TerminalHandler(g *Guard) http.Handler {
 	up := newUpgrader()
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if g.refuseIfDraining(w) {
+			return
+		}
 		token := g.token(r)
 		sess, ok := g.Sessions.Get(token)
 		if !ok {
@@ -76,6 +79,11 @@ func TerminalHandler(g *Guard) http.Handler {
 		defer att.Detach()
 		g.termConns.add(sess.ID, ws)
 		defer g.termConns.remove(sess.ID, ws)
+		if g.Lifecycle.Closing() { // подключились между закрытием соединений и остановкой сервера
+			_ = ws.WriteControl(websocket.CloseMessage,
+				websocket.FormatCloseMessage(CloseServiceRestart, closeReasonRestart), time.Now().Add(time.Second))
+			return
+		}
 
 		ws.SetReadLimit(termMaxFrame)
 		_ = ws.SetReadDeadline(time.Now().Add(wsPongWait))

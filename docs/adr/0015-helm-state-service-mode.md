@@ -53,11 +53,9 @@ helm_repositories
   created_at, updated_at
 
 helm_operations
-  id, team_id → teams(id) ON DELETE CASCADE
-  cluster_id → clusters(id) ON DELETE SET NULL, cluster_name text   (имя копируется: журнал переживает кластер)
-  op, namespace, release, detail, revision, status, error, started_at, finished_at, duration_ms
-  log           text[]      последние 80 строк
-  created_by    → users(id) ON DELETE SET NULL
+  PK (team_id, id), team_id → teams(id) ON DELETE CASCADE
+  cluster_id → clusters(id) ON DELETE SET NULL        (журнал переживает кластер; имя кластера лежит в записи)
+  finished_at timestamptz, record jsonb                (запись операции целиком; в колонки вынесено то, по чему выбирают)
   индекс (team_id, finished_at DESC)
 ```
 
@@ -76,10 +74,10 @@ helm_operations
 такой операции и сейчас нет. `kubron-server rekey` перешифровывает и эти секреты, вывод получает строку
 «helm secrets».
 
-OCI: файл `registry-config.json` в сервисном режиме не используется. Учётные данные реестра передаются
-клиенту реестра из памяти на время запроса; если подходящего API в Helm нет, запасной вариант — файл 0600 в
-каталоге под `emptyDir`, который создаётся на запрос и удаляется после него. Выбор проверяется в PR 3
-(`internal/k8s` у ассистента не компилируется).
+OCI: файл `registry-config.json` в сервисном режиме не используется и не создаётся. Учётные данные реестра
+передаются клиенту реестра Helm из памяти (`ClientOptAuthorizer` с `auth.StaticCredential`) и отдаются только
+хосту этого реестра; Docker-конфигурация сервера не читается. Вход в реестр (`Login`) при добавлении заменён
+проверочным запросом тегов. Файловый режим по-прежнему использует `registry-config.json`.
 
 ### 4. Изоляция
 
@@ -119,10 +117,10 @@ IPv4-compatible IPv6 проверяются по вложенному IPv4; хо
 
 **Исключения.** Список CIDR в переменной окружения оператора. Они снимают запрет с loopback, link-local и
 (в `strict`) частных диапазонов, но **никогда** — с unspecified, multicast и адресов метаданных:
-ошибочная настройка не должна открывать metadata-сервис. Предполагаемые переменные (имена уточняются в PR 3 и 4):
+ошибочная настройка не должна открывать metadata-сервис. Переменные:
 `KUBRON_HELM_ADDR_POLICY` (`strict` по умолчанию на сервере, `off` — выключить),
-`KUBRON_HELM_ALLOW_CIDRS`, `KUBRON_CLUSTER_ADDR_POLICY` (по умолчанию `off`, затем `permissive`/`strict`),
-`KUBRON_CLUSTER_ADDR_ALLOW_CIDRS`.
+`KUBRON_HELM_ALLOW_CIDRS` (реализованы в PR 3), `KUBRON_CLUSTER_ADDR_POLICY` (по умолчанию `off`, затем
+`permissive`/`strict`) и `KUBRON_CLUSTER_ADDR_ALLOW_CIDRS` (PR 4).
 
 **Включение** по образцу `k8s.SetConnectionPolicy`: `cmd/kubron-server` вызывает `netpolicy.Set(scope, p)`
 при старте; десктоп и режим одного пользователя не вызывают, `netpolicy.For` возвращает `nil`, и все
@@ -131,6 +129,11 @@ IPv4-compatible IPv6 проверяются по вложенному IPv4; хо
 **Ответ на блокировку** неотличим от отказа в соединении (`dial tcp …: connection refused`), чтобы сервер
 нельзя было использовать как сканер внутренней сети. Причина (адрес, класс, политика) пишется только в
 серверный лог — без URL, учётных данных и параметров запроса.
+
+Реализация для API-сервера (PR 4): проверка адреса в `CheckKubeconfigPolicy` (при добавлении и при каждом подключении),
+`rest.Config.Dial` для REST, discovery, informers и Helm, а терминал и port-forward открывают соединение через
+`UpgradeTransport` SPDY (стандартный дайлер `rest.Config.Dial` не использует); `proxy-url` отклоняется, прокси из
+окружения отключается; `in-cluster` не проверяется. Адрес IdP для `oidc-password` в эту политику не входит.
 
 Для API-сервера кластера политика по умолчанию выключена, потому что e2e в CI использует kind с
 API-сервером на `127.0.0.1`. Включение по умолчанию — отдельный шаг после того, как владелец 3.8 добавит

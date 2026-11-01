@@ -7,6 +7,9 @@ import (
 	"encoding/json"
 	"errors"
 	"sync"
+	"time"
+
+	"github.com/gorilla/websocket"
 )
 
 // Протокол /api/terminal/{id}:
@@ -82,6 +85,28 @@ func (t *termConns) closeSession(session string) {
 	delete(t.m, session)
 	t.mu.Unlock()
 	for _, c := range victims {
+		_ = c.Close()
+	}
+}
+
+// shutdown закрывает все терминальные сокеты кадром Close с кодом code (остановка реплики). Процессы
+// терминалов не трогаются: клиент откроет терминал заново на живой реплике.
+func (t *termConns) shutdown(code int, reason string) {
+	t.mu.Lock()
+	var victims []closer
+	for _, set := range t.m {
+		for c := range set {
+			victims = append(victims, c)
+		}
+	}
+	t.mu.Unlock()
+	msg := websocket.FormatCloseMessage(code, reason)
+	for _, c := range victims {
+		if w, ok := c.(interface {
+			WriteControl(int, []byte, time.Time) error
+		}); ok {
+			_ = w.WriteControl(websocket.CloseMessage, msg, time.Now().Add(time.Second))
+		}
 		_ = c.Close()
 	}
 }

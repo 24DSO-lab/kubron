@@ -119,7 +119,7 @@ jobs:
           GOFLAGS: -tags=${{ env.GO_TAGS }}
         run: |
           go install github.com/google/go-licenses@v1.6.0
-          go-licenses check ./... --ignore github.com/VadimIl224/kubron \
+          go-licenses check ./... --ignore github.com/24DSO-labs/kubron \
             --allowed_licenses=Apache-2.0,BSD-2-Clause,BSD-3-Clause,MIT,ISC,MPL-2.0
 
       # Фронтенд: только production-зависимости

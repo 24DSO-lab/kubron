@@ -60,6 +60,7 @@ var allowedMethods = []string{
 	"GetArgoProjects",
 	"GetArgoRepositories",
 	"GetAuditLog",
+	"GetPortForwardURL",
 	"GetCRDs",
 	"GetCapabilities",
 	"GetCertificateExpiry",

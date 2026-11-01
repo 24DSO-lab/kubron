@@ -27,6 +27,9 @@ const (
 func WSHandler(g *Guard) http.Handler {
 	up := newUpgrader()
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if g.refuseIfDraining(w) { // реплика останавливается: клиент подключится к другой
+			return
+		}
 		token := g.token(r)
 		sess, ok := g.Sessions.Get(token)
 		if !ok {
@@ -98,8 +101,9 @@ func serveConn(ws *websocket.Conn, c *Conn, alive func() bool) {
 				return
 			}
 		case <-c.Done():
+			code, reason := c.closeInfo()
 			_ = ws.WriteControl(websocket.CloseMessage,
-				websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""), time.Now().Add(time.Second))
+				websocket.FormatCloseMessage(code, reason), time.Now().Add(time.Second))
 			return
 		}
 	}

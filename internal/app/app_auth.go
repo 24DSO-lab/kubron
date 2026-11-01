@@ -4,15 +4,17 @@
 package app
 
 import (
+	"context"
 	"errors"
 	"fmt"
-	"github.com/VadimIl224/kubron/internal/audit"
-	"github.com/VadimIl224/kubron/internal/auth"
-	"github.com/VadimIl224/kubron/internal/k8s"
-	"github.com/VadimIl224/kubron/internal/store"
 	"runtime"
 	"strings"
 	"time"
+
+	"github.com/24DSO-labs/kubron/internal/audit"
+	"github.com/24DSO-labs/kubron/internal/auth"
+	"github.com/24DSO-labs/kubron/internal/k8s"
+	"github.com/24DSO-labs/kubron/internal/store"
 )
 
 // initAuth открывает хранилище пользователей. Если файл повреждён, приложение остаётся
@@ -25,6 +27,10 @@ func (a *App) initAuth(dir string) {
 func (a *App) initAuthWith(st store.Store) {
 	k8s.SetTokenStore(st.ArgoTokens())
 	k8s.SetClusterStore(st.Clusters())
+	// Состояние Helm в сервисе — в БД по командам (ADR-0015); без этого метода Helm остаётся на файлах.
+	if hp, ok := st.(interface{ HelmState() k8s.HelmStateStore }); ok {
+		k8s.SetHelmStateStore(hp.HelmState())
+	}
 	a.audit = audit.New(st.Audit())
 	svc, err := auth.NewServiceWithBackend(st.Users())
 	if err != nil {
@@ -62,6 +68,7 @@ func NewSessionView(root *App, source string) *App {
 	v.k8sMgr = root.k8sMgr.ForSession()
 	v.k8sMgr.SetNotifier(nil) // события пойдут владельцу после BindView; до входа адресата нет
 	v.pfMgr = k8s.NewSessionPortForwardManager(v.k8sMgr)
+	v.configurePortForward() // владелец потоков пока неизвестен: режим proxy включается в BindView
 	if root.auth == nil {
 		return &v
 	}
@@ -78,6 +85,7 @@ type sessionEmitter interface {
 // BindView привязывает вид к веб-сессии: события его менеджера уходят только её соединениям.
 func BindView(v *App, sessionID string) {
 	v.sessionID = sessionID
+	v.configurePortForward()
 	if em, ok := v.platform.(sessionEmitter); ok {
 		v.k8sMgr.SetNotifier(func(event string, data ...any) { em.EmitTo(sessionID, event, data...) })
 	}
@@ -88,6 +96,53 @@ func SetResourceLimits(root *App, l k8s.Limits) { root.k8sMgr.SetLimits(l) }
 
 // SetClusterIdleTTL задаёт задержку остановки informers кластера после ухода последнего пользователя.
 func SetClusterIdleTTL(root *App, d time.Duration) { root.k8sMgr.SetIdleTTL(d) }
+
+// StartUserRefresh запускает фоновое перечитывание пользователей, если они лежат в общем хранилище (PostgreSQL,
+// несколько реплик): роль, блокировка и новые пользователи, изменённые на другой реплике, видны здесь не позже
+// чем через every. Для файлового хранилища ничего не делает.
+func StartUserRefresh(ctx context.Context, root *App, every time.Duration) {
+	if root == nil || root.auth == nil || !root.auth.Shared() {
+		return
+	}
+	go root.auth.RunRefresher(ctx, every)
+}
+
+// ResumeView открывает сессию пользователя на виде, построенном заново для уже существующей веб-сессии
+// (другая реплика, перезапуск): пароль не нужен, веб-сессию проверило общее хранилище сессий.
+func ResumeView(v *App, userID string, lastActive time.Time) error {
+	if v == nil || v.auth == nil {
+		return auth.ErrNotAuthenticated
+	}
+	return v.auth.Resume(userID, lastActive)
+}
+
+// SyncViewActivity переносит в вид время последнего действия пользователя, записанное другой репликой.
+func SyncViewActivity(v *App, at time.Time) {
+	if v != nil && v.auth != nil {
+		v.auth.SyncActivity(at)
+	}
+}
+
+// ViewActiveCluster — идентификатор активного кластера вида ("" — не выбран). Без проверки прав: сервер
+// только запоминает его в веб-сессии, чтобы другая реплика подключила кластер заново.
+func ViewActiveCluster(v *App) string {
+	if v == nil || v.k8sMgr == nil {
+		return ""
+	}
+	return v.k8sMgr.GetActiveContext()
+}
+
+// RestoreActiveCluster подключает вид к кластеру, который был активен в веб-сессии на другой реплике.
+// Права проверяются как при обычном подключении: доступ мог измениться.
+func RestoreActiveCluster(v *App, clusterID string) error {
+	if v == nil || v.k8sMgr == nil || clusterID == "" {
+		return nil
+	}
+	if err := v.authzCluster(auth.PermRead, clusterID); err != nil {
+		return err
+	}
+	return v.k8sMgr.ConnectToCluster(clusterID)
+}
 
 // ViewActive — у вида есть действующая сессия пользователя. Сервер закрывает веб-сессии, чьи виды её потеряли.
 func ViewActive(v *App) bool { return v != nil && v.auth != nil && v.auth.Active() }

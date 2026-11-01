@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -19,7 +20,8 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
 
-	"github.com/VadimIl224/kubron/internal/clusterhealth"
+	"github.com/24DSO-labs/kubron/internal/clusterhealth"
+	"github.com/24DSO-labs/kubron/internal/netpolicy"
 )
 
 type ContextInfo struct {
@@ -90,6 +92,8 @@ type Manager struct {
 	notifier func(event string, data ...any)
 	logs     logStreams
 	limits   Limits // лимиты ресурсов вида; наследуются видами сессий
+
+	helmActor atomic.Pointer[string] // пользователь вида: created_by репозиториев Helm (сервис)
 }
 
 // Limits — ограничения на ресурсы одного вида (пользователя). 0 — без ограничения.
@@ -350,6 +354,9 @@ func buildClusterConnection(clusterID string) (*ClusterConnection, error) {
 		}
 		config.QPS = 50
 		config.Burst = 100
+		if meta.Mode != ModeInCluster { // адрес API-сервера in-cluster задаёт сам кластер
+			applyClusterAddrPolicy(config)
+		}
 		return buildConnection(clusterID, config)
 	}
 
@@ -360,7 +367,7 @@ func buildClusterConnection(clusterID string) (*ClusterConnection, error) {
 
 	// Политика соединений действует и при подключении, не только при добавлении: так не пройдут ни кластеры,
 	// импортированные из файлов десктопа, ни kubeconfig, сохранённый до включения запретов.
-	if p := currentPolicy(); !p.AllowExec || !p.AllowLocalFiles {
+	if p := currentPolicy(); !p.AllowExec || !p.AllowLocalFiles || netpolicy.For(netpolicy.ScopeClusterAPI) != nil {
 		if err := checkStoredPolicy(clusterID, meta); err != nil {
 			return nil, err
 		}
@@ -389,6 +396,7 @@ func buildClusterConnection(clusterID string) (*ClusterConnection, error) {
 
 	config.QPS = 50
 	config.Burst = 100
+	applyClusterAddrPolicy(config)
 
 	return buildConnection(clusterID, config)
 }

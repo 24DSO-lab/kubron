@@ -32,15 +32,20 @@ type argoAPIClient struct {
 }
 
 func newArgoAPIClient(baseURL, token string) (*argoAPIClient, error) {
+	return newArgoAPIClientVia(baseURL, token, nil)
+}
+
+// newArgoAPIClientVia создаёт клиент, который соединяется через dial (PodDialer), а не по адресу из baseURL.
+// Сертификат argocd-server по умолчанию самоподписанный. Проверку отключаем только для loopback-туннеля и для
+// dial: трафик идёт через port-forward, аутентифицированный Kubernetes API, а не через сеть.
+func newArgoAPIClientVia(baseURL, token string, dial func(ctx context.Context, network, addr string) (net.Conn, error)) (*argoAPIClient, error) {
 	u, err := url.Parse(baseURL)
 	if err != nil || u.Host == "" || (u.Scheme != "http" && u.Scheme != "https") {
 		return nil, errors.New("invalid Argo CD address")
 	}
-	tr := &http.Transport{}
-	// Сертификат argocd-server по умолчанию самоподписанный. Проверку отключаем только для loopback-туннеля:
-	// трафик идёт через port-forward, аутентифицированный Kubernetes API, а не через сеть.
-	if isLoopbackHost(u.Hostname()) {
-		tr.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} //nolint:gosec // loopback port-forward
+	tr := &http.Transport{DialContext: dial}
+	if dial != nil || isLoopbackHost(u.Hostname()) {
+		tr.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} //nolint:gosec // port-forward через Kubernetes API
 	}
 	return &argoAPIClient{
 		base:  u,

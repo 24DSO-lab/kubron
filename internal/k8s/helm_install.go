@@ -87,7 +87,11 @@ func (m *Manager) helmInstall(ctx context.Context, req HelmInstallRequest, dryRu
 
 	tr.note(fmt.Sprintf("%s/%s %s", req.Repo, req.Chart, req.Version))
 	tr.setPhase("Loading chart…")
-	chrt, err := loadHelmChart(ctx, req.Repo, req.Chart, req.Version)
+	sc, err := m.helmScope()
+	if err != nil {
+		return nil, err
+	}
+	chrt, err := loadHelmChart(ctx, sc, req.Repo, req.Chart, req.Version)
 	if err != nil {
 		return nil, err
 	}

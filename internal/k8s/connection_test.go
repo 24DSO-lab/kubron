@@ -9,7 +9,7 @@ import (
 
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 
-	"github.com/VadimIl224/kubron/internal/oidcpassword"
+	"github.com/24DSO-labs/kubron/internal/oidcpassword"
 )
 
 func kubeconfigWith(ai *clientcmdapi.AuthInfo, cl *clientcmdapi.Cluster) *clientcmdapi.Config {

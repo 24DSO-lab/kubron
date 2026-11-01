@@ -7,8 +7,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/VadimIl224/kubron/internal/auth"
-	"github.com/VadimIl224/kubron/internal/k8s"
+	"github.com/24DSO-labs/kubron/internal/auth"
+	"github.com/24DSO-labs/kubron/internal/k8s"
 )
 
 // toggleAccess — доступ к одному кластеру, который можно отобрать на ходу.

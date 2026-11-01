@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/VadimIl224/kubron/internal/audit"
+	"github.com/24DSO-labs/kubron/internal/audit"
 )
 
 func TestNormalizeSource(t *testing.T) {

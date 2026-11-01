@@ -3,7 +3,7 @@
 <template>
   <div v-if="can(Perm.PortForward)" class="pf-control">
     <div v-if="active" class="pf-active">
-      <span class="pf-label">→ localhost:{{ active.localPort }}</span>
+      <span class="pf-label">→ {{ active.mode === 'proxy' ? $t('sections.portForward.viaProxy') : `localhost:${active.localPort}` }}</span>
       <button class="pf-btn-stop" @click="stop">{{ $t('defs.menu.stop') }}</button>
     </div>
     <template v-else>
@@ -17,7 +17,7 @@
           <button class="pf-close" @click="showModal = false">✕</button>
         </div>
         <div class="pf-modal-body">
-          <div class="pf-row">
+          <div v-if="!proxy" class="pf-row">
             <label class="pf-row-label">{{ $t('sections.portForward.localPort') }}</label>
             <div class="pf-port-input-wrap">
               <input
@@ -32,7 +32,7 @@
               />
             </div>
           </div>
-          <label class="pf-check">
+          <label v-if="!proxy" class="pf-check">
             <input v-model="useHttps" type="checkbox" />
             <span>https</span>
           </label>
@@ -60,6 +60,7 @@ import { callApp } from '../../../resources/wails'
 import { openUrl } from '../../../platform/files'
 import { t } from '../../../i18n'
 import { errorText } from '../../../composables/errorText'
+import { getPortForwardUrl, isProxyForward } from '../../../composables/portForwardUrl'
 
 const props = defineProps<{
   namespace: string
@@ -76,6 +77,7 @@ const isRandom = ref(true)
 const useHttps = ref(false)
 const openInBrowser = ref(true)
 const loading = ref(false)
+const proxy = computed(() => isProxyForward())
 
 const active = computed(() => {
   return k8s.portForwards.value.find((s: any) => {
@@ -114,27 +116,24 @@ async function start() {
   if (loading.value) return
   loading.value = true
   try {
-    let localPort: number
+    // В режиме proxy порт на хосте не открывается: локальный порт не нужен и сервером игнорируется
+    let localPort = 0
     const inputVal = parseInt(localPortInput.value.trim(), 10)
-    if (inputVal && !isNaN(inputVal)) {
-      localPort = inputVal
-    } else {
-      localPort = await callApp('GetFreePort')
+    if (!proxy.value) {
+      localPort = inputVal && !isNaN(inputVal) ? inputVal : await callApp('GetFreePort')
     }
 
-    if (props.resourceType === 'pod') {
-      await callApp('StartPortForward', props.namespace, props.resourceName, localPort, props.port)
-    } else {
-      await callApp('StartServicePortForward', props.namespace, props.resourceName, localPort, props.port)
-    }
+    const session = props.resourceType === 'pod'
+      ? await callApp('StartPortForward', props.namespace, props.resourceName, localPort, props.port)
+      : await callApp('StartServicePortForward', props.namespace, props.resourceName, localPort, props.port)
     await k8s.refreshPortForwards()
     showModal.value = false
-    notifications.notifySuccess(t('sections.portForward.started', { port: localPort, target: `${props.resourceName}:${props.port}` }))
+    const target = `${props.resourceName}:${props.port}`
+    notifications.notifySuccess(proxy.value
+      ? t('sections.portForward.startedProxy', { target })
+      : t('sections.portForward.started', { port: session?.localPort ?? localPort, target }))
 
-    if (openInBrowser.value) {
-      const protocol = useHttps.value ? 'https' : 'http'
-      openUrl(`${protocol}://localhost:${localPort}`)
-    }
+    if (openInBrowser.value) openUrl(await getPortForwardUrl(session.id, useHttps.value))
   } catch (e: any) {
     // Окно остаётся открытым: порт можно поправить и нажать Start ещё раз
     notifications.notifyError(t('sections.portForward.startError', { error: errorText(e) }))

@@ -13,6 +13,9 @@ import (
 	"testing"
 )
 
+// journalAdd пишет запись в файловый журнал (так же, как трекер операций через хранилище).
+func journalAdd(r HelmOperationRecord) { _ = fileHelmStore{}.AddOperation("", "", r) }
+
 func jrec(id, op, status, rel string) HelmOperationRecord {
 	return HelmOperationRecord{
 		ID: id, Op: op, Status: status, Release: rel, Namespace: "prod", Cluster: "dev", Detail: "d-" + rel,

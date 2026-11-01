@@ -18,7 +18,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 
-	"github.com/VadimIl224/kubron/internal/oidcpassword"
+	"github.com/24DSO-labs/kubron/internal/oidcpassword"
 )
 
 // Способы подключения к кластеру (ClusterMeta.Mode). Пусто означает kubeconfig.
@@ -122,6 +122,10 @@ func checkLocalFiles(cfg *clientcmdapi.Config, ctxName string) error {
 // CheckKubeconfigPolicy применяет политику к выбранному контексту. oidcCredentials — пользователь уже дал логин и
 // пароль для oidc-login: тогда exec-блок не запускается и не считается нарушением, но остальные правила действуют.
 func CheckKubeconfigPolicy(cfg *clientcmdapi.Config, ctxName string, oidcCredentials bool) error {
+	// Адрес API-сервера из kubeconfig пользователя проверяется политикой адресов (если она включена).
+	if err := checkClusterAddress(cfg, ctxName); err != nil {
+		return err
+	}
 	p := currentPolicy()
 	if !p.AllowLocalFiles {
 		if err := checkLocalFiles(cfg, ctxName); err != nil {
