@@ -188,7 +188,8 @@ func main() {
 	}()
 	defer terminals.CloseAll()
 
-	handler := server.NewHandler(dispatcher, dist, guard, server.WithCSPReportOnly(cfg.CSPReportOnly))
+	handler := server.NewHandler(dispatcher, dist, guard, server.WithCSPReportOnly(cfg.CSPReportOnly),
+		readyzOption(pgStore, lifecycle))
 	if pf != nil {
 		go pf.Run(ctx)
 		// Закрытая веб-сессия закрывает и свои потоки port-forward (ReleaseView → StopAll); дополнительно

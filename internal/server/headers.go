@@ -13,13 +13,22 @@ import (
 // HandlerOption настраивает NewHandler.
 type HandlerOption func(*handlerOptions)
 
-type handlerOptions struct{ cspReportOnly bool }
+type handlerOptions struct {
+	cspReportOnly bool
+	readyz        ReadyzConfig
+}
 
 // WithCSPReportOnly отдаёт политику в заголовке Content-Security-Policy-Report-Only: браузер
 // только сообщает о нарушениях в консоль, ничего не блокируя. Нужен на время обкатки политики
 // (KUBRON_CSP_REPORT_ONLY); по умолчанию политика применяется.
 func WithCSPReportOnly(on bool) HandlerOption {
 	return func(o *handlerOptions) { o.cspReportOnly = on }
+}
+
+// WithReadyz настраивает GET /readyz (проверка БД и признак draining). Без опции /readyz отвечает 200
+// (нечего проверять), но признак draining берётся из Guard.Lifecycle, если защита включена.
+func WithReadyz(c ReadyzConfig) HandlerOption {
+	return func(o *handlerOptions) { o.readyz = c }
 }
 
 // hstsValue — HSTS на год. includeSubDomains не включается намеренно: Kubron может стоять на

@@ -96,7 +96,6 @@ spec:
             failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
             timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
           readinessProbe:
-            # TODO(/readyz): после появления /readyz (проверка БД) заменить path
             httpGet:
               path: {{ .Values.readinessProbe.path }}
               port: http

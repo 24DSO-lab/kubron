@@ -77,8 +77,9 @@ has   "$dev" 'helm.sh/resource-policy: keep' "dev Secret must survive uninstall"
 # Writable-каталоги под emptyDir (HOME и TMPDIR)
 has   "$min" 'mountPath: /home/nonroot' "HOME emptyDir missing"
 has   "$min" 'mountPath: /tmp' "TMPDIR emptyDir missing"
-# Пробы: пока только /healthz
-has   "$min" 'path: /healthz' "probes must use /healthz"
+# Пробы: liveness и startup — /healthz (без БД), readiness — /readyz (проверка БД, draining)
+has   "$min" 'path: /healthz' "liveness/startup probes must use /healthz"
+has   "$min" 'path: /readyz' "readiness probe must use /readyz"
 
 echo "== negative cases (must fail)"
 expect_fail() { # <ожидаемый фрагмент сообщения> <аргументы helm template…>
