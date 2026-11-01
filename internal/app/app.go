@@ -13,8 +13,10 @@ import (
 
 	"github.com/24DSO-labs/kubron/internal/audit"
 	"github.com/24DSO-labs/kubron/internal/auth"
+	"github.com/24DSO-labs/kubron/internal/clusterhealth"
 	"github.com/24DSO-labs/kubron/internal/k8s"
 	"github.com/24DSO-labs/kubron/internal/pfproxy"
+	"github.com/24DSO-labs/kubron/internal/replicaevents"
 	"github.com/24DSO-labs/kubron/internal/store"
 	"github.com/24DSO-labs/kubron/internal/termbuf"
 )
@@ -33,6 +35,10 @@ type App struct {
 	// Port-forward в вебе (ADR-0017): режим и прокси; задаются до создания видов (SetPortForwardMode/Proxy).
 	pfMode    string
 	pfService *pfproxy.Service
+	// Сообщения между репликами (ADR-0016): publish отправляет их другим репликам (nil — реплика одна),
+	// health — монитор проверок кластеров (для немедленного чтения результатов лидера).
+	publish func(replicaevents.Message)
+	health  *clusterhealth.Monitor
 }
 
 // SetStore задаёт хранилище вместо файлового; вызывается до OnStartup. Это функция пакета, а не метод App:

@@ -157,6 +157,10 @@ type Monitor struct {
 	Parallel int
 	// OnChange вызывается после круга, если у какого-либо кластера изменилось состояние.
 	OnChange func()
+	// OnPublish вызывается только у лидера после круга, в котором что-то изменилось и записано в Sink:
+	// остальные реплики должны перечитать состояния (событие health.changed). У читающих реплик не вызывается,
+	// иначе сообщение ходило бы по кругу.
+	OnPublish func()
 	// Logf — журнал процесса; nil — молча.
 	Logf func(format string, args ...any)
 	// Now — часы (тесты).
@@ -268,7 +272,15 @@ func (m *Monitor) Tick(ctx context.Context) {
 	if changed && m.OnChange != nil {
 		m.OnChange()
 	}
+	if changed && m.OnPublish != nil {
+		m.OnPublish()
+	}
 }
+
+// Refresh немедленно читает результаты из Sink (по событию health.changed от лидера), не дожидаясь очередного
+// круга. Без Sink ничего не делает. Сообщение приходит только от лидера, поэтому сама лидирующая реплика его не
+// получает (свои сообщения отбрасываются).
+func (m *Monitor) Refresh(ctx context.Context) { m.follow(ctx) }
 
 // follow обновляет доску из общего хранилища (эта реплика не лидер).
 func (m *Monitor) follow(ctx context.Context) {

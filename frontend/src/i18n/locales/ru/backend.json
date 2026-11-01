@@ -534,6 +534,9 @@
   "ticketAlreadyUsed": "ticket уже использован",
   "kubronPfSchemeMustBeHttpsOrHttp": "KUBRON_PF_SCHEME должен быть https или http",
   "portForwardTimeoutsCannotBeNegative": "таймауты port-forward не могут быть отрицательными",
-  "kubronPfSchemeHttpIsAllowedOnlyForALocalhostBaseDomain": "KUBRON_PF_SCHEME=http допустим только для localhost-домена"
+  "kubronPfSchemeHttpIsAllowedOnlyForALocalhostBaseDomain": "KUBRON_PF_SCHEME=http допустим только для localhost-домена",
 
+  "replicaEventIsTooLargeBytes": "событие между репликами слишком велико: {p0} байт",
+  "replicaEventCannotBeDecoded": "событие между репликами не удалось разобрать: {p0}",
+  "replicaEventHasAnUnsupportedVersion": "событие между репликами имеет неподдерживаемую версию {p0}"
 }

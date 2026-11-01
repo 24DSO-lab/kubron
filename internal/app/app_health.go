@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/24DSO-labs/kubron/internal/clusterhealth"
+	"github.com/24DSO-labs/kubron/internal/replicaevents"
 )
 
 // События о состоянии кластеров и доступе (фронтенд перечитывает список кластеров).
@@ -38,7 +39,33 @@ func StartHealthMonitor(ctx context.Context, root *App, interval time.Duration) 
 		mon.Leader = hl.HealthLeader()
 	}
 	mon.OnChange = func() { root.platform.Emit(EventClustersHealth) }
+	// Лидер сообщает остальным репликам, что результаты проверок в БД обновились (health.changed).
+	mon.OnPublish = func() {
+		if root.publish != nil {
+			root.publish(replicaevents.Message{Kind: replicaevents.HealthChanged})
+		}
+	}
+	root.health = mon
 	go mon.Run(ctx)
+}
+
+// SetReplicaPublisher задаёт отправку сообщений другим репликам (ADR-0016); вызывается до StartHealthMonitor.
+// Это функция пакета, а не метод App: она не должна попадать в привязки Wails и RPC.
+func SetReplicaPublisher(root *App, publish func(replicaevents.Message)) { root.publish = publish }
+
+// RefreshHealth немедленно читает результаты проверок лидера из общего хранилища (сообщение health.changed).
+func RefreshHealth(ctx context.Context, root *App) {
+	if root != nil && root.health != nil {
+		root.health.Refresh(ctx)
+	}
+}
+
+// NotifyClustersChanged сообщает всем клиентам этой реплики, что список кластеров или доступ к ним изменились
+// (сообщения access.changed и directory.changed): клиент перечитывает список и получает только свои кластеры.
+func NotifyClustersChanged(root *App) {
+	if root != nil {
+		root.platform.Emit(EventClustersHealth)
+	}
 }
 
 // EnforceAccess закрывает ресурсы вида, если пользователь больше не видит свой активный кластер:

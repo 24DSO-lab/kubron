@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/24DSO-labs/kubron/internal/replicaevents"
 	"github.com/24DSO-labs/kubron/internal/websession"
 )
 
@@ -479,4 +480,85 @@ func TestSessionsWithoutBackendUnchanged(t *testing.T) {
 		t.Errorf("after Delete: %v", err)
 	}
 	ss.Revalidate() // без хранилища — пустая операция
+}
+
+func TestSessionPublishesRevocationsAndAppliesRemoteOnes(t *testing.T) {
+	clock := time.Date(2026, 10, 31, 12, 0, 0, 0, time.UTC)
+	b := newMemBackend(func() time.Time { return clock })
+	a, _ := replica(t, "a", b, &clock)
+	bb, bViews := replica(t, "b", b, &clock)
+	var sent []replicaevents.Message
+	a.Publish = func(m replicaevents.Message) { sent = append(sent, m) }
+	var ended []string
+	bb.OnEnd = func(id string) { ended = append(ended, id) }
+
+	t1, s1, _ := a.Open("u1", &fakeView{}, "")
+	t2, s2, _ := a.Open("u1", &fakeView{}, "")
+	t3, s3, _ := a.Open("u2", &fakeView{}, "")
+	for _, tk := range []string{t1, t2, t3} {
+		if _, err := bb.Lookup(tk); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// выход на A → session.ended
+	if err := a.Delete(t1); err != nil {
+		t.Fatal(err)
+	}
+	if len(sent) != 1 || sent[0].Kind != replicaevents.SessionEnded || sent[0].Session != s1.ID {
+		t.Fatalf("logout must be published: %+v", sent)
+	}
+	// B применяет сообщение сразу, не дожидаясь кэша: вид освобождён, соединения сессии закрыты
+	bb.EndRemote(s1.ID)
+	if len(ended) != 1 || ended[0] != s1.ID || (*bViews)[0].released != 1 {
+		t.Errorf("remote end: ended=%v released=%d", ended, (*bViews)[0].released)
+	}
+	bb.EndRemote(s1.ID) // повторное сообщение безвредно
+	if len(ended) != 1 {
+		t.Errorf("a repeated message must change nothing: %v", ended)
+	}
+
+	// смена пароля на A из сессии s2 → user.sessions_ended с исключением
+	sent = nil
+	if err := a.EndUser("u1", s2.ID); err != nil {
+		t.Fatal(err)
+	}
+	if len(sent) != 1 || sent[0].Kind != replicaevents.UserSessionsEnded || sent[0].User != "u1" || sent[0].Session != s2.ID {
+		t.Fatalf("user sessions end must be published with the exception: %+v", sent)
+	}
+	bb.EndUserRemote("u1", s2.ID)
+	for _, tk := range []string{t2, t3} {
+		if _, err := bb.Lookup(tk); err != nil { // текущая сессия пользователя и чужая остались
+			t.Errorf("session must survive: %v", err)
+		}
+	}
+	if len(ended) != 1 { // s1 уже была закрыта, остальные не затронуты
+		t.Errorf("unexpected ends: %v", ended)
+	}
+	bb.EndUserRemote("u2", "")
+	if len(ended) != 2 || ended[1] != s3.ID {
+		t.Errorf("all sessions of the user must end: %v", ended)
+	}
+	// отказ хранилища: событие не публикуется (сессия не отозвана)
+	sent = nil
+	b.down = true
+	_ = a.Delete(t2)
+	if len(sent) != 0 {
+		t.Errorf("nothing must be published if the revocation failed: %+v", sent)
+	}
+}
+
+func TestSessionReapPublishesWhenRemovingRows(t *testing.T) {
+	clock := time.Date(2026, 10, 31, 12, 0, 0, 0, time.UTC)
+	b := newMemBackend(func() time.Time { return clock })
+	a, _ := replica(t, "a", b, &clock)
+	var sent []replicaevents.Message
+	a.Publish = func(m replicaevents.Message) { sent = append(sent, m) }
+	_, s, _ := a.Open("u1", &fakeView{active: false}, "")
+	if n := a.Reap(func(v any) bool { return v.(*fakeView).active }); n != 1 {
+		t.Fatalf("reaped %d", n)
+	}
+	if len(sent) != 1 || sent[0].Session != s.ID {
+		t.Errorf("a reaped session must be announced: %+v", sent)
+	}
 }

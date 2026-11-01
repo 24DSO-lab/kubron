@@ -17,6 +17,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/24DSO-labs/kubron/internal/replicaevents"
 	"github.com/24DSO-labs/kubron/internal/termbuf"
 	"github.com/24DSO-labs/kubron/internal/websession"
 )
@@ -84,6 +85,9 @@ type Sessions struct {
 	// Restore строит вид для сессии, найденной в хранилище, но не имеющей вида на этой реплике:
 	// создаёт вид, открывает в нём сессию пользователя и привязывает к rec.ID. Ошибка — сессия недействительна.
 	Restore func(rec websession.Record) (view any, err error)
+	// Publish сообщает другим репликам о завершении сессий (выход, отзыв, смена пароля); nil — не сообщать.
+	// Сообщение — ускорение: остальные реплики и без него увидят это при сверке с хранилищем (кэш 2 с).
+	Publish func(replicaevents.Message)
 	// Sync переносит в вид данные, записанные другой репликой (время последней активности).
 	Sync func(view any, rec websession.Record)
 
@@ -424,6 +428,8 @@ func (s *Sessions) Delete(token string) error {
 			ctx, cancel := storeCtx()
 			if derr := s.Backend.Delete(ctx, id); derr != nil {
 				err = derr
+			} else {
+				s.publish(replicaevents.Message{Kind: replicaevents.SessionEnded, Session: id})
 			}
 			cancel()
 		}
@@ -448,11 +454,32 @@ func (s *Sessions) EndUser(userID, exceptID string) error {
 		ctx, cancel := storeCtx()
 		_, err = s.Backend.DeleteUser(ctx, userID, exceptID)
 		cancel()
+		if err == nil {
+			// Session — исключение: сессия, из которой сменили пароль, остаётся.
+			s.publish(replicaevents.Message{Kind: replicaevents.UserSessionsEnded, User: userID, Session: exceptID})
+		}
 	}
+	s.endLocal(func(it *Session) bool { return it.UserID == userID && it.ID != exceptID })
+	return err
+}
+
+// EndRemote завершает на этой реплике сессию, закрытую на другой (сообщение session.ended): закрывает её
+// WebSocket и потоки, освобождает вид, сбрасывает кэш. Хранилище не трогает: строку уже удалил отправитель.
+func (s *Sessions) EndRemote(sessionID string) {
+	s.endLocal(func(it *Session) bool { return it.ID == sessionID })
+}
+
+// EndUserRemote завершает на этой реплике сессии пользователя, кроме exceptID (сообщение user.sessions_ended).
+func (s *Sessions) EndUserRemote(userID, exceptID string) {
+	s.endLocal(func(it *Session) bool { return it.UserID == userID && it.ID != exceptID })
+}
+
+// endLocal убирает из реестра этой реплики подходящие сессии и освобождает их ресурсы.
+func (s *Sessions) endLocal(match func(*Session) bool) {
 	s.mu.Lock()
 	var ended []Session
 	for _, it := range s.items {
-		if it.UserID == userID && it.ID != exceptID {
+		if match(it) {
 			ended = appendUnique(ended, it)
 		}
 	}
@@ -465,7 +492,12 @@ func (s *Sessions) EndUser(userID, exceptID string) error {
 	}
 	s.mu.Unlock()
 	s.notify(ended)
-	return err
+}
+
+func (s *Sessions) publish(m replicaevents.Message) {
+	if s.Publish != nil {
+		s.Publish(m)
+	}
 }
 
 // Reap завершает сессии, у которых истёк срок или чей вид ядра больше не жив (alive == false:
@@ -506,7 +538,9 @@ func (s *Sessions) Reap(alive func(view any) bool) int {
 			}
 			if err == nil {
 				ctx, cancel := storeCtx()
-				_ = s.Backend.Delete(ctx, rec.ID)
+				if s.Backend.Delete(ctx, rec.ID) == nil {
+					s.publish(replicaevents.Message{Kind: replicaevents.SessionEnded, Session: rec.ID})
+				}
 				cancel()
 			}
 		}

@@ -534,6 +534,9 @@
   "ticketAlreadyUsed": "ticket 已被使用",
   "kubronPfSchemeMustBeHttpsOrHttp": "KUBRON_PF_SCHEME 必须为 https 或 http",
   "portForwardTimeoutsCannotBeNegative": "port-forward 超时不能为负数",
-  "kubronPfSchemeHttpIsAllowedOnlyForALocalhostBaseDomain": "KUBRON_PF_SCHEME=http 仅允许用于 localhost 基础域名"
+  "kubronPfSchemeHttpIsAllowedOnlyForALocalhostBaseDomain": "KUBRON_PF_SCHEME=http 仅允许用于 localhost 基础域名",
 
+  "replicaEventIsTooLargeBytes": "副本事件过大：{p0} 字节",
+  "replicaEventCannotBeDecoded": "无法解析副本事件：{p0}",
+  "replicaEventHasAnUnsupportedVersion": "副本事件的版本不受支持：{p0}"
 }
