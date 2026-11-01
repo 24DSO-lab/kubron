@@ -368,6 +368,9 @@ jobs:
           # Под, который пишет в stdout: нужен тесту «события и логи доходят только владельцу»
           kubectl run e2e-logs --image=busybox:1.36 --restart=Never -- sh -c 'while true; do echo tick; sleep 1; done'
           kubectl wait --for=condition=Ready pod/e2e-logs --timeout=120s
+          # HTTP-приложение для теста port-forward через прокси потоков (этап 5)
+          kubectl run e2e-http --image=busybox:1.36 --restart=Never -- sh -c 'mkdir -p /www && echo kubron-pf-ok > /www/index.html && httpd -f -p 8080 -h /www'
+          kubectl wait --for=condition=Ready pod/e2e-http --timeout=120s
 
       - name: Export kubeconfig
         run: kind export kubeconfig --name kubron-e2e --kubeconfig "$RUNNER_TEMP/kind.kubeconfig"
@@ -380,6 +383,21 @@ jobs:
           for i in $(seq 1 30); do curl -fs http://127.0.0.1:8080/healthz && exit 0; sleep 1; done
           cat "$RUNNER_TEMP/server.log"; exit 1
 
+      # Этап 5: два отдельных сервера с пустыми каталогами данных (pf-terminals.spec.ts):
+      # 8081 — прокси потоков port-forward на *.pf.localhost и короткий idle-таймаут терминала,
+      # 8082 — port-forward и терминалы отключены флагами.
+      - name: Start kubron-server for port-forward and terminals
+        run: |
+          mkdir -p "$RUNNER_TEMP/kubron-pf" "$RUNNER_TEMP/kubron-locked"
+          KUBRON_DATA_DIR="$RUNNER_TEMP/kubron-pf" KUBRON_PF_BASE_DOMAIN=localhost:8081 KUBRON_PF_SCHEME=http \
+            KUBRON_TERMINAL_IDLE_TIMEOUT=10s ./kubron-server --listen 127.0.0.1:8081 > "$RUNNER_TEMP/server-pf.log" 2>&1 &
+          KUBRON_DATA_DIR="$RUNNER_TEMP/kubron-locked" KUBRON_DISABLE_EXEC=1 KUBRON_DISABLE_PORT_FORWARD=1 \
+            ./kubron-server --listen 127.0.0.1:8082 > "$RUNNER_TEMP/server-locked.log" 2>&1 &
+          for port in 8081 8082; do
+            for i in $(seq 1 30); do curl -fs "http://127.0.0.1:$port/healthz" && break; sleep 1; done
+            curl -fs "http://127.0.0.1:$port/healthz" || { cat "$RUNNER_TEMP"/server-*.log; exit 1; }
+          done
+
       - run: npx playwright install --with-deps chromium
         working-directory: frontend
 
@@ -390,10 +408,13 @@ jobs:
           E2E_KUBECONFIG: ${{ runner.temp }}/kind.kubeconfig
           E2E_TERMINAL_POD: default/e2e-shell/e2e-shell
           E2E_LOG_POD: default/e2e-logs/e2e-logs
+          E2E_HTTP_POD: default/e2e-http
+          E2E_PF_URL: http://localhost:8081
+          E2E_LOCKED_URL: http://127.0.0.1:8082
 
       - name: Server log
         if: always()
-        run: cat "$RUNNER_TEMP/server.log" || true
+        run: cat "$RUNNER_TEMP"/server*.log || true
 
       - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
         if: failure()
