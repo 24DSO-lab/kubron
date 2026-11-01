@@ -24,3 +24,18 @@ data:
   {{- if not (kindIs "invalid" .Values.kubron.maxPortForwards) }}
   KUBRON_MAX_PORT_FORWARDS: {{ .Values.kubron.maxPortForwards | quote }}
   {{- end }}
+  {{- with .Values.kubron.terminalMaxDuration }}
+  KUBRON_TERMINAL_MAX_DURATION: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.kubron.terminalIdleTimeout }}
+  KUBRON_TERMINAL_IDLE_TIMEOUT: {{ . | quote }}
+  {{- end }}
+  {{- if .Values.kubron.disablePortForward }}
+  KUBRON_DISABLE_PORT_FORWARD: "true"
+  {{- end }}
+  {{- if .Values.kubron.disableNodeShell }}
+  KUBRON_DISABLE_NODE_SHELL: "true"
+  {{- end }}
+  {{- if .Values.kubron.disableExec }}
+  KUBRON_DISABLE_EXEC: "true"
+  {{- end }}

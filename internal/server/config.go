@@ -77,6 +77,15 @@ type Config struct {
 	// 0 — значения по умолчанию (15m и 8h).
 	PFIdleTimeout time.Duration
 	PFMaxDuration time.Duration
+	// Отключение возможностей для всех пользователей: KUBRON_DISABLE_PORT_FORWARD, KUBRON_DISABLE_NODE_SHELL,
+	// KUBRON_DISABLE_EXEC (терминалы подов; оболочка узла тоже, она работает через exec).
+	DisablePortForward bool
+	DisableNodeShell   bool
+	DisableExec        bool
+	// TerminalMaxDuration и TerminalIdleTimeout — абсолютный срок терминала и срок без ввода
+	// (KUBRON_TERMINAL_MAX_DURATION, по умолчанию 8h; KUBRON_TERMINAL_IDLE_TIMEOUT, по умолчанию 30m). 0 — без ограничения.
+	TerminalMaxDuration time.Duration
+	TerminalIdleTimeout time.Duration
 }
 
 // ServiceMode — сервер для нескольких пользователей: база данных или адрес не на loopback.
@@ -103,12 +112,16 @@ const (
 	DefaultMaxTerminals    = 8
 	DefaultMaxLogStreams   = 20
 	DefaultMaxPortForwards = 10
+
+	DefaultTerminalMaxDuration = 8 * time.Hour
+	DefaultTerminalIdleTimeout = 30 * time.Minute
 )
 
 // LoadConfig разбирает флаги args (без имени программы) и окружение через getenv.
 func LoadConfig(args []string, getenv func(string) string, out io.Writer) (Config, error) {
 	cfg := Config{Listen: "127.0.0.1:8080", SessionTTL: 12 * time.Hour, ClusterCheckInterval: DefaultClusterCheckInterval, TrustedProxyHops: 1,
-		MaxTerminals: DefaultMaxTerminals, MaxLogStreams: DefaultMaxLogStreams, MaxPortForwards: DefaultMaxPortForwards}
+		MaxTerminals: DefaultMaxTerminals, MaxLogStreams: DefaultMaxLogStreams, MaxPortForwards: DefaultMaxPortForwards,
+		TerminalMaxDuration: DefaultTerminalMaxDuration, TerminalIdleTimeout: DefaultTerminalIdleTimeout}
 	if v := getenv("KUBRON_LISTEN"); v != "" {
 		cfg.Listen = v
 	}
@@ -117,12 +130,16 @@ func LoadConfig(args []string, getenv func(string) string, out io.Writer) (Confi
 	cfg.DataDir = getenv("KUBRON_DATA_DIR")
 	cfg.TrustProxy = truthy(getenv("KUBRON_TRUST_PROXY"))
 	cfg.CSPReportOnly = truthy(getenv("KUBRON_CSP_REPORT_ONLY"))
+	cfg.DisablePortForward = truthy(getenv("KUBRON_DISABLE_PORT_FORWARD"))
+	cfg.DisableNodeShell = truthy(getenv("KUBRON_DISABLE_NODE_SHELL"))
+	cfg.DisableExec = truthy(getenv("KUBRON_DISABLE_EXEC"))
 	cfg.PFBaseDomain = strings.TrimSpace(getenv("KUBRON_PF_BASE_DOMAIN"))
 	cfg.PFScheme = strings.ToLower(strings.TrimSpace(getenv("KUBRON_PF_SCHEME")))
 	for _, d := range []struct {
 		env string
 		dst *time.Duration
-	}{{"KUBRON_PF_IDLE_TIMEOUT", &cfg.PFIdleTimeout}, {"KUBRON_PF_MAX_DURATION", &cfg.PFMaxDuration}} {
+	}{{"KUBRON_PF_IDLE_TIMEOUT", &cfg.PFIdleTimeout}, {"KUBRON_PF_MAX_DURATION", &cfg.PFMaxDuration},
+		{"KUBRON_TERMINAL_MAX_DURATION", &cfg.TerminalMaxDuration}, {"KUBRON_TERMINAL_IDLE_TIMEOUT", &cfg.TerminalIdleTimeout}} {
 		if v := getenv(d.env); v != "" {
 			dur, err := time.ParseDuration(v)
 			if err != nil {
@@ -212,6 +229,11 @@ func LoadConfig(args []string, getenv func(string) string, out io.Writer) (Confi
 	fs.IntVar(&cfg.MaxTerminals, "max-terminals", cfg.MaxTerminals, "terminals per user, 0 for unlimited (env KUBRON_MAX_TERMINALS)")
 	fs.IntVar(&cfg.MaxLogStreams, "max-log-streams", cfg.MaxLogStreams, "log streams per user, 0 for unlimited (env KUBRON_MAX_LOG_STREAMS)")
 	fs.IntVar(&cfg.MaxPortForwards, "max-port-forwards", cfg.MaxPortForwards, "port-forwards per user, 0 for unlimited (env KUBRON_MAX_PORT_FORWARDS)")
+	fs.BoolVar(&cfg.DisablePortForward, "disable-port-forward", cfg.DisablePortForward, "disable port-forward for everyone (env KUBRON_DISABLE_PORT_FORWARD)")
+	fs.BoolVar(&cfg.DisableNodeShell, "disable-node-shell", cfg.DisableNodeShell, "disable the shell on nodes for everyone (env KUBRON_DISABLE_NODE_SHELL)")
+	fs.BoolVar(&cfg.DisableExec, "disable-exec", cfg.DisableExec, "disable pod terminals and the node shell for everyone (env KUBRON_DISABLE_EXEC)")
+	fs.DurationVar(&cfg.TerminalMaxDuration, "terminal-max-duration", cfg.TerminalMaxDuration, "maximum lifetime of a terminal, 0 for unlimited (env KUBRON_TERMINAL_MAX_DURATION)")
+	fs.DurationVar(&cfg.TerminalIdleTimeout, "terminal-idle-timeout", cfg.TerminalIdleTimeout, "close a terminal after this time without input, 0 for unlimited (env KUBRON_TERMINAL_IDLE_TIMEOUT)")
 	if err := fs.Parse(args); err != nil {
 		return Config{}, err
 	}
@@ -256,6 +278,9 @@ func (c Config) Validate() error {
 	}
 	if c.MaxTerminals < 0 || c.MaxLogStreams < 0 || c.MaxPortForwards < 0 {
 		return errors.New("resource limits cannot be negative (0 means unlimited)")
+	}
+	if c.TerminalMaxDuration < 0 || c.TerminalIdleTimeout < 0 {
+		return errors.New("terminal timeouts cannot be negative")
 	}
 	if c.PFScheme != "" && c.PFScheme != "https" && c.PFScheme != "http" {
 		return errors.New("KUBRON_PF_SCHEME must be https or http")

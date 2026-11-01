@@ -12,7 +12,7 @@ func TestDefaultLimitsAndInheritance(t *testing.T) {
 	}
 	m.SetLimits(DefaultLimits())
 	v := m.ForSession()
-	if v.Limits() != (Limits{Terminals: 8, LogStreams: 20, PortForwards: 10}) {
+	if v.Limits() != DefaultLimits() || v.Limits().Terminals != 8 || v.Limits().LogStreams != 20 || v.Limits().PortForwards != 10 {
 		t.Fatalf("the view did not inherit the limits: %+v", v.Limits())
 	}
 	// Виды независимы: терминалы и логи у каждого свои.

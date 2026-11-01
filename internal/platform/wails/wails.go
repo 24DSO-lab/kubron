@@ -57,6 +57,7 @@ func (p *Platform) Capabilities() app.Capabilities {
 		FileDialog:      true,
 		PortForward:     true,
 		PortForwardMode: "local",
+		Exec:            true,
 		NodeShell:       true,
 		LocalKubeconfig: true,
 		SSO:             false,

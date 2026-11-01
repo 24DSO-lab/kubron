@@ -16,6 +16,8 @@ export interface Capabilities {
   portForward: boolean
   /** как открывается проброс: local — порт на localhost, proxy — через прокси сервера, off — недоступен */
   portForwardMode: 'local' | 'proxy' | 'off'
+  /** терминалы подов (exec/attach); отключается KUBRON_DISABLE_EXEC */
+  exec: boolean
   /** оболочка на узле */
   nodeShell: boolean
   /** чтение kubeconfig с диска машины, где запущен бэкенд */
@@ -36,6 +38,7 @@ export const DEFAULT_CAPABILITIES: Readonly<Capabilities> = Object.freeze({
   fileDialog: true,
   portForward: true,
   portForwardMode: 'local',
+  exec: true,
   nodeShell: true,
   localKubeconfig: true,
   sso: false,
@@ -73,4 +76,9 @@ export async function loadCapabilities(): Promise<void> {
 
 export function useCapabilities() {
   return { capabilities: readonly(capabilities), loaded: readonly(loaded), loadCapabilities }
+}
+
+/** Синхронная проверка флага для условий видимости действий (when). */
+export function hasCapability(key: { [K in keyof Capabilities]: Capabilities[K] extends boolean ? K : never }[keyof Capabilities]): boolean {
+  return capabilities.value[key]
 }

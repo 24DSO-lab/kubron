@@ -510,7 +510,6 @@
   "trustedProxyHopsCannotBeNegative": "可信代理数量不能为负数",
   "trustedProxiesAndHopsAreUsed": "可信代理及其数量仅与 trust-proxy 一起生效 (KUBRON_TRUST_PROXY=1)",
   "tooManyRequestsTryAgainIn": "请求过多，请在 {p0} 秒后重试",
-
   "webSessionNotFound": "未找到 Web 会话",
   "sessionStoreIsUnavailable": "会话存储不可用",
   "kubronDrainDelay": "KUBRON_DRAIN_DELAY {p0}: {p1}",
@@ -535,7 +534,6 @@
   "kubronPfSchemeMustBeHttpsOrHttp": "KUBRON_PF_SCHEME 必须为 https 或 http",
   "portForwardTimeoutsCannotBeNegative": "port-forward 超时不能为负数",
   "kubronPfSchemeHttpIsAllowedOnlyForALocalhostBaseDomain": "KUBRON_PF_SCHEME=http 仅允许用于 localhost 基础域名",
-
   "replicaEventIsTooLargeBytes": "副本事件过大：{p0} 字节",
   "replicaEventCannotBeDecoded": "无法解析副本事件：{p0}",
   "replicaEventHasAnUnsupportedVersion": "副本事件的版本不受支持：{p0}",
@@ -546,5 +544,8 @@
   "aHelmRepositoryWithThisNameAlreadyExists": "已存在同名 Helm 仓库",
   "helmRepositoryOptionsAreCorrupted": "Helm 仓库选项已损坏：{p0}",
   "proxyUrlInTheKubeconfigIsNotAllowedWhileTheClusterAddressPolicyIsEnabled": "启用集群地址策略时不允许 kubeconfig 中的 proxy-url",
-  "streamIsOnAnotherReplica": "该流位于另一个副本上"
+  "streamIsOnAnotherReplica": "该流位于另一个副本上",
+  "terminalsAreDisabledByTheAdministrator": "终端已被管理员禁用",
+  "nodeShellIsDisabledByTheAdministrator": "节点 Shell 已被管理员禁用",
+  "terminalTimeoutsCannotBeNegative": "终端超时时间不能为负数"
 }

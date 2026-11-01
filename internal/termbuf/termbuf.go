@@ -202,10 +202,32 @@ func (r *Registry) Len() int {
 
 // Attachment — подключение браузера к сессии.
 type Attachment struct {
-	r  *Registry
-	id string
-	e  *entry
-	s  Sink
+	r     *Registry
+	id    string
+	e     *entry
+	s     Sink
+	owner string // пусто — без проверки владельца (Attach)
+}
+
+// AttachAs подключает s к сессии id от имени owner: чужая сессия неотличима от несуществующей, а ввод и размер
+// проверяют владельца на каждый вызов (сессию могли закрыть или заменить после подключения).
+func (r *Registry) AttachAs(id, owner string, s Sink) (*Attachment, error) {
+	if owner == "" || !r.OwnedBy(id, owner) {
+		return nil, ErrNotFound
+	}
+	a, err := r.Attach(id, s)
+	if err != nil {
+		return nil, err
+	}
+	a.owner = owner
+	return a, nil
+}
+
+func (a *Attachment) allowed() error {
+	if a.owner != "" && !a.r.OwnedBy(a.id, a.owner) {
+		return ErrNotFound
+	}
+	return nil
 }
 
 // Attach подключает s к сессии id.
@@ -233,10 +255,20 @@ func (r *Registry) Attach(id string, s Sink) (*Attachment, error) {
 }
 
 // Input передаёт ввод пользователя в сессию.
-func (a *Attachment) Input(p []byte) error { return a.e.hooks.Input(p) }
+func (a *Attachment) Input(p []byte) error {
+	if err := a.allowed(); err != nil {
+		return err
+	}
+	return a.e.hooks.Input(p)
+}
 
 // Resize меняет размер терминала.
-func (a *Attachment) Resize(cols, rows uint16) error { return a.e.hooks.Resize(cols, rows) }
+func (a *Attachment) Resize(cols, rows uint16) error {
+	if err := a.allowed(); err != nil {
+		return err
+	}
+	return a.e.hooks.Resize(cols, rows)
+}
 
 // Detach отключает браузер. Завершённая сессия удаляется сразу, живая ждёт DetachTimeout.
 func (a *Attachment) Detach() {

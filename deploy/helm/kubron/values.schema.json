@@ -193,6 +193,21 @@
           ],
           "minimum": 0
         },
+        "terminalMaxDuration": {
+          "type": "string"
+        },
+        "terminalIdleTimeout": {
+          "type": "string"
+        },
+        "disablePortForward": {
+          "type": "boolean"
+        },
+        "disableNodeShell": {
+          "type": "boolean"
+        },
+        "disableExec": {
+          "type": "boolean"
+        },
         "extraEnv": {
           "$ref": "#/definitions/k8sObjectList"
         }

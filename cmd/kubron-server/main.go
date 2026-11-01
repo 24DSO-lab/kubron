@@ -144,7 +144,9 @@ func main() {
 	guard := &server.Guard{Sessions: sessions, TrustProxy: cfg.TrustProxy, Hub: hub, Terminals: terminals,
 		TrustedProxyHops: cfg.TrustedProxyHops, TrustedProxies: cfg.TrustedProxies,
 		AnonLimiter: server.NewRateLimiter(server.DefaultAnonRate, server.DefaultAnonBurst), Lifecycle: lifecycle}
-	app.SetResourceLimits(core, k8s.Limits{Terminals: cfg.MaxTerminals, LogStreams: cfg.MaxLogStreams, PortForwards: cfg.MaxPortForwards})
+	app.SetResourceLimits(core, k8s.Limits{Terminals: cfg.MaxTerminals, LogStreams: cfg.MaxLogStreams, PortForwards: cfg.MaxPortForwards,
+		TerminalMaxDuration: cfg.TerminalMaxDuration, TerminalIdleTimeout: cfg.TerminalIdleTimeout})
+	app.SetInteractivePolicy(core, app.InteractivePolicy{DisableExec: cfg.DisableExec, DisableNodeShell: cfg.DisableNodeShell})
 	app.SetClusterIdleTTL(core, 2*time.Minute)
 	enforceAccess := func() { // права могли измениться: закрыть то, что осталось открытым у потерявших доступ
 		for _, v := range sessions.Views() {

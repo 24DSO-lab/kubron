@@ -68,6 +68,7 @@ func NewSessionView(root *App, source string) *App {
 	v.k8sMgr = root.k8sMgr.ForSession()
 	v.k8sMgr.SetNotifier(nil) // события пойдут владельцу после BindView; до входа адресата нет
 	v.pfMgr = k8s.NewSessionPortForwardManager(v.k8sMgr)
+	v.configureTerminals()
 	v.configurePortForward() // владелец потоков пока неизвестен: режим proxy включается в BindView
 	if root.auth == nil {
 		return &v
