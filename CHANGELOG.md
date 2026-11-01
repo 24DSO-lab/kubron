@@ -27,7 +27,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `request_id` (`X-Request-Id` header), `KUBRON_LOG_LEVEL` and `KUBRON_LOG_FORMAT`. `KUBRON_AUDIT_STDOUT=1`
   mirrors every audit record to stdout as a JSON line (`"type":"audit"`) for an external collector. See
   `docs/logging.md`.
->>>>>>> 37af8f39c443ba7a2cd27cbb50b2031317773372
+- **Port-forward:** with several replicas a stream carries its owner in the id (one DNS label); a request to a stream of
+  another replica gets `421` before the one-time ticket is spent, and `GetPortForwardURL`/`StopPortForward` answer
+  `409 stream_elsewhere` (the UI retries). See ADR-0017, section 7.
 
 ## [0.6.0] - 2026-11-01
 

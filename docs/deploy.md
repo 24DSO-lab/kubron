@@ -163,6 +163,10 @@ helm install kubron deploy/helm/kubron -n kubron \
 откроет его напрямую, поток не создаётся и порты не нужны — это предпочтительный вариант, а прокси остаётся запасным.
 Принимаются только `http(s)`-адреса без логина, query и fragment.
 
+Несколько реплик: поток port-forward живёт на реплике, которая его открыла. Для хоста `*.pf.<base-domain>` включите на
+Ingress привязку по cookie (`nginx.ingress.kubernetes.io/affinity: cookie`); запрос, попавший на другую реплику,
+получает `421`, а `GetPortForwardURL` и `StopPortForward` — `409 stream_elsewhere` (интерфейс повторяет их сам).
+
 Без `KUBRON_PF_BASE_DOMAIN` port-forward в сервисном режиме выключен (предупреждение в логе);
 явно отключается `KUBRON_DISABLE_PORT_FORWARD`. Длительность потока ограничена
 `KUBRON_PF_IDLE_TIMEOUT` и `KUBRON_PF_MAX_DURATION`; начало и конец потока попадают в аудит

@@ -168,7 +168,7 @@ func main() {
 	if notifier != nil {
 		startEvents = setupReplicaEvents(ctx, notifier, pgStore, core, sessions, replicaID, enforceAccess)
 	}
-	pf := setupPortForward(cfg, core, sessions)
+	pf := setupPortForward(cfg, core, sessions, replicaID)
 	guard.NewView = func(src string) any { return app.NewSessionView(core, src) }
 	guard.Bind = func(v any, id string) { app.BindView(v.(*app.App), id) }
 	guard.ActiveCluster = func(v any) string { return app.ViewActiveCluster(v.(*app.App)) }

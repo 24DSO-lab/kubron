@@ -17,7 +17,7 @@ import (
 //   - режим одного пользователя на loopback — как раньше, localhost-порт;
 //   - сервер для нескольких пользователей без домена — port-forward выключен: браузер не достучится до порта
 //     на хосте сервера, а сам порт был бы открыт всем локальным процессам.
-func setupPortForward(cfg server.Config, core *app.App, sessions *server.Sessions) *pfproxy.Service {
+func setupPortForward(cfg server.Config, core *app.App, sessions *server.Sessions, replicaID string) *pfproxy.Service {
 	switch {
 	case cfg.DisablePortForward:
 		app.SetPortForwardMode(core, k8s.PortForwardModeOff)
@@ -31,6 +31,7 @@ func setupPortForward(cfg server.Config, core *app.App, sessions *server.Session
 		svc, err := pfproxy.NewService(pfproxy.Config{
 			BaseDomain:   cfg.PFBaseDomain,
 			Scheme:       cfg.PFScheme,
+			ReplicaID:    replicaID,
 			IdleTimeout:  cfg.PFIdleTimeout,
 			MaxDuration:  cfg.PFMaxDuration,
 			SessionAlive: func(owner string) bool { return sessions.Alive(owner) },

@@ -11,6 +11,7 @@ import (
 	"github.com/24DSO-labs/kubron/internal/auth"
 	"github.com/24DSO-labs/kubron/internal/k8s"
 	"github.com/24DSO-labs/kubron/internal/pfproxy"
+	"github.com/24DSO-labs/kubron/internal/streamid"
 )
 
 // Действия аудита port-forward (подписи — audit.actions.* во фронтенде).
@@ -83,6 +84,9 @@ func (a *App) recordPortForward(actor auth.Actor, action, detail string) {
 func (a *App) GetPortForwardURL(id string) (string, error) {
 	if err := a.authz(auth.PermPortForward, "id", id); err != nil {
 		return "", err
+	}
+	if !pfproxy.OwnedBy(a.replicaID, id) { // поток открыт на другой реплике: клиент повторит запрос
+		return "", streamid.ErrElsewhere
 	}
 	return a.pfMgr.PortForwardURL(id)
 }

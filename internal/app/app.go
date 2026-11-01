@@ -1349,6 +1349,9 @@ func (a *App) StopPortForward(id string) error {
 	if err := a.authz(auth.PermPortForward, "id", id); err != nil {
 		return err
 	}
+	if !pfproxy.OwnedBy(a.replicaID, id) { // поток открыт на другой реплике: клиент повторит запрос
+		return streamid.ErrElsewhere
+	}
 	return a.pfMgr.StopPortForward(id)
 }
 
