@@ -153,6 +153,10 @@ helm install kubron deploy/helm/kubron -n kubron \
 - DNS-запись `*.pf.<base-domain>`, wildcard-сертификат и правило Ingress для этого хоста;
 - HTTPS: режим `proxy` требует TLS (`KUBRON_PF_SCHEME=http` допускается только на loopback).
 
+Если Argo CD опубликован (Ingress), укажите его адрес в настройках кластера («Argo CD → Адрес»): `OpenArgoUI`
+откроет его напрямую, поток не создаётся и порты не нужны — это предпочтительный вариант, а прокси остаётся запасным.
+Принимаются только `http(s)`-адреса без логина, query и fragment.
+
 Без `KUBRON_PF_BASE_DOMAIN` port-forward в сервисном режиме выключен (предупреждение в логе);
 явно отключается `KUBRON_DISABLE_PORT_FORWARD`. Длительность потока ограничена
 `KUBRON_PF_IDLE_TIMEOUT` и `KUBRON_PF_MAX_DURATION`; начало и конец потока попадают в аудит
