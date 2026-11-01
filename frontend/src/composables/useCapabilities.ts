@@ -79,6 +79,6 @@ export function useCapabilities() {
 }
 
 /** Синхронная проверка флага для условий видимости действий (when). */
-export function hasCapability(key: keyof Capabilities): boolean {
+export function hasCapability(key: { [K in keyof Capabilities]: Capabilities[K] extends boolean ? K : never }[keyof Capabilities]): boolean {
   return capabilities.value[key]
 }
