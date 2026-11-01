@@ -47,6 +47,9 @@ type Config struct {
 	MaxConcurrent int
 	MaxBody       int64
 	DialTimeout   time.Duration
+	// ReplicaID — идентификатор этой реплики: потоки получают метку владельца, запрос к потоку другой реплики
+	// получает 421 (ADR-0017, раздел 7). Пусто — реплика одна.
+	ReplicaID string
 	// SessionAlive (необязателен) уточняет, что веб-сессия-владелец ещё жива. Реестр и так чистится при закрытии
 	// сессии; проверка закрывает окно между закрытием и очисткой.
 	SessionAlive func(owner string) bool
@@ -113,6 +116,9 @@ func NewService(cfg Config, secret []byte) (*Service, error) {
 
 // Run выполняет фоновую очистку истёкших потоков до отмены ctx.
 func (s *Service) Run(ctx context.Context) { s.Registry.Run(ctx, 15*time.Second) }
+
+// NewStreamID возвращает идентификатор нового потока этой реплики.
+func (s *Service) NewStreamID() string { return NewIDFor(s.cfg.ReplicaID) }
 
 // BaseDomain — настроенный домен.
 func (s *Service) BaseDomain() string { return s.cfg.BaseDomain }
@@ -286,6 +292,13 @@ func (s *Service) Handler() http.Handler {
 		id, ok := s.MatchHost(r.Host)
 		if !ok {
 			http.NotFound(w, r)
+			return
+		}
+		if !OwnedBy(s.cfg.ReplicaID, id) {
+			// Поток открыт на другой реплике (или её уже нет). До проверки ticket: он одноразовый и не должен
+			// сгореть на чужой реплике. Балансировщик с привязкой по cookie направит повторный запрос к владельцу.
+			w.Header().Set("Cache-Control", "no-store")
+			http.Error(w, "stream is on another replica, open it again", http.StatusMisdirectedRequest)
 			return
 		}
 		if r.URL.Path == EnterPath {

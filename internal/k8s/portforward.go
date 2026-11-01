@@ -595,7 +595,7 @@ func (pfm *PortForwardManager) startProxy(namespace, pod, service string, servic
 		return nil, fmt.Errorf("failed to start port-forward: %w", err)
 	}
 
-	id := pfproxy.NewID()
+	id := proxy.NewStreamID()
 	session := &PortForwardSession{
 		ID: id, ClusterID: conn.Name, Namespace: namespace, Pod: pod, Service: service, ServicePort: servicePort,
 		PodPort: podPort, Status: PortForwardActive, Name: id, Target: target, Mode: PortForwardModeProxy, Scheme: scheme,

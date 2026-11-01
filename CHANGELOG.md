@@ -38,6 +38,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Port-forward:** with several replicas a stream carries its owner in the id (one DNS label); a request to a stream of
+  another replica gets `421` before the one-time ticket is spent, and `GetPortForwardURL`/`StopPortForward` answer
+  `409 stream_elsewhere` (the UI retries). See ADR-0017, section 7.
 - **Repository:** OpenSSF Scorecard workflow (`scorecard.yml`, results in Code scanning) and
   `.github/CODEOWNERS`.
 - **Release:** `publish.yml` publishes the kubron-server image (`ghcr.io/24dso-labs/kubron`) and the Helm

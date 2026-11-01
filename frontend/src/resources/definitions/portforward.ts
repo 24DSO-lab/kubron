@@ -4,11 +4,11 @@
 import type { k8s as models } from '../../../wailsjs/go/models'
 import { defineResource } from '../types'
 import { Perm } from '../../types/auth'
-import { callApp } from '../wails'
 import { useK8s } from '../../composables/useK8s'
 import { flatNsCol } from './common'
 import { badgeClass, statusColor } from '../status'
 import { openUrl } from '../../platform/files'
+import { stopPortForward } from '../../composables/portForwardUrl'
 import { t } from '../../i18n'
 import { getPortForwardUrl } from '../../composables/portForwardUrl'
 
@@ -65,7 +65,7 @@ export const portForward = defineResource<models.PortForwardSession>({
       danger: true,
       run: (pf: any, ctx) =>
         ctx.perform(
-          () => callApp('StopPortForward', pf.id),
+          () => stopPortForward(pf.id),
           t('defs.portForward.stopped', { port: pf.localPort, target: pf.target }),
         ),
     },
@@ -80,6 +80,6 @@ export const portForward = defineResource<models.PortForwardSession>({
       return [...k8s.portForwards.value]
     },
     // «Удалить» сессию = остановить туннель и убрать запись; name сессии равен её id
-    remove: (_ns, name) => callApp('StopPortForward', name),
+    remove: (_ns, name) => stopPortForward(name),
   },
 })

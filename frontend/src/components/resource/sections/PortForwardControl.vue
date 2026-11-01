@@ -60,7 +60,7 @@ import { callApp } from '../../../resources/wails'
 import { openUrl } from '../../../platform/files'
 import { t } from '../../../i18n'
 import { errorText } from '../../../composables/errorText'
-import { getPortForwardUrl, isProxyForward } from '../../../composables/portForwardUrl'
+import { getPortForwardUrl, isProxyForward, stopPortForward } from '../../../composables/portForwardUrl'
 
 const props = defineProps<{
   namespace: string
@@ -145,7 +145,7 @@ async function start() {
 async function stop() {
   if (!active.value) return
   try {
-    await callApp('StopPortForward', active.value.id)
+    await stopPortForward(active.value.id)
     await k8s.refreshPortForwards()
     notifications.notifySuccess(t('sections.portForward.stopped'))
   } catch (e: any) {
