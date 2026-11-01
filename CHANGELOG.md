@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
+## [0.6.0] - 2026-11-01
 
 - **Terminals:** separate `nodeshell` permission for the node shell (admin only by default), flags
   `KUBRON_DISABLE_EXEC`, `KUBRON_DISABLE_NODE_SHELL`, `KUBRON_DISABLE_PORT_FORWARD` (reflected in
@@ -155,7 +155,8 @@ First public release.
 - Experimental web mode (`cmd/kubron-server`): several concurrent sessions, per-session
   cluster managers with per-user resource limits, idle informers released after a TTL.
 
-[Unreleased]: https://github.com/24DSO-labs/kubron/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/24DSO-labs/kubron/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/24DSO-labs/kubron/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/24DSO-labs/kubron/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/24DSO-labs/kubron/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/24DSO-labs/kubron/compare/v0.2.0...v0.3.0
