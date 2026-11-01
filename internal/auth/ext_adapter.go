@@ -3,7 +3,7 @@
 
 package auth
 
-import "github.com/VadimIl224/kubron/pkg/ext"
+import "github.com/24DSO-labs/kubron/pkg/ext"
 
 // FromExt адаптирует публичное хранилище пользователей (pkg/ext) к внутреннему Backend.
 func FromExt(b ext.UserBackend) Backend { return extBackend{b} }

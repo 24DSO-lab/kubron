@@ -28,6 +28,9 @@ type Config struct {
 	// DatabaseURL — строка подключения к PostgreSQL (KUBRON_DATABASE_URL или --database-url). Пусто — файловое
 	// хранилище в каталоге данных. Пароль лучше передавать через переменную окружения: аргументы видны в списке процессов.
 	DatabaseURL string
+	// DBListenURL — прямой адрес PostgreSQL для LISTEN/NOTIFY между репликами (только KUBRON_DB_LISTEN_URL: в адресе
+	// может быть пароль). LISTEN не работает через pgbouncer в режиме transaction; пусто — используется DatabaseURL.
+	DBListenURL string
 	// SecretKey — ключ шифрования секретов в БД «id:base64» (только KUBRON_SECRET_KEY; флага нет).
 	// PreviousSecretKeys — прежние ключи для чтения после ротации (KUBRON_SECRET_KEY_PREVIOUS, через запятую).
 	SecretKey          string
@@ -64,6 +67,26 @@ type Config struct {
 	MaxTerminals    int
 	MaxLogStreams   int
 	MaxPortForwards int
+	// PFBaseDomain — домен потоков port-forward: браузер открывает {id}.pf.<домен> (KUBRON_PF_BASE_DOMAIN, ADR-0017).
+	// Нужны DNS и сертификат на *.pf.<домен>. Пусто: на сервере с БД или не-loopback адресом port-forward выключен,
+	// в режиме одного пользователя на loopback остаётся localhost-порт.
+	PFBaseDomain string
+	// PFScheme — схема адреса потока: https (по умолчанию) или http (KUBRON_PF_SCHEME; только для localhost-домена).
+	PFScheme string
+	// PFIdleTimeout и PFMaxDuration — простой и абсолютный срок потока (KUBRON_PF_IDLE_TIMEOUT, KUBRON_PF_MAX_DURATION);
+	// 0 — значения по умолчанию (15m и 8h).
+	PFIdleTimeout time.Duration
+	PFMaxDuration time.Duration
+}
+
+// ServiceMode — сервер для нескольких пользователей: база данных или адрес не на loopback.
+// Port-forward на localhost хоста сервера в нём недопустим.
+func (c Config) ServiceMode() bool {
+	if c.DatabaseURL != "" || c.AllowRemote {
+		return true
+	}
+	host, _, err := net.SplitHostPort(c.Listen)
+	return err != nil || !isLoopbackHost(host)
 }
 
 // Фоновая проверка кластеров: интервал по умолчанию и нижняя граница (чаще — лишняя нагрузка на API-серверы).
@@ -94,6 +117,20 @@ func LoadConfig(args []string, getenv func(string) string, out io.Writer) (Confi
 	cfg.DataDir = getenv("KUBRON_DATA_DIR")
 	cfg.TrustProxy = truthy(getenv("KUBRON_TRUST_PROXY"))
 	cfg.CSPReportOnly = truthy(getenv("KUBRON_CSP_REPORT_ONLY"))
+	cfg.PFBaseDomain = strings.TrimSpace(getenv("KUBRON_PF_BASE_DOMAIN"))
+	cfg.PFScheme = strings.ToLower(strings.TrimSpace(getenv("KUBRON_PF_SCHEME")))
+	for _, d := range []struct {
+		env string
+		dst *time.Duration
+	}{{"KUBRON_PF_IDLE_TIMEOUT", &cfg.PFIdleTimeout}, {"KUBRON_PF_MAX_DURATION", &cfg.PFMaxDuration}} {
+		if v := getenv(d.env); v != "" {
+			dur, err := time.ParseDuration(v)
+			if err != nil {
+				return Config{}, fmt.Errorf("%s %q: %w", d.env, v, err)
+			}
+			*d.dst = dur
+		}
+	}
 	if v := getenv("KUBRON_TRUSTED_PROXY_HOPS"); v != "" {
 		n, err := strconv.Atoi(strings.TrimSpace(v))
 		if err != nil {
@@ -103,6 +140,7 @@ func LoadConfig(args []string, getenv func(string) string, out io.Writer) (Confi
 	}
 	trusted := getenv("KUBRON_TRUSTED_PROXIES")
 	cfg.DatabaseURL = getenv("KUBRON_DATABASE_URL")
+	cfg.DBListenURL = strings.TrimSpace(getenv("KUBRON_DB_LISTEN_URL"))
 	cfg.SecretKey = strings.TrimSpace(getenv("KUBRON_SECRET_KEY"))
 	for _, k := range strings.Split(getenv("KUBRON_SECRET_KEY_PREVIOUS"), ",") {
 		if k = strings.TrimSpace(k); k != "" {
@@ -218,6 +256,21 @@ func (c Config) Validate() error {
 	}
 	if c.MaxTerminals < 0 || c.MaxLogStreams < 0 || c.MaxPortForwards < 0 {
 		return errors.New("resource limits cannot be negative (0 means unlimited)")
+	}
+	if c.PFScheme != "" && c.PFScheme != "https" && c.PFScheme != "http" {
+		return errors.New("KUBRON_PF_SCHEME must be https or http")
+	}
+	if c.PFIdleTimeout < 0 || c.PFMaxDuration < 0 {
+		return errors.New("port-forward timeouts cannot be negative")
+	}
+	if c.PFScheme == "http" {
+		h := strings.ToLower(c.PFBaseDomain)
+		if hh, _, err := net.SplitHostPort(h); err == nil {
+			h = hh
+		}
+		if h != "localhost" && !strings.HasSuffix(h, ".localhost") {
+			return errors.New("KUBRON_PF_SCHEME=http is allowed only for a localhost base domain")
+		}
 	}
 	if c.DatabaseURL != "" && c.SecretKey == "" {
 		return errors.New("KUBRON_SECRET_KEY is required when a database is used")

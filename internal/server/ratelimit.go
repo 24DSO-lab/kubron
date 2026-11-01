@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/VadimIl224/kubron/internal/auth"
+	"github.com/24DSO-labs/kubron/internal/auth"
 )
 
 // Ограничение частоты анонимных RPC-вызовов по адресу клиента. Вход имеет собственную блокировку

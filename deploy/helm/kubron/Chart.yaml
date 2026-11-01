@@ -6,9 +6,9 @@ version: 0.1.0
 # Версия образа по умолчанию (image.tag); совпадает с версией приложения в wails.json
 appVersion: "0.3.0"
 kubeVersion: ">=1.27.0-0"
-home: https://github.com/VadimIl224/kubron
+home: https://github.com/24DSO-labs/kubron
 sources:
-  - https://github.com/VadimIl224/kubron
+  - https://github.com/24DSO-labs/kubron
 keywords:
   - kubernetes
   - dashboard

@@ -55,14 +55,11 @@ func (pfm *PortForwardManager) GetArgoApplicationDiff(namespace, name string) (*
 	if err != nil {
 		return nil, err // в том числе ErrArgoTokenNotSet: фронтенд предлагает задать токен
 	}
-	info, err := pfm.OpenArgoUI()
+	client, release, err := pfm.argoClient(token)
 	if err != nil {
 		return nil, err
 	}
-	client, err := newArgoAPIClient(info.URL, token)
-	if err != nil {
-		return nil, err
-	}
+	defer release()
 	ctx, cancel := context.WithTimeout(context.Background(), argoAPITimeout)
 	defer cancel()
 	items, err := client.managedResources(ctx, namespace, name)

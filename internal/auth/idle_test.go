@@ -5,10 +5,11 @@ package auth
 
 import (
 	"errors"
-	"github.com/VadimIl224/kubron/internal/audit"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/24DSO-labs/kubron/internal/audit"
 )
 
 type memRecorder struct {

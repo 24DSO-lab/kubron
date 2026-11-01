@@ -289,6 +289,7 @@ func CheckKubeconfig(src KubeconfigSource, contextName string) (*ConnectionCheck
 		return &ConnectionCheck{Error: err.Error()}, nil
 	}
 	restCfg.Timeout = checkTimeout
+	applyClusterAddrPolicy(restCfg) // пробное подключение подчиняется той же политике адресов
 
 	start := time.Now()
 	disc, err := discovery.NewDiscoveryClientForConfig(restCfg)

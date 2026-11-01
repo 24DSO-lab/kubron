@@ -53,7 +53,7 @@
 ## 0.10 Публичный пакет расширений `pkg/ext` — 3 ч-д
 - Интерфейсы `Authenticator`, `Store`, `Platform` и реестр реализаций (код в `internal/` из другого Go-модуля не импортируется).
 - Приёмка: тестовый модуль в отдельном Go-модуле регистрирует свой `Authenticator` и собирается без правок в ядре. Интерфейс `Authenticator` помечен как «нестабильный» до этапа 6.
-- Сделано: `pkg/ext` — отдельный Go-модуль `github.com/VadimIl224/kubron/pkg/ext` только на stdlib (подключён `replace` в корневом `go.mod`): `Authenticator` (пароль / перенаправление), `Platform`, `Store` (`UserBackend`, `AuditBackend`, `TokenStore`), `Registry` и `Module` с проверкой `APIVersion`. Внутренние `app.Platform`, `audit.Backend`, `k8s.TokenStore` — псевдонимы публичных интерфейсов; `auth.FromExt` и `store.FromExt` адаптируют внешние хранилища. Пример внешнего модуля — `examples/ext-authenticator` (собирается и тестируется в CI отдельно).
+- Сделано: `pkg/ext` — отдельный Go-модуль `github.com/24DSO-labs/kubron/pkg/ext` только на stdlib (подключён `replace` в корневом `go.mod`): `Authenticator` (пароль / перенаправление), `Platform`, `Store` (`UserBackend`, `AuditBackend`, `TokenStore`), `Registry` и `Module` с проверкой `APIVersion`. Внутренние `app.Platform`, `audit.Backend`, `k8s.TokenStore` — псевдонимы публичных интерфейсов; `auth.FromExt` и `store.FromExt` адаптируют внешние хранилища. Пример внешнего модуля — `examples/ext-authenticator` (собирается и тестируется в CI отдельно).
 
 ---
 

@@ -99,7 +99,11 @@
     "RemoveTeamMember": "移除团队成员",
     "AddClusterToTeam": "将集群添加到团队",
     "MoveCluster": "将集群移动到其他团队",
-    "ExportAuditLog": "导出审计日志"
+    "ExportAuditLog": "导出审计日志",
+    "portforward": {
+      "start": "Port-forward 已启动",
+      "stop": "Port-forward 已停止"
+    }
   },
   "export": {
     "csv": "导出 CSV",

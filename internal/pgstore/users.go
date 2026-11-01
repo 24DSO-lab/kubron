@@ -4,6 +4,7 @@
 package pgstore
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,7 +12,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/VadimIl224/kubron/pkg/ext"
+	"github.com/24DSO-labs/kubron/pkg/ext"
 )
 
 const settingsKeySecurity = "security"
@@ -23,6 +24,17 @@ type securityJSON struct {
 // Users — ext.UserBackend поверх таблиц users и settings. Save заменяет набор пользователей организации целиком
 // (как файловое хранилище), поэтому сериализуется блокировкой БД.
 func (s *Store) Users() ext.UserBackend { return userBackend{s} }
+
+// UserDelta — точечные операции над пользователями для сервиса с несколькими репликами (см. UpsertUser).
+type UserDelta interface {
+	UpsertUser(u ext.UserRecord) error
+	TouchLogin(id string, at time.Time, passwordHash string) error
+	DeleteUser(id string) error
+	SaveSettings(ext.SecuritySettings) error
+}
+
+// UserDelta возвращает точечные операции над пользователями.
+func (s *Store) UserDelta() UserDelta { return userBackend{s} }
 
 type userBackend struct{ s *Store }
 
@@ -115,30 +127,7 @@ func (b userBackend) Save(d *ext.UserData) error {
 		}
 		now := time.Now()
 		for _, u := range d.Users {
-			created, updated := u.CreatedAt, u.UpdatedAt
-			if created.IsZero() {
-				created = now
-			}
-			if updated.IsZero() {
-				updated = created
-			}
-			orgRole := "member"
-			if u.Role == "admin" {
-				orgRole = "org-admin"
-			}
-			if _, err := tx.Exec(ctx, `
-				INSERT INTO users (id, org_id, username, password_hash, org_role, role, disabled, must_change_password, created_at, updated_at, last_login_at)
-				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
-				ON CONFLICT (id) DO UPDATE SET username = EXCLUDED.username, password_hash = EXCLUDED.password_hash,
-					org_role = EXCLUDED.org_role, role = EXCLUDED.role, disabled = EXCLUDED.disabled,
-					must_change_password = EXCLUDED.must_change_password, updated_at = EXCLUDED.updated_at,
-					last_login_at = EXCLUDED.last_login_at
-				WHERE users.org_id = EXCLUDED.org_id`,
-				u.ID, b.s.orgID, u.Username, u.PasswordHash, orgRole, u.Role, u.Disabled, u.MustChangePassword,
-				created, updated, u.LastLoginAt); err != nil {
-				if isUnique(err) {
-					return fmt.Errorf("%w: user %q", ErrConflict, u.Username)
-				}
+			if err := upsertUser(ctx, tx, b.s.orgID, u, now); err != nil {
 				return err
 			}
 		}
@@ -160,5 +149,123 @@ func (b userBackend) Save(d *ext.UserData) error {
 		return err
 	})
 	b.s.invalidateAccess()
+	return err
+}
+
+// upsertUser записывает одного пользователя (создание или обновление). Конфликт имени — ErrConflict.
+func upsertUser(ctx context.Context, tx pgx.Tx, orgID string, u ext.UserRecord, now time.Time) error {
+	created, updated := u.CreatedAt, u.UpdatedAt
+	if created.IsZero() {
+		created = now
+	}
+	if updated.IsZero() {
+		updated = created
+	}
+	orgRole := "member"
+	if u.Role == "admin" {
+		orgRole = "org-admin"
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO users (id, org_id, username, password_hash, org_role, role, disabled, must_change_password, created_at, updated_at, last_login_at)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+		ON CONFLICT (id) DO UPDATE SET username = EXCLUDED.username, password_hash = EXCLUDED.password_hash,
+			org_role = EXCLUDED.org_role, role = EXCLUDED.role, disabled = EXCLUDED.disabled,
+			must_change_password = EXCLUDED.must_change_password, updated_at = EXCLUDED.updated_at,
+			last_login_at = EXCLUDED.last_login_at
+		WHERE users.org_id = EXCLUDED.org_id`,
+		u.ID, orgID, u.Username, u.PasswordHash, orgRole, u.Role, u.Disabled, u.MustChangePassword,
+		created, updated, u.LastLoginAt); err != nil {
+		if isUnique(err) {
+			return fmt.Errorf("%w: user %q", ErrConflict, u.Username)
+		}
+		return err
+	}
+	return nil
+}
+
+func validRole(role string) error {
+	switch role {
+	case "admin", "operator", "user":
+		return nil
+	}
+	return fmt.Errorf("unknown role %q", role)
+}
+
+// UpsertUser создаёт или обновляет одного пользователя, не трогая остальных. Нужен нескольким репликам сервиса:
+// Save заменяет набор целиком и затёр бы пользователей, созданных на другой реплике. Новый пользователь и тот, кому
+// сменили глобальную роль, получает ту же роль в команде «Default» (как в Save).
+func (b userBackend) UpsertUser(u ext.UserRecord) error {
+	if err := b.s.ready(); err != nil {
+		return err
+	}
+	if err := validRole(u.Role); err != nil {
+		return err
+	}
+	ctx, cancel := opCtx()
+	defer cancel()
+	err := pgx.BeginFunc(ctx, b.s.pool, func(tx pgx.Tx) error {
+		if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock($1)`, int64(0x6B756274)); err != nil {
+			return err
+		}
+		var old string
+		err := tx.QueryRow(ctx, `SELECT role FROM users WHERE id = $1 AND org_id = $2`, u.ID, b.s.orgID).Scan(&old)
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			return err
+		}
+		if err := upsertUser(ctx, tx, b.s.orgID, u, time.Now()); err != nil {
+			return err
+		}
+		if old == u.Role {
+			return nil
+		}
+		_, err = tx.Exec(ctx, `
+			INSERT INTO memberships (user_id, team_id, role) VALUES ($1, $2, $3)
+			ON CONFLICT (user_id, team_id) DO UPDATE SET role = EXCLUDED.role`, u.ID, b.s.teamID, u.Role)
+		return err
+	})
+	b.s.invalidateAccess()
+	return err
+}
+
+// TouchLogin записывает время входа и (если passwordHash не пуст) обновлённый хэш пароля; остальные поля
+// пользователя, возможно изменённые на другой реплике, не затрагиваются.
+func (b userBackend) TouchLogin(id string, at time.Time, passwordHash string) error {
+	if err := b.s.ready(); err != nil {
+		return err
+	}
+	ctx, cancel := opCtx()
+	defer cancel()
+	_, err := b.s.pool.Exec(ctx, `
+		UPDATE users SET last_login_at = $2, password_hash = CASE WHEN $3::text <> '' THEN $3::text ELSE password_hash END
+		WHERE id = $1 AND org_id = $4`, id, at, passwordHash, b.s.orgID)
+	return err
+}
+
+// DeleteUser удаляет пользователя (сессии, членства и записи, зависящие от него, удаляет БД каскадом).
+func (b userBackend) DeleteUser(id string) error {
+	if err := b.s.ready(); err != nil {
+		return err
+	}
+	ctx, cancel := opCtx()
+	defer cancel()
+	_, err := b.s.pool.Exec(ctx, `DELETE FROM users WHERE id = $1 AND org_id = $2`, id, b.s.orgID)
+	b.s.invalidateAccess()
+	return err
+}
+
+// SaveSettings записывает настройки безопасности.
+func (b userBackend) SaveSettings(st ext.SecuritySettings) error {
+	if err := b.s.ready(); err != nil {
+		return err
+	}
+	raw, err := json.Marshal(securityJSON{IdleTimeoutMinutes: st.IdleTimeoutMinutes})
+	if err != nil {
+		return err
+	}
+	ctx, cancel := opCtx()
+	defer cancel()
+	_, err = b.s.pool.Exec(ctx, `
+		INSERT INTO settings (key, value) VALUES ($1, $2)
+		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`, settingsKeySecurity, raw)
 	return err
 }

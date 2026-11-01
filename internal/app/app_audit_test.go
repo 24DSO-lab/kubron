@@ -5,10 +5,11 @@ package app
 
 import (
 	"errors"
-	"github.com/VadimIl224/kubron/internal/audit"
-	"github.com/VadimIl224/kubron/internal/auth"
-	"github.com/VadimIl224/kubron/internal/k8s"
 	"testing"
+
+	"github.com/24DSO-labs/kubron/internal/audit"
+	"github.com/24DSO-labs/kubron/internal/auth"
+	"github.com/24DSO-labs/kubron/internal/k8s"
 )
 
 // Методы-пробы: authz берёт имя действия из имени вызывающего метода, как в настоящих методах App.

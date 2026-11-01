@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/VadimIl224/kubron/internal/auth"
+	"github.com/24DSO-labs/kubron/internal/auth"
 )
 
 // maxRPCBody — предел тела запроса (манифесты YAML крупные, но не мегабайты).
@@ -84,7 +84,13 @@ func RPCHandler(d *Dispatcher, g *Guard) http.Handler {
 		var authed bool
 		if g != nil {
 			token = g.token(r)
-			sess, authed = g.Sessions.Get(token)
+			var serr error
+			sess, serr = g.Sessions.Lookup(token)
+			authed = serr == nil
+			if errors.Is(serr, ErrSessionStoreUnavailable) { // БД недоступна: пользователя не выходим из системы
+				writeUnavailable(w)
+				return
+			}
 			// Запросы без сессии (экран входа, перебор, зондирование) ограничиваются по адресу клиента
 			if !authed && !g.limitAnonymous(w, r) {
 				return
@@ -123,6 +129,12 @@ func RPCHandler(d *Dispatcher, g *Guard) http.Handler {
 				target = fresh
 			case authed:
 				target = sess.View
+				// Сессию открыли на другой реплике: активный кластер подключается при первом запросе здесь.
+				if c := g.Sessions.TakePendingCluster(sess.ID); c != "" && g.RestoreCluster != nil && sess.View != nil {
+					if err := g.RestoreCluster(sess.View, c); err != nil {
+						log.Printf("rpc: the active cluster of session %s was not restored: %v", sess.ID, err)
+					}
+				}
 			}
 		}
 		result, err := d.CallOn(target, method, args)
@@ -133,50 +145,101 @@ func RPCHandler(d *Dispatcher, g *Guard) http.Handler {
 				log.Printf("rpc %s: %v", method, err)
 			}
 			if g != nil && code == "unauthenticated" && authed {
-				g.Sessions.Delete(token) // ядро закрыло сессию (простой, выход): cookie больше не действует
+				g.endSession(token) // ядро закрыло сессию (простой, выход): cookie больше не действует
 				g.clearCookie(w, r)
 			}
 			writeError(w, status, code, err.Error())
 			return
 		}
 		if g != nil {
-			result = g.afterCall(w, r, method, result, token, authed, fresh)
+			var aerr error
+			if result, aerr = g.afterCall(w, r, method, result, token, sess, authed, fresh); aerr != nil {
+				log.Printf("rpc %s: the web session was not saved: %v", method, aerr)
+				writeUnavailable(w)
+				return
+			}
 		}
 		writeJSON(w, http.StatusOK, rpcResponse{Result: result})
 	})
 }
 
 // afterCall связывает результат метода с веб-сессией: вход открывает её, выход закрывает,
-// а стартовое состояние без сессии не раскрывает пользователя (ядро пока одно на всех).
-func (g *Guard) afterCall(w http.ResponseWriter, r *http.Request, method string, result any, token string, authed bool, fresh any) any {
+// смена пароля и отключение пользователя завершают его сессии на всех репликах, а стартовое состояние
+// без сессии не раскрывает пользователя (ядро пока одно на всех). Ошибка — не удалось записать сессию
+// в общее хранилище (вход тогда не состоялся).
+func (g *Guard) afterCall(w http.ResponseWriter, r *http.Request, method string, result any, token string, sess Session, authed bool, fresh any) (any, error) {
 	switch method {
 	case "Login", "SetupAdmin":
 		if u, ok := result.(*auth.UserInfo); ok && u != nil {
 			if authed {
-				g.Sessions.Delete(token)
+				g.endSession(token)
 			}
-			tok, sess := g.Sessions.Create(u.ID, fresh)
+			tok, ns, err := g.Sessions.Open(u.ID, fresh, g.clientIP(r))
+			if err != nil {
+				g.dropView(fresh)
+				return nil, err
+			}
 			if fresh != nil && g.Bind != nil {
-				g.Bind(fresh, sess.ID)
+				g.Bind(fresh, ns.ID)
 			}
-			g.setCookie(w, r, tok, time.Until(sess.Expires))
-			w.Header().Set(csrfHeader, sess.CSRF)
+			g.setCookie(w, r, tok, time.Until(ns.Expires))
+			w.Header().Set(csrfHeader, ns.CSRF)
 		} else {
 			g.dropView(fresh)
 		}
 	case "Logout":
 		if authed {
-			g.Sessions.Delete(token)
+			g.endSession(token)
 		}
 		g.clearCookie(w, r)
+	case "ReportActivity":
+		if authed {
+			g.Sessions.Activity(sess.ID)
+		}
+	case "ChangePassword":
+		// Остальные сессии пользователя (в том числе на других репликах) завершаются, текущая получает новый токен.
+		if authed {
+			if err := g.Sessions.EndUser(sess.UserID, sess.ID); err != nil {
+				log.Printf("rpc ChangePassword: the other sessions of the user were not ended: %v", err)
+			}
+			if tok, err := g.Sessions.Rotate(token); err == nil {
+				g.setCookie(w, r, tok, time.Until(sess.Expires))
+			} else {
+				log.Printf("rpc ChangePassword: the token was not rotated: %v", err)
+			}
+		}
+	case "SetUserDisabled", "ResetUserPassword":
+		if u, ok := result.(*auth.UserInfo); ok && u != nil && (method == "ResetUserPassword" || u.Disabled) {
+			if err := g.Sessions.EndUser(u.ID, ""); err != nil {
+				log.Printf("rpc %s: the sessions of the user were not ended: %v", method, err)
+			}
+		}
 	case "AuthStatus":
 		if st, ok := result.(*auth.Status); ok && st != nil && !authed && st.User != nil {
 			cp := *st
 			cp.User = nil
-			return &cp
+			return &cp, nil
 		}
 	}
-	return result
+	if authed && sess.View != nil && g.ActiveCluster != nil && g.Sessions.Backend != nil {
+		// Активный кластер запоминается в общем хранилище: на другой реплике сессия продолжится с ним же.
+		if cur := g.ActiveCluster(sess.View); cur != sess.ActiveCluster {
+			g.Sessions.SetActiveCluster(sess.ID, cur)
+		}
+	}
+	return result, nil
+}
+
+// endSession закрывает веб-сессию; ошибку хранилища пишет в журнал (cookie всё равно сбрасывается).
+func (g *Guard) endSession(token string) {
+	if err := g.Sessions.Delete(token); err != nil {
+		log.Printf("sessions: the session was not removed from the store: %v", err)
+	}
+}
+
+func writeUnavailable(w http.ResponseWriter) {
+	w.Header().Set("Retry-After", "5")
+	writeError(w, http.StatusServiceUnavailable, "service_unavailable", "service is temporarily unavailable")
 }
 
 // SessionHandler обслуживает GET /api/session: даёт странице CSRF-токен текущей сессии
@@ -189,7 +252,12 @@ func SessionHandler(g *Guard) http.Handler {
 		}
 		out := map[string]any{"authenticated": false}
 		if g != nil {
-			if sess, ok := g.Sessions.Get(g.token(r)); ok {
+			sess, err := g.Sessions.Lookup(g.token(r))
+			if errors.Is(err, ErrSessionStoreUnavailable) {
+				writeUnavailable(w)
+				return
+			}
+			if err == nil {
 				out = map[string]any{"authenticated": true, "csrfToken": sess.CSRF}
 			}
 		}

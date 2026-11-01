@@ -15,8 +15,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
 
-	"github.com/VadimIl224/kubron/internal/migrate"
-	"github.com/VadimIl224/kubron/internal/secretbox"
+	"github.com/24DSO-labs/kubron/internal/migrate"
+	"github.com/24DSO-labs/kubron/internal/secretbox"
 )
 
 // DefaultName — имя организации и команды, создаваемых при первом запуске (задача 3.1d переносит в них данные десктопа).
@@ -35,6 +35,7 @@ type Store struct {
 	accessMu          sync.Mutex
 	accessSnap        *accessSnap
 	accessTTLOverride *time.Duration // тесты
+	accessNotify      func()         // сообщает другим репликам об изменении прав (SetAccessNotifier)
 }
 
 // Open подключается к БД. Схему создаёт Migrate; без неё Open сразу создавать организацию не станет:

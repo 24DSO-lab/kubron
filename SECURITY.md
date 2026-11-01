@@ -17,7 +17,7 @@ Security fixes are released for the latest published version only.
 **Please do not open a public issue for security problems.**
 
 Report privately through GitHub:
-[Report a vulnerability](https://github.com/VadimIl224/kubron/security/advisories/new).
+[Report a vulnerability](https://github.com/24DSO-labs/kubron/security/advisories/new).
 
 Please include:
 

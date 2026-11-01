@@ -1,0 +1,133 @@
+name: Publish (image and Helm chart)
+
+# Публикация образа kubron-server и Helm-чарта в ghcr.io (docs/deploy.md). Отдельный от deploy.yml workflow:
+# deploy.yml проверяет сборку образа и чарта на каждый push, этот публикует их только для релиза.
+#   - тег vX.Y.Z      -> сборка и публикация образа и чарта;
+#   - ручной запуск   -> по умолчанию пробная сборка БЕЗ push; публикация только с галочкой push.
+# Образ:  ghcr.io/<владелец>/kubron:<версия>   (и :latest для версий без суффикса -rc/-beta)
+# Чарт:   oci://ghcr.io/<владелец>/charts/kubron  (версия и appVersion берутся из тега)
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+    inputs:
+      push:
+        description: "Опубликовать в ghcr.io (по умолчанию пробная сборка без push)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# Публикации одной версии не отменяют друг друга
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Image and chart
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    env:
+      PUSH: ${{ github.event_name == 'push' || inputs.push }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      # Версия: из тега vX.Y.Z; для ручного запуска не с тега — 0.0.0-dev.<sha>. Имена в ghcr только в нижнем регистре.
+      - name: Resolve version and names
+        id: v
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+            version="${GITHUB_REF_NAME#v}"
+          else
+            version="0.0.0-dev.${GITHUB_SHA::7}"
+          fi
+          {
+            echo "version=$version"
+            echo "image=ghcr.io/${GITHUB_REPOSITORY,,}"
+            echo "chart_repo=oci://ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/charts"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Build the image
+        env:
+          VERSION: ${{ steps.v.outputs.version }}
+          IMAGE: ${{ steps.v.outputs.image }}
+        run: |
+          docker build --progress=plain \
+            --build-arg VERSION="$VERSION" --build-arg REVISION="$GITHUB_SHA" \
+            -t "$IMAGE:$VERSION" .
+          docker image ls "$IMAGE"
+
+      - name: Package the chart
+        env:
+          VERSION: ${{ steps.v.outputs.version }}
+          IMAGE: ${{ steps.v.outputs.image }}
+        run: |
+          set -euo pipefail
+          helm lint deploy/helm/kubron --set image.repository="$IMAGE"
+          helm package deploy/helm/kubron --version "$VERSION" --app-version "$VERSION" --destination "$RUNNER_TEMP/chart"
+          ls -l "$RUNNER_TEMP/chart"
+
+      - name: Log in to ghcr.io
+        if: env.PUSH == 'true'
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "$TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          echo "$TOKEN" | helm registry login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+
+      - name: Push the image
+        id: push
+        if: env.PUSH == 'true'
+        env:
+          VERSION: ${{ steps.v.outputs.version }}
+          IMAGE: ${{ steps.v.outputs.image }}
+        run: |
+          set -euo pipefail
+          docker push "$IMAGE:$VERSION"
+          # :latest только для стабильных версий
+          if [[ "$VERSION" != *-* ]]; then
+            docker tag "$IMAGE:$VERSION" "$IMAGE:latest"
+            docker push "$IMAGE:latest"
+          fi
+          digest="$(docker inspect --format '{{index .RepoDigests 0}}' "$IMAGE:$VERSION")"
+          echo "digest=${digest#*@}" >> "$GITHUB_OUTPUT"
+
+      # Подтверждение происхождения образа: проверяется командой gh attestation verify oci://<образ>:<версия> --repo ...
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4
+        if: env.PUSH == 'true'
+        with:
+          subject-name: ${{ steps.v.outputs.image }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
+
+      - name: Push the chart
+        if: env.PUSH == 'true'
+        env:
+          VERSION: ${{ steps.v.outputs.version }}
+          CHART_REPO: ${{ steps.v.outputs.chart_repo }}
+        run: helm push "$RUNNER_TEMP/chart/kubron-$VERSION.tgz" "$CHART_REPO"
+
+      - name: Summary
+        env:
+          VERSION: ${{ steps.v.outputs.version }}
+          IMAGE: ${{ steps.v.outputs.image }}
+          CHART_REPO: ${{ steps.v.outputs.chart_repo }}
+        run: |
+          {
+            if [[ "$PUSH" == "true" ]]; then echo "### Published"; else echo "### Dry run (nothing was pushed)"; fi
+            echo
+            echo "- Image: \`$IMAGE:$VERSION\`"
+            echo "- Chart: \`$CHART_REPO/kubron\` version \`$VERSION\`"
+            echo
+            echo "    helm install kubron $CHART_REPO/kubron --version $VERSION --set image.tag=$VERSION"
+          } >> "$GITHUB_STEP_SUMMARY"

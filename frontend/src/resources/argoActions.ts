@@ -107,7 +107,8 @@ export async function openArgoUI(): Promise<void> {
     const info = await callApp('OpenArgoUI')
     await useK8s().refreshPortForwards()
     openUrl(info.url)
-    if (!info.reused) notifications.notifySuccess(t('argo.actions.uiOpened', { url: info.url }))
+    // В режиме proxy адрес одноразовый и пользователю бесполезен: показываем, что именно открыто
+    if (!info.reused) notifications.notifySuccess(t('argo.actions.uiOpened', { url: info.mode === 'proxy' ? `${info.namespace}/${info.service}` : info.url }))
   } catch (e) {
     notifications.notifyError(t('argo.actions.error.ui', { error: errorText(e) }))
   }

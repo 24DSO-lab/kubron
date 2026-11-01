@@ -64,7 +64,8 @@ type helmTracker struct {
 	started time.Time
 	cancel  context.CancelFunc // nil — операцию нельзя отменить
 
-	cluster string // имя кластера: журнал общий для всех подключений
+	cluster string     // имя кластера: в записи журнала
+	sc      *helmScope // область журнала (команда кластера); nil — журнал недоступен
 
 	mu       sync.Mutex
 	phase    string
@@ -89,6 +90,7 @@ func (m *Manager) beginHelmOp(ctx context.Context, opID, op, ns, rel string, can
 	if conn, err := m.GetActiveConnection(); err == nil {
 		t.cluster = conn.Name
 	}
+	t.sc, _ = m.helmScope() // без области операция выполняется, но в журнал не попадает
 	if cancelable {
 		ctx, t.cancel = context.WithCancel(ctx)
 	}
@@ -199,7 +201,7 @@ func (t *helmTracker) finish(err error) {
 	}
 
 	rec := t.record(err)
-	journalAdd(rec) // раньше итогового события: страница журнала по нему перечитывает список
+	t.journal(rec) // раньше итогового события: страница журнала по нему перечитывает список
 	msg := rec.Error
 	for {
 		p := t.snapshot(false, "")
@@ -310,3 +312,11 @@ func (h *helmProgressHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 }
 
 func (h *helmProgressHandler) WithGroup(string) slog.Handler { return h }
+
+// journal дописывает запись в журнал команды. Сбой записи не должен ломать саму операцию: он молча игнорируется.
+func (t *helmTracker) journal(rec HelmOperationRecord) {
+	if t.sc == nil {
+		return
+	}
+	_ = t.sc.store.AddOperation(t.sc.team, t.sc.clusterID, rec)
+}

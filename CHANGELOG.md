@@ -14,6 +14,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Deploy:** `Dockerfile` for kubron-server (distroless, non-root, read-only rootfs) and the Helm chart
   `deploy/helm/kubron` (Deployment, Service, Ingress, NetworkPolicy, PodDisruptionBudget, optional
   read-only RBAC for in-cluster mode). Guide: `docs/deploy.md`. Single replica only until HA.
+- **Repository:** OpenSSF Scorecard workflow (`scorecard.yml`, results in Code scanning) and
+  `.github/CODEOWNERS`.
+- **Release:** `publish.yml` publishes the kubron-server image (`ghcr.io/24dso-labs/kubron`) and the Helm
+  chart (`oci://ghcr.io/24dso-labs/charts/kubron`) for `vX.Y.Z` tags, with build provenance for the image.
+  A manual run is a dry run unless `push` is ticked.
+
+### Changed
+
+- **Docs:** refreshed README (logo, badges, `.deb` download, links to the user guides, server mode section,
+  roadmap with statuses, screenshots of the overview, pods, YAML editor and Argo CD); fixed the local
+  web-server build steps. Added a social preview image (`docs/images/social-preview.png`).
+- **Deploy:** the Helm chart now defaults to `image.repository: ghcr.io/24dso-labs/kubron` (it still pointed
+  to the previous account).
 
 ### Security
 
@@ -85,8 +98,8 @@ First public release.
 - Experimental web mode (`cmd/kubron-server`): several concurrent sessions, per-session
   cluster managers with per-user resource limits, idle informers released after a TTL.
 
-[Unreleased]: https://github.com/VadimIl224/kubron/compare/v0.4.0...HEAD
-[0.4.0]: https://github.com/VadimIl224/kubron/compare/v0.3.0...v0.4.0
-[0.3.0]: https://github.com/VadimIl224/kubron/compare/v0.2.0...v0.3.0
-[0.2.0]: https://github.com/VadimIl224/kubron/compare/v0.1.0...v0.2.0
-[0.1.0]: https://github.com/VadimIl224/kubron/releases/tag/v0.1.0
+[Unreleased]: https://github.com/24DSO-labs/kubron/compare/v0.3.0...HEAD
+[0.4.0]: https://github.com/24DSO-labs/kubron/compare/v0.3.0...v0.4.0
+[0.3.0]: https://github.com/24DSO-labs/kubron/compare/v0.2.0...v0.3.0
+[0.2.0]: https://github.com/24DSO-labs/kubron/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/24DSO-labs/kubron/releases/tag/v0.1.0

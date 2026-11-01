@@ -8,7 +8,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/VadimIl224/kubron/internal/app"
+	"github.com/24DSO-labs/kubron/internal/app"
 
 	wr "github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -56,6 +56,7 @@ func (p *Platform) Capabilities() app.Capabilities {
 	return app.Capabilities{
 		FileDialog:      true,
 		PortForward:     true,
+		PortForwardMode: "local",
 		NodeShell:       true,
 		LocalKubeconfig: true,
 		SSO:             false,

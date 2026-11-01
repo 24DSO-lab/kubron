@@ -24,23 +24,25 @@ const (
 
 // ArgoUIInfo — куда открыть Argo CD UI в браузере.
 type ArgoUIInfo struct {
+	// URL — адрес для браузера. В режиме proxy он одноразовый и живёт секунды: открывать сразу.
 	URL       string `json:"url"`
 	Namespace string `json:"namespace"`
 	Service   string `json:"service"`
-	LocalPort int    `json:"localPort"`
-	Reused    bool   `json:"reused"` // использована уже запущенная сессия проброса
+	LocalPort int    `json:"localPort"` // 0 в режиме proxy
+	Reused    bool   `json:"reused"`    // использована уже запущенная сессия проброса
+	// PortForwardID — сессия проброса (режим proxy); адрес для повторного открытия даёт PortForwardURL.
+	PortForwardID string `json:"portForwardId,omitempty"`
+	Mode          string `json:"mode,omitempty"`
 }
 
-// OpenArgoUI пробрасывает порт на argocd-server и возвращает URL. Повторный вызов
-// переиспользует активную сессию, а не плодит туннели.
-func (pfm *PortForwardManager) OpenArgoUI() (*ArgoUIInfo, error) {
-	conn, err := pfm.k8sMgr.GetActiveConnection()
-	if err != nil {
-		return nil, err
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer cancel()
+// argoTarget — найденный argocd-server: сервис, выбранный порт и режим TLS.
+type argoTarget struct {
+	svc      *corev1.Service
+	port     corev1.ServicePort
+	insecure bool
+}
 
+func (pfm *PortForwardManager) findArgoTarget(ctx context.Context, conn *ClusterConnection) (*argoTarget, error) {
 	svc, err := findArgoServerService(ctx, conn.Client)
 	if err != nil {
 		return nil, err
@@ -50,11 +52,63 @@ func (pfm *PortForwardManager) OpenArgoUI() (*ArgoUIInfo, error) {
 	if !ok {
 		return nil, fmt.Errorf("service %s/%s has no ports", svc.Namespace, svc.Name)
 	}
-	scheme := argoScheme(insecure)
+	return &argoTarget{svc: svc, port: port, insecure: insecure}, nil
+}
+
+// OpenArgoUI открывает доступ к argocd-server и возвращает адрес для браузера. Повторный вызов переиспользует
+// активную сессию, а не плодит туннели. В режиме local — localhost-порт, в режиме proxy — адрес прокси на
+// отдельном origin (ADR-0017), порты на хосте не открываются.
+func (pfm *PortForwardManager) OpenArgoUI() (*ArgoUIInfo, error) {
+	switch pfm.Mode() {
+	case PortForwardModeOff:
+		return nil, ErrPortForwardDisabled
+	case PortForwardModeProxy:
+		return pfm.openArgoProxy()
+	}
+	return pfm.openArgoLocal()
+}
+
+func (pfm *PortForwardManager) openArgoProxy() (*ArgoUIInfo, error) {
+	conn, err := pfm.k8sMgr.GetActiveConnection()
+	if err != nil {
+		return nil, err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	t, err := pfm.findArgoTarget(ctx, conn)
+	if err != nil {
+		return nil, err
+	}
+	sess, err := pfm.startService(t.svc.Namespace, t.svc.Name, 0, int(t.port.Port), true, argoScheme(t.insecure))
+	if err != nil {
+		return nil, err
+	}
+	url, err := pfm.PortForwardURL(sess.ID)
+	if err != nil {
+		return nil, err
+	}
+	return &ArgoUIInfo{URL: url, Namespace: t.svc.Namespace, Service: t.svc.Name, PortForwardID: sess.ID, Mode: PortForwardModeProxy}, nil
+}
+
+// openArgoLocal пробрасывает порт на argocd-server на 127.0.0.1 (десктоп, режим одного пользователя).
+func (pfm *PortForwardManager) openArgoLocal() (*ArgoUIInfo, error) {
+	conn, err := pfm.k8sMgr.GetActiveConnection()
+	if err != nil {
+		return nil, err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	t, err := pfm.findArgoTarget(ctx, conn)
+	if err != nil {
+		return nil, err
+	}
+	svc, port := t.svc, t.port
+	scheme := argoScheme(t.insecure)
 	info := func(local int, reused bool) *ArgoUIInfo {
 		return &ArgoUIInfo{
 			URL: fmt.Sprintf("%s://localhost:%d", scheme, local), Namespace: svc.Namespace,
-			Service: svc.Name, LocalPort: local, Reused: reused,
+			Service: svc.Name, LocalPort: local, Reused: reused, Mode: PortForwardModeLocal,
 		}
 	}
 
@@ -65,11 +119,51 @@ func (pfm *PortForwardManager) OpenArgoUI() (*ArgoUIInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	sess, err := pfm.StartServicePortForward(svc.Namespace, svc.Name, local, int(port.Port))
+	sess, err := pfm.startService(svc.Namespace, svc.Name, local, int(port.Port), false, "")
 	if err != nil {
 		return nil, err
 	}
 	return info(sess.LocalPort, false), nil
+}
+
+// argoClient возвращает клиент Argo CD API активного кластера для запросов самого сервера (сравнение состояний,
+// выпуск токена) и функцию освобождения. В режимах proxy и off запросы идут через PodDialer: ни порта на хосте,
+// ни сессии в списке пользователя не появляется. В режиме local сохранён прежний путь через localhost-туннель.
+func (pfm *PortForwardManager) argoClient(token string) (*argoAPIClient, func(), error) {
+	if pfm.Mode() == PortForwardModeLocal {
+		info, err := pfm.openArgoLocal()
+		if err != nil {
+			return nil, nil, err
+		}
+		c, err := newArgoAPIClient(info.URL, token)
+		return c, func() {}, err
+	}
+	conn, err := pfm.k8sMgr.GetActiveConnection()
+	if err != nil {
+		return nil, nil, err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	t, err := pfm.findArgoTarget(ctx, conn)
+	if err != nil {
+		return nil, nil, err
+	}
+	st, err := resolveServiceTarget(ctx, conn, t.svc.Namespace, t.svc.Name, int(t.port.Port))
+	if err != nil {
+		return nil, nil, err
+	}
+	d, err := NewPodDialer(conn, t.svc.Namespace, st.pod, st.podPort)
+	if err != nil {
+		return nil, nil, err
+	}
+	c, err := newArgoAPIClientVia(argoScheme(t.insecure)+"://argocd-server.invalid", token, func(ctx context.Context, _, _ string) (net.Conn, error) {
+		return d.DialContext(ctx)
+	})
+	if err != nil {
+		d.Close()
+		return nil, nil, err
+	}
+	return c, d.Close, nil
 }
 
 // findArgoForward возвращает активную сессию проброса на argocd-server именно этого кластера.
@@ -78,7 +172,7 @@ func (pfm *PortForwardManager) OpenArgoUI() (*ArgoUIInfo, error) {
 func findArgoForward(forwards []PortForwardSession, clusterID, namespace, service string, servicePort int) *PortForwardSession {
 	for i := range forwards {
 		s := &forwards[i]
-		if s.Status == PortForwardActive && s.ClusterID == clusterID &&
+		if s.Status == PortForwardActive && s.Mode != PortForwardModeProxy && s.ClusterID == clusterID &&
 			s.Namespace == namespace && s.Service == service && s.ServicePort == servicePort {
 			return s
 		}

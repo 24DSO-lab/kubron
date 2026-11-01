@@ -9,11 +9,13 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
-	"github.com/VadimIl224/kubron/internal/audit"
+	"github.com/24DSO-labs/kubron/internal/audit"
 )
 
 // Ошибки отдаются во фронтенд как текст (Wails), поэтому сообщения — на языке интерфейса.
@@ -116,6 +118,8 @@ type shared struct {
 	rec      Recorder
 	access   Access                // nil — прежняя модель: глобальная роль пользователя
 	sessions map[*Service]struct{} // живые сессии, включая неявную сессию десктопа
+
+	missAt atomic.Int64 // когда последний раз перечитывали пользователей из-за неизвестного логина (UnixNano)
 
 	dummyOnce sync.Once
 	dummyHash string
@@ -380,6 +384,7 @@ func (s *Service) SetIdleTimeout(minutes int) (int, error) {
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	s.refreshLocked()
 	actor, err := s.authorizeLocked(PermUsersManage)
 	if err != nil {
 		return 0, err
@@ -387,7 +392,7 @@ func (s *Service) SetIdleTimeout(minutes int) (int, error) {
 	prev := s.st.settings
 	was := s.idleMinutesLocked()
 	s.st.settings.IdleTimeoutMinutes = &minutes
-	if err := s.st.save(); err != nil {
+	if err := s.st.saveSettings(); err != nil {
 		s.st.settings = prev
 		s.record(actor, "SetIdleTimeout", audit.ResultFailed, err.Error())
 		return 0, fmt.Errorf("failed to save setting: %w", err)
@@ -493,6 +498,7 @@ func (s *Service) Setup(username, password string) (*UserInfo, error) {
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	s.refreshLocked()
 	if len(s.st.users) > 0 {
 		return nil, ErrSetupDone
 	}
@@ -502,7 +508,7 @@ func (s *Service) Setup(username, password string) (*UserInfo, error) {
 		CreatedAt: now, UpdatedAt: now, LastLoginAt: &now,
 	}
 	s.st.users = append(s.st.users, rec)
-	if err := s.st.save(); err != nil {
+	if err := s.st.saveUser(&rec); err != nil {
 		s.st.users = nil
 		return nil, fmt.Errorf("failed to save user: %w", err)
 	}
@@ -540,6 +546,14 @@ func (s *Service) Login(username, password string) (*UserInfo, error) {
 		snapshot = &c
 	}
 	s.mu.Unlock()
+	if snapshot == nil && s.refreshOnMiss() { // пользователя могла создать другая реплика
+		s.mu.Lock()
+		if rec := s.st.findByName(key); rec != nil {
+			c := *rec
+			snapshot = &c
+		}
+		s.mu.Unlock()
+	}
 
 	// Хеширование — вне блокировки. Для несуществующего логина считаем фиктивный хеш,
 	// чтобы время ответа не выдавало, существует ли пользователь.
@@ -582,7 +596,7 @@ func (s *Service) Login(username, password string) (*UserInfo, error) {
 	if newHash != "" {
 		rec.PasswordHash = newHash
 	}
-	_ = s.st.save() // не мешаем входу, если диск недоступен для записи
+	_ = s.st.saveLogin(rec, newHash) // не мешаем входу, если диск недоступен для записи
 	s.sessionID = rec.ID
 	s.touchLocked()
 	s.record(rec, "Login", audit.ResultOK, "")
@@ -594,6 +608,124 @@ func (s *Service) Login(username, password string) (*UserInfo, error) {
 		hook()
 	}
 	return info, nil
+}
+
+// Resume открывает сессию пользователя userID без пароля: веб-сессия уже проверена общим хранилищем
+// сессий (ADR-0016), а этот вид ядра построен заново на другой реплике. lastActive — последнее действие
+// пользователя, записанное в хранилище; простой считается от него. Пользователя, которого нет в
+// памяти (его создала другая реплика), сервис перечитывает из хранилища.
+func (s *Service) Resume(userID string, lastActive time.Time) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	u := s.st.findByID(userID)
+	if u == nil {
+		if err := s.reloadLocked(); err != nil {
+			return err
+		}
+		u = s.st.findByID(userID)
+	}
+	if u == nil || u.Disabled {
+		return ErrNotAuthenticated
+	}
+	s.sessionID = u.ID
+	s.lastActive = lastActive.Round(0)
+	if s.idleExpiredLocked() {
+		s.sessionID = ""
+		return ErrNotAuthenticated
+	}
+	return nil
+}
+
+// SyncActivity подтягивает время последнего действия пользователя, записанное другой репликой:
+// пользователь работает с интерфейсом там, а этот вид ядра простаивает и иначе закрыл бы сессию.
+func (s *Service) SyncActivity(at time.Time) {
+	s.mu.Lock()
+	if at = at.Round(0); at.After(s.lastActive) {
+		s.lastActive = at
+	}
+	s.mu.Unlock()
+}
+
+// reloadLocked перечитывает пользователей и настройки из хранилища (общее состояние всех видов).
+func (s *Service) reloadLocked() error {
+	if err := s.st.reload(); err != nil {
+		return err
+	}
+	return nil
+}
+
+// refreshLocked подтягивает изменения других реплик перед изменением пользователей: запись идёт точечными
+// операциями, но решения (имя занято, последний администратор) принимаются по свежим данным. Для файлового
+// хранилища (один процесс) ничего не делает. Ошибка чтения не мешает операции: запись всё равно точечная.
+func (s *Service) refreshLocked() {
+	if s.st.delta == nil {
+		return
+	}
+	if err := s.reloadLocked(); err != nil {
+		log.Printf("auth: users were not refreshed: %v", err)
+	}
+}
+
+// refresh перечитывает пользователей без блокировки на время обращения к хранилищу. Результат отбрасывается,
+// если за это время пользователей меняли здесь: локальное изменение новее прочитанного.
+func (s *Service) refresh() error {
+	s.mu.Lock()
+	gen := s.st.gen
+	s.mu.Unlock()
+	fresh, err := s.st.backend.Load()
+	if err != nil {
+		return err
+	}
+	s.mu.Lock()
+	if s.st.gen == gen {
+		s.st.users, s.st.settings = fresh.Users, fresh.Settings
+	}
+	s.mu.Unlock()
+	return nil
+}
+
+// missRefreshEvery — не чаще одного внеочередного чтения при неизвестном логине (защита хранилища от перебора).
+const missRefreshEvery = time.Second
+
+// refreshOnMiss перечитывает пользователей, если логин неизвестен: его могла создать другая реплика.
+// Возвращает true, если чтение выполнено. Только для общего хранилища.
+func (s *Service) refreshOnMiss() bool {
+	if s.st.delta == nil {
+		return false
+	}
+	now := time.Now().UnixNano()
+	last := s.missAt.Load()
+	if now-last < int64(missRefreshEvery) || !s.missAt.CompareAndSwap(last, now) {
+		return false
+	}
+	if err := s.refresh(); err != nil {
+		log.Printf("auth: users were not refreshed: %v", err)
+		return false
+	}
+	return true
+}
+
+// Shared — пользователи лежат в хранилище, общем для нескольких процессов (PostgreSQL), и RunRefresher нужен.
+func (s *Service) Shared() bool { return s.st.delta != nil }
+
+// RunRefresher периодически перечитывает пользователей, пока ctx не отменён: роль, блокировка и новые
+// пользователи, изменённые на другой реплике, становятся видны здесь не позже чем через every.
+func (s *Service) RunRefresher(ctx context.Context, every time.Duration) {
+	if s.st.delta == nil || every <= 0 {
+		return
+	}
+	t := time.NewTicker(every)
+	defer t.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+			if err := s.refresh(); err != nil {
+				log.Printf("auth: users were not refreshed: %v", err)
+			}
+		}
+	}
 }
 
 // Logout завершает сессию и вызывает обработчик очистки.
@@ -746,6 +878,7 @@ func (s *Service) ChangePassword(oldPassword, newPassword string) error {
 	defer func() { runAll(hooks) }() // после снятия блокировки (defer выполняются в обратном порядке)
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	s.refreshLocked()
 	rec := s.st.findByID(id)
 	if rec == nil || s.sessionID != id {
 		return ErrNotAuthenticated
@@ -754,7 +887,7 @@ func (s *Service) ChangePassword(oldPassword, newPassword string) error {
 	rec.PasswordHash = newHash
 	rec.MustChangePassword = false
 	rec.UpdatedAt = s.now()
-	if err := s.st.save(); err != nil {
+	if err := s.st.saveUser(rec); err != nil {
 		*rec = prev
 		return fmt.Errorf("failed to save password: %w", err)
 	}
@@ -801,6 +934,7 @@ func (s *Service) CreateUser(username, password string, role Role) (*UserInfo, e
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	s.refreshLocked()
 	if _, err := s.authorizeLocked(PermUsersManage); err != nil {
 		return nil, err
 	}
@@ -816,7 +950,7 @@ func (s *Service) CreateUser(username, password string, role Role) (*UserInfo, e
 		MustChangePassword: true, CreatedAt: now, UpdatedAt: now,
 	}
 	s.st.users = append(s.st.users, rec)
-	if err := s.st.save(); err != nil {
+	if err := s.st.saveUser(&rec); err != nil {
 		s.st.users = s.st.users[:len(s.st.users)-1]
 		s.record(actor, "CreateUser", audit.ResultFailed, detail+": "+err.Error())
 		return nil, fmt.Errorf("failed to save user: %w", err)
@@ -833,6 +967,7 @@ func (s *Service) mutate(id, action string, fn func(actor, target *UserRecord) (
 	defer func() { runAll(hooks) }() // после снятия блокировки
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	s.refreshLocked()
 	actor, err := s.authorizeLocked(PermUsersManage)
 	if err != nil {
 		return nil, err
@@ -851,7 +986,7 @@ func (s *Service) mutate(id, action string, fn func(actor, target *UserRecord) (
 		return nil, err
 	}
 	target.UpdatedAt = s.now()
-	if err := s.st.save(); err != nil {
+	if err := s.st.saveUser(target); err != nil {
 		*target = prev
 		s.record(actor, action, audit.ResultFailed, who+": "+err.Error())
 		return nil, fmt.Errorf("failed to save changes: %w", err)
@@ -935,6 +1070,7 @@ func (s *Service) DeleteUser(id string) error {
 	defer func() { runAll(hooks) }() // после снятия блокировки
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	s.refreshLocked()
 	actor, err := s.authorizeLocked(PermUsersManage)
 	if err != nil {
 		return err
@@ -955,7 +1091,7 @@ func (s *Service) DeleteUser(id string) error {
 	}
 	prev := append([]UserRecord(nil), s.st.users...)
 	s.st.remove(id)
-	if err := s.st.save(); err != nil {
+	if err := s.st.saveRemoved(id); err != nil {
 		s.st.users = prev
 		s.record(actor, "DeleteUser", audit.ResultFailed, who+": "+err.Error())
 		return fmt.Errorf("failed to save changes: %w", err)

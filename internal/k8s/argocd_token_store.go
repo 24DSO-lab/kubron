@@ -6,10 +6,11 @@ package k8s
 import (
 	"errors"
 	"fmt"
-	"github.com/VadimIl224/kubron/pkg/ext"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/24DSO-labs/kubron/pkg/ext"
 )
 
 // TokenStore — хранилище токенов Argo CD API по идентификатору кластера (ADR-0007, ADR-0008).

@@ -8,9 +8,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/VadimIl224/kubron/internal/audit"
-	"github.com/VadimIl224/kubron/internal/auth"
-	"github.com/VadimIl224/kubron/internal/k8s"
+	"github.com/24DSO-labs/kubron/internal/audit"
+	"github.com/24DSO-labs/kubron/internal/auth"
+	"github.com/24DSO-labs/kubron/internal/k8s"
 )
 
 // Управление командами существует только в сервисном режиме (PostgreSQL). В десктопе и в личном режиме

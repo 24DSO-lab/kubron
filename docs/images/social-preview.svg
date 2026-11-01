@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640">
+  <defs>
+    <linearGradient id="g-main" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#38BDF8"/><stop offset="100%" stop-color="#0284C7"/></linearGradient>
+    <linearGradient id="g-top" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#22D3EE"/><stop offset="100%" stop-color="#06B6D4"/></linearGradient>
+    <linearGradient id="g-bot" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#818CF8"/><stop offset="100%" stop-color="#4F46E5"/></linearGradient>
+    <linearGradient id="g-text" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#38BDF8"/><stop offset="100%" stop-color="#818CF8"/></linearGradient>
+    <radialGradient id="glow-a" cx="18%" cy="30%" r="55%"><stop offset="0%" stop-color="#0EA5E9" stop-opacity="0.22"/><stop offset="100%" stop-color="#0EA5E9" stop-opacity="0"/></radialGradient>
+    <radialGradient id="glow-b" cx="95%" cy="100%" r="60%"><stop offset="0%" stop-color="#6366F1" stop-opacity="0.22"/><stop offset="100%" stop-color="#6366F1" stop-opacity="0"/></radialGradient>
+  </defs>
+  <rect width="1280" height="640" fill="#0B0F19"/>
+  <rect width="1280" height="640" fill="url(#glow-a)"/>
+  <rect width="1280" height="640" fill="url(#glow-b)"/>
+
+  <!-- K mark (geometry from frontend/src/assets/images/logo.svg), scaled x2 -->
+  <g transform="translate(70,150) scale(2.1) translate(-63,-33)">
+    <polygon points="63,65 85,52.5 85,142.5 63,155" fill="#0284C7"/>
+    <polygon points="85,52.5 107,40 107,130 85,142.5" fill="url(#g-main)"/>
+    <polygon points="119,33 175,65 175,110 119,78" fill="url(#g-top)"/>
+    <polygon points="119,98 175,130 175,175 119,143" fill="url(#g-bot)"/>
+  </g>
+
+  <text x="400" y="228" font-family="Poppins" font-weight="700" font-size="120" letter-spacing="3"><tspan fill="#F8FAFC">KUB</tspan><tspan fill="url(#g-text)">RON</tspan></text>
+  <text x="404" y="292" font-family="Poppins" font-weight="500" font-size="38" fill="#E2E8F0">Fast, private Kubernetes desktop IDE</text>
+  <text x="404" y="344" font-family="Poppins" font-weight="400" font-size="27" fill="#94A3B8">Multi-cluster · Helm · Argo CD built in · Logs, exec, port-forward</text>
+
+  <!-- feature chips -->
+  <g font-family="Poppins" font-weight="500" font-size="24" fill="#CBD5E1">
+    <rect x="404" y="404" width="180" height="52" rx="26" fill="#111827" stroke="#1F2A44"/>
+    <text x="494" y="438" text-anchor="middle">Go + Wails</text>
+    <rect x="600" y="404" width="216" height="52" rx="26" fill="#111827" stroke="#1F2A44"/>
+    <text x="708" y="438" text-anchor="middle">No telemetry</text>
+    <rect x="832" y="404" width="286" height="52" rx="26" fill="#111827" stroke="#1F2A44"/>
+    <text x="975" y="438" text-anchor="middle">No account needed</text>
+  </g>
+
+  <line x1="70" y1="548" x2="1210" y2="548" stroke="#1F2A44" stroke-width="2"/>
+  <text x="70" y="596" font-family="Poppins" font-weight="400" font-size="26" fill="#64748B">Open source · Apache-2.0</text>
+  <text x="1210" y="596" text-anchor="end" font-family="Poppins" font-weight="500" font-size="26" fill="#38BDF8">github.com/24DSO-labs/kubron</text>
+</svg>

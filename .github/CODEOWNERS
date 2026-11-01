@@ -1,0 +1,5 @@
+# Code owners are requested for review automatically on every pull request.
+# To make the review mandatory: Settings -> Branches -> master -> "Require review from Code Owners".
+# Owners must be users (or teams) with write access to the repository.
+
+* @24DSO-labs

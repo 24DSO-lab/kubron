@@ -3,7 +3,7 @@
 
 package app
 
-import "github.com/VadimIl224/kubron/pkg/ext"
+import "github.com/24DSO-labs/kubron/pkg/ext"
 
 // Platform — всё, что ядру нужно от оболочки, в которой оно запущено (ADR-0002).
 // Интерфейс публичный (pkg/ext): оболочки могут жить в других модулях.

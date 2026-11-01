@@ -8,8 +8,8 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/VadimIl224/kubron/internal/termbuf"
-	"github.com/VadimIl224/kubron/pkg/ext"
+	"github.com/24DSO-labs/kubron/internal/termbuf"
+	"github.com/24DSO-labs/kubron/pkg/ext"
 )
 
 // ErrNotSupported — операция есть только в десктопе.

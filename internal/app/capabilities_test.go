@@ -34,3 +34,18 @@ func TestGetCapabilitiesNeedsNoSession(t *testing.T) {
 		t.Fatalf("capabilities must be served before login: %+v", got)
 	}
 }
+
+type pfPlatform struct{ nopPlatform }
+
+func (pfPlatform) Capabilities() Capabilities { return Capabilities{PortForward: true} }
+
+func TestGetCapabilitiesReportsPortForwardMode(t *testing.T) {
+	root := NewApp(pfPlatform{})
+	if c := root.GetCapabilities(); !c.PortForward || c.PortForwardMode != "local" {
+		t.Fatalf("default must stay local: %+v", c)
+	}
+	SetPortForwardMode(root, "off")
+	if c := root.GetCapabilities(); c.PortForward || c.PortForwardMode != "off" {
+		t.Fatalf("off must hide port-forward: %+v", c)
+	}
+}

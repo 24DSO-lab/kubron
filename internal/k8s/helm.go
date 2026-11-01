@@ -102,7 +102,7 @@ func (m *Manager) GetHelmReleases() ([]HelmReleaseInfo, error) {
 		return nil, err
 	}
 
-	findUpdate := helmUpdateFinder()
+	findUpdate := m.helmUpdateFinder()
 	releases := make([]HelmReleaseInfo, 0, len(payloads))
 	for _, p := range payloads {
 		info := HelmReleaseInfo{

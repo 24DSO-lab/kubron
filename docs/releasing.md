@@ -28,7 +28,7 @@ GitHub — основной репозиторий. GitLab (`origin`) — вто
    scripts/release.sh 0.2.0 --dry-run   # проверки и предпросмотр описания, ничего не меняется
    scripts/release.sh 0.2.0             # сам выпуск (--watch: дождаться релизного workflow)
    ```
-5. **Готово.** Через 10-20 минут релиз опубликован: `https://github.com/VadimIl224/kubron/releases`.
+5. **Готово.** Через 10-20 минут релиз опубликован: `https://github.com/24DSO-labs/kubron/releases`.
    После выпуска `refactor` уже равна `master`: продолжайте работу с `git checkout refactor && git pull`.
 
 ## Что делает `scripts/release.sh`

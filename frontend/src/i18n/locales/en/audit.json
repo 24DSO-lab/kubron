@@ -99,7 +99,11 @@
     "RemoveTeamMember": "Team member removed",
     "AddClusterToTeam": "Cluster added to a team",
     "MoveCluster": "Cluster moved to another team",
-    "ExportAuditLog": "Audit log export"
+    "ExportAuditLog": "Audit log export",
+    "portforward": {
+      "start": "Port-forward started",
+      "stop": "Port-forward stopped"
+    }
   },
   "export": {
     "csv": "Export CSV",

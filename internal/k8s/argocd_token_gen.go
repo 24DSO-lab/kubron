@@ -168,14 +168,11 @@ func (pfm *PortForwardManager) GenerateArgoAPIToken(account, username, password 
 	if clusterID == "" {
 		return errors.New("no active connection")
 	}
-	info, err := pfm.OpenArgoUI()
+	client, release, err := pfm.argoClient("")
 	if err != nil {
 		return err
 	}
-	client, err := newArgoAPIClient(info.URL, "")
-	if err != nil {
-		return err
-	}
+	defer release()
 	ctx, cancel := context.WithTimeout(context.Background(), argoAPITimeout)
 	defer cancel()
 	token, err := generateArgoToken(ctx, client, account, username, password, days)

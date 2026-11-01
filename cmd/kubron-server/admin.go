@@ -11,9 +11,9 @@ import (
 	"io"
 	"os"
 
-	"github.com/VadimIl224/kubron/internal/k8s"
-	"github.com/VadimIl224/kubron/internal/server"
-	"github.com/VadimIl224/kubron/internal/store"
+	"github.com/24DSO-labs/kubron/internal/k8s"
+	"github.com/24DSO-labs/kubron/internal/server"
+	"github.com/24DSO-labs/kubron/internal/store"
 )
 
 // adminCommands — служебные команды: kubron-server <команда>. Настройки БД берутся из окружения
@@ -40,7 +40,7 @@ func runAdmin(ctx context.Context, cmd string, args []string, out io.Writer) err
 		if err != nil {
 			return err
 		}
-		_, err = fmt.Fprintf(out, "re-encrypted with key %q: %d kubeconfigs, %d cluster secrets, %d Argo CD tokens\n", cfg.SecretKey[:idLen(cfg.SecretKey)], rep.Clusters, rep.Secrets, rep.Tokens)
+		_, err = fmt.Fprintf(out, "re-encrypted with key %q: %d kubeconfigs, %d cluster secrets, %d Argo CD tokens, %d Helm repository secrets\n", cfg.SecretKey[:idLen(cfg.SecretKey)], rep.Clusters, rep.Secrets, rep.Tokens, rep.Helm)
 		return err
 	case "import-files":
 		fs := flag.NewFlagSet("import-files", flag.ContinueOnError)

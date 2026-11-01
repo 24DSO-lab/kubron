@@ -13,7 +13,7 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"github.com/VadimIl224/kubron/internal/auth"
+	"github.com/24DSO-labs/kubron/internal/auth"
 )
 
 type httpTarget struct{}

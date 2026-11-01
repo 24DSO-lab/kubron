@@ -7,8 +7,8 @@ import (
 	"context"
 	"embed"
 
-	"github.com/VadimIl224/kubron/internal/app"
-	wailsplatform "github.com/VadimIl224/kubron/internal/platform/wails"
+	"github.com/24DSO-labs/kubron/internal/app"
+	wailsplatform "github.com/24DSO-labs/kubron/internal/platform/wails"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"

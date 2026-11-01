@@ -22,35 +22,30 @@ type helmRepoIndex struct {
 	idx  *repo.IndexFile
 }
 
-// helmAllIndexes снимает индексы всех добавленных репозиториев (HTTP и OCI) один раз.
-func helmAllIndexes() []helmRepoIndex {
+// helmAllIndexes снимает индексы всех репозиториев области (HTTP и OCI) один раз.
+func (m *Manager) helmAllIndexes() []helmRepoIndex {
+	sc, err := m.helmScope()
+	if err != nil {
+		return nil
+	}
+	recs, err := sc.repos()
+	if err != nil {
+		return nil
+	}
 	var repos []helmRepoIndex
-	helmRepoMu.Lock()
-	f, err := loadHelmRepoFile()
-	helmRepoMu.Unlock()
-	if err == nil {
-		for _, e := range f.Repositories {
-			if e == nil || validateHelmRepoName(e.Name) != nil {
-				continue
-			}
-			if idx, _, err := loadHelmIndex(e.Name); err == nil {
-				repos = append(repos, helmRepoIndex{name: e.Name, idx: idx})
-			}
+	for _, r := range recs {
+		if r.Kind != helmKindHTTP {
+			continue
+		}
+		if idx, _, err := loadHelmIndex(sc, r.Name); err == nil {
+			repos = append(repos, helmRepoIndex{name: r.Name, idx: idx})
 		}
 	}
-	return append(repos, ociIndexes()...)
+	return append(repos, sc.ociIndexes(recs)...)
 }
 
-// helmUpdateFinder снимает индексы добавленных репозиториев один раз и возвращает функцию поиска
-// обновления для (чарт, установленная версия).
-//
-// ИСТОЧНИК РЕЛИЗА определяется по наличию установленной версии в индексе репозитория: Helm не хранит,
-// из какого репозитория поставлен релиз, а чарты с одинаковым именем в разных репозиториях — разные чарты.
-// Если установленной версии нет ни в одном индексе (старая версия вычищена или чарт ставили вручную),
-// обновление НЕ показывается: лучше промолчать, чем предложить чужой чарт.
-// Пререлизы предлагаются только тем, кто сам стоит на пререлизе.
-func helmUpdateFinder() func(chart, installed string) *helmUpdate {
-	repos := helmAllIndexes()
+func (m *Manager) helmUpdateFinder() func(chart, installed string) *helmUpdate {
+	repos := m.helmAllIndexes()
 	return func(chart, installed string) *helmUpdate {
 		return findHelmUpdate(repos, chart, installed)
 	}

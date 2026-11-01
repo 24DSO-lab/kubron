@@ -11,7 +11,7 @@ package pgstore
 import (
 	"embed"
 
-	"github.com/VadimIl224/kubron/internal/migrate"
+	"github.com/24DSO-labs/kubron/internal/migrate"
 )
 
 //go:embed migrations/*.sql
