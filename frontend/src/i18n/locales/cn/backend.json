@@ -538,5 +538,12 @@
 
   "replicaEventIsTooLargeBytes": "副本事件过大：{p0} 字节",
   "replicaEventCannotBeDecoded": "无法解析副本事件：{p0}",
-  "replicaEventHasAnUnsupportedVersion": "副本事件的版本不受支持：{p0}"
+  "replicaEventHasAnUnsupportedVersion": "副本事件的版本不受支持：{p0}",
+  "helmRepositoryIsAlreadyAdded": "仓库已添加",
+  "helmRecordNotFound": "未找到记录",
+  "theClusterDoesNotBelongToATeam": "集群不属于任何团队",
+  "helmRecordNotFoundDb": "未找到 Helm 记录",
+  "aHelmRepositoryWithThisNameAlreadyExists": "已存在同名 Helm 仓库",
+  "helmRepositoryOptionsAreCorrupted": "Helm 仓库选项已损坏：{p0}",
+  "proxyUrlInTheKubeconfigIsNotAllowedWhileTheClusterAddressPolicyIsEnabled": "启用集群地址策略时不允许 kubeconfig 中的 proxy-url"
 }
