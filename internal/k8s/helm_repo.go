@@ -381,6 +381,7 @@ func (m *Manager) ListHelmRepos() ([]HelmRepoInfo, error) {
 			info.Updated = mod.UTC().Format(time.RFC3339)
 		case errors.Is(err, os.ErrNotExist):
 			info.Error = "index is not downloaded: run Update"
+			sc.warmIndex(r.Name) // сервис: кэш этой реплики докачается в фоне, следующий список его покажет
 		default:
 			info.Error = err.Error()
 		}
@@ -443,7 +444,10 @@ func (m *Manager) RemoveHelmRepo(name string) error {
 
 // remove удаляет репозиторий любого вида вместе с его кэшем.
 func (sc *helmScope) remove(name string) error {
+	// имена файлов кэша зависят от URL: считаем их до удаления записи
+	indexFile, tagsFile, memKey := sc.indexPath(name), sc.tagsPath(name), sc.key(name)
 	removed, err := sc.store.DeleteRepo(sc.team, name)
+	sc.invalidate()
 	if errors.Is(err, ErrHelmNotFound) {
 		return fmt.Errorf("repository %q not found", name)
 	}
@@ -451,11 +455,11 @@ func (sc *helmScope) remove(name string) error {
 		return err
 	}
 	helmCacheMu.Lock()
-	_ = os.Remove(sc.indexPath(name))
-	_ = os.Remove(sc.tagsPath(name))
+	_ = os.Remove(indexFile)
+	_ = os.Remove(tagsFile)
 	helmCacheMu.Unlock()
 	helmIndexMu.Lock()
-	delete(helmIndexCache, sc.key(name))
+	delete(helmIndexCache, memKey)
 	helmIndexMu.Unlock()
 	if removed.Kind == helmKindOCI && removed.Username != "" && !sc.store.CredentialsInStore() {
 		// учётные данные реестра лежат в registry-config.json: убираем, если на этот хост больше нет реестров
@@ -532,6 +536,7 @@ func (sc *helmScope) updateOneHelmRepo(e *repo.Entry) HelmRepoUpdateResult {
 		return res
 	}
 	// репозиторий могли удалить или переназначить, пока шла загрузка
+	sc.invalidate()
 	cur, ok, err := sc.repo(e.Name)
 	if err != nil || !ok || cur.Kind != helmKindHTTP || cur.URL != e.URL {
 		_ = os.Remove(tmp)
@@ -570,7 +575,7 @@ func (m *Manager) SearchHelmCharts(query, repoName string) (*HelmCatalogResult, 
 		if e.Kind != helmKindHTTP || (repoName != "" && e.Name != repoName) {
 			continue
 		}
-		idx, _, err := loadHelmIndex(sc, e.Name)
+		idx, _, err := loadHelmIndexOrFetch(context.Background(), sc, e.Name)
 		if err != nil {
 			continue // индекс не скачан или повреждён: виден в списке репозиториев
 		}
@@ -645,7 +650,7 @@ func (m *Manager) GetHelmChartVersions(repoName, chartName string) ([]HelmChartV
 	if _, err := helmRepoEntry(sc, repoName); err != nil {
 		return nil, err
 	}
-	idx, _, err := loadHelmIndex(sc, repoName)
+	idx, _, err := loadHelmIndexOrFetch(context.Background(), sc, repoName)
 	if err != nil {
 		return nil, fmt.Errorf("index of repository %q is unavailable: %w", repoName, err)
 	}
@@ -694,7 +699,7 @@ func lookupHelmChartVersion(sc *helmScope, repoName, chartName, version string) 
 	if err != nil {
 		return nil, nil, err
 	}
-	idx, _, err := loadHelmIndex(sc, repoName)
+	idx, _, err := loadHelmIndexOrFetch(context.Background(), sc, repoName)
 	if err != nil {
 		return nil, nil, fmt.Errorf("index of repository %q is unavailable: %w", repoName, err)
 	}

@@ -4,6 +4,8 @@
 package k8s
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
@@ -102,6 +104,10 @@ type helmScope struct {
 	clusterID string
 	actor     string // пользователь для created_by
 	store     HelmStateStore
+
+	mu    sync.Mutex
+	memo  []HelmRepoRecord // список репозиториев на время запроса: лишние обращения к БД не нужны
+	known bool
 }
 
 // helmScope определяет область запроса. Файловое хранилище команд не знает: область одна на всех.
@@ -134,6 +140,41 @@ func (m *Manager) helmActorID() string {
 	return ""
 }
 
+// lazyCache: кэш индексов и тегов принадлежит реплике, а состояние — БД. В сервисе при нескольких репликах репозиторий,
+// добавленный на одной, на другой не имеет кэша, поэтому недостающее скачивается по первому обращению (решение 2026-11-01-02
+// в docs/decisions). Файловое хранилище живёт на одной машине: кэш там появляется только командой «Обновить».
+func (sc *helmScope) lazyCache() bool {
+	_, file := sc.store.(fileHelmStore)
+	return !file
+}
+
+// cacheName — имя файла кэша репозитория. В сервисе в него входит хеш URL: если репозиторий на другой реплике удалили
+// и добавили под тем же именем, но с другим адресом, чужой старый кэш не подставится. В файловом режиме — просто имя.
+func (sc *helmScope) cacheName(name string) string {
+	if !sc.lazyCache() {
+		return name
+	}
+	recs, err := sc.repos()
+	if err != nil {
+		return name
+	}
+	for _, r := range recs {
+		if r.Name == name {
+			sum := sha256.Sum256([]byte(r.URL))
+			return name + "-" + hex.EncodeToString(sum[:4])
+		}
+	}
+	return name
+}
+
+// invalidate сбрасывает мемоизированный список: после записи и перед повторной проверкой «не изменилось ли за время запроса».
+func (sc *helmScope) invalidate() {
+	sc.mu.Lock()
+	sc.known = false
+	sc.memo = nil
+	sc.mu.Unlock()
+}
+
 // cacheDir — каталог кэша индексов и тегов: у каждой команды свой, чтобы одноимённые репозитории разных команд
 // не пересекались. Кэш воспроизводим, поэтому ему достаточно emptyDir.
 func (sc *helmScope) cacheDir() string {
@@ -144,17 +185,29 @@ func (sc *helmScope) cacheDir() string {
 }
 
 // key — ключ записи в общих кэшах памяти.
-func (sc *helmScope) key(name string) string { return sc.team + "/" + name }
+func (sc *helmScope) key(name string) string { return sc.team + "/" + sc.cacheName(name) }
 
 func (sc *helmScope) indexPath(name string) string {
-	return filepath.Join(sc.cacheDir(), name+"-index.yaml")
+	return filepath.Join(sc.cacheDir(), sc.cacheName(name)+"-index.yaml")
 }
 
 func (sc *helmScope) tagsPath(name string) string {
-	return filepath.Join(sc.cacheDir(), name+"-oci.json")
+	return filepath.Join(sc.cacheDir(), sc.cacheName(name)+"-oci.json")
 }
 
-func (sc *helmScope) repos() ([]HelmRepoRecord, error) { return sc.store.ListRepos(sc.team) }
+func (sc *helmScope) repos() ([]HelmRepoRecord, error) {
+	sc.mu.Lock()
+	defer sc.mu.Unlock()
+	if sc.known {
+		return append([]HelmRepoRecord(nil), sc.memo...), nil
+	}
+	recs, err := sc.store.ListRepos(sc.team)
+	if err != nil {
+		return nil, err
+	}
+	sc.memo, sc.known = recs, true
+	return append([]HelmRepoRecord(nil), recs...), nil
+}
 
 // repo возвращает репозиторий по имени; нет такого — ok == false.
 func (sc *helmScope) repo(name string) (HelmRepoRecord, bool, error) {
@@ -180,6 +233,7 @@ func (sc *helmScope) create(r *HelmRepoRecord) error {
 	if r.CreatedAt.IsZero() {
 		r.CreatedAt = time.Now().UTC()
 	}
+	defer sc.invalidate()
 	if err := sc.store.CreateRepo(sc.team, r); err != nil {
 		if errors.Is(err, ErrHelmRepoExists) {
 			return fmt.Errorf("repository %q is already added", r.Name)

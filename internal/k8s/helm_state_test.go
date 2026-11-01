@@ -14,6 +14,7 @@ import (
 	"net/netip"
 	"net/url"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -212,10 +213,22 @@ func TestHelmReposAreIsolatedByTeam(t *testing.T) {
 	if v, err := blue.GetHelmChartVersions("stable", "red-app"); err == nil {
 		t.Errorf("blue must not see a chart of red's repository: %v", v)
 	}
-	for _, team := range []string{"red", "blue"} {
-		if _, err := os.Stat((&helmScope{team: team}).indexPath("stable")); err != nil {
+	dirs := map[string]bool{}
+	for team, m := range map[string]*Manager{"red": red, "blue": blue} {
+		sc, err := m.helmScope()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := os.Stat(sc.indexPath("stable")); err != nil {
 			t.Errorf("the index of %s must be cached in its own directory: %v", team, err)
 		}
+		if !strings.Contains(sc.indexPath("stable"), string(filepath.Separator)+team+string(filepath.Separator)) {
+			t.Errorf("the cache path of %s must contain the team: %s", team, sc.indexPath("stable"))
+		}
+		dirs[sc.indexPath("stable")] = true
+	}
+	if len(dirs) != 2 {
+		t.Error("two teams with a repository of the same name must not share a cache file")
 	}
 
 	// Обновление и удаление действуют только на свою команду.
