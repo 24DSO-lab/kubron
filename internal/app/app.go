@@ -43,6 +43,8 @@ type App struct {
 	// replicaID — идентификатор этой реплики (ADR-0016): потоки терминала и логов несут его в идентификаторе, чужие
 	// отклоняются. Пусто — реплика одна (десктоп, режим без PostgreSQL): идентификаторы принимаются любые.
 	replicaID string
+	// interactive — отключённые администратором терминалы и оболочка узла (KUBRON_DISABLE_*).
+	interactive InteractivePolicy
 }
 
 // SetStore задаёт хранилище вместо файлового; вызывается до OnStartup. Это функция пакета, а не метод App:
@@ -62,6 +64,7 @@ func NewApp(p Platform) *App {
 		pfMgr:    k8s.NewPortForwardManager(mgr),
 	}
 	a.pfMgr.SetObserver(a.portForwardObserver())
+	a.configureTerminals()
 	return a
 }
 
@@ -97,6 +100,12 @@ func (a *App) GetCapabilities() Capabilities {
 		if c.PortForwardMode == k8s.PortForwardModeOff {
 			c.PortForward = false
 		}
+	}
+	if a.interactive.DisableExec {
+		c.Exec, c.NodeShell = false, false
+	}
+	if a.interactive.DisableNodeShell {
+		c.NodeShell = false
 	}
 	c.Teams = a.dir != nil // команды есть там, где хранилище умеет их хранить, а не в оболочке
 	c.InCluster = c.Teams && k8s.InClusterAvailable()
@@ -337,8 +346,14 @@ func (a *App) DrainNode(name string) error {
 }
 
 func (a *App) StartNodeShell(name string) (*k8s.NodeShellSession, error) {
-	if err := a.authz(auth.PermExec, "node", name); err != nil {
+	if err := a.authz(auth.PermNodeShell, "node", name); err != nil {
 		return nil, err
+	}
+	if a.interactive.DisableExec {
+		return nil, errExecDisabled
+	}
+	if a.interactive.DisableNodeShell {
+		return nil, errNodeShellDisabled
 	}
 	return a.k8sMgr.StartNodeShell(name)
 }
@@ -1369,11 +1384,17 @@ func (a *App) DetectShell(namespace, pod, container string) (string, error) {
 	if err := a.authz(auth.PermExec, "namespace", namespace, "pod", pod, "container", container); err != nil {
 		return "", err
 	}
+	if err := a.checkTerminalTarget(namespace, pod); err != nil {
+		return "", err
+	}
 	return a.k8sMgr.DetectShell(namespace, pod, container)
 }
 
 func (a *App) StartTerminalSession(sessionID, namespace, pod, container, shell string, cols, rows uint16) error {
 	if err := a.authz(auth.PermExec, "namespace", namespace, "pod", pod, "container", container, "shell", shell); err != nil {
+		return err
+	}
+	if err := a.checkTerminalTarget(namespace, pod); err != nil {
 		return err
 	}
 	return a.k8sMgr.StartTerminalSession(sessionID, namespace, pod, container, shell, cols, rows)
@@ -1387,6 +1408,9 @@ type terminalHost interface{ Terminals() *termbuf.Registry }
 // по этому же сокету. Десктоп использует StartTerminalSession.
 func (a *App) OpenTerminal(namespace, pod, container, shell string, cols, rows uint16) (string, error) {
 	if err := a.authz(auth.PermExec, "namespace", namespace, "pod", pod, "container", container, "shell", shell); err != nil {
+		return "", err
+	}
+	if err := a.checkTerminalTarget(namespace, pod); err != nil {
 		return "", err
 	}
 	host, ok := a.platform.(terminalHost)

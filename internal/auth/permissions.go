@@ -24,6 +24,9 @@ const (
 	PermWrite Permission = "write"
 	// PermExec — терминал / exec внутри подов.
 	PermExec Permission = "exec"
+	// PermNodeShell — оболочка на узле: привилегированный под с root-доступом к хосту. Отдельно от exec: терминал
+	// в обычном поде и root на узле — разные уровни риска. По умолчанию только у роли admin.
+	PermNodeShell Permission = "nodeshell"
 	// PermPortForward — проброс портов в поды и сервисы.
 	PermPortForward Permission = "portforward"
 	// PermClusterManage — добавление, изменение и удаление кластеров в приложении.
@@ -41,6 +44,7 @@ var allPermissions = []Permission{
 	PermOperate,
 	PermWrite,
 	PermExec,
+	PermNodeShell,
 	PermPortForward,
 	PermClusterManage,
 	PermUsersManage,

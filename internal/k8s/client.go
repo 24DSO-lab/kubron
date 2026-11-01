@@ -87,6 +87,7 @@ type Manager struct {
 	activeCtx        string
 	rawConfig        *api.Config
 	terminalSessions *TerminalSessionManager
+	termObserver     TerminalObserver // защищён viewMu
 
 	notifyMu sync.RWMutex
 	notifier func(event string, data ...any)
@@ -101,10 +102,16 @@ type Limits struct {
 	Terminals    int
 	LogStreams   int
 	PortForwards int
+	// TerminalMaxDuration — абсолютный срок терминала, TerminalIdleTimeout — срок без ввода пользователя
+	// (вывод процесса простоем не считается). 0 — без ограничения.
+	TerminalMaxDuration time.Duration
+	TerminalIdleTimeout time.Duration
 }
 
 // DefaultLimits — значения для сервера: 8 терминалов, 20 потоков логов, 10 port-forward на пользователя.
-func DefaultLimits() Limits { return Limits{Terminals: 8, LogStreams: 20, PortForwards: 10} }
+func DefaultLimits() Limits {
+	return Limits{Terminals: 8, LogStreams: 20, PortForwards: 10, TerminalMaxDuration: 8 * time.Hour, TerminalIdleTimeout: 30 * time.Minute}
+}
 
 // SetLimits задаёт лимиты; виды, созданные ForSession после вызова, их наследуют.
 func (m *Manager) SetLimits(l Limits) {

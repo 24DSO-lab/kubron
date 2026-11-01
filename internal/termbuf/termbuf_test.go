@@ -248,3 +248,30 @@ func TestOwnedBy(t *testing.T) {
 		t.Error("a terminal must be accessible only to its owner")
 	}
 }
+
+func TestAttachAsChecksOwnerOnAttachAndEveryFrame(t *testing.T) {
+	r := NewRegistry()
+	var in []byte
+	_, _ = r.Register("t", Hooks{Owner: "alice", Input: func(p []byte) error { in = append(in, p...); return nil },
+		Resize: func(c, ro uint16) error { return nil }})
+	if _, err := r.AttachAs("t", "mallory", &fakeSink{}); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("a foreign owner must look like a missing terminal, got %v", err)
+	}
+	if _, err := r.AttachAs("t", "", &fakeSink{}); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("an empty owner must be refused, got %v", err)
+	}
+	a, err := r.AttachAs("t", "alice", &fakeSink{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := a.Input([]byte("ls")); err != nil || string(in) != "ls" {
+		t.Fatalf("owner input: %v %q", err, in)
+	}
+	r.Remove("t") // сессию закрыли или заменили после подключения
+	if err := a.Input([]byte("rm")); !errors.Is(err, ErrNotFound) || string(in) != "ls" {
+		t.Errorf("input after the session is gone must be refused: %v %q", err, in)
+	}
+	if err := a.Resize(10, 10); !errors.Is(err, ErrNotFound) {
+		t.Errorf("resize after the session is gone must be refused: %v", err)
+	}
+}
