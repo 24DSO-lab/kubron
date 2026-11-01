@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.6.0] - 2026-11-01
 
-- **Argo CD:** published address in cluster settings (`argoUrl`, migration `0006`). If set, `OpenArgoUI` opens it
+- **Argo CD:** published address in cluster settings (`argoUrl`, migration `0007`). If set, `OpenArgoUI` opens it
   (`mode=external`) and does not create a port-forward or a proxy stream; works even with
   `KUBRON_DISABLE_PORT_FORWARD`. Only `http(s)` addresses without credentials, query or fragment are accepted.
 - **Terminals:** separate `nodeshell` permission for the node shell (admin only by default), flags

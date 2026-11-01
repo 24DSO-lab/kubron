@@ -554,5 +554,6 @@
   "nodeShellIsDisabledByTheAdministrator": "节点 Shell 已被管理员禁用",
   "terminalTimeoutsCannotBeNegative": "终端超时时间不能为负数",
   "theArgoCdAddressIsLongerThan": "Argo CD 地址超过 {p0} 个字符",
-  "theArgoCdAddressMustBeAn": "Argo CD 地址必须是不含凭据、查询参数和片段的 http 或 https URL"
+  "theArgoCdAddressMustBeAn": "Argo CD 地址必须是不含凭据、查询参数和片段的 http 或 https URL",
+  "unknownLogLevelExpectedDebugInfo": "未知的日志级别 {p0}（可选：debug、info、warn 或 error）"
 }
