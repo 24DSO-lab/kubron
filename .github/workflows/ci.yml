@@ -385,6 +385,19 @@ jobs:
           kubectl run e2e-http --image=busybox:1.36 --restart=Never -- sh -c 'mkdir -p /www && echo kubron-pf-ok > /www/index.html && httpd -f -p 8080 -h /www'
           kubectl wait --for=condition=Ready pod/e2e-http --timeout=120s
 
+      # Настоящий Argo CD для теста прокси потоков (pf-argocd.spec.ts): UI, API, вход и SSE через origin потока
+      - name: Argo CD
+        run: |
+          kubectl create namespace argocd
+          kubectl apply --server-side --force-conflicts -n argocd \
+            -f https://raw.githubusercontent.com/argoproj/argo-cd/v2.13.3/manifests/install.yaml
+          kubectl -n argocd rollout status deploy/argocd-server --timeout=300s
+          for i in $(seq 1 60); do
+            kubectl -n argocd get secret argocd-initial-admin-secret >/dev/null 2>&1 && break
+            sleep 2
+          done
+          kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d > "$RUNNER_TEMP/argo-password"
+
       - name: Export kubeconfig
         run: kind export kubeconfig --name kubron-e2e --kubeconfig "$RUNNER_TEMP/kind.kubeconfig"
 
@@ -426,6 +439,7 @@ jobs:
           E2E_TERMINAL_POD: default/e2e-shell/e2e-shell
           E2E_LOG_POD: default/e2e-logs/e2e-logs
           E2E_HTTP_POD: default/e2e-http
+          E2E_ARGO_PASSWORD_FILE: ${{ runner.temp }}/argo-password
           E2E_PF_URL: http://localhost:8081
           E2E_LOCKED_URL: http://127.0.0.1:8082
 

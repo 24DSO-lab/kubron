@@ -28,6 +28,13 @@
 в аудите; `terminal.start/stop` в аудите с причиной и длительностью, закрытие по idle-таймауту; флаги `KUBRON_DISABLE_*` отражены в
 `GetCapabilities` и дают понятную ошибку.
 
+### Argo CD за прокси потоков (`pf-argocd.spec.ts`)
+Нужен кластер с Argo CD в namespace `argocd`, `E2E_PF_URL` и `E2E_ARGO_PASSWORD` (или `E2E_ARGO_PASSWORD_FILE`; пароль admin из
+`argocd-initial-admin-secret`). В CI Argo CD v2.13.3 ставится шагом «Argo CD». Файл идёт до `pf-terminals.spec.ts` и сам создаёт
+администратора и кластер. Проверяется: `OpenArgoUI` в режиме proxy (`mode=proxy`, `localPort=0`, сервис `argocd-server`), UI на
+origin потока открывается по https с самоподписанным сертификатом пода, `/api/version`, вход `admin` (`/api/v1/session`), список
+приложений с токеном, поток событий `/api/v1/stream/applications` отдаётся как `text/event-stream`, остановка закрывает доступ.
+
 ## Gate этапа 3: команды на PostgreSQL (`frontend/e2e-pg`)
 Отдельный набор: сервер работает на PostgreSQL с **пустой** базой, первым пользователем становится администратор организации.
 `teams.spec.ts` проверяет:
