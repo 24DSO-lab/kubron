@@ -96,10 +96,18 @@
 .screenshot-grid img {
   display: block;
   width: 100%;
-  aspect-ratio: 16 / 9;
-  object-fit: cover;
-  object-position: top;
+  height: auto;
+  max-height: min(62vw, 560px);
+  object-fit: contain;
+  object-position: center;
+  background: #080c14;
+  cursor: zoom-in;
+  transition: filter 160ms ease;
   border-bottom: 1px solid var(--vp-c-divider);
+}
+
+.screenshot-grid figure:hover img {
+  filter: brightness(1.08);
 }
 
 .screenshot-grid figcaption {
@@ -134,4 +142,50 @@
     margin-bottom: 40px;
     font-size: 10px;
   }
+}
+
+
+/* Full-size screenshot viewer */
+.screenshot-lightbox {
+  width: min(96vw, 1500px);
+  max-width: none;
+  max-height: 94vh;
+  padding: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 16px;
+  color: var(--vp-c-text-1);
+  background: #080c14;
+  box-shadow: 0 24px 100px rgba(0, 0, 0, 0.72);
+}
+
+.screenshot-lightbox::backdrop {
+  background: rgba(2, 6, 14, 0.88);
+  backdrop-filter: blur(8px);
+}
+
+.screenshot-lightbox img {
+  display: block;
+  width: 100%;
+  max-height: calc(94vh - 72px);
+  object-fit: contain;
+}
+
+.screenshot-lightbox p {
+  margin: 10px 4px 0;
+  color: #cbd5e1;
+  font-size: 13px;
+}
+
+.screenshot-lightbox button {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 999px;
+  color: white;
+  background: rgba(15, 23, 42, 0.88);
+  font-size: 22px;
+  cursor: pointer;
 }
