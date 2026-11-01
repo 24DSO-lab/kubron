@@ -163,6 +163,12 @@ helm install kubron deploy/helm/kubron -n kubron \
 - DNS-запись `*.pf.<base-domain>`, wildcard-сертификат и правило Ingress для этого хоста;
 - HTTPS: режим `proxy` требует TLS (`KUBRON_PF_SCHEME=http` допускается только на loopback).
 
+В Helm-чарте это блок `portForward` (`baseDomain`, `scheme`, `idleTimeout`, `maxDuration`): при `ingress.enabled` чарт сам
+добавляет в Ingress правило для хоста `*.pf.<baseDomain>` на тот же сервис (хост выбирает сам сервер). Wildcard-сертификат
+нужно указать в `ingress.tls` (`*.pf.<baseDomain>`), DNS-запись `*.pf.<baseDomain>` создаётся вне чарта; пример значений —
+`deploy/helm/kubron/ci/portforward-values.yaml`. Привязка по cookie (`nginx.ingress.kubernetes.io/affinity: cookie`) действует
+и на этот хост: поток живёт на реплике, открывшей его, чужая реплика отвечает `421`, и браузер повторяет запрос.
+
 Если Argo CD опубликован (Ingress), укажите его адрес в настройках кластера («Argo CD → Адрес»): `OpenArgoUI`
 откроет его напрямую, поток не создаётся и порты не нужны — это предпочтительный вариант, а прокси остаётся запасным.
 Принимаются только `http(s)`-адреса без логина, query и fragment.

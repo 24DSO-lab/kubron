@@ -618,6 +618,30 @@
           }
         }
       }
+    },
+    "portForward": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "baseDomain": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9.-]*$"
+        },
+        "scheme": {
+          "type": "string",
+          "enum": [
+            "",
+            "https",
+            "http"
+          ]
+        },
+        "idleTimeout": {
+          "type": "string"
+        },
+        "maxDuration": {
+          "type": "string"
+        }
+      }
     }
   }
 }

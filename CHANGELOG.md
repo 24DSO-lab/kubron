@@ -20,6 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Chart:** `portForward` values (`baseDomain`, `scheme`, `idleTimeout`, `maxDuration`) set the `KUBRON_PF_*` variables and add the
+  `*.pf.<baseDomain>` rule to the Ingress; without a domain port-forward stays off in the service mode.
 - **High availability:** the Helm chart now defaults to two replicas (PodDisruptionBudget, spreading across nodes,
   `kubron.drainDelay`, optional `secrets.keys.dbListenUrl`, `kubron.auditRetention`); the "several replicas are not
   supported" warning is gone. New CI job `e2e-ha` runs two replicas on one PostgreSQL: login on one replica and a request

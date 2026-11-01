@@ -22,6 +22,12 @@ Ingress выключен. Для проверки пробросьте порт:
 открытым текстом. Включите TLS или завершайте его на балансировщике и задайте kubron.trustProxy=true.
 {{- end }}
 
+{{- if .Values.portForward.baseDomain }}
+
+Port-forward в браузере: потоки открываются на https://{id}.pf.{{ .Values.portForward.baseDomain }}. Нужны DNS-запись
+*.pf.{{ .Values.portForward.baseDomain }} и wildcard-сертификат (ingress.tls){{ if not .Values.ingress.enabled }}, а также маршрут на сервис для этого хоста (ingress выключен){{ end }}.
+{{- end }}
+
 {{- if gt (int .Values.replicaCount) 1 }}
 
 Реплик: {{ .Values.replicaCount }}. Они должны работать с одной и той же PostgreSQL. Для событий между репликами нужно прямое
