@@ -547,6 +547,9 @@
   "helmRepositoryOptionsAreCorrupted": "Настройки репозитория Helm повреждены: {p0}",
   "proxyUrlInTheKubeconfigIsNotAllowedWhileTheClusterAddressPolicyIsEnabled": "proxy-url в kubeconfig не допускается, пока включена политика адресов кластеров",
   "streamIsOnAnotherReplica": "поток открыт на другой реплике",
+  "kubronAuditRetention": "KUBRON_AUDIT_RETENTION {p0}: {p1}",
+  "auditRetentionMustBe0ForeverOr": "срок хранения аудита должен быть 0 (бессрочно) или не меньше 24 часов",
+  "panic": "паника: {p0}",
   "terminalsAreDisabledByTheAdministrator": "Терминалы отключены администратором",
   "nodeShellIsDisabledByTheAdministrator": "Оболочка на узле отключена администратором",
   "terminalTimeoutsCannotBeNegative": "Сроки терминала не могут быть отрицательными"

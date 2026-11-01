@@ -10,7 +10,7 @@ npm install
 npm run docs:dev
 ```
 
-Open the URL printed by VitePress (usually http://localhost:5173).
+Open the URL printed by VitePress (usually `localhost:5173`).
 
 ## Build
 

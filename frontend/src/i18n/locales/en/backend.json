@@ -547,6 +547,9 @@
   "helmRepositoryOptionsAreCorrupted": "helm repository options are corrupted: {p0}",
   "proxyUrlInTheKubeconfigIsNotAllowedWhileTheClusterAddressPolicyIsEnabled": "proxy-url in the kubeconfig is not allowed while the cluster address policy is enabled",
   "streamIsOnAnotherReplica": "stream is on another replica",
+  "kubronAuditRetention": "KUBRON_AUDIT_RETENTION {p0}: {p1}",
+  "auditRetentionMustBe0ForeverOr": "audit retention must be 0 (forever) or at least 24h",
+  "panic": "panic: {p0}",
   "terminalsAreDisabledByTheAdministrator": "terminals are disabled by the administrator",
   "nodeShellIsDisabledByTheAdministrator": "node shell is disabled by the administrator",
   "terminalTimeoutsCannotBeNegative": "terminal timeouts cannot be negative"
