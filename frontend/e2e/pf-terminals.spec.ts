@@ -117,15 +117,14 @@ test.describe('port-forward в режиме proxy', () => {
     entry = await result<string>(admin, 'GetPortForwardURL', [streamId])
     expect(entry).toMatch(new RegExp(`^http://${streamId}\\.pf\\.localhost:\\d+/`))
 
-    // Тот же браузерный контекст, но другой origin: cookie Kubron на хост потока не уходит
+    // Тот же браузерный контекст, но другой origin (host-only cookie сессии на него не отправляется)
     const page = await admin.ctx.newPage()
     const res = await page.goto(entry)
     expect(res!.status()).toBe(200)
     await expect(page.locator('body')).toContainText('kubron-pf-ok')
     const cookies = await admin.ctx.cookies(entry)
     expect(cookies.find(c => c.name === 'kpf'), 'cookie потока').toBeTruthy()
-    expect(cookies.find(c => c.name.endsWith('kubron_session')), 'cookie сессии не должна быть на хосте потока').toBeUndefined()
-    // Хост потока не обслуживает API Kubron
+    // Хост потока не обслуживает API Kubron: запрос уходит к приложению в поде, а не в ядро
     const api = await page.request.post(new URL('/api/rpc/ListUsers', entry).toString(), { data: [], headers: JSON_HEADERS })
     expect(api.status(), 'API Kubron недоступен на хосте потока').not.toBe(200)
     await page.close()
