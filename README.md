@@ -4,7 +4,7 @@
 
 # Kubron
 
-**A fast, private Kubernetes desktop IDE with Argo CD built in.**
+**A fast, private Kubernetes desktop IDE.**
 
 [![CI](https://github.com/24DSO-labs/kubron/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/24DSO-labs/kubron/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/24DSO-labs/kubron?include_prereleases)](https://github.com/24DSO-labs/kubron/releases)

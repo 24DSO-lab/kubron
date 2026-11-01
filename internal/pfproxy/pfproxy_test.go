@@ -520,10 +520,12 @@ func TestUpgradeTrafficCountsAsActivity(t *testing.T) {
 
 func TestConcurrencyAndBodyLimits(t *testing.T) {
 	block := make(chan struct{})
+
 	started := make(chan struct{}, 1)
 	svc, id, host := setup(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/slow" {
 			started <- struct{}{}
+
 			<-block
 		}
 		b, _ := io.ReadAll(r.Body)
@@ -549,6 +551,7 @@ func TestConcurrencyAndBodyLimits(t *testing.T) {
 		}
 		resp.Body.Close()
 	}()
+
 	select {
 	case <-started: // медленный запрос держит единственный слот
 	case <-time.After(5 * time.Second):
@@ -561,6 +564,7 @@ func TestConcurrencyAndBodyLimits(t *testing.T) {
 	resp.Body.Close()
 	if resp.StatusCode != http.StatusServiceUnavailable {
 		t.Fatalf("the concurrency limit was not applied: status %d", resp.StatusCode)
+
 	}
 	close(block)
 	<-done
