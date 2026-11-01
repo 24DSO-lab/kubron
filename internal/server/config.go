@@ -66,6 +66,9 @@ type Config struct {
 	// балансировщик снимает реплику с обслуживания (KUBRON_DRAIN_DELAY, по умолчанию 0; для сервиса за
 	// балансировщиком рекомендуется 5s). Меньше предела ожидания остановки пода (terminationGracePeriodSeconds).
 	DrainDelay time.Duration
+	// AuditRetention — как долго хранятся записи журнала аудита в PostgreSQL (KUBRON_AUDIT_RETENTION, например
+	// 2160h). 0 — бессрочно (по умолчанию). Просроченные записи удаляет одна реплика (ADR-0016, раздел 6).
+	AuditRetention time.Duration
 	// Лимиты ресурсов на одного пользователя (0 — без ограничения):
 	// KUBRON_MAX_TERMINALS, KUBRON_MAX_LOG_STREAMS, KUBRON_MAX_PORT_FORWARDS.
 	MaxTerminals    int
@@ -110,6 +113,9 @@ const (
 
 // MaxDrainDelay — верхняя граница KUBRON_DRAIN_DELAY (пауза обязана укладываться в время остановки пода).
 const MaxDrainDelay = 60 * time.Second
+
+// MinAuditRetention — наименьший ненулевой срок хранения аудита: опечатка в единицах не должна стереть журнал.
+const MinAuditRetention = 24 * time.Hour
 
 // Лимиты ресурсов на пользователя по умолчанию (ADR-0005).
 const (
@@ -183,6 +189,13 @@ func LoadConfig(args []string, getenv func(string) string, out io.Writer) (Confi
 		}
 		cfg.DrainDelay = d
 	}
+	if v := getenv("KUBRON_AUDIT_RETENTION"); v != "" {
+		d, err := time.ParseDuration(v)
+		if err != nil {
+			return Config{}, fmt.Errorf("KUBRON_AUDIT_RETENTION %q: %w", v, err)
+		}
+		cfg.AuditRetention = d
+	}
 	if v := getenv("KUBRON_CLUSTER_CHECK_INTERVAL"); v != "" {
 		d, err := time.ParseDuration(v)
 		if err != nil {
@@ -231,6 +244,8 @@ func LoadConfig(args []string, getenv func(string) string, out io.Writer) (Confi
 		"replica identifier: letters, digits, '-' and '_', up to 63 characters; empty means hostname plus a random suffix (env KUBRON_REPLICA_ID)")
 	fs.DurationVar(&cfg.DrainDelay, "drain-delay", cfg.DrainDelay,
 		"pause between SIGTERM and closing WebSocket connections, so a load balancer can stop routing to the replica (env KUBRON_DRAIN_DELAY)")
+	fs.DurationVar(&cfg.AuditRetention, "audit-retention", cfg.AuditRetention,
+		"how long audit log entries are kept in PostgreSQL, 0 keeps them forever (env KUBRON_AUDIT_RETENTION)")
 	fs.DurationVar(&cfg.ClusterCheckInterval, "cluster-check-interval", cfg.ClusterCheckInterval,
 		"how often cluster connectivity is checked in the background, 0 disables (env KUBRON_CLUSTER_CHECK_INTERVAL)")
 	fs.IntVar(&cfg.MaxTerminals, "max-terminals", cfg.MaxTerminals, "terminals per user, 0 for unlimited (env KUBRON_MAX_TERMINALS)")
@@ -279,6 +294,9 @@ func (c Config) Validate() error {
 	}
 	if c.DrainDelay < 0 || c.DrainDelay > MaxDrainDelay {
 		return errors.New("drain delay must be between 0 and 60s")
+	}
+	if c.AuditRetention != 0 && c.AuditRetention < MinAuditRetention {
+		return errors.New("audit retention must be 0 (forever) or at least 24h")
 	}
 	if c.ClusterCheckInterval != 0 && c.ClusterCheckInterval < MinClusterCheckInterval {
 		return errors.New("cluster check interval must be 0 (off) or at least 5s")

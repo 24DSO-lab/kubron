@@ -84,3 +84,22 @@ func (b auditBackend) ScanNewestFirst(fn func(line []byte) bool) error {
 	}
 	return rows.Err()
 }
+
+// auditPurgeBatch — сколько записей удаляется за один запрос: долгий DELETE держал бы блокировки строк и раздувал
+// журнал репликации. Остальное доудаляется на следующем такте.
+const auditPurgeBatch = 10000
+
+// DeleteAuditBefore удаляет записи журнала старше cutoff (не больше auditPurgeBatch за вызов) и возвращает их число.
+// Это единственное место, где записи удаляются: по умолчанию журнал хранится бессрочно, срок задаёт
+// KUBRON_AUDIT_RETENTION. Выполняет одна реплика (pg_try_advisory_lock).
+func (s *Store) DeleteAuditBefore(ctx context.Context, cutoff time.Time) (int, error) {
+	ctx, cancel := context.WithTimeout(ctx, opTimeout)
+	defer cancel()
+	tag, err := s.pool.Exec(ctx, `
+		DELETE FROM audit_events WHERE id IN (
+		    SELECT id FROM audit_events WHERE ts < $1 ORDER BY ts ASC LIMIT $2)`, cutoff, auditPurgeBatch)
+	if err != nil {
+		return 0, err
+	}
+	return int(tag.RowsAffected()), nil
+}
