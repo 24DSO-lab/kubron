@@ -271,6 +271,7 @@ func setupReplicaEvents(ctx context.Context, n *pgstore.Notifier, pg *pgstore.St
 	ev.Handle(replicaevents.SessionEnded, func(m replicaevents.Message) { sessions.EndRemote(m.Session) })
 	ev.Handle(replicaevents.UserSessionsEnded, func(m replicaevents.Message) { sessions.EndUserRemote(m.User, m.Session) })
 	accessChanged := func(replicaevents.Message) {
+		app.RefreshUsers(core) // пользователи и роли — до проверки прав открытых сессий
 		pg.ApplyRemoteAccessChange()
 		enforceAccess()
 		app.NotifyClustersChanged(core)

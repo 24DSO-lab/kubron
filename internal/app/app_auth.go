@@ -108,6 +108,14 @@ func StartUserRefresh(ctx context.Context, root *App, every time.Duration) {
 	go root.auth.RunRefresher(ctx, every)
 }
 
+// RefreshUsers немедленно перечитывает пользователей из общего хранилища: другая реплика сообщила, что изменила
+// пользователей или права. Не ждёт периодического перечитывания (StartUserRefresh).
+func RefreshUsers(root *App) {
+	if root != nil && root.auth != nil {
+		root.auth.RefreshNow()
+	}
+}
+
 // ResumeView открывает сессию пользователя на виде, построенном заново для уже существующей веб-сессии
 // (другая реплика, перезапуск): пароль не нужен, веб-сессию проверило общее хранилище сессий.
 func ResumeView(v *App, userID string, lastActive time.Time) error {

@@ -293,6 +293,31 @@ func TestSharedRunRefresherStopsAndPicksUpChanges(t *testing.T) {
 	}
 }
 
+// RefreshNow подтягивает изменения другой реплики сразу, не дожидаясь периодического перечитывания.
+func TestSharedRefreshNowDeliversChangesImmediately(t *testing.T) {
+	a, b, _ := twoReplicas(t)
+	sa := a.NewSession("")
+	if _, err := sa.Login("admin", pw); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := sa.CreateUser("gina", "gina-password-1", RoleUser); err != nil {
+		t.Fatal(err)
+	}
+	b.mu.Lock()
+	before := b.st.findByName("gina") != nil
+	b.mu.Unlock()
+	if before {
+		t.Skip("the user is already visible: the replicas share memory in this fixture")
+	}
+	b.RefreshNow()
+	b.mu.Lock()
+	after := b.st.findByName("gina") != nil
+	b.mu.Unlock()
+	if !after {
+		t.Fatal("RefreshNow must load the user created on the other replica")
+	}
+}
+
 func TestFileBackendIsNotShared(t *testing.T) {
 	svc, err := NewServiceWithBackend(&memUsersBackend{})
 	if err != nil {
@@ -302,6 +327,7 @@ func TestFileBackendIsNotShared(t *testing.T) {
 		t.Error("a single-process backend must keep the old behaviour")
 	}
 	svc.RunRefresher(context.Background(), time.Millisecond) // возвращается сразу
+	svc.RefreshNow()                                         // без общего хранилища ничего не делает
 }
 
 // memUsersBackend — одиночное хранилище без точечных операций (как файл).

@@ -720,6 +720,17 @@ func (s *Service) refreshOnMiss() bool {
 // Shared — пользователи лежат в хранилище, общем для нескольких процессов (PostgreSQL), и RunRefresher нужен.
 func (s *Service) Shared() bool { return s.st.delta != nil }
 
+// RefreshNow немедленно перечитывает пользователей из общего хранилища (сообщение от другой реплики об изменении
+// пользователей или прав). Для файлового хранилища ничего не делает.
+func (s *Service) RefreshNow() {
+	if s.st.delta == nil {
+		return
+	}
+	if err := s.refresh(); err != nil {
+		log.Printf("auth: users were not refreshed: %v", err)
+	}
+}
+
 // RunRefresher периодически перечитывает пользователей, пока ctx не отменён: роль, блокировка и новые
 // пользователи, изменённые на другой реплике, становятся видны здесь не позже чем через every.
 func (s *Service) RunRefresher(ctx context.Context, every time.Duration) {
