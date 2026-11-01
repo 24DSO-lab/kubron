@@ -6,8 +6,8 @@ hero:
   text: Kubernetes под контролем.
   tagline: Быстрая и приватная desktop IDE для Kubernetes. Кластеры, ресурсы, Helm и GitOps — в одном рабочем пространстве.
   image:
-    src: https://raw.githubusercontent.com/24DSO-labs/kubron/master/docs/images/screenshots/overview.png
-    alt: Главный дашборд Kubron с обзором состояния кластера
+    src: /social-preview.svg
+    alt: Фирменная иллюстрация Kubron с описанием desktop IDE для Kubernetes
   actions:
     - theme: brand
       text: Скачать Kubron
