@@ -1,0 +1,32 @@
+:root {
+  --vp-c-brand-1: #3b82f6;
+  --vp-c-brand-2: #2563eb;
+  --vp-c-brand-3: #1d4ed8;
+  --vp-c-brand-soft: rgba(59, 130, 246, 0.14);
+
+  --vp-home-hero-name-color: transparent;
+  --vp-home-hero-name-background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 40%, #8b5cf6 100%);
+  --vp-home-hero-image-background-image: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  --vp-home-hero-image-filter: blur(44px);
+}
+
+.dark {
+  --vp-c-brand-1: #60a5fa;
+  --vp-c-brand-2: #3b82f6;
+  --vp-c-brand-3: #2563eb;
+  --vp-c-brand-soft: rgba(96, 165, 250, 0.16);
+}
+
+/* Slightly tighter home hero */
+.VPHero .name {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.VPHero .text {
+  max-width: 28rem;
+}
+
+.VPFeature .title {
+  font-weight: 600;
+}
