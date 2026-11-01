@@ -12,6 +12,7 @@
 [![Go](https://img.shields.io/github/go-mod/go-version/24DSO-labs/kubron)](go.mod)
 [![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey)](#download)
 [![Downloads](https://img.shields.io/github/downloads/24DSO-labs/kubron/total)](https://github.com/24DSO-labs/kubron/releases)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/24DSO-labs/kubron/badge)](https://scorecard.dev/viewer/?uri=github.com/24DSO-labs/kubron)
 
 [Download](#download) · [Features](#features) · [Documentation](#documentation) · [Build from source](#build-from-source) · [Server mode](#server-mode-experimental) · [Roadmap](#roadmap)
 
