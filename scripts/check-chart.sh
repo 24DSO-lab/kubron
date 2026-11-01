@@ -41,6 +41,7 @@ min="$tmp/minimal-values.yaml"
 ing="$tmp/ingress-values.yaml"
 inc="$tmp/incluster-values.yaml"
 rep="$tmp/replicas-values.yaml"
+single="$tmp/single-values.yaml"
 dev="$tmp/dev-secret-values.yaml"
 met="$tmp/metrics-values.yaml"
 logv="$tmp/logging-values.yaml"
@@ -49,8 +50,20 @@ hasnt() { ! grep -qE -- "$2" "$1" || fail "$3"; }
 
 echo "== semantic checks"
 # PodDisruptionBudget только при replicaCount > 1
-hasnt "$min" '^kind: PodDisruptionBudget' "PDB rendered with replicaCount=1"
+hasnt "$single" '^kind: PodDisruptionBudget' "PDB rendered with replicaCount=1"
 has   "$rep" '^kind: PodDisruptionBudget' "PDB missing with replicaCount=2"
+# HA по умолчанию (ADR-0016): две реплики, PDB, размещение по узлам, пауза перед остановкой; предупреждения нет
+has   "$min" 'replicas: 2' "default replicaCount must be 2"
+has   "$min" '^kind: PodDisruptionBudget' "PDB missing with the default replicaCount"
+has   "$min" 'podAntiAffinity' "replicas must prefer different nodes by default"
+has   "$min" 'KUBRON_DRAIN_DELAY: "5s"' "drain delay missing by default"
+hasnt "$min" 'KUBRON_DB_LISTEN_URL' "listen URL must not be set by default"
+hasnt "$min" 'KUBRON_AUDIT_RETENTION' "audit retention must be off by default"
+render -f "$chart/ci/minimal-values.yaml" --set secrets.keys.dbListenUrl=KUBRON_DB_LISTEN_URL | grep -q 'name: KUBRON_DB_LISTEN_URL' \
+  || fail "secrets.keys.dbListenUrl must add KUBRON_DB_LISTEN_URL from the Secret"
+render -f "$chart/ci/minimal-values.yaml" --set kubron.auditRetention=2160h | grep -q 'KUBRON_AUDIT_RETENTION: "2160h"' \
+  || fail "kubron.auditRetention must set KUBRON_AUDIT_RETENTION"
+! grep -q 'НЕ поддерживаются' "$chart/templates/NOTES.txt" || fail "NOTES.txt must not warn that several replicas are unsupported"
 # Ingress только по флагу; TLS ingress включает доверие к прокси автоматически
 hasnt "$min" '^kind: Ingress$' "Ingress rendered by default"
 has   "$ing" '^kind: Ingress$' "Ingress missing when enabled"

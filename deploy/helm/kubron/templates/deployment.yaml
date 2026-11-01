@@ -75,6 +75,14 @@ spec:
                 secretKeyRef:
                   name: {{ include "kubron.secretName" . }}
                   key: {{ .Values.secrets.keys.databaseUrl | quote }}
+            {{- if .Values.secrets.keys.dbListenUrl }}
+            - name: KUBRON_DB_LISTEN_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "kubron.secretName" . }}
+                  key: {{ .Values.secrets.keys.dbListenUrl | quote }}
+                  optional: true
+            {{- end }}
             {{- if .Values.secrets.keys.previousSecretKey }}
             - name: KUBRON_SECRET_KEY_PREVIOUS
               valueFrom:

@@ -53,6 +53,25 @@ cd frontend && E2E_KUBECONFIG=/path/to/kubeconfig npm run test:e2e:pg
 Адрес сервера — `E2E_PG_BASE_URL` (по умолчанию `http://127.0.0.1:8081`). Повторный запуск требует пустой базы: тесты меняют состав команд.
 CI: job `e2e-pg` в `.github/workflows/ci.yml` (PostgreSQL 16 как сервис и kind), блокирующий.
 
+## Gate HA: две реплики на одной PostgreSQL (`frontend/e2e-ha`)
+Две реплики `kubron-server` (`ha-a` на 8081, `ha-b` на 8082) на одной **пустой** базе с общим ключом шифрования. Cookie у адресов
+с разными портами общие, поэтому один браузерный контекст ходит на обе реплики, как за балансировщиком без привязки. `ha.spec.ts`:
+1. Вход на реплике A, запрос на реплике B; любая реплика обслуживает любой запрос, пользователь, созданный на одной, появляется на другой не позже чем через пару секунд (перечитывание пользователей раз в 2 с).
+2. `Logout` на A закрывает сокет событий этой сессии на B за секунды (не за 10 с сверки); сокет другой сессии не затрагивается.
+3. Блокировка входа общая: пять неверных паролей, поделённых между репликами, блокируют логин на обеих (обход не работает).
+4. 50 сессий входят через обе реплики и работают на обеих (p95 `AuthStatus` < 2 с; цифры печатаются в журнал теста).
+5. Гибель реплики: процесс A убивается `SIGKILL`; cookie, выданная A, действует на B; устаревший терминал A на B даёт `409 stream_elsewhere`,
+   новый терминал открывается на B и выполняет команду (нужны `E2E_KUBECONFIG` и `E2E_TERMINAL_POD`).
+
+```bash
+createdb kubron_ha   # пустая база
+export KUBRON_DATABASE_URL="postgres://…/kubron_ha" KUBRON_SECRET_KEY="k1:$(openssl rand -base64 32)" KUBRON_DRAIN_DELAY=0s
+KUBRON_REPLICA_ID=ha-a ./kubron-server --listen 127.0.0.1:8081 & echo $! > /tmp/ha-a.pid
+KUBRON_REPLICA_ID=ha-b ./kubron-server --listen 127.0.0.1:8082 &
+cd frontend && E2E_HA_A_PID=$(cat /tmp/ha-a.pid) E2E_KUBECONFIG=… E2E_TERMINAL_POD=ns/pod/container npm run test:e2e:ha
+```
+Адреса — `E2E_HA_A_URL` и `E2E_HA_B_URL`. Повторный запуск требует пустой базы и живой реплики A. CI: job `e2e-ha` в `.github/workflows/ci.yml`.
+
 ## Локальный запуск
 ```bash
 cd frontend && npm ci && npm run build:web && cd ..

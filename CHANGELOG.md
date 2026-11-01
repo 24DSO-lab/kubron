@@ -20,6 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **High availability:** the Helm chart now defaults to two replicas (PodDisruptionBudget, spreading across nodes,
+  `kubron.drainDelay`, optional `secrets.keys.dbListenUrl`, `kubron.auditRetention`); the "several replicas are not
+  supported" warning is gone. New CI job `e2e-ha` runs two replicas on one PostgreSQL: login on one replica and a request
+  on the other, session end and login lockouts across replicas, 50 sessions, and killing a replica during a session.
+
 - **Tests:** Helm through the PostgreSQL store end to end, and `kubron-server rekey` re-encrypting the Helm secrets.
 
 - **Operations:** structured JSON logging (`log/slog`) in `kubron-server` with a secret redactor (passwords,

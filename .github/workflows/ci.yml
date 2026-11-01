@@ -537,3 +537,114 @@ jobs:
           path: |
             frontend/playwright-report-pg
             frontend/test-results
+
+  e2e-ha:
+    name: E2E (HA, two replicas on one PostgreSQL)
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: kubron_ha
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - uses: ./.github/actions/linux-build-deps
+
+      - uses: ./.github/actions/go-build-cache
+
+      - uses: ./.github/actions/wails-cli
+
+      - run: npm ci
+        working-directory: frontend
+
+      - name: Generate Wails bindings
+        run: |
+          mkdir -p frontend/dist && touch frontend/dist/.keep
+          wails generate module -tags $GO_TAGS
+
+      - name: Build web frontend and server
+        run: |
+          npm run build:web
+          cd .. && go build -tags "$GO_TAGS" -o kubron-server ./cmd/kubron-server
+        working-directory: frontend
+
+      - name: kind cluster
+        uses: helm/kind-action@ef37e7f390d99f746eb8b610417061a60e82a6cc # v1
+        with:
+          cluster_name: kubron-e2e-ha
+
+      - name: Pod with a shell for the terminal test
+        run: |
+          kubectl run e2e-shell --image=busybox:1.36 --restart=Never -- sleep 3600
+          kubectl wait --for=condition=Ready pod/e2e-shell --timeout=120s
+
+      - name: Export kubeconfig
+        run: kind export kubeconfig --name kubron-e2e-ha --kubeconfig "$RUNNER_TEMP/kind.kubeconfig"
+
+      # Две реплики на одной БД с одним ключом шифрования; свои replica id (ADR-0016). Миграции применяет та,
+      # что первой взяла блокировку.
+      - name: Start two kubron-server replicas
+        run: |
+          export KUBRON_DATABASE_URL="postgres://postgres:postgres@127.0.0.1:5432/kubron_ha?sslmode=disable"
+          export KUBRON_SECRET_KEY="ci1:$(openssl rand -base64 32)"
+          export KUBRON_DRAIN_DELAY=0s
+          KUBRON_REPLICA_ID=ha-a KUBRON_DATA_DIR="$RUNNER_TEMP/ha-a" ./kubron-server --listen 127.0.0.1:8081 > "$RUNNER_TEMP/server-ha-a.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/ha-a.pid"
+          for i in $(seq 1 30); do curl -fs http://127.0.0.1:8081/healthz && break; sleep 1; done
+          KUBRON_REPLICA_ID=ha-b KUBRON_DATA_DIR="$RUNNER_TEMP/ha-b" ./kubron-server --listen 127.0.0.1:8082 > "$RUNNER_TEMP/server-ha-b.log" 2>&1 &
+          for port in 8081 8082; do
+            for i in $(seq 1 30); do curl -fs "http://127.0.0.1:$port/readyz" > /dev/null && break; sleep 1; done
+            curl -fs "http://127.0.0.1:$port/readyz" > /dev/null || { cat "$RUNNER_TEMP"/server-ha-*.log; exit 1; }
+          done
+
+      - uses: ./.github/actions/playwright-cache
+        with:
+          browsers: chromium
+
+      - run: npx playwright install --with-deps chromium
+        working-directory: frontend
+
+      - name: Playwright (HA)
+        run: |
+          export E2E_HA_A_PID="$(cat "$RUNNER_TEMP/ha-a.pid")"
+          npx playwright test -c playwright.ha.config.ts
+        working-directory: frontend
+        env:
+          E2E_KUBECONFIG: ${{ runner.temp }}/kind.kubeconfig
+          E2E_TERMINAL_POD: default/e2e-shell/e2e-shell
+
+      - name: Server log
+        if: always()
+        run: cat "$RUNNER_TEMP"/server-ha-*.log || true
+
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        if: failure()
+        with:
+          name: playwright-report-ha
+          path: |
+            frontend/playwright-report-ha
+            frontend/test-results

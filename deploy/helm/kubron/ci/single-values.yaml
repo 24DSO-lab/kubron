@@ -1,0 +1,4 @@
+# Одна реплика: PodDisruptionBudget не создаётся (minAvailable: 1 блокировал бы drain узла)
+secrets:
+  existingSecret: kubron-secrets
+replicaCount: 1
