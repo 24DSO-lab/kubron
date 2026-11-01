@@ -13,6 +13,7 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "test:e2e:pg": "playwright test -c playwright.pg.config.ts",
+    "test:e2e:ha": "playwright test -c playwright.ha.config.ts",
     "i18n:check": "node ../scripts/i18n-check.mjs"
   },
   "dependencies": {

@@ -19,6 +19,12 @@ data:
   KUBRON_TRUST_PROXY: {{ include "kubron.trustProxy" . | quote }}
   # Данные в PostgreSQL; каталог данных нужен только как рабочий (внутри emptyDir)
   KUBRON_DATA_DIR: "/home/nonroot/.kubron"
+  {{- with .Values.kubron.drainDelay }}
+  KUBRON_DRAIN_DELAY: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.kubron.auditRetention }}
+  KUBRON_AUDIT_RETENTION: {{ . | quote }}
+  {{- end }}
   {{- with .Values.kubron.sessionTTL }}
   KUBRON_SESSION_TTL: {{ . | quote }}
   {{- end }}

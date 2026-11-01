@@ -77,7 +77,7 @@
     "replicaCount": {
       "type": "integer",
       "minimum": 1,
-      "description": "Only 1 is supported until HA (stage 4): sessions and events live in process memory."
+      "description": "Replicas of kubron-server on one PostgreSQL (ADR-0016). 2 by default; 1 is allowed."
     },
     "image": {
       "type": "object",
@@ -137,6 +137,9 @@
             },
             "previousSecretKey": {
               "type": "string"
+            },
+            "dbListenUrl": {
+              "type": "string"
             }
           }
         },
@@ -166,6 +169,16 @@
             "boolean",
             "null"
           ]
+        },
+        "drainDelay": {
+          "type": "string",
+          "pattern": "^([0-9]+(\\.[0-9]+)?(ns|us|µs|ms|s|m|h))*$",
+          "description": "Go duration, 0 to 60s: pause between SIGTERM and closing connections."
+        },
+        "auditRetention": {
+          "type": "string",
+          "pattern": "^([0-9]+(\\.[0-9]+)?(ns|us|µs|ms|s|m|h))*$",
+          "description": "Go duration of at least 24h; empty keeps the audit log forever."
         },
         "sessionTTL": {
           "type": "string",
