@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- **Helm:** managing Helm repositories, OCI registries and the operation journal is now checked against the team
+  of the **active cluster**. Before, `clusters.manage` was accepted from an admin of *any* team, so an admin of
+  one team with a read-only role in another could change that team's repositories while its cluster was active.
+  No new permission was introduced.
+- **Port-forward proxy and terminals:** with `KUBRON_CLUSTER_ADDR_POLICY` enabled, the HTTP port-forward proxy
+  (ADR-0017) and terminals open their connection to the API server through the address policy as well; a test
+  forbids calling the stock SPDY/WebSocket dialers directly.
+
+### Added
+
+- **Tests:** Helm through the PostgreSQL store end to end, and `kubron-server rekey` re-encrypting the Helm secrets.
+
 ## [0.6.0] - 2026-11-01
 
 - **Argo CD:** published address in cluster settings (`argoUrl`, migration `0006`). If set, `OpenArgoUI` opens it
