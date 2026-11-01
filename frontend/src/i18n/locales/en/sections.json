@@ -216,6 +216,8 @@
     "started": "Port forward: localhost:{port} → {target}",
     "startError": "Port forward: {error}",
     "stopped": "Port forward stopped",
-    "stopError": "Failed to stop port forward: {error}"
+    "stopError": "Failed to stop port forward: {error}",
+    "viaProxy": "via Kubron",
+    "startedProxy": "Port forward started: {target}"
   }
 }

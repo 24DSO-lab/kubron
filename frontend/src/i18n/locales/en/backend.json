@@ -512,8 +512,7 @@
   "tooManyRequestsTryAgainIn": "too many requests, try again in {p0} s",
 
   "webSessionNotFound": "web session not found",
-  "sessionStoreIsUnavailable": "session store is unavailable"
-
+  "sessionStoreIsUnavailable": "session store is unavailable",
   "kubronDrainDelay": "KUBRON_DRAIN_DELAY {p0}: {p1}",
   "drainDelayMustBeBetween0And": "drain delay must be between 0 and 60s",
   "replicaIdMustBe1To63": "replica id must be 1 to 63 characters long",

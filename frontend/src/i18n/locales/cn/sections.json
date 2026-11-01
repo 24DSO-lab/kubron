@@ -216,6 +216,8 @@
     "started": "端口转发：localhost:{port} → {target}",
     "startError": "端口转发：{error}",
     "stopped": "端口转发已停止",
-    "stopError": "停止端口转发失败：{error}"
+    "stopError": "停止端口转发失败：{error}",
+    "viaProxy": "通过 Kubron",
+    "startedProxy": "Port forward 已启动: {target}"
   }
 }
