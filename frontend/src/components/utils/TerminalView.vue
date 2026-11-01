@@ -157,6 +157,7 @@ async function initTerminal() {
             if (s.aborted) return
             terminal.write(reason === 'exit' ? '\r\n[Session ended]\r\n' : '\r\n[Connection lost]\r\n')
             setState('🔴', false)
+            if (reason === 'lost') reopenAfterLoss()
           },
         },
       )
@@ -172,6 +173,8 @@ async function initTerminal() {
       return
     }
     session = s
+    lastOpenedAt = Date.now()
+    if (reopenNote) { terminal.write(reopenNote); reopenNote = '' }
     setState('🟢', false)
 
     terminal.onData((data: string) => s.handle.write(data))
@@ -190,6 +193,23 @@ async function initTerminal() {
     console.error('Terminal init error:', e)
     setState('🔴', false)
   }
+}
+
+// Потеря соединения в вебе (реплика остановилась): открываем новую оболочку на живой реплике и пишем об этом.
+// Процесс прежнего терминала погиб вместе с репликой, поэтому состояние не восстановить. Число подряд идущих
+// попыток ограничено, чтобы не зациклиться, если терминал не открывается.
+const MAX_AUTO_REOPEN = 3
+const REOPEN_HEALTHY_MS = 30_000
+let autoReopens = 0
+let lastOpenedAt = 0
+let reopenNote = ''
+function reopenAfterLoss() {
+  if (import.meta.env.VITE_TARGET !== 'web' || unmounted) return
+  if (Date.now() - lastOpenedAt > REOPEN_HEALTHY_MS) autoReopens = 0
+  if (autoReopens >= MAX_AUTO_REOPEN) return
+  autoReopens++
+  reopenNote = '\r\n[Connection restored: new shell]\r\n'
+  setTimeout(() => { if (!unmounted) reconnect() }, 300 + Math.random() * 1000)
 }
 
 async function reconnect() {

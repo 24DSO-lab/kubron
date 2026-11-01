@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/24DSO-labs/kubron/internal/auth"
+	"github.com/24DSO-labs/kubron/internal/streamid"
 )
 
 func TestMapErrorClusterAccess(t *testing.T) {
@@ -21,6 +22,8 @@ func TestMapErrorClusterAccess(t *testing.T) {
 		// Чужой и несуществующий кластер выглядят одинаково — «не найдено», а не «запрещено».
 		{fmt.Errorf("connect: %w", auth.ErrClusterNotFound), http.StatusNotFound, "not_found"},
 		{auth.ErrNotAuthenticated, http.StatusUnauthorized, "unauthenticated"},
+		// Поток другой реплики: клиент открывает его заново (ADR-0016).
+		{fmt.Errorf("start: %w", streamid.ErrElsewhere), http.StatusConflict, "stream_elsewhere"},
 	}
 	for _, c := range cases {
 		if st, code := MapError(c.err); st != c.status || code != c.code {

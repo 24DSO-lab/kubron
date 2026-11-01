@@ -51,6 +51,9 @@ func StartHealthMonitor(ctx context.Context, root *App, interval time.Duration) 
 
 // SetReplicaPublisher задаёт отправку сообщений другим репликам (ADR-0016); вызывается до StartHealthMonitor.
 // Это функция пакета, а не метод App: она не должна попадать в привязки Wails и RPC.
+// SetReplicaID задаёт идентификатор реплики для потоков (терминал, логи); вызывается до создания видов.
+func SetReplicaID(root *App, id string) { root.replicaID = id }
+
 func SetReplicaPublisher(root *App, publish func(replicaevents.Message)) { root.publish = publish }
 
 // RefreshHealth немедленно читает результаты проверок лидера из общего хранилища (сообщение health.changed).

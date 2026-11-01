@@ -13,14 +13,8 @@ import { t } from '../i18n'
 export async function openWebTerminal(p: TerminalParams, h: TerminalHandlers): Promise<TerminalHandle> {
   const id = await callApp('OpenTerminal', p.namespace, p.pod, p.container, p.shell, p.cols, p.rows)
   const proto = location.protocol === 'https:' ? 'wss' : 'ws'
-  const ws = new WebSocket(`${proto}://${location.host}/api/terminal/${encodeURIComponent(id)}`)
-  ws.binaryType = 'arraybuffer'
-
-  await new Promise<void>((resolve, reject) => {
-    ws.onopen = () => resolve()
-    ws.onerror = () => reject(new Error(t('platform.terminalConnect')))
-    ws.onclose = () => reject(new Error(t('platform.terminalConnect')))
-  })
+  const url = `${proto}://${location.host}/api/terminal/${encodeURIComponent(id)}`
+  const ws = await connectToOwner(url)
 
   let closedByUs = false
   const encoder = new TextEncoder()
@@ -45,5 +39,31 @@ export async function openWebTerminal(p: TerminalParams, h: TerminalHandlers): P
       try { ws.close(1000) } catch { /* уже закрыт */ }
       callApp('CloseTerminal', id).catch(() => { }) // завершить процесс в контейнере
     },
+  }
+}
+
+/** Сколько раз пробуем подключиться: без sticky-affinity запрос может попасть не на реплику-владельца терминала. */
+const CONNECT_TRIES = 8
+
+/**
+ * Открывает WebSocket терминала. Реплика, которой терминал не принадлежит, отвечает 409 stream_elsewhere
+ * (браузер показывает это как обычный сбой подключения), поэтому подключение повторяется: новый запрос
+ * балансировщик может направить на владельца.
+ */
+async function connectToOwner(url: string): Promise<WebSocket> {
+  for (let i = 1; ; i++) {
+    const ws = new WebSocket(url)
+    ws.binaryType = 'arraybuffer'
+    try {
+      await new Promise<void>((resolve, reject) => {
+        ws.onopen = () => resolve()
+        ws.onerror = () => reject(new Error(t('platform.terminalConnect')))
+        ws.onclose = () => reject(new Error(t('platform.terminalConnect')))
+      })
+      return ws
+    } catch (e) {
+      if (i >= CONNECT_TRIES) throw e
+      await new Promise(r => setTimeout(r, 100 + Math.random() * 200))
+    }
   }
 }

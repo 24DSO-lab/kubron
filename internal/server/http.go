@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/24DSO-labs/kubron/internal/auth"
+	"github.com/24DSO-labs/kubron/internal/streamid"
 )
 
 // maxRPCBody — предел тела запроса (манифесты YAML крупные, но не мегабайты).
@@ -42,6 +43,8 @@ func MapError(err error) (status int, code string) {
 		return http.StatusForbidden, "forbidden"
 	case errors.Is(err, auth.ErrClusterNotFound):
 		return http.StatusNotFound, "not_found"
+	case errors.Is(err, streamid.ErrElsewhere):
+		return http.StatusConflict, "stream_elsewhere"
 	case errors.Is(err, ErrUnknownMethod):
 		return http.StatusNotFound, "unknown_method"
 	case errors.Is(err, ErrMethodDenied):
