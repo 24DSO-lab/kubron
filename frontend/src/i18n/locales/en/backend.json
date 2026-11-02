@@ -568,6 +568,11 @@
   "theSetupTokenIsMissingOr": "the setup token is missing or invalid",
   "theSetupTokenIsTooShort": "the setup token is too short: use at least {p0} characters (KUBRON_SETUP_TOKEN)",
   "anAllowedHostMustBeA": "an allowed host must be a host name or an IP address with an optional port, without scheme or path",
-  "kubronAllowedHosts": "KUBRON_ALLOWED_HOSTS: {p0}"  
+  "kubronAllowedHosts": "KUBRON_ALLOWED_HOSTS: {p0}",
+  "credCoreSignInIsRequired": "sign-in is required",
+  "credCoreSignInRequestExpired": "the sign-in request has expired",
+  "credCoreCredentialsRejected": "the credentials were rejected",
+  "credCoreSavedSignInInvalid": "the saved sign-in is no longer valid",
+  "credCoreSignInMethodUnsupported": "this sign-in method is not supported"
 
 }

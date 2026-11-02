@@ -568,6 +568,11 @@
   "theSetupTokenIsMissingOr": "токен первичной настройки не передан или неверен",
   "theSetupTokenIsTooShort": "токен первичной настройки слишком короткий: нужно не менее {p0} символов (KUBRON_SETUP_TOKEN)",
   "anAllowedHostMustBeA": "разрешённый хост должен быть именем или IP-адресом с необязательным портом, без схемы и пути",
-  "kubronAllowedHosts": "KUBRON_ALLOWED_HOSTS: {p0}"
+  "kubronAllowedHosts": "KUBRON_ALLOWED_HOSTS: {p0}",
+  "credCoreSignInIsRequired": "требуется вход",
+  "credCoreSignInRequestExpired": "срок действия запроса на вход истёк",
+  "credCoreCredentialsRejected": "учётные данные отклонены",
+  "credCoreSavedSignInInvalid": "сохранённый вход больше не действителен",
+  "credCoreSignInMethodUnsupported": "этот способ входа не поддерживается"
 
 }

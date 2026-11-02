@@ -568,6 +568,11 @@
   "theSetupTokenIsMissingOr": "初始设置令牌缺失或无效",
   "theSetupTokenIsTooShort": "初始设置令牌太短：至少需要 {p0} 个字符（KUBRON_SETUP_TOKEN）",
   "anAllowedHostMustBeA": "允许的主机必须是主机名或 IP 地址（可带端口），不含协议和路径",
-  "kubronAllowedHosts": "KUBRON_ALLOWED_HOSTS：{p0}"  
+  "kubronAllowedHosts": "KUBRON_ALLOWED_HOSTS：{p0}",
+  "credCoreSignInIsRequired": "需要登录",
+  "credCoreSignInRequestExpired": "登录请求已过期",
+  "credCoreCredentialsRejected": "凭据被拒绝",
+  "credCoreSavedSignInInvalid": "已保存的登录已失效",
+  "credCoreSignInMethodUnsupported": "不支持此登录方式"
 
 }
