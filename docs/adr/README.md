@@ -22,3 +22,4 @@
 | [0015](0015-helm-state-service-mode.md) | Состояние Helm в сервисном режиме и защита от SSRF |
 | [0016](0016-ha.md) | Высокая доступность: сессии в PostgreSQL, события между репликами |
 | [0017](0017-http-port-forward-web.md) | HTTP port-forward в вебе: отдельный origin на поток, ticket, аудит |
+| [0018](0018-cluster-auth-providers.md) | Способы входа в кластер: провайдеры учётных данных и вызовы (challenge) |
