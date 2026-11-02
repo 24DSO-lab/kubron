@@ -1,0 +1,105 @@
+name: Weekly image scan
+
+# Раз в неделю Trivy сканирует последний опубликованный стабильный образ (:latest): уязвимость могла появиться уже
+# после релиза, а публикационные ворота (publish.yml) срабатывают только при выпуске. Найдены HIGH/CRITICAL с готовым
+# исправлением, и issue «Weekly image scan» (метка security) создаётся или обновляется; когда находок нет, issue
+# закрывается. Исключения: .trivyignore (срок и обоснование). Разбор находок: docs/security-review.md.
+on:
+  schedule:
+    # понедельник 03:17 UTC (минута не круглая: меньше нагрузка на общую очередь cron)
+    - cron: "17 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scheduled-scan
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    name: Scan the latest published image
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: read
+      issues: write
+    env:
+      TITLE: "Weekly image scan: найдены уязвимости в опубликованном образе"
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - name: Resolve the image
+        id: img
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          image="ghcr.io/${GITHUB_REPOSITORY,,}:latest"
+          echo "$TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          if docker manifest inspect "$image" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::Образ $image ещё не опубликован (нет стабильного релиза): сканировать нечего"
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "image=$image" >> "$GITHUB_OUTPUT"
+
+      - name: Trivy
+        if: steps.img.outputs.exists == 'true'
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: ${{ steps.img.outputs.image }}
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "0"
+          trivyignores: .trivyignore
+          format: json
+          output: trivy-image.json
+
+      - name: Report
+        if: steps.img.outputs.exists == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          IMAGE: ${{ steps.img.outputs.image }}
+        run: |
+          set -euo pipefail
+          jq -r '[.Results[]? | .Vulnerabilities[]? | select((.FixedVersion // "") != "")] | unique_by(.VulnerabilityID + .PkgName + .InstalledVersion)' \
+            trivy-image.json > findings.json
+          count="$(jq 'length' findings.json)"
+          echo "Findings: $count"
+          gh label create security --color D93F0B --description "Security findings" --force >/dev/null 2>&1 || true
+          existing="$(gh issue list --state open --label security --search "Weekly image scan in:title" --json number --jq '.[0].number // empty')"
+
+          if [[ "$count" -eq 0 ]]; then
+            if [[ -n "$existing" ]]; then
+              gh issue close "$existing" --comment "Повторный скан $(date -u +%F): находок HIGH/CRITICAL с исправлением больше нет."
+            fi
+            exit 0
+          fi
+
+          {
+            echo "Образ: \`$IMAGE\`. Скан: $(date -u +%F). Найдено HIGH/CRITICAL с готовым исправлением: **$count**."
+            echo
+            echo "| Уровень | ID | Пакет | Установлено | Исправлено в |"
+            echo "|---|---|---|---|---|"
+            jq -r '.[] | "| \(.Severity) | \(.VulnerabilityID) | \(.PkgName) | \(.InstalledVersion) | \(.FixedVersion) |"' findings.json | head -n 50
+            echo
+            echo "Что делать: обновить зависимость или базовый образ и выпустить исправленную версию (docs/releasing.md). Если"
+            echo "уязвимость недостижима, добавьте запись в \`.trivyignore\` с обоснованием и сроком (docs/security-review.md)."
+            echo
+            echo "Запуск: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          } > body.md
+
+          if [[ -n "$existing" ]]; then
+            gh issue edit "$existing" --body-file body.md
+            gh issue comment "$existing" --body "Скан $(date -u +%F): находок $count (описание обновлено)."
+          else
+            gh issue create --title "$TITLE" --label security --body-file body.md
+          fi

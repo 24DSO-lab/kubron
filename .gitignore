@@ -13,3 +13,4 @@ jira
 frontend/test-results/
 frontend/playwright-report/
 .vscode/
+__pycache__/

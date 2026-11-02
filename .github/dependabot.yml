@@ -1,4 +1,7 @@
 version: 2
+
+# Раз в неделю, обновления сгруппированы по экосистемам: один PR на группу, а не по PR на каждую зависимость.
+# Все PR идут в рабочую ветку refactor. Проверки зависимостей: CI (npm audit, osv-scanner) и Trivy.
 updates:
   - package-ecosystem: gomod
     directory: /
@@ -8,7 +11,21 @@ updates:
     groups:
       kubernetes:
         patterns: ["k8s.io/*", "sigs.k8s.io/*"]
+      go-minor-and-patch:
+        update-types: ["minor", "patch"]
+        exclude-patterns: ["k8s.io/*", "sigs.k8s.io/*"]
     open-pull-requests-limit: 5
+
+  # pkg/ext — отдельный модуль (публичный API расширений), подключён через replace
+  - package-ecosystem: gomod
+    directory: /pkg/ext
+    target-branch: refactor
+    schedule:
+      interval: weekly
+    groups:
+      go-ext:
+        patterns: ["*"]
+    open-pull-requests-limit: 2
 
   - package-ecosystem: npm
     directory: /frontend
@@ -18,6 +35,9 @@ updates:
     groups:
       vue:
         patterns: ["vue", "vue-*", "@vitejs/*", "vite"]
+      frontend-minor-and-patch:
+        update-types: ["minor", "patch"]
+        exclude-patterns: ["vue", "vue-*", "@vitejs/*", "vite"]
     open-pull-requests-limit: 5
     # TypeScript 7 (нативный) несовместим с vue-tsc (нет ./lib/tsc в exports) —
     # мажорные бампы typescript игнорируем, пока vue-tsc не поддержит TS 7
@@ -25,8 +45,37 @@ updates:
       - dependency-name: typescript
         update-types: ["version-update:semver-major"]
 
+  - package-ecosystem: npm
+    directory: /docs-site
+    target-branch: refactor
+    schedule:
+      interval: weekly
+    groups:
+      docs-site:
+        patterns: ["*"]
+    open-pull-requests-limit: 3
+
   - package-ecosystem: github-actions
     directory: /
     target-branch: refactor
     schedule:
-      interval: monthly
+      interval: weekly
+    groups:
+      github-actions:
+        patterns: ["*"]
+    open-pull-requests-limit: 5
+
+  # Базовые образы Dockerfile (golang, node, distroless)
+  - package-ecosystem: docker
+    directory: /
+    target-branch: refactor
+    schedule:
+      interval: weekly
+    groups:
+      docker-base-images:
+        patterns: ["*"]
+    open-pull-requests-limit: 3
+    # Версия Go в образе обязана совпадать с go.mod (GOTOOLCHAIN=local): её меняют вместе с go.mod, а не бот
+    ignore:
+      - dependency-name: golang
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]

@@ -1,14 +1,26 @@
 name: Publish (image and Helm chart)
 
-# Публикация образа kubron-server и Helm-чарта в ghcr.io (docs/deploy.md). Отдельный от deploy.yml workflow:
-# deploy.yml проверяет сборку образа и чарта на каждый push, этот публикует их только для релиза.
-#   - тег vX.Y.Z      -> сборка и публикация образа и чарта;
-#   - ручной запуск   -> по умолчанию пробная сборка БЕЗ push; публикация только с галочкой push.
+# Публикация образа kubron-server и Helm-чарта в ghcr.io (docs/deploy.md, docs/releasing.md).
+# Отдельный от deploy.yml workflow: deploy.yml проверяет сборку образа и чарта на каждый push, этот публикует их
+# только для релиза.
+#
+# Запуск:
+#   - release.yml (тег vX.Y.Z)  -> workflow_call с push=true, ПОСЛЕ зелёного CI. Так SBOM образа и чарта попадают
+#                                 в тот же неизменяемый GitHub Release, что и десктопные файлы, а двойной
+#                                 публикации по тегу нет (собственного триггера на тег у этого workflow нет);
+#   - вручную (workflow_dispatch) -> по умолчанию пробная сборка БЕЗ push; публикация только с галочкой push.
+#
+# Что делает: сборка образа -> Trivy (ворота: HIGH/CRITICAL с исправлением) -> SBOM (syft) -> push образа ->
+# подпись cosign (keyless) + аттестации происхождения и SBOM -> пакет чарта -> push -> то же для чарта.
 # Образ:  ghcr.io/<владелец>/kubron:<версия>   (и :latest для версий без суффикса -rc/-beta)
 # Чарт:   oci://ghcr.io/<владелец>/charts/kubron  (версия и appVersion берутся из тега)
 on:
-  push:
-    tags: ["v*.*.*"]
+  workflow_call:
+    inputs:
+      push:
+        description: "Опубликовать в ghcr.io (false: пробная сборка без push)"
+        type: boolean
+        default: true
   workflow_dispatch:
     inputs:
       push:
@@ -28,26 +40,40 @@ jobs:
   publish:
     name: Image and chart
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 40
     permissions:
       contents: read
       packages: write
+      # keyless-подпись cosign и аттестации GitHub (Sigstore)
       id-token: write
       attestations: write
     env:
-      PUSH: ${{ github.event_name == 'push' || inputs.push }}
+      PUSH: ${{ inputs.push }}
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           persist-credentials: false
 
       # Версия: из тега vX.Y.Z; для ручного запуска не с тега — 0.0.0-dev.<sha>. Имена в ghcr только в нижнем регистре.
+      # Один номер версии на десктоп, образ и чарт (docs/releasing.md): тег обязан совпадать с wails.json и
+      # frontend/package.json, как в release.yml.
       - name: Resolve version and names
         id: v
         run: |
           set -euo pipefail
           if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
             version="${GITHUB_REF_NAME#v}"
+            if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+              echo "::error::Тег $GITHUB_REF_NAME не похож на vX.Y.Z[-суффикс]"
+              exit 1
+            fi
+            base="${version%%-*}"   # 0.1.0-rc.1 -> 0.1.0
+            wails_v="$(jq -r .info.productVersion wails.json)"
+            npm_v="$(jq -r .version frontend/package.json)"
+            if [[ "$base" != "$wails_v" || "$base" != "$npm_v" ]]; then
+              echo "::error::Тег $GITHUB_REF_NAME не совпадает с wails.json ($wails_v) и frontend/package.json ($npm_v)"
+              exit 1
+            fi
           else
             version="0.0.0-dev.${GITHUB_SHA::7}"
           fi
@@ -55,6 +81,8 @@ jobs:
             echo "version=$version"
             echo "image=ghcr.io/${GITHUB_REPOSITORY,,}"
             echo "chart_repo=oci://ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/charts"
+            # :latest получают только стабильные версии (без -rc, -beta и т. п.)
+            if [[ "$version" == *-* ]]; then echo "stable=false"; else echo "stable=true"; fi
           } >> "$GITHUB_OUTPUT"
 
       - name: Build the image
@@ -67,15 +95,58 @@ jobs:
             -t "$IMAGE:$VERSION" .
           docker image ls "$IMAGE"
 
+      # Ворота перед push: HIGH/CRITICAL, для которых уже есть исправление. Исключения только в .trivyignore
+      # (срок и обоснование проверяет scripts/check-ignores.py). Действие закреплено по SHA; версию Trivy
+      # определяет само действие.
+      - name: Check the ignore lists
+        run: python3 scripts/check-ignores.py
+
+      - name: Trivy (image gate)
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: ${{ steps.v.outputs.image }}:${{ steps.v.outputs.version }}
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+          trivyignores: .trivyignore
+          format: table
+
       - name: Package the chart
         env:
           VERSION: ${{ steps.v.outputs.version }}
           IMAGE: ${{ steps.v.outputs.image }}
         run: |
           set -euo pipefail
-          helm lint deploy/helm/kubron --set image.repository="$IMAGE"
+          helm lint deploy/helm/kubron --strict --set image.repository="$IMAGE" --set secrets.existingSecret=kubron-secrets
           helm package deploy/helm/kubron --version "$VERSION" --app-version "$VERSION" --destination "$RUNNER_TEMP/chart"
           ls -l "$RUNNER_TEMP/chart"
+          # Отрендеренный чарт для trivy config (минимальный набор values: Secret и образ задаются снаружи)
+          mkdir -p "$RUNNER_TEMP/rendered"
+          helm template kubron "$RUNNER_TEMP/chart/kubron-$VERSION.tgz" --namespace kubron \
+            --set image.repository="$IMAGE" --set secrets.existingSecret=kubron-secrets > "$RUNNER_TEMP/rendered/kubron.yaml"
+
+      # Конфигурация чарта: отчёт (не ворота): находки разбирает человек по docs/security-review.md
+      - name: Trivy (chart misconfiguration report)
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        with:
+          scan-type: config
+          scan-ref: ${{ runner.temp }}/rendered
+          severity: HIGH,CRITICAL
+          exit-code: "0"
+          trivyignores: .trivyignore
+          format: table
+
+      # SBOM состава образа (пакеты Go и npm в бинарнике и дистрибутив). Файл попадёт в GitHub Release.
+      - name: SBOM of the image
+        uses: anchore/sbom-action@fffec3d851af758d56fee099cf3fbf8aa8779843 # v0.24.3
+        with:
+          image: ${{ steps.v.outputs.image }}:${{ steps.v.outputs.version }}
+          format: spdx-json
+          output-file: ${{ runner.temp }}/sbom/kubron-sbom_${{ steps.v.outputs.version }}_image.spdx.json
+          upload-artifact: false
+          upload-release-assets: false
 
       - name: Log in to ghcr.io
         if: env.PUSH == 'true'
@@ -85,24 +156,57 @@ jobs:
           echo "$TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
           echo "$TOKEN" | helm registry login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
 
+      # Опубликованная версия неизменяема: подпись и аттестации привязаны к digest, а перезапись тега тихо
+      # подменила бы содержимое. Если прошлый запуск упал посреди публикации, удалите версию в
+      # ghcr.io/<владелец>/kubron (Packages) и перезапустите (docs/releasing.md, «Если что-то пошло не так»).
+      - name: Refuse to overwrite a published version
+        if: env.PUSH == 'true'
+        env:
+          VERSION: ${{ steps.v.outputs.version }}
+          IMAGE: ${{ steps.v.outputs.image }}
+          CHART_REPO: ${{ steps.v.outputs.chart_repo }}
+        run: |
+          set -euo pipefail
+          if docker manifest inspect "$IMAGE:$VERSION" >/dev/null 2>&1; then
+            echo "::error::Образ $IMAGE:$VERSION уже опубликован. Версии неизменяемы: выпустите новую или удалите частично опубликованную (docs/releasing.md)."
+            exit 1
+          fi
+          if helm pull "$CHART_REPO/kubron" --version "$VERSION" --destination "$RUNNER_TEMP/exists" >/dev/null 2>&1; then
+            echo "::error::Чарт $CHART_REPO/kubron:$VERSION уже опубликован (docs/releasing.md)."
+            exit 1
+          fi
+
       - name: Push the image
         id: push
         if: env.PUSH == 'true'
         env:
           VERSION: ${{ steps.v.outputs.version }}
           IMAGE: ${{ steps.v.outputs.image }}
+          STABLE: ${{ steps.v.outputs.stable }}
         run: |
           set -euo pipefail
           docker push "$IMAGE:$VERSION"
-          # :latest только для стабильных версий
-          if [[ "$VERSION" != *-* ]]; then
+          if [[ "$STABLE" == "true" ]]; then
             docker tag "$IMAGE:$VERSION" "$IMAGE:latest"
             docker push "$IMAGE:latest"
           fi
           digest="$(docker inspect --format '{{index .RepoDigests 0}}' "$IMAGE:$VERSION")"
           echo "digest=${digest#*@}" >> "$GITHUB_OUTPUT"
 
-      # Подтверждение происхождения образа: проверяется командой gh attestation verify oci://<образ>:<версия> --repo ...
+      - name: Install cosign
+        if: env.PUSH == 'true'
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
+      # Подпись cosign без ключа (Sigstore, личность — этот workflow): проверяется политиками admission-контроллеров
+      # (Kyverno и др.) командой cosign verify (docs/deploy.md). Подписывается digest, а не изменяемый тег.
+      - name: Sign the image (cosign keyless)
+        if: env.PUSH == 'true'
+        env:
+          IMAGE: ${{ steps.v.outputs.image }}
+          DIGEST: ${{ steps.push.outputs.digest }}
+        run: cosign sign --yes "$IMAGE@$DIGEST"
+
+      # Подтверждение происхождения образа: gh attestation verify oci://<образ>:<версия> --repo ...
       - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4
         if: env.PUSH == 'true'
         with:
@@ -110,24 +214,92 @@ jobs:
           subject-digest: ${{ steps.push.outputs.digest }}
           push-to-registry: true
 
+      - name: Attest the image SBOM
+        if: env.PUSH == 'true'
+        uses: actions/attest-sbom@c604332985a26aa8cf1bdc465b92731239ec6b9e # v4.1.0
+        with:
+          subject-name: ${{ steps.v.outputs.image }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          sbom-path: ${{ runner.temp }}/sbom/kubron-sbom_${{ steps.v.outputs.version }}_image.spdx.json
+          push-to-registry: true
+
       - name: Push the chart
+        id: chart
         if: env.PUSH == 'true'
         env:
           VERSION: ${{ steps.v.outputs.version }}
           CHART_REPO: ${{ steps.v.outputs.chart_repo }}
-        run: helm push "$RUNNER_TEMP/chart/kubron-$VERSION.tgz" "$CHART_REPO"
+        run: |
+          set -euo pipefail
+          helm push "$RUNNER_TEMP/chart/kubron-$VERSION.tgz" "$CHART_REPO" 2>&1 | tee "$RUNNER_TEMP/helm-push.log"
+          digest="$(sed -n 's/^Digest: \(sha256:[0-9a-f]\{64\}\)$/\1/p' "$RUNNER_TEMP/helm-push.log" | tail -n 1)"
+          if [[ -z "$digest" ]]; then
+            echo "::error::helm push не вывел digest чарта"
+            exit 1
+          fi
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+
+      # SBOM чарта: сам чарт и образ, на который он ссылается. В пробном запуске digest образа — локальный ID.
+      - name: SBOM of the chart
+        env:
+          VERSION: ${{ steps.v.outputs.version }}
+          IMAGE: ${{ steps.v.outputs.image }}
+          CHART_REPO: ${{ steps.v.outputs.chart_repo }}
+          IMAGE_DIGEST: ${{ steps.push.outputs.digest }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$IMAGE_DIGEST" ]]; then
+            IMAGE_DIGEST="$(docker image inspect --format '{{.Id}}' "$IMAGE:$VERSION")"
+          fi
+          python3 scripts/chart-sbom.py --chart deploy/helm/kubron --version "$VERSION" --image "$IMAGE" \
+            --image-digest "$IMAGE_DIGEST" --chart-repo "$CHART_REPO" \
+            --out "$RUNNER_TEMP/sbom/kubron-sbom_${VERSION}_chart.cdx.json"
+
+      - name: Sign the chart (cosign keyless)
+        if: env.PUSH == 'true'
+        env:
+          CHART_REPO: ${{ steps.v.outputs.chart_repo }}
+          DIGEST: ${{ steps.chart.outputs.digest }}
+        run: cosign sign --yes "$CHART_REPO/kubron@$DIGEST"
+
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4
+        if: env.PUSH == 'true'
+        with:
+          subject-name: ${{ steps.v.outputs.chart_repo }}/kubron
+          subject-digest: ${{ steps.chart.outputs.digest }}
+          push-to-registry: true
+
+      - name: Attest the chart SBOM
+        if: env.PUSH == 'true'
+        uses: actions/attest-sbom@c604332985a26aa8cf1bdc465b92731239ec6b9e # v4.1.0
+        with:
+          subject-name: ${{ steps.v.outputs.chart_repo }}/kubron
+          subject-digest: ${{ steps.chart.outputs.digest }}
+          sbom-path: ${{ runner.temp }}/sbom/kubron-sbom_${{ steps.v.outputs.version }}_chart.cdx.json
+          push-to-registry: true
+
+      # Файлы SBOM забирает release.yml и прикладывает к GitHub Release
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: kubron-server-sbom
+          path: ${{ runner.temp }}/sbom/*
+          if-no-files-found: error
 
       - name: Summary
         env:
           VERSION: ${{ steps.v.outputs.version }}
           IMAGE: ${{ steps.v.outputs.image }}
           CHART_REPO: ${{ steps.v.outputs.chart_repo }}
+          IMAGE_DIGEST: ${{ steps.push.outputs.digest }}
+          CHART_DIGEST: ${{ steps.chart.outputs.digest }}
         run: |
           {
             if [[ "$PUSH" == "true" ]]; then echo "### Published"; else echo "### Dry run (nothing was pushed)"; fi
             echo
-            echo "- Image: \`$IMAGE:$VERSION\`"
-            echo "- Chart: \`$CHART_REPO/kubron\` version \`$VERSION\`"
+            echo "- Image: \`$IMAGE:$VERSION\` \`${IMAGE_DIGEST:-not pushed}\`"
+            echo "- Chart: \`$CHART_REPO/kubron\` version \`$VERSION\` \`${CHART_DIGEST:-not pushed}\`"
             echo
             echo "    helm install kubron $CHART_REPO/kubron --version $VERSION --set image.tag=$VERSION"
+            echo
+            echo "Проверка подписей и аттестаций: docs/deploy.md, раздел «Проверка образа и чарта»."
           } >> "$GITHUB_STEP_SUMMARY"
