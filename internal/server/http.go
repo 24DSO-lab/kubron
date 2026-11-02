@@ -81,6 +81,11 @@ func RPCHandler(d *Dispatcher, g *Guard) http.Handler {
 			return
 		}
 		method := r.PathValue("method")
+		// Первичная настройка — единственный анонимный RPC, который создаёт привилегированного пользователя.
+		// В сервисном режиме токен проверяется до диспетчеризации и до вызова App.SetupAdmin.
+		if method == "SetupAdmin" && g != nil && !g.checkSetup(w, r) {
+			return
+		}
 
 		var token string
 		var sess Session
