@@ -16,7 +16,7 @@ replicaCount: 2
 image:
   # Образ публикует .github/workflows/publish.yml при теге vX.Y.Z; для собственной сборки укажите свой реестр.
   repository: ghcr.io/24dso-labs/kubron
-  # Пусто — appVersion чарта
+  # Пусто — appVersion чарта. В опубликованном чарте это версия релиза; в исходниках — 0.0.0-dev (задайте тег явно).
   tag: ""
   # Если задан, имеет приоритет над tag: repository@sha256:...
   digest: ""
