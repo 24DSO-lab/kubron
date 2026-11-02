@@ -140,6 +140,9 @@
             },
             "dbListenUrl": {
               "type": "string"
+            },
+            "setupToken": {
+              "type": "string"
             }
           }
         },
