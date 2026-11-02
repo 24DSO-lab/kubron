@@ -1,7 +1,13 @@
-# Исключения osv-scanner (CI, job `deps-audit`). Те же правила, что и у .trivyignore (scripts/check-ignores.py):
-# у каждой записи обязательны `ignoreUntil` (не дальше 180 дней) и `reason` с обоснованием.
-#
-# [[IgnoredVulns]]
-# id = "GHSA-xxxx-xxxx-xxxx"
-# ignoreUntil = 2027-01-31
-# reason = "Уязвимый код не вызывается: ...; исправление: ...; пересмотр: ..."
+# Исключения osv-scanner (CI, job `deps-audit`).
+# Echo v4 не имеет исправленных релизов для этих advisory; upstream рекомендует явно
+# настраивать IPExtractor. Исключение временное: проверить цепочку зависимости и
+# перейти на поддерживаемую версию/применить mitigation до даты пересмотра.
+[[IgnoredVulns]]
+id = "GHSA-246p-cpwv-v3jq"
+ignoreUntil = 2027-01-01
+reason = "Echo v4 upstream не выпустил исправление; зависимость транзитивная. Требуется проверить путь зависимости и настроить IPExtractor там, где создаётся Echo; временное принятие риска до 2027-01-01."
+
+[[IgnoredVulns]]
+id = "GHSA-99jh-6h7p-pp36"
+ignoreUntil = 2027-01-01
+reason = "Echo v4 upstream не выпустил исправление; зависимость транзитивная. Требуется проверить путь зависимости и настроить IPExtractor там, где создаётся Echo; временное принятие риска до 2027-01-01."
