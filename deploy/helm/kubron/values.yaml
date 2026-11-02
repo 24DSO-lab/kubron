@@ -42,6 +42,10 @@ secrets:
     # KUBRON_DB_LISTEN_URL: прямой адрес PostgreSQL для LISTEN/NOTIFY, если KUBRON_DATABASE_URL ведёт через
     # pgbouncer в режиме transaction. Пусто — используется KUBRON_DATABASE_URL.
     dbListenUrl: ""
+    # KUBRON_SETUP_TOKEN: токен первичной настройки (не короче 16 символов). Без него создать первого администратора
+    # по сети нельзя: выполните «kubron-server create-admin --username <имя>» в поде (пароль через stdin или
+    # KUBRON_ADMIN_PASSWORD). Пусто — токен не используется.
+    setupToken: ""
   # ТОЛЬКО ДЛЯ РАЗРАБОТКИ. Чарт создаст Secret из значений ниже. Ключ в values попадает в историю релиза
   # Helm, в CI-логи и в репозиторий, поэтому в production не используйте. Ключ не генерируется:
   # создайте его сами и сохраните вне кластера.

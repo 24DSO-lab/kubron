@@ -32,6 +32,16 @@ export function onSessionLost(handler: () => void) {
   sessionLostHandler = handler
 }
 
+/**
+ * Токен первичной настройки для следующего SetupAdmin (только веб; сервисный режим). В десктопе токена нет.
+ * Передаётся заголовком X-Kubron-Setup-Token, поэтому сигнатура SetupAdmin и привязки Wails не меняются.
+ */
+export async function setSetupToken(token: string): Promise<void> {
+  if (import.meta.env.VITE_TARGET !== 'web') return
+  const { setSetupToken: set } = await import('./rpc.web')
+  set(token)
+}
+
 export async function callApp<K extends AppMethod>(
   fn: K,
   ...args: Parameters<AppApi[K]>

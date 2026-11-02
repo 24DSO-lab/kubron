@@ -23,6 +23,11 @@
         <h1>{{ $t('auth.setup.title') }}</h1>
         <p class="auth-hint">{{ $t('auth.setup.hint') }}</p>
         <form class="auth-form" @submit.prevent="submitSetup" autocomplete="off">
+          <label v-if="auth.setupTokenRequired.value" class="auth-field">
+            <span>{{ $t('auth.setup.token') }}</span>
+            <input v-model="setupToken" type="password" autocomplete="off" spellcheck="false" :disabled="busy" required />
+            <small>{{ $t('auth.setup.tokenHint') }}</small>
+          </label>
           <label class="auth-field">
             <span>{{ $t('auth.fields.username') }}</span>
             <input ref="firstInput" v-model="username" autocomplete="username" :disabled="busy" required />
@@ -39,7 +44,8 @@
           </label>
           <p v-if="error" class="auth-error" role="alert">{{ error }}</p>
           <div class="auth-actions">
-            <button class="auth-submit" type="submit" :disabled="busy || !username || !password || !confirm">
+            <button class="auth-submit" type="submit"
+              :disabled="busy || !username || !password || !confirm || (auth.setupTokenRequired.value && !setupToken)">
               {{ busy ? $t('auth.setup.submitting') : $t('auth.setup.submit') }}
             </button>
           </div>
@@ -98,6 +104,7 @@ const auth = useAuth()
 const username = ref('')
 const password = ref('')
 const confirm = ref('')
+const setupToken = ref('')
 const busy = ref(false)
 const error = ref('')
 const firstInput = ref<HTMLInputElement | null>(null)
@@ -109,6 +116,7 @@ watch(
     error.value = ''
     password.value = ''
     confirm.value = ''
+    setupToken.value = ''
     await nextTick()
     firstInput.value?.focus()
   },
@@ -125,7 +133,7 @@ async function submitSetup() {
     error.value = t('auth.errors.passwordMismatch')
     return
   }
-  await run(() => auth.setup(username.value, password.value))
+  await run(() => auth.setup(username.value, password.value, setupToken.value))
 }
 
 async function submitLogin() {

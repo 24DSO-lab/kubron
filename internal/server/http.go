@@ -218,10 +218,18 @@ func (g *Guard) afterCall(w http.ResponseWriter, r *http.Request, method string,
 			}
 		}
 	case "AuthStatus":
-		if st, ok := result.(*auth.Status); ok && st != nil && !authed && st.User != nil {
+		if st, ok := result.(*auth.Status); ok && st != nil {
 			cp := *st
-			cp.User = nil
-			return &cp, nil
+			changed := false
+			if !authed && cp.User != nil {
+				cp.User, changed = nil, true
+			}
+			if cp.NeedsSetup && g.Setup != nil { // экран настройки запросит токен
+				cp.SetupTokenRequired, changed = true, true
+			}
+			if changed {
+				return &cp, nil
+			}
 		}
 	}
 	if authed && sess.View != nil && g.ActiveCluster != nil && g.Sessions.Backend != nil {

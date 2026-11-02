@@ -22,6 +22,10 @@ type Config struct {
 	// AllowRemote разрешает слушать не на loopback (KUBRON_ALLOW_REMOTE=1).
 	// Без TLS cookie уходит открытым текстом: для сети нужен обратный прокси с TLS.
 	AllowRemote bool
+	// SetupToken — токен первичной настройки в сервисном режиме (KUBRON_SETUP_TOKEN, только окружение: аргументы
+	// видны в списке процессов). Без него сетевой SetupAdmin отклоняется; первого администратора создаёт
+	// «kubron-server create-admin». Токен не пишется в журнал и не уходит в API.
+	SetupToken string
 	// DataDir — каталог данных (пользователи, кластеры, журнал); пусто — ~/.kubron
 	// (--data-dir или KUBRON_DATA_DIR). Читается только сервером: десктоп переменную игнорирует.
 	DataDir string
@@ -136,6 +140,7 @@ func LoadConfig(args []string, getenv func(string) string, out io.Writer) (Confi
 		cfg.Listen = v
 	}
 	cfg.AllowRemote = truthy(getenv("KUBRON_ALLOW_REMOTE"))
+	cfg.SetupToken = strings.TrimSpace(getenv("KUBRON_SETUP_TOKEN"))
 	cfg.ReplicaID = strings.TrimSpace(getenv("KUBRON_REPLICA_ID"))
 	cfg.MetricsListen = strings.TrimSpace(getenv("KUBRON_METRICS_LISTEN"))
 	cfg.DataDir = getenv("KUBRON_DATA_DIR")
@@ -286,6 +291,9 @@ func (c Config) Validate() error {
 	// Без доверия к прокси X-Forwarded-For игнорируется: настройка молча не работала бы
 	if !c.TrustProxy && (len(c.TrustedProxies) > 0 || c.TrustedProxyHops > 1) {
 		return errors.New("trusted proxies and hops are used only together with trust-proxy (KUBRON_TRUST_PROXY=1)")
+	}
+	if c.SetupToken != "" && len(c.SetupToken) < MinSetupTokenLen {
+		return fmt.Errorf("the setup token is too short: use at least %d characters (KUBRON_SETUP_TOKEN)", MinSetupTokenLen)
 	}
 	if c.ReplicaID != "" {
 		if err := ValidateReplicaID(c.ReplicaID); err != nil {

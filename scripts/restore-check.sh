@@ -26,6 +26,8 @@ src_db="${RESTORE_CHECK_SRC_DB:-kubron_restore_src}"
 dst_db="${RESTORE_CHECK_DST_DB:-kubron_restore_dst}"
 port="${RESTORE_CHECK_PORT:-18081}"
 base="http://127.0.0.1:$port"
+# Серверы работают на БД, то есть в сервисном режиме: первичная настройка по сети требует токен
+export KUBRON_SETUP_TOKEN="restore-check-token-0123456789"
 
 work="$(mktemp -d)"
 pid=""
@@ -115,7 +117,7 @@ rpc() {
   local jar="$1" method="$2" args="${3:-[]}" csrf=""
   [ -f "$jar.csrf" ] && csrf="$(cat "$jar.csrf")"
   curl -sS -c "$jar" -b "$jar" -D "$jar.hdr" -H 'Content-Type: application/json' -H "X-CSRF-Token: $csrf" \
-    -d "$args" "$base/api/rpc/$method"
+    -H "X-Kubron-Setup-Token: ${KUBRON_SETUP_TOKEN:-}" -d "$args" "$base/api/rpc/$method"
 }
 # ok <jar> <метод> <аргументы> — как rpc, но ошибка ответа проваливает проверку
 ok() {

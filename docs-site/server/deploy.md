@@ -37,6 +37,20 @@ helm install kubron oci://ghcr.io/24dso-labs/charts/kubron \
 
 Review the chart's `values.yaml` and `values.schema.json` before deployment. Configure ingress TLS, trusted proxy settings, network policy, resource requests and limits, and backups for PostgreSQL.
 
+## First administrator
+
+On a fresh database nobody can sign in, so Kubron has to create the first administrator. Network setup is protected
+by a token; pick one of two ways:
+
+- **Setup token.** Put `KUBRON_SETUP_TOKEN` (at least 16 characters) into the secret and set
+  `--set secrets.keys.setupToken=KUBRON_SETUP_TOKEN`. The setup screen asks for the token; it is checked in constant time
+  and wrong attempts are rate-limited per address.
+- **Command line.** Without a token, network setup is disabled. Run
+  `kubron-server create-admin --username <name>` next to the server (it talks to the database directly); the password
+  is read from `KUBRON_ADMIN_PASSWORD` or stdin, never from an argument.
+
+The token is not needed once an administrator exists, and a single-user server on loopback does not use it.
+
 ## Build the image yourself
 
 ```sh

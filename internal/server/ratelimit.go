@@ -70,6 +70,24 @@ func (l *RateLimiter) Allow(key string) (ok bool, retryAfter time.Duration) {
 	return false, max(wait, time.Second/10)
 }
 
+// Blocked сообщает, исчерпан ли запас ключа, не списывая токен: нужен там, где считаются только неудачи
+// (неверный токен первичной настройки), а проверка идёт до сравнения.
+func (l *RateLimiter) Blocked(key string) (blocked bool, retryAfter time.Duration) {
+	now := l.now()
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	b := l.buckets[key]
+	if b == nil {
+		return false, 0
+	}
+	tokens := min(l.burst, b.tokens+max(now.Sub(b.last).Seconds(), 0)*l.rate)
+	if tokens >= 1 {
+		return false, 0
+	}
+	wait := time.Duration((1 - tokens) / l.rate * float64(time.Second))
+	return true, max(wait, time.Second/10)
+}
+
 // evictLocked освобождает место: сначала бакеты, успевшие полностью восстановиться (по ним ограничивать
 // нечего), иначе самый давно использованный. Активные нарушители (пустые бакеты) вытесняются в последнюю очередь.
 func (l *RateLimiter) evictLocked(now time.Time) {

@@ -82,8 +82,10 @@ type UserInfo struct {
 
 // Status — состояние аутентификации при старте интерфейса.
 type Status struct {
-	NeedsSetup bool      `json:"needsSetup"`
-	User       *UserInfo `json:"user"`
+	NeedsSetup bool `json:"needsSetup"`
+	// SetupTokenRequired — первичная настройка по сети требует токен (заполняет серверный слой в сервисном режиме).
+	SetupTokenRequired bool      `json:"setupTokenRequired,omitempty"`
+	User               *UserInfo `json:"user"`
 	// IdleTimeoutMinutes — через сколько минут без действий пользователя сессия завершается (0 — не завершается).
 	IdleTimeoutMinutes int `json:"idleTimeoutMinutes"`
 }
@@ -514,9 +516,15 @@ func (s *Service) Setup(username, password string) (*UserInfo, error) {
 		CreatedAt: now, UpdatedAt: now, LastLoginAt: &now,
 	}
 	s.st.users = append(s.st.users, rec)
-	if err := s.st.saveUser(&rec); err != nil {
+	created, err := s.st.saveFirstUser(&rec)
+	if err != nil {
 		s.st.users = nil
 		return nil, fmt.Errorf("failed to save user: %w", err)
+	}
+	if !created { // первого администратора создала другая реплика
+		s.st.users = nil
+		s.refreshLocked()
+		return nil, ErrSetupDone
 	}
 	s.sessionID = rec.ID
 	s.touchLocked()
