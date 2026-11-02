@@ -762,6 +762,27 @@
           "type": "string"
         }
       }
+    },
+    "setup": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "existingSecret": {
+          "type": "string"
+        },
+        "tokenKey": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tokenLength": {
+          "type": "integer",
+          "minimum": 16,
+          "maximum": 128
+        }
+      }
     }
   }
 }

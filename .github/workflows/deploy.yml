@@ -189,15 +189,13 @@ jobs:
           echo "KUBRON_CI_KEY=$key" >> "$GITHUB_ENV"
           kubectl create secret generic kubron-secrets \
             --from-literal=KUBRON_SECRET_KEY="$key" \
-            --from-literal=KUBRON_DATABASE_URL='postgres://kubron:kubron@postgres:5432/kubron?sslmode=disable' \
-            --from-literal=KUBRON_SETUP_TOKEN=ci-setup-token-0123456789
+            --from-literal=KUBRON_DATABASE_URL='postgres://kubron:kubron@postgres:5432/kubron?sslmode=disable'
 
       - name: helm install
         run: |
           helm install kubron deploy/helm/kubron \
             -f deploy/helm/kubron/ci/minimal-values.yaml \
             --set image.repository=kubron --set image.tag=ci --set image.pullPolicy=Never \
-            --set secrets.keys.setupToken=KUBRON_SETUP_TOKEN \
             --wait --timeout 5m
 
       - name: Check the release
@@ -206,7 +204,14 @@ jobs:
           sleep 3
           curl -fs http://127.0.0.1:18081/healthz | grep -qx ok
           # Вход создаёт запись в PostgreSQL (миграции применены, БД доступна), а не в файлах пода
-          curl -fs -X POST -H 'Content-Type: application/json' -H 'X-Kubron-Setup-Token: ci-setup-token-0123456789' \
+          # Токен создал чарт (Secret <release>-setup): без него SetupAdmin отклоняется
+          token="$(kubectl get secret kubron-setup -o jsonpath='{.data.KUBRON_SETUP_TOKEN}' | base64 -d)"
+          echo "::add-mask::$token"
+          test "${#token}" -ge 32
+          code="$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' \
+            -d '["kind-admin","kind-password-1"]' http://127.0.0.1:18081/api/rpc/SetupAdmin)"
+          test "$code" != 200
+          curl -fs -X POST -H 'Content-Type: application/json' -H "X-Kubron-Setup-Token: $token" \
             -d '["kind-admin","kind-password-1"]' http://127.0.0.1:18081/api/rpc/SetupAdmin | grep -q kind-admin
           # Реплик две: миграции применяет та, что первой взяла блокировку, поэтому смотрим журналы всех подов
           kubectl logs -l app.kubernetes.io/name=kubron --tail=-1 --prefix | tee "$RUNNER_TEMP/kubron.log"

@@ -91,13 +91,12 @@ spec:
                   key: {{ .Values.secrets.keys.previousSecretKey | quote }}
                   optional: true
             {{- end }}
-            {{- if .Values.secrets.keys.setupToken }}
+            {{- if .Values.setup.enabled }}
             - name: KUBRON_SETUP_TOKEN
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "kubron.secretName" . }}
-                  key: {{ .Values.secrets.keys.setupToken | quote }}
-                  optional: true
+                  name: {{ include "kubron.setupSecretName" . }}
+                  key: {{ include "kubron.setupTokenKey" . | quote }}
             {{- end }}
             {{- with .Values.kubron.extraEnv }}
             {{- toYaml . | nindent 12 }}

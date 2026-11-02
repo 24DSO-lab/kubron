@@ -100,6 +100,35 @@ helm install kubron deploy/helm/kubron -n kubron \
 большие таймауты, иначе соединения рвутся через 60 секунд; готовый набор аннотаций, включая
 привязку по cookie, лежит в `ci/ingress-values.yaml`.
 
+### Первый запуск и токен первичной настройки
+
+Пока в БД нет пользователей, анонимный `SetupAdmin` превратился бы в захват сервера, поэтому в сервисном режиме он
+принимает только запросы с токеном (`X-Kubron-Setup-Token`, переменная `KUBRON_SETUP_TOKEN`, не короче 16 символов).
+Чарт включает токен по умолчанию (`setup.enabled`):
+
+- без настроек чарт создаёт Secret `<release>-setup` со случайным токеном (`setup.tokenLength`, по умолчанию 32).
+  Значение сохраняется при `helm upgrade` (чарт читает его через `lookup`). Прочитать:
+
+  ```sh
+  kubectl -n <namespace> get secret <release>-setup -o jsonpath='{.data.KUBRON_SETUP_TOKEN}' | base64 -d
+  ```
+
+- `setup.existingSecret` и `setup.tokenKey` — свой Secret с токеном. **Для GitOps обязательно**: Argo CD и
+  `helm template` рендерят чарт без доступа к кластеру, `lookup` пуст, и сгенерированный токен менялся бы при каждом
+  рендере;
+- `secrets.keys.setupToken` — токен лежит в основном Secret (`secrets.existingSecret`) под этим ключом.
+
+Токен вводится на экране «Добро пожаловать». Без сети администратора можно создать прямо в БД; пароль передавайте
+через stdin или `KUBRON_ADMIN_PASSWORD`, не аргументом командной строки (он попал бы в историю оболочки и список
+процессов):
+
+```sh
+kubectl -n <namespace> exec -i deploy/<release> -- /kubron-server create-admin --username admin < password.txt
+```
+
+После создания первого администратора токен не используется; Secret `<release>-setup` можно удалить вместе с
+`setup.enabled=false`.
+
 ### Домены, допустимые Host и привязка к реплике
 
 - **Допустимые Host.** Чарт задаёт `KUBRON_ALLOWED_HOSTS` сам: это хосты из `ingress.hosts` (при `ingress.enabled`),

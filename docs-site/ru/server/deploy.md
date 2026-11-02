@@ -70,6 +70,16 @@ cosign verify ghcr.io/24dso-labs/kubron:<версия> \
 
 Те же команды подходят для `oci://ghcr.io/24dso-labs/charts/kubron`. Подробности: [docs/deploy.md](https://github.com/24DSO-labs/kubron/blob/master/docs/deploy.md).
 
+## Первый запуск
+
+Пока нет первого администратора, сервер принимает первичную настройку только с токеном (`KUBRON_SETUP_TOKEN`, не короче 16 символов). Чарт создаёт токен в Secret `<release>-setup`, если не задан `setup.existingSecret` (для GitOps обязателен: Argo CD и `helm template` не могут прочитать его обратно). Прочитать: `kubectl get secret <release>-setup -o jsonpath='{.data.KUBRON_SETUP_TOKEN}' | base64 -d`.
+
+Без сети администратора можно создать прямо в БД; пароль передавайте через stdin или `KUBRON_ADMIN_PASSWORD`, не аргументом:
+
+```sh
+kubectl exec -i deploy/<release> -- /kubron-server create-admin --username admin < password.txt
+```
+
 ## Сеть и RBAC
 
 - **NetworkPolicy.** Egress к API-серверам открыт, кроме link-local и адресов метаданных облака (`169.254.0.0/16`, `fd00:ec2::254/128`). Сузьте egress к PostgreSQL, API-серверам и IdP до своих сетей через `networkPolicy.egress.*.cidrs`.

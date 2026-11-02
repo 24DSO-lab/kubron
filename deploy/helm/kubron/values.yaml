@@ -42,9 +42,8 @@ secrets:
     # KUBRON_DB_LISTEN_URL: прямой адрес PostgreSQL для LISTEN/NOTIFY, если KUBRON_DATABASE_URL ведёт через
     # pgbouncer в режиме transaction. Пусто — используется KUBRON_DATABASE_URL.
     dbListenUrl: ""
-    # KUBRON_SETUP_TOKEN: токен первичной настройки (не короче 16 символов). Без него создать первого администратора
-    # по сети нельзя: выполните «kubron-server create-admin --username <имя>» в поде (пароль через stdin или
-    # KUBRON_ADMIN_PASSWORD). Пусто — токен не используется.
+    # Ключ токена первичной настройки В ЭТОМ ЖЕ Secret (secrets.existingSecret). Пусто — токен берётся из блока
+    # setup ниже. Токен — не короче 16 символов.
     setupToken: ""
   # ТОЛЬКО ДЛЯ РАЗРАБОТКИ. Чарт создаст Secret из значений ниже. Ключ в values попадает в историю релиза
   # Helm, в CI-логи и в репозиторий, поэтому в production не используйте. Ключ не генерируется:
@@ -53,6 +52,21 @@ secrets:
   values:
     secretKey: ""
     databaseUrl: ""
+
+# ── Первичная настройка ──────────────────────────────────────────────────────
+# Пока в БД нет пользователей, создать первого администратора по сети можно только с токеном
+# (заголовок X-Kubron-Setup-Token, KUBRON_SETUP_TOKEN). Без токена сервер отклоняет SetupAdmin.
+# Либо создайте администратора напрямую в БД: «kubron-server create-admin --username <имя>» в поде
+# (пароль через stdin или KUBRON_ADMIN_PASSWORD, не аргументом). См. NOTES.txt и docs/deploy.md.
+setup:
+  enabled: true
+  # Существующий Secret с токеном. Пусто — чарт создаёт Secret <release>-setup со случайным токеном.
+  # Для GitOps (Argo CD, helm template) задайте существующий Secret: lookup там не работает.
+  existingSecret: ""
+  # Ключ токена в Secret
+  tokenKey: KUBRON_SETUP_TOKEN
+  # Длина сгенерированного токена (не меньше 16)
+  tokenLength: 32
 
 # ── Настройки сервера (ConfigMap → переменные окружения, config.go) ──────────
 kubron:

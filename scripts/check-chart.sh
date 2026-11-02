@@ -171,6 +171,17 @@ render -f "$chart/ci/incluster-values.yaml" --set rbac.allowSecretsRead=true | g
   || fail "rbac.allowSecretsRead must add the secrets rule"
 
 echo "== negative cases (must fail)"
+# Токен первичной настройки: по умолчанию Secret создаёт чарт, существующий Secret и выключение работают
+render -f "$chart/ci/minimal-values.yaml" --show-only templates/setup-secret.yaml | grep -q 'name: kubron-setup' \
+  || fail "the chart must create the setup-token Secret by default"
+render -f "$chart/ci/minimal-values.yaml" --show-only templates/deployment.yaml | grep -q 'name: KUBRON_SETUP_TOKEN' \
+  || fail "KUBRON_SETUP_TOKEN must be set by default"
+out="$(render -f "$chart/ci/minimal-values.yaml" --set setup.existingSecret=my-setup)"
+grep -q 'name: my-setup' <<<"$out" || fail "setup.existingSecret must be referenced"
+! grep -q 'name: kubron-setup' <<<"$out" || fail "no generated setup Secret expected with setup.existingSecret"
+out="$(render -f "$chart/ci/minimal-values.yaml" --set setup.enabled=false)"
+! grep -q 'KUBRON_SETUP_TOKEN' <<<"$out" || fail "setup.enabled=false must not set KUBRON_SETUP_TOKEN"
+
 expect_fail() { # <ожидаемый фрагмент сообщения> <аргументы helm template…>
   local want="$1"; shift
   if out="$(render "$@" 2>&1)"; then fail "render succeeded but must fail: $*"; fi
@@ -185,6 +196,7 @@ expect_fail 'logLevel' --set secrets.existingSecret=s --set kubron.logLevel=loud
 expect_fail 'profile' --set secrets.existingSecret=s --set inCluster.enabled=true --set rbac.create=true --set rbac.profile=admin
 expect_fail 'rbac.profile=custom requires' --set secrets.existingSecret=s --set inCluster.enabled=true --set rbac.create=true --set rbac.profile=custom
 expect_fail 'requires rbac.profile=custom' --set secrets.existingSecret=s --set inCluster.enabled=true --set rbac.create=true --set rbac.existingClusterRole=view
+expect_fail 'tokenLength' --set secrets.existingSecret=s --set setup.tokenLength=8
 expect_fail 'clusterAddrPolicy' --set secrets.existingSecret=s --set kubron.clusterAddrPolicy=loose
 
 echo "OK: chart checks passed"

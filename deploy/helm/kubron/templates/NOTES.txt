@@ -14,7 +14,20 @@ Ingress выключен. Для проверки пробросьте порт:
 Для доступа по сети включите ingress (ingress.enabled) с TLS: без TLS cookie сессии идёт открытым текстом.
 {{- end }}
 
-Первый вход: откройте адрес и создайте администратора (экран «Добро пожаловать»).
+{{- if .Values.setup.enabled }}
+Первый запуск: пока в БД нет пользователей, администратора по сети можно создать только с токеном первичной настройки.
+Прочитайте токен (экран «Добро пожаловать» попросит его):
+  kubectl -n {{ .Release.Namespace }} get secret {{ include "kubron.setupSecretName" . }} -o jsonpath='{.data.{{ include "kubron.setupTokenKey" . }}}' | base64 -d; echo
+{{- if not (or .Values.setup.existingSecret .Values.secrets.keys.setupToken) }}
+Токен сгенерирован чартом и хранится в Secret {{ include "kubron.setupSecretName" . }}. При рендере без доступа к кластеру
+(helm template, Argo CD) он менялся бы на каждом рендере: в GitOps задайте setup.existingSecret.
+{{- end }}
+Без сети: администратора можно создать прямо в БД, пароль не аргументом, а через stdin:
+  kubectl -n {{ .Release.Namespace }} exec -i deploy/{{ include "kubron.fullname" . }} -- /kubron-server create-admin --username <имя> < файл-с-паролем
+{{- else }}
+Первый вход: откройте адрес и создайте администратора (экран «Добро пожаловать»). setup.enabled=false: токен выключен,
+защищайте адрес до создания администратора сами.
+{{- end }}
 
 {{- if and .Values.ingress.enabled (not .Values.ingress.tls) }}
 
