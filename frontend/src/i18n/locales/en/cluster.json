@@ -67,6 +67,8 @@
     "editText": "Edit text",
     "revert": "Revert",
     "textWarning": "The text contains the cluster credentials. Do not show your screen to others.",
+    "secretHidden": "Secrets are hidden and will be kept as they are. To change one, replace the placeholder with a new value.",
+    "replaceSecret": "Replace secret",
     "stateFile": "Will be replaced with the selected file",
     "stateDirty": "Edited manually. Saved when you click “Save”",
     "stateText": "Editing text: no changes yet",

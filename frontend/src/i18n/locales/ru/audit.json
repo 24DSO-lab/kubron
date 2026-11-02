@@ -104,6 +104,11 @@
       "start": "Port-forward запущен",
       "stop": "Port-forward остановлен"
     },
+    "cluster": {
+      "credentials": {
+        "update": "Учётные данные кластера заменены"
+      }
+    },
     "terminal": {
       "start": "Терминал открыт",
       "stop": "Терминал закрыт"

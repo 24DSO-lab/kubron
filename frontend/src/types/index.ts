@@ -54,6 +54,8 @@ export interface KubeconfigSource {
   path: string
   text: string
   clusterId: string
+  /** Сохранённый кластер, откуда сервер подставляет скрытые секреты (плейсхолдер) в text */
+  baseClusterId?: string
 }
 
 export interface KubeconfigContextInfo {

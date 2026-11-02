@@ -67,6 +67,8 @@
     "editText": "编辑文本",
     "revert": "还原",
     "textWarning": "文本包含集群凭证。请勿向他人展示屏幕。",
+    "secretHidden": "密钥已隐藏，将保持不变。如需修改，请用新值替换占位符。",
+    "replaceSecret": "替换密钥",
     "stateFile": "将使用所选文件替换",
     "stateDirty": "已手动编辑。点击“保存”后生效",
     "stateText": "正在编辑文本：尚无更改",

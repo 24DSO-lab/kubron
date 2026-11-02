@@ -127,6 +127,9 @@ type KubeconfigSource struct {
 	Path      string `json:"path"`
 	Text      string `json:"text"`
 	ClusterID string `json:"clusterId"`
+	// BaseClusterID — сохранённый кластер, из которого сервер подставляет скрытые секреты (MaskPlaceholder) в Text.
+	// Источником не считается: задаёт только место, откуда берутся значения, и проверяется на право управления кластером.
+	BaseClusterID string `json:"baseClusterId,omitempty"`
 }
 
 func (s KubeconfigSource) isEmpty() bool {
@@ -157,7 +160,26 @@ func (s KubeconfigSource) read() ([]byte, error) {
 	if len(s.Text) > maxKubeconfigBytes {
 		return nil, errKubeconfigTooLarge
 	}
+	if HasSecretPlaceholder(s.Text) {
+		return expandPlaceholders(s.Text, s.BaseClusterID)
+	}
 	return []byte(s.Text), nil
+}
+
+// expandPlaceholders подставляет в текст скрытые секреты из сохранённого kubeconfig кластера base.
+func expandPlaceholders(text, base string) ([]byte, error) {
+	if base == "" {
+		return nil, ErrSecretPlaceholderNoCluster
+	}
+	stored, err := readStoredKubeconfig(base)
+	if err != nil {
+		return nil, err
+	}
+	out, err := ExpandKubeconfigSecrets(text, string(stored))
+	if err != nil {
+		return nil, err
+	}
+	return []byte(out), nil
 }
 
 func readKubeconfigFile(path string) ([]byte, error) {
@@ -183,10 +205,16 @@ func readStoredKubeconfig(id string) ([]byte, error) {
 }
 
 // ReadClusterKubeconfig возвращает текст сохранённого kubeconfig кластера (для правки в приложении).
+//
+// В сервисном режиме значения секретов заменены плейсхолдером MaskPlaceholder и до клиента не доходят; если скрыть секрет
+// не удалось, ошибка вместо текста.
 func ReadClusterKubeconfig(id string) (string, error) {
 	data, err := readStoredKubeconfig(id)
 	if err != nil {
 		return "", err
+	}
+	if ClusterSecretsMasked() {
+		return MaskKubeconfigSecrets(string(data))
 	}
 	return string(data), nil
 }
@@ -355,6 +383,8 @@ type ClusterUpdateResult struct {
 	Cluster ClusterMeta `json:"cluster"`
 	// ConnectionChanged — изменился kubeconfig или контекст: существующее подключение устарело.
 	ConnectionChanged bool `json:"connectionChanged"`
+	// CredentialsChanged — в новом kubeconfig изменились секреты (токен, пароль, ключ): для журнала аудита.
+	CredentialsChanged bool `json:"credentialsChanged"`
 }
 
 // UpdateClusterSettings сохраняет настройки кластера и, если replace непуст, заменяет его kubeconfig.
@@ -376,6 +406,7 @@ func UpdateClusterSettings(id string, settings ClusterSettings, replace Kubeconf
 		if replace.ClusterID != "" {
 			return nil, errors.New("kubeconfig can only be replaced with a file or text")
 		}
+		replace.BaseClusterID = id // скрытые секреты берутся только у редактируемого кластера
 		if newData, err = replace.read(); err != nil {
 			return nil, err
 		}
@@ -406,6 +437,7 @@ func UpdateClusterSettings(id string, settings ClusterSettings, replace Kubeconf
 	}
 
 	changed := newData != nil || contextName != meta.ContextName
+	credsChanged := newData != nil && (readErr != nil || KubeconfigSecretsChanged(string(newData), string(oldData)))
 	meta.DisplayName = settings.DisplayName
 	meta.Icon = settings.Icon
 	meta.Color = settings.Color
@@ -418,7 +450,7 @@ func UpdateClusterSettings(id string, settings ClusterSettings, replace Kubeconf
 	if err := clusterStore.Save(meta, newData); err != nil {
 		return nil, err
 	}
-	return &ClusterUpdateResult{Cluster: *meta, ConnectionChanged: changed}, nil
+	return &ClusterUpdateResult{Cluster: *meta, ConnectionChanged: changed, CredentialsChanged: credsChanged}, nil
 }
 
 // writeFileAtomic пишет файл через временный и переименование: при сбое остаётся прежнее содержимое,

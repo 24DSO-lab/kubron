@@ -556,5 +556,10 @@
   "theArgoCdAddressIsLongerThan": "Адрес Argo CD длиннее {p0} символов",
   "theArgoCdAddressMustBeAn": "Адрес Argo CD должен быть URL http или https без учётных данных, query и fragment",
   "unknownLogLevelExpectedDebugInfo": "неизвестный уровень логирования {p0} (допустимо: debug, info, warn или error)",
-  "storedWithEncryptionKeyCannotBeRead": "{p0}: данные зашифрованы ключом {p1} и не читаются настроенными ключами: {p2}"
+  "storedWithEncryptionKeyCannotBeRead": "{p0}: данные зашифрованы ключом {p1} и не читаются настроенными ключами: {p2}",
+  "hiddenSecretsNoSavedCluster": "в kubeconfig есть скрытые секреты, но не указан сохранённый кластер, откуда их взять",
+  "hiddenSecretsRebound": "изменился адрес кластера или пользователь контекста, поэтому скрытые секреты сохранить нельзя: введите их заново",
+  "kubeconfigCannotBeShownSafely": "kubeconfig нельзя показать безопасно: не удалось скрыть секрет",
+  "hiddenSecretHasNoSavedCounterpart": "у скрытого секрета {p0} пользователя {p1} нет сохранённого значения: введите его",
+  "hiddenSecretPlaceholderMisplaced": "заполнитель скрытого секрета стоит вне поля секрета"
 }

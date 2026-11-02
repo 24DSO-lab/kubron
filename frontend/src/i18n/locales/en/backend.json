@@ -556,5 +556,10 @@
   "theArgoCdAddressIsLongerThan": "the Argo CD address is longer than {p0} characters",
   "theArgoCdAddressMustBeAn": "the Argo CD address must be an http or https URL without credentials, query or fragment",
   "unknownLogLevelExpectedDebugInfo": "unknown log level {p0} (expected debug, info, warn or error)",
-  "storedWithEncryptionKeyCannotBeRead": "{p0} stored with encryption key {p1} cannot be read with the configured keys: {p2}"
+  "storedWithEncryptionKeyCannotBeRead": "{p0} stored with encryption key {p1} cannot be read with the configured keys: {p2}",
+  "hiddenSecretsNoSavedCluster": "the kubeconfig contains hidden secrets but no saved cluster to take them from",
+  "hiddenSecretsRebound": "the cluster address or the user of a context changed, so hidden secrets cannot be kept: enter them again",
+  "kubeconfigCannotBeShownSafely": "the kubeconfig cannot be shown safely: a secret could not be hidden",
+  "hiddenSecretHasNoSavedCounterpart": "hidden secret {p0} of user {p1} has no saved counterpart: enter its value",
+  "hiddenSecretPlaceholderMisplaced": "the hidden-secret placeholder is used outside a secret field"
 }
