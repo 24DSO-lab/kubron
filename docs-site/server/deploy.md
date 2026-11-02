@@ -43,6 +43,30 @@ Review the chart's `values.yaml` and `values.schema.json` before deployment. Con
 docker build -t kubron:dev .
 ```
 
+## Verify the image and chart
+
+Release images and the OCI chart are signed with cosign (keyless) and carry build-provenance and SBOM attestations. Verify before installing:
+
+```sh
+gh attestation verify oci://ghcr.io/24dso-labs/kubron:<version> --repo 24DSO-labs/kubron
+cosign verify ghcr.io/24dso-labs/kubron:<version> \
+  --certificate-identity-regexp '^https://github.com/24DSO-labs/kubron/\.github/workflows/publish\.yml@refs/tags/v' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+```
+
+The same commands work for `oci://ghcr.io/24dso-labs/charts/kubron`. See the [deployment guide](https://github.com/24DSO-labs/kubron/blob/master/docs/deploy.md) for details.
+
+## Network and RBAC
+
+- **NetworkPolicy.** Egress to cluster API servers is open except link-local and cloud metadata addresses (`169.254.0.0/16`, `fd00:ec2::254/128`). Narrow PostgreSQL, API-server and IdP egress to your own networks with `networkPolicy.egress.*.cidrs`.
+- **In-cluster RBAC.** `rbac.profile` is `readonly` (default, no Secrets), `operator` (restart, scale, rollback, retry Job, cordon) or `custom`. The ServiceAccount is shared by all users, so the profile is the ceiling of what anyone can do in that cluster.
+
+## Domains, hosts and TLS
+
+- The chart sets `KUBRON_ALLOWED_HOSTS` from `ingress.hosts` and `*.pf.<portForward.baseDomain>`; add other addresses to `kubron.allowedHosts`.
+- Set `portForward.baseDomain` to a **separate registrable domain**, not a subdomain of the Kubron host: JavaScript of a proxied app could otherwise overwrite Kubron cookies. It needs wildcard DNS and a wildcard certificate for `*.pf.<baseDomain>`.
+- Enable `KUBRON_TRUST_PROXY` only when the pod is reachable solely through your proxy. Use sticky sessions (cookie affinity) on the Ingress: terminals, logs and port-forward streams live on the replica that opened them, and a port-forward ticket is single-use per replica.
+
 ## High availability
 
 Multiple replicas are supported when PostgreSQL is configured. Sessions and user state are shared, changes propagate through PostgreSQL notifications, and replicas drain WebSocket and terminal connections during shutdown. See the [HA operations guide](https://github.com/24DSO-labs/kubron/blob/master/docs/ha.md) and [session design](https://github.com/24DSO-labs/kubron/blob/master/docs/ha-sessions.md).

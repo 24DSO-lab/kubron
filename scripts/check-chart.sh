@@ -45,6 +45,9 @@ single="$tmp/single-values.yaml"
 dev="$tmp/dev-secret-values.yaml"
 met="$tmp/metrics-values.yaml"
 logv="$tmp/logging-values.yaml"
+opr="$tmp/rbac-operator-values.yaml"
+cus="$tmp/rbac-custom-values.yaml"
+res="$tmp/restricted-values.yaml"
 has() { grep -qE -- "$2" "$1" || fail "$3"; }
 hasnt() { ! grep -qE -- "$2" "$1" || fail "$3"; }
 
@@ -125,6 +128,48 @@ hasnt "$min" 'KUBRON_LOG_LEVEL' "log level set by default"
 has   "$logv" 'KUBRON_AUDIT_STDOUT: "1"' "auditStdout must set KUBRON_AUDIT_STDOUT"
 has   "$logv" 'KUBRON_LOG_LEVEL: "debug"' "logLevel must set KUBRON_LOG_LEVEL"
 
+# Допустимые Host (KUBRON_ALLOWED_HOSTS): из ingress.hosts, *.pf.<baseDomain> и kubron.allowedHosts; без источников переменной нет
+hasnt "$min" 'KUBRON_ALLOWED_HOSTS' "allowed hosts must be unset without ingress, port-forward or kubron.allowedHosts"
+has   "$ing" 'KUBRON_ALLOWED_HOSTS: "kubron\.example\.com"' "allowed hosts must list the ingress hosts"
+has   "$pfv" 'KUBRON_ALLOWED_HOSTS: "kubron\.example\.com,\*\.pf\.kubron\.example\.com"' "allowed hosts must add the port-forward wildcard"
+has   "$res" 'KUBRON_ALLOWED_HOSTS: "kubron\.internal\.example"' "kubron.allowedHosts must reach KUBRON_ALLOWED_HOSTS"
+# Политика адресов кластера: по умолчанию выбор сервера (переменная не задаётся), значения чарта пробрасываются
+hasnt "$min" 'KUBRON_CLUSTER_ADDR_POLICY' "the cluster address policy must be left to the server default"
+has   "$res" 'KUBRON_CLUSTER_ADDR_POLICY: "strict"' "kubron.clusterAddrPolicy must set KUBRON_CLUSTER_ADDR_POLICY"
+has   "$res" 'KUBRON_CLUSTER_ADDR_ALLOW_CIDRS: "127\.0\.0\.0/8"' "kubron.clusterAddrAllowCidrs must set KUBRON_CLUSTER_ADDR_ALLOW_CIDRS"
+# NetworkPolicy: egress к API-серверам по умолчанию — любые адреса, кроме link-local и метаданных (v4 и v6 раздельно)
+np_min="$(render -f "$chart/ci/minimal-values.yaml" --show-only templates/networkpolicy.yaml)"
+has   <(echo "$np_min") 'cidr: ["'"'"']?0\.0\.0\.0/0' "the default API egress must allow IPv4 destinations"
+has   <(echo "$np_min") 'cidr: ["'"'"']?::/0' "the default API egress must allow IPv6 destinations"
+has   <(echo "$np_min") '169\.254\.0\.0/16' "the default API egress must exclude link-local and metadata (IPv4)"
+has   <(echo "$np_min") 'fd00:ec2::254/128' "the default API egress must exclude the AWS IPv6 metadata address"
+has   <(echo "$np_min") 'namespaceSelector: \{\}' "the default API egress must still reach pods of the cluster (allowCluster)"
+has   <(echo "$np_min") 'port: 53' "DNS egress missing"
+has   <(echo "$np_min") 'port: 5432' "PostgreSQL egress missing"
+# IPv4-исключение только в блоке IPv4, IPv6 — только в блоке IPv6 (Kubernetes отклоняет исключение чужого семейства)
+v4="$(awk '/cidr: ["\047]?0\.0\.0\.0\/0/{f=1;next} /cidr: ["\047]?::\/0/{f=0} f' <<<"$np_min")"
+! grep -q 'fd00:ec2' <<<"$v4" || fail "an IPv6 exception must not sit in the IPv4 ipBlock"
+# Свои CIDR заменяют «любые адреса»: исключений и 0.0.0.0/0 нет, порт IdP отдельным правилом, PostgreSQL сужен
+np_res="$(render -f "$chart/ci/restricted-values.yaml" --show-only templates/networkpolicy.yaml)"
+has   <(echo "$np_res") 'cidr: ["'"'"']?10\.20\.0\.0/16' "clusterApi.cidrs must be rendered"
+has   <(echo "$np_res") 'cidr: ["'"'"']?10\.30\.0\.0/24' "postgres.cidrs must be rendered"
+has   <(echo "$np_res") 'cidr: ["'"'"']?10\.40\.0\.0/24' "idp.cidrs must be rendered"
+has   <(echo "$np_res") 'port: 8443' "idp.ports must add a separate egress rule"
+hasnt <(echo "$np_res") 'cidr: ["'"'"']?0\.0\.0\.0/0' "explicit cidrs must replace the open destinations"
+# RBAC-профили. readonly: без secrets и записи (проверено выше для $inc); operator: добавляет операции operate, но не exec и не secrets
+has   "$opr" '^kind: ClusterRole$' "operator profile must create a ClusterRole"
+has   "$opr" 'deployments/scale' "operator profile must allow scaling"
+has   "$opr" '^[[:space:]]*-[[:space:]]+patch[[:space:]]*$' "operator profile must allow patch (restart, cordon)"
+hasnt "$opr" '^[[:space:]]*-[[:space:]]+secrets[[:space:]]*$' "operator profile must not grant secrets"
+hasnt "$opr" 'pods/(exec|attach|portforward|eviction)' "operator profile must not grant exec, attach, port-forward or eviction"
+hasnt "$opr" "^[[:space:]]*-[[:space:]]+['\"]?\\*['\"]?[[:space:]]*$" "operator profile must not use wildcards"
+# custom + существующая роль: своей ClusterRole нет, привязка идёт на указанную
+hasnt "$cus" '^kind: ClusterRole$' "no ClusterRole expected with rbac.existingClusterRole"
+has   "$cus" '^kind: ClusterRoleBinding$' "ClusterRoleBinding missing with rbac.existingClusterRole"
+has   "$cus" '^  name: view$' "the binding must reference rbac.existingClusterRole"
+render -f "$chart/ci/incluster-values.yaml" --set rbac.allowSecretsRead=true | grep -qE '^[[:space:]]*-[[:space:]]+secrets[[:space:]]*$' \
+  || fail "rbac.allowSecretsRead must add the secrets rule"
+
 echo "== negative cases (must fail)"
 expect_fail() { # <ожидаемый фрагмент сообщения> <аргументы helm template…>
   local want="$1"; shift
@@ -137,5 +182,9 @@ expect_fail 'rbac.create requires inCluster.enabled' --set secrets.existingSecre
 expect_fail 'replicaCount' --set secrets.existingSecret=s --set replicaCount=0
 expect_fail 'metrics.port must differ' --set secrets.existingSecret=s --set metrics.enabled=true --set metrics.port=8080
 expect_fail 'logLevel' --set secrets.existingSecret=s --set kubron.logLevel=loud
+expect_fail 'profile' --set secrets.existingSecret=s --set inCluster.enabled=true --set rbac.create=true --set rbac.profile=admin
+expect_fail 'rbac.profile=custom requires' --set secrets.existingSecret=s --set inCluster.enabled=true --set rbac.create=true --set rbac.profile=custom
+expect_fail 'requires rbac.profile=custom' --set secrets.existingSecret=s --set inCluster.enabled=true --set rbac.create=true --set rbac.existingClusterRole=view
+expect_fail 'clusterAddrPolicy' --set secrets.existingSecret=s --set kubron.clusterAddrPolicy=loose
 
 echo "OK: chart checks passed"

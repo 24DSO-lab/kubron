@@ -78,3 +78,65 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- define "kubron.clusterRoleName" -}}
 {{- printf "%s-%s" (include "kubron.fullname" .) .Release.Namespace | trunc 63 | trimSuffix "-" }}
 {{- end }}
+
+{{/*
+Допустимые значения заголовка Host (KUBRON_ALLOWED_HOSTS), через запятую без повторов: хосты ingress.hosts при
+ingress.enabled, «*.pf.<portForward.baseDomain>» при port-forward и kubron.allowedHosts. Пусто — переменная не задаётся.
+*/}}
+{{- define "kubron.allowedHosts" -}}
+{{- $hosts := list }}
+{{- if .Values.ingress.enabled }}
+{{- range .Values.ingress.hosts }}
+{{- $hosts = append $hosts .host }}
+{{- end }}
+{{- end }}
+{{- with .Values.portForward.baseDomain }}
+{{- $hosts = append $hosts (printf "*.pf.%s" .) }}
+{{- end }}
+{{- range .Values.kubron.allowedHosts }}
+{{- $hosts = append $hosts . }}
+{{- end }}
+{{- join "," (uniq $hosts) }}
+{{- end }}
+
+{{/*
+Адресаты правила egress (список для поля to). Аргументы: target — настройки правила (to, cidrs, а для открытого режима
+except и allowCluster), open — true: без to и cidrs разрешить любые адреса, кроме except; false: вернуть пусто
+(правило без адресатов, то есть «куда угодно»). Приоритет: to > cidrs > любые адреса, кроме except.
+Список собирается данными и выводится toYaml: IPv4 и IPv6 исключения раскладываются по своим ipBlock.
+*/}}
+{{- define "kubron.egressTo" -}}
+{{- $t := .target }}
+{{- if $t.to }}
+{{- toYaml $t.to }}
+{{- else if $t.cidrs }}
+{{- $dests := list }}
+{{- range $t.cidrs }}
+{{- $dests = append $dests (dict "ipBlock" (dict "cidr" .)) }}
+{{- end }}
+{{- toYaml $dests }}
+{{- else if .open }}
+{{- $v4 := list }}
+{{- $v6 := list }}
+{{- range $t.except }}
+{{- if contains ":" . }}
+{{- $v6 = append $v6 . }}
+{{- else }}
+{{- $v4 = append $v4 . }}
+{{- end }}
+{{- end }}
+{{- $b4 := dict "cidr" "0.0.0.0/0" }}
+{{- if $v4 }}
+{{- $_ := set $b4 "except" $v4 }}
+{{- end }}
+{{- $b6 := dict "cidr" "::/0" }}
+{{- if $v6 }}
+{{- $_ := set $b6 "except" $v6 }}
+{{- end }}
+{{- $dests := list (dict "ipBlock" $b4) (dict "ipBlock" $b6) }}
+{{- if $t.allowCluster }}
+{{- $dests = append $dests (dict "namespaceSelector" (dict)) }}
+{{- end }}
+{{- toYaml $dests }}
+{{- end }}
+{{- end }}
