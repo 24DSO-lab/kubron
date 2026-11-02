@@ -703,6 +703,9 @@ jobs:
       - name: Start kubron-server on PostgreSQL
         run: |
           export KUBRON_DATABASE_URL="postgres://postgres:postgres@127.0.0.1:5432/kubron_e2e?sslmode=disable"
+          # Сервисный режим: политика адресов включена по умолчанию (permissive), а API-сервер kind слушает 127.0.0.1.
+          # Исключение открывает loopback, но не метаданные облака (ADR-0015, дополнение).
+          export KUBRON_CLUSTER_ADDR_ALLOW_CIDRS="127.0.0.0/8"
           export KUBRON_SECRET_KEY="ci1:$(openssl rand -base64 32)"
           export KUBRON_SETUP_TOKEN="$E2E_SETUP_TOKEN"
           ./kubron-server --listen 127.0.0.1:8081 > "$RUNNER_TEMP/server-pg.log" 2>&1 &
@@ -794,6 +797,9 @@ jobs:
       - name: Start two kubron-server replicas
         run: |
           export KUBRON_DATABASE_URL="postgres://postgres:postgres@127.0.0.1:5432/kubron_ha?sslmode=disable"
+          # Сервисный режим: политика адресов включена по умолчанию (permissive), а API-сервер kind слушает 127.0.0.1.
+          # Исключение открывает loopback, но не метаданные облака (ADR-0015, дополнение).
+          export KUBRON_CLUSTER_ADDR_ALLOW_CIDRS="127.0.0.0/8"
           export KUBRON_SECRET_KEY="ci1:$(openssl rand -base64 32)"
           export KUBRON_SETUP_TOKEN="$E2E_SETUP_TOKEN"
           export KUBRON_DRAIN_DELAY=0s
