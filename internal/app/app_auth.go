@@ -257,6 +257,12 @@ func (a *App) checkKubeconfigSource(src k8s.KubeconfigSource) error {
 	if src.Path != "" && !a.platform.Capabilities().LocalKubeconfig {
 		return errors.New("reading a kubeconfig from a file path is available only on desktop")
 	}
+	if src.BaseClusterID != "" {
+		// Скрытые секреты берутся из этого кластера: нужно право управлять им.
+		if err := a.authzCluster(auth.PermClusterManage, src.BaseClusterID, "source", "secrets"); err != nil {
+			return err
+		}
+	}
 	if src.ClusterID != "" {
 		return a.authzCluster(auth.PermClusterManage, src.ClusterID, "source", "cluster")
 	}

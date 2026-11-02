@@ -213,12 +213,16 @@ func (a *App) UpdateCluster(id string, settings k8s.ClusterSettings, kubeconfig 
 	if err := a.authzCluster(auth.PermClusterManage, id, "id", id, "displayName", settings.DisplayName, "kubeconfig", kubeconfigChange(kubeconfig)); err != nil {
 		return nil, err
 	}
+	kubeconfig.BaseClusterID = id // скрытые секреты берутся только у редактируемого кластера
 	if err := a.checkKubeconfigSource(kubeconfig); err != nil {
 		return nil, err
 	}
 	res, err := k8s.UpdateClusterSettings(id, settings, kubeconfig)
 	if err != nil {
 		return nil, err
+	}
+	if res.CredentialsChanged {
+		a.recordCredentialsUpdate(id)
 	}
 	// Подключение собрано по прежнему kubeconfig/контексту: забываем его, следующее
 	// подключение построит новое. Проброшенные порты старого активного кластера теряют смысл.

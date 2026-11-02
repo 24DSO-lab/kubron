@@ -70,9 +70,15 @@
             </div>
 
             <template v-if="kcMode === 'text'">
-              <textarea v-model="kcText" class="cl-textarea cl-mono" spellcheck="false" :aria-label="$t('cluster.dialog.kubeconfigText')"
-                style="margin-top: 8px" @input="onTextInput"></textarea>
-              <p class="cl-hint is-warn">{{ $t('cluster.edit.textWarning') }}</p>
+              <textarea ref="kcTextarea" v-model="kcText" class="cl-textarea cl-mono" spellcheck="false"
+                :aria-label="$t('cluster.dialog.kubeconfigText')" style="margin-top: 8px" @input="onTextInput"></textarea>
+              <p v-if="secretsHidden" class="cl-hint" data-testid="secret-hidden">
+                {{ $t('cluster.edit.secretHidden') }}
+                <button type="button" class="cl-btn cl-btn-sm" data-testid="secret-replace" @click="replaceSecret">
+                  {{ $t('cluster.edit.replaceSecret') }}
+                </button>
+              </p>
+              <p v-else class="cl-hint is-warn">{{ $t('cluster.edit.textWarning') }}</p>
             </template>
             <p v-if="hasReplacement && probe.inspectError.value" class="cl-hint is-error">
               {{ probe.inspectError.value }}
@@ -127,6 +133,7 @@ import type { ClusterSettings, ClusterStatus, KubeconfigSource } from '../../typ
 import { isValidArgoUrl, MAX_ARGO_URL } from '../../composables/argoUrl'
 import { NO_KUBECONFIG_SOURCE, pickContextName, useKubeconfigProbe } from '../../composables/useKubeconfigProbe'
 import { errorText } from '../../composables/errorText'
+import { firstPlaceholderRange, hasHiddenSecret } from '../../composables/kubeconfigSecrets'
 import ClusterAvatar from './ClusterAvatar.vue'
 import ClusterAppearanceFields from './ClusterAppearanceFields.vue'
 import ClusterConnectionFields from './ClusterConnectionFields.vue'
@@ -178,6 +185,19 @@ const kcMode = ref<KubeconfigMode>('keep')
 const kcPath = ref('')
 const kcText = ref('')
 const kcOriginalText = ref('')
+const kcTextarea = ref<HTMLTextAreaElement | null>(null)
+
+// Сервер не отдаёт значения секретов (сервисный режим): на их месте плейсхолдер, при сохранении сервер подставит прежние
+const secretsHidden = computed(() => hasHiddenSecret(kcText.value))
+
+// Выделяет первый плейсхолдер: вводимое значение заменит его
+function replaceSecret() {
+  const el = kcTextarea.value
+  const range = firstPlaceholderRange(kcText.value)
+  if (!el || !range) return
+  el.focus()
+  el.setSelectionRange(range[0], range[1])
+}
 
 // Смена логина и пароля oidc-password: действие отдельное от «Сохранить», пароль в форме не задерживается
 const oidcUser = ref('')
@@ -215,7 +235,7 @@ const hasReplacement = computed(() => (kcMode.value === 'file' && !!kcPath.value
 // Что отправить на сохранение: пустой источник означает «kubeconfig не менять»
 const replacement = computed<KubeconfigSource>(() => {
   if (kcMode.value === 'file' && kcPath.value) return { ...NO_KUBECONFIG_SOURCE, path: kcPath.value }
-  if (textDirty.value) return { ...NO_KUBECONFIG_SOURCE, text: kcText.value }
+  if (textDirty.value) return { ...NO_KUBECONFIG_SOURCE, text: kcText.value, baseClusterId: props.cluster.id }
   return { ...NO_KUBECONFIG_SOURCE }
 })
 

@@ -557,10 +557,18 @@
   "theArgoCdAddressMustBeAn": "the Argo CD address must be an http or https URL without credentials, query or fragment",
   "unknownLogLevelExpectedDebugInfo": "unknown log level {p0} (expected debug, info, warn or error)",
   "storedWithEncryptionKeyCannotBeRead": "{p0} stored with encryption key {p1} cannot be read with the configured keys: {p2}",
+
+  "hiddenSecretsNoSavedCluster": "the kubeconfig contains hidden secrets but no saved cluster to take them from",
+  "hiddenSecretsRebound": "the cluster address or the user of a context changed, so hidden secrets cannot be kept: enter them again",
+  "kubeconfigCannotBeShownSafely": "the kubeconfig cannot be shown safely: a secret could not be hidden",
+  "hiddenSecretHasNoSavedCounterpart": "hidden secret {p0} of user {p1} has no saved counterpart: enter its value",
+  "hiddenSecretPlaceholderMisplaced": "the hidden-secret placeholder is used outside a secret field"
+
   "internalErrorRequestId": "internal error, request id {p0}",
   "initialSetupOverTheNetworkIs": "initial setup over the network is disabled: set KUBRON_SETUP_TOKEN or run kubron-server create-admin",
   "theSetupTokenIsMissingOr": "the setup token is missing or invalid",
   "theSetupTokenIsTooShort": "the setup token is too short: use at least {p0} characters (KUBRON_SETUP_TOKEN)",
   "anAllowedHostMustBeA": "an allowed host must be a host name or an IP address with an optional port, without scheme or path",
   "kubronAllowedHosts": "KUBRON_ALLOWED_HOSTS: {p0}"  
+
 }
