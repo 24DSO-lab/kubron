@@ -109,16 +109,13 @@ test('Argo CD открывается через прокси потока: UI, A
   // через прокси, пока поток открыт (без буферизации)
   test.info().annotations.push({ type: 'sse-content-type', description: sse.type })
   expect(sse.data).toContain('e2e-guestbook')
-})
 
-test('остановка потока закрывает доступ', async ({ page }) => {
-  await page.goto('/')
-  const login = await page.request.post('/api/rpc/Login', { data: [ADMIN.name, ADMIN.pass], headers: JSON_HEADERS })
-  expect(login.status()).toBe(200)
-  csrf = login.headers()['x-csrf-token']
+  // Остановка потока его владельцем (той же веб-сессией) закрывает доступ; чужая сессия его бы не нашла
   await result(page, 'StopPortForward', [streamId])
-  const stopped = await page.request.get(streamUrl.replace(/\?.*$/, ''), { failOnStatusCode: false }).catch(() => null)
-  if (stopped) expect(stopped.status()).not.toBe(200)
   const again = await (await rpc(page, 'GetPortForwardURL', [streamId])).json()
   expect(again.error).toBeTruthy()
+  const after = await page.evaluate(async () => {
+    try { return (await fetch('/api/version')).status } catch { return 0 } // закрытое соединение тоже считается отказом
+  })
+  expect(after, 'после остановки запросы к потоку не проксируются').not.toBe(200)
 })
