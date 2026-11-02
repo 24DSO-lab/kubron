@@ -345,6 +345,45 @@ jobs:
           go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
           govulncheck -tags $GO_TAGS ./...
 
+  # Зависимости. В отличие от govulncheck блокирует: npm audit по runtime-зависимостям (без dev) и osv-scanner по
+  # go.mod и lock-файлам. Исключения только в osv-scanner.toml с обоснованием и сроком (scripts/check-ignores.py).
+  deps-audit:
+    name: Dependencies (npm audit, osv-scanner)
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 22
+
+      # Срок и обоснование каждого исключения (.trivyignore, osv-scanner.toml)
+      - run: python3 scripts/check-ignores.py
+
+      # --omit=dev: в образ и в десктоп попадает только собранный фронтенд, dev-зависимости сборки не поставляются
+      - name: npm audit (frontend)
+        run: npm audit --omit=dev --audit-level=high
+        working-directory: frontend
+
+      - name: npm audit (docs-site)
+        run: npm audit --omit=dev --audit-level=high
+        working-directory: docs-site
+
+      - name: osv-scanner
+        uses: google/osv-scanner-action/osv-scanner-action@6ad84ce1ef2d4124ba333b221894c133c4a970ea # v2.7.0
+        with:
+          scan-args: |-
+            --config=osv-scanner.toml
+            --recursive
+            ./
+
   lint:
     name: Go (golangci-lint)
     needs: changes

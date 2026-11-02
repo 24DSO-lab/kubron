@@ -251,6 +251,86 @@ Ingress привязку по cookie (`nginx.ingress.kubernetes.io/affinity: coo
 прокси из окружения не используется. Подключение `in-cluster` проверке не подлежит: адрес сервера задаёт сам
 кластер. Тем же правилам подчиняется и адрес провайдера аутентификации (IdP) для `oidc-password`, включая `token_endpoint` из его ответа; IdP во внутренней сети при `strict` нужно добавить в исключения.
 
+## Проверка образа и чарта
+
+Каждый релиз (тег `vX.Y.Z`) собирается в GitHub Actions (`release.yml` → `publish.yml`), и перед `push` образ проходит
+Trivy (HIGH/CRITICAL с готовым исправлением останавливают публикацию). К опубликованным образу и чарту прилагаются:
+
+| Что | Где | Чем проверять |
+| --- | --- | --- |
+| Подпись cosign (keyless, Sigstore): личность — workflow `publish.yml` на теге | OCI-реестр рядом с образом и чартом | `cosign verify`, политики admission-контроллеров (Kyverno и др.) |
+| Аттестация происхождения (SLSA provenance) | GitHub и реестр | `gh attestation verify` |
+| Аттестация SBOM (образ — SPDX, чарт — CycloneDX) | GitHub и реестр | `gh attestation verify --predicate-type …` |
+| Файлы SBOM `kubron-sbom_<версия>_{image,chart,desktop}.*.json` | GitHub Release | скачать из релиза; суммы — в `SHA256SUMS.txt` |
+
+Проверяйте **digest**, а не только тег: тег `latest` и теги версий в реестре изменяемы, подпись относится к digest.
+
+```sh
+VERSION=0.7.0                       # версия без «v»
+IMAGE=ghcr.io/24dso-labs/kubron
+CHART=ghcr.io/24dso-labs/charts/kubron
+
+# 1. Происхождение образа: собран workflow publish.yml этого репозитория
+gh attestation verify "oci://$IMAGE:$VERSION" --repo 24DSO-labs/kubron \
+  --signer-workflow 24DSO-labs/kubron/.github/workflows/publish.yml
+
+# 2. SBOM образа (SPDX) и чарта (CycloneDX) как проверенные аттестации
+gh attestation verify "oci://$IMAGE:$VERSION" --repo 24DSO-labs/kubron \
+  --predicate-type https://spdx.dev/Document/v2.3
+gh attestation verify "oci://$CHART:$VERSION" --repo 24DSO-labs/kubron \
+  --predicate-type https://cyclonedx.org/bom
+
+# 3. Подпись cosign образа и чарта. Личность: workflow publish.yml на теге vX.Y.Z
+IDENTITY='^https://github\.com/24DSO-labs/kubron/\.github/workflows/publish\.yml@refs/tags/v[0-9].*$'
+cosign verify "$IMAGE:$VERSION" \
+  --certificate-identity-regexp "$IDENTITY" \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+cosign verify "$CHART:$VERSION" \
+  --certificate-identity-regexp "$IDENTITY" \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+```
+
+Регулярное выражение сознательно требует тег `refs/tags/v…`: ручные пробные сборки (`0.0.0-dev.<sha>`) подписываются с ветки
+и проверку не пройдут. Подпись сделана cosign 3.x.
+
+Для установки по digest (рекомендуется в production): `helm install … --set image.digest=sha256:…` (значение имеет приоритет
+над `image.tag`).
+
+**Политика admission-контроллера.** Пример для Kyverno: запретить запуск образов Kubron без подписи нашего workflow
+(проверьте поля под версию вашего Kyverno):
+
+```yaml
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: verify-kubron-image
+spec:
+  webhookTimeoutSeconds: 30
+  rules:
+    - name: verify-signature
+      match:
+        any:
+          - resources:
+              kinds: [Pod]
+      verifyImages:
+        - imageReferences:
+            - "ghcr.io/24dso-labs/kubron*"
+          failureAction: Enforce
+          mutateDigest: true
+          attestors:
+            - entries:
+                - keyless:
+                    issuer: https://token.actions.githubusercontent.com
+                    subjectRegExp: '^https://github\.com/24DSO-labs/kubron/\.github/workflows/publish\.yml@refs/tags/v[0-9].*$'
+                    rekor:
+                      url: https://rekor.sigstore.dev
+```
+
+Раз в неделю workflow `scheduled-scan.yml` сканирует последний стабильный образ Trivy и открывает issue с меткой `security`,
+если для HIGH/CRITICAL уже есть исправление. Сторонние зависимости (Go, npm) проверяют `govulncheck`, `npm audit` и
+osv-scanner в CI; исключения сканеров — только в `.trivyignore` и `osv-scanner.toml`, с обоснованием и сроком до 180 дней
+(`scripts/check-ignores.py`).
+
 ## Резервное копирование
 
 Ключ и БД копируются **отдельно друг от друга и хранятся в разных местах**: копия БД без ключа бесполезна для
