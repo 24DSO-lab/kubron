@@ -17,6 +17,15 @@ data:
   KUBRON_METRICS_LISTEN: {{ printf "0.0.0.0:%d" (int .Values.metrics.port) | quote }}
   {{- end }}
   KUBRON_TRUST_PROXY: {{ include "kubron.trustProxy" . | quote }}
+  {{- with (include "kubron.allowedHosts" .) }}
+  KUBRON_ALLOWED_HOSTS: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.kubron.clusterAddrPolicy }}
+  KUBRON_CLUSTER_ADDR_POLICY: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.kubron.clusterAddrAllowCidrs }}
+  KUBRON_CLUSTER_ADDR_ALLOW_CIDRS: {{ join "," . | quote }}
+  {{- end }}
   # Данные в PostgreSQL; каталог данных нужен только как рабочий (внутри emptyDir)
   KUBRON_DATA_DIR: "/home/nonroot/.kubron"
   {{- with .Values.kubron.drainDelay }}

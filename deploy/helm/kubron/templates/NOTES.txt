@@ -23,6 +23,14 @@ Ingress выключен. Для проверки пробросьте порт:
 {{- end }}
 
 {{- if .Values.portForward.baseDomain }}
+{{- $base := .Values.portForward.baseDomain }}
+{{- range .Values.ingress.hosts }}
+{{- if or (eq .host $base) (hasSuffix (printf ".%s" $base) .host) (hasSuffix (printf ".%s" .host) $base) }}
+
+ВНИМАНИЕ: portForward.baseDomain ({{ $base }}) совпадает с хостом Kubron {{ .host }} или вложен в него (или наоборот).
+JS проксированного приложения сможет подменять cookie Kubron. Используйте отдельный регистрируемый домен.
+{{- end }}
+{{- end }}
 
 Port-forward в браузере: потоки открываются на https://{id}.pf.{{ .Values.portForward.baseDomain }}. Нужны DNS-запись
 *.pf.{{ .Values.portForward.baseDomain }} и wildcard-сертификат (ingress.tls){{ if not .Values.ingress.enabled }}, а также маршрут на сервис для этого хоста (ingress выключен){{ end }}.
@@ -54,7 +62,12 @@ Secret помечен helm.sh/resource-policy: keep и переживёт `helm 
 
 Режим in-cluster: токен ServiceAccount «{{ include "kubron.serviceAccountName" . }}» смонтирован в под.
 {{- if .Values.rbac.create }}
-Создан ClusterRole «{{ include "kubron.clusterRoleName" . }}» только на чтение (без secrets и без записи); это заготовка (тикет 3.7).
+{{- if .Values.rbac.existingClusterRole }}
+ServiceAccount привязан к существующей ClusterRole «{{ .Values.rbac.existingClusterRole }}» (rbac.profile=custom).
+{{- else }}
+Создан ClusterRole «{{ include "kubron.clusterRoleName" . }}», профиль «{{ .Values.rbac.profile }}»{{ if eq .Values.rbac.profile "readonly" }}: только чтение без secrets{{ else if eq .Values.rbac.profile "operator" }}: чтение и операции restart/scale/rollback/повтор Job/cordon без secrets и без exec{{ end }}{{ if .Values.rbac.allowSecretsRead }}; чтение secrets включено (rbac.allowSecretsRead){{ end }}.
+{{- end }}
+Токен ServiceAccount общий для всех пользователей Kubron: профиль — потолок прав в кластере (docs/deploy.md, «RBAC режима in-cluster»).
 {{- else }}
 RBAC не создан (rbac.create=false): права ServiceAccount нужно выдать самостоятельно.
 {{- end }}
@@ -63,6 +76,19 @@ RBAC не создан (rbac.create=false): права ServiceAccount нужно
 {{- if .Values.networkPolicy.enabled }}
 
 NetworkPolicy включена: входящий трафик — из {{ if .Values.networkPolicy.ingress.from }}заданных источников (networkPolicy.ingress.from){{ else }}любых источников{{ end }}.
-Egress: DNS, PostgreSQL и API-серверы кластеров (порты 443/6443 по умолчанию). Если БД или кластеры
-на других портах или адресах, задайте networkPolicy.egress.*, иначе подключения будут отклонены.
+Egress: DNS, PostgreSQL и API-серверы кластеров (порты {{ join "/" .Values.networkPolicy.egress.clusterApi.ports }} по умолчанию){{ if .Values.networkPolicy.egress.idp.ports }} и IdP (порты {{ join "/" .Values.networkPolicy.egress.idp.ports }}){{ end }}.
+{{- if and (not .Values.networkPolicy.egress.clusterApi.to) (not .Values.networkPolicy.egress.clusterApi.cidrs) }}
+К API-серверам разрешены любые адреса, кроме {{ join ", " .Values.networkPolicy.egress.clusterApi.except }} (метаданные облака и link-local).
+Рекомендуется сузить: networkPolicy.egress.clusterApi.cidrs (сети ваших кластеров).
+{{- end }}
+Если БД или кластеры на других портах или адресах, задайте networkPolicy.egress.*, иначе подключения будут отклонены.
+{{- end }}
+
+{{- with (include "kubron.allowedHosts" .) }}
+
+Допустимые значения Host (KUBRON_ALLOWED_HOSTS): {{ . }}. Запросы с другим Host сервер не обслуживает.
+{{- else }}
+
+ВНИМАНИЕ: список допустимых Host пуст (ingress выключен, port-forward не настроен). Если доступ идёт через Service или
+LoadBalancer, перечислите адреса в kubron.allowedHosts.
 {{- end }}

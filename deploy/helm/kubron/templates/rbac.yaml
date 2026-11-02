@@ -5,19 +5,52 @@
 {{- if not .Values.serviceAccount.create }}
 {{- fail "rbac.create requires serviceAccount.create=true (the ClusterRoleBinding targets the chart's ServiceAccount)" }}
 {{- end }}
-{{- /* TODO(тикет 3.7): заготовка только на чтение; полный набор прав — вместе с режимом in-cluster */ -}}
+{{- $profile := .Values.rbac.profile }}
+{{- if not (has $profile (list "readonly" "operator" "custom")) }}
+{{- fail (printf "rbac.profile must be readonly, operator or custom, got %q" $profile) }}
+{{- end }}
+{{- if and .Values.rbac.existingClusterRole (ne $profile "custom") }}
+{{- fail "rbac.existingClusterRole requires rbac.profile=custom" }}
+{{- end }}
+{{- if and (eq $profile "custom") (not .Values.rbac.existingClusterRole) (not .Values.rbac.customRules) (not .Values.rbac.extraRules) (not .Values.rbac.allowSecretsRead) }}
+{{- fail "rbac.profile=custom requires rbac.customRules (or rbac.extraRules), or rbac.existingClusterRole" }}
+{{- end }}
+{{- $roleName := default (include "kubron.clusterRoleName" .) .Values.rbac.existingClusterRole }}
+{{- /*
+  Профили (docs/deploy.md, «RBAC режима in-cluster»): токен ServiceAccount общий для всех пользователей Kubron, поэтому
+  профиль — потолок прав. readonly — чтение без secrets; operator — readonly плюс операции права `operate`;
+  custom — только customRules или существующая роль.
+*/ -}}
+{{- if not .Values.rbac.existingClusterRole }}
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: {{ include "kubron.clusterRoleName" . }}
+  name: {{ $roleName }}
   labels:
     {{- include "kubron.labels" . | nindent 4 }}
+    app.kubernetes.io/component: {{ printf "rbac-%s" $profile }}
 rules:
-  {{- toYaml .Values.rbac.rules | nindent 2 }}
+  {{- if eq $profile "custom" }}
+  {{- with .Values.rbac.customRules }}
+  {{- toYaml . | nindent 2 }}
+  {{- end }}
+  {{- else }}
+  {{- toYaml .Values.rbac.readonlyRules | nindent 2 }}
+  {{- if eq $profile "operator" }}
+  {{- toYaml .Values.rbac.operatorRules | nindent 2 }}
+  {{- end }}
+  {{- end }}
+  {{- if .Values.rbac.allowSecretsRead }}
+  - apiGroups: [""]
+    resources:
+      - secrets
+    verbs: [get, list, watch]
+  {{- end }}
   {{- with .Values.rbac.extraRules }}
   {{- toYaml . | nindent 2 }}
   {{- end }}
 ---
+{{- end }}
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
@@ -27,7 +60,7 @@ metadata:
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: {{ include "kubron.clusterRoleName" . }}
+  name: {{ $roleName }}
 subjects:
   - kind: ServiceAccount
     name: {{ include "kubron.serviceAccountName" . }}

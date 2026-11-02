@@ -1,0 +1,9 @@
+# RBAC режима in-cluster, профиль custom с существующей ClusterRole (встроенная view): своей роли чарт не создаёт
+secrets:
+  existingSecret: kubron-secrets
+inCluster:
+  enabled: true
+rbac:
+  create: true
+  profile: custom
+  existingClusterRole: view

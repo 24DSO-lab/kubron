@@ -100,14 +100,64 @@ helm install kubron deploy/helm/kubron -n kubron \
 большие таймауты, иначе соединения рвутся через 60 секунд; готовый набор аннотаций, включая
 привязку по cookie, лежит в `ci/ingress-values.yaml`.
 
+### Домены, допустимые Host и привязка к реплике
+
+- **Допустимые Host.** Чарт задаёт `KUBRON_ALLOWED_HOSTS` сам: это хосты из `ingress.hosts` (при `ingress.enabled`),
+  `*.pf.<portForward.baseDomain>` (при port-forward) и `kubron.allowedHosts`. Сервер обслуживает только запросы с этими
+  значениями заголовка `Host`: так нельзя подменить адрес в ссылках, cookie и кэше прокси. Если доступ идёт без Ingress
+  (через Service или LoadBalancer), перечислите свой адрес в `kubron.allowedHosts`, иначе список останется пустым (чарт
+  предупредит в `NOTES.txt`).
+- **Доверие к прокси.** `KUBRON_TRUST_PROXY=1` чарт включает сам при Ingress с TLS (`kubron.trustProxy` задаёт значение
+  явно). Включайте только когда под достижим лишь через прокси: иначе клиент подделает `X-Forwarded-Proto` и адрес для
+  ограничения попыток входа. Число доверенных прокси — `KUBRON_TRUSTED_PROXY_HOPS` или `KUBRON_TRUSTED_PROXIES`
+  (`kubron.extraEnv`; `docs/http-security.md`).
+- **Привязка по cookie на Ingress** (`nginx.ingress.kubernetes.io/affinity: cookie`, пример в `ci/ingress-values.yaml`)
+  рекомендуется для обоих хостов: основного и `*.pf.<baseDomain>`. Любая реплика обслуживает любой запрос, но терминалы,
+  логи и потоки port-forward живут на реплике, которая их открыла: запрос к чужой реплике получает `409 stream_elsewhere`
+  (или `421` для потока port-forward) и повторяется. Билет port-forward одноразовый в пределах одной реплики, поэтому
+  привязка потока к реплике обязательна, а не оптимизация. Привязка уменьшает число таких повторов.
+
 ### NetworkPolicy
 
-По умолчанию входящий трафик разрешён из namespace `ingress-nginx`, исходящий — DNS, PostgreSQL
-(порт 5432) и API-серверы кластеров (443, 6443). Сузьте `networkPolicy.egress.postgres.to` до
-адреса своей БД. Egress к API-серверам по умолчанию открыт: адреса кластеров добавляют пользователи.
-На уровне приложения адреса проверяются политиками SSRF (см. «Helm: состояние и доступ к сети» и
-«Адрес API-сервера кластера»); при желании сузьте и egress в NetworkPolicy.
-Политика требует CNI с поддержкой NetworkPolicy.
+По умолчанию входящий трафик разрешён из namespace `ingress-nginx`, исходящий — DNS, PostgreSQL (порт 5432),
+API-серверы кластеров и провайдеры OIDC. Политика требует CNI с поддержкой NetworkPolicy.
+
+| Правило egress | По умолчанию | Настройка |
+| --- | --- | --- |
+| DNS (53) | kube-dns в `kube-system` | `networkPolicy.egress.dns.to` |
+| PostgreSQL (5432) | куда угодно: **сузьте** до своей БД | `postgres.cidrs` (список CIDR) или `postgres.to` (готовые правила), `postgres.ports` |
+| API-серверы кластеров (443, 6443) | любые адреса **кроме** `169.254.0.0/16` и `fd00:ec2::254/128`, плюс любые поды кластера | `clusterApi.cidrs` (рекомендуется), `clusterApi.to`, `clusterApi.except`, `clusterApi.ports`, `clusterApi.allowCluster` |
+| IdP для `oidc-password` на нестандартных портах | порт 443 уже входит в правило API-серверов; отдельного правила нет | `idp.ports` (например `[8443]`), `idp.cidrs`, `idp.to` |
+
+**Исключения по умолчанию.** Адреса `169.254.0.0/16` (link-local, в том числе метаданные облака `169.254.169.254`) и
+`fd00:ec2::254/128` (метаданные AWS по IPv6) закрыты всегда, пока вы не заменили правило своим `to`: пользователь Kubron
+не должен суметь направить сервер на metadata-сервис. Это **второй рубеж**: первый — политика адресов приложения
+(`kubron.clusterAddrPolicy`, раздел «Адрес API-сервера кластера»), и он проверяет адрес на каждом соединении, а не
+только в сети. Исключения IPv4 и IPv6 пишутся одним списком, чарт раскладывает их по `0.0.0.0/0` и `::/0`.
+
+**Сузьте до своих сетей.** Лучший вариант — перечислить сети, где живут ваши кластеры и IdP:
+
+```yaml
+networkPolicy:
+  egress:
+    postgres:
+      cidrs: [10.30.0.0/24]
+    clusterApi:
+      cidrs: [10.20.0.0/16, 192.168.50.0/24]
+    idp:
+      ports: [8443]
+      cidrs: [10.40.0.0/24]
+```
+
+Приоритет внутри правила: `to` (готовые правила NetworkPolicy, заменяют всё) > `cidrs` > «любые адреса, кроме `except`».
+Готовый пример — `deploy/helm/kubron/ci/restricted-values.yaml`.
+
+**CNI.** `ipBlock` по спецификации описывает внешние адреса, и часть CNI (например Cilium) не относит к нему адреса
+узлов и подов своего кластера. Поэтому правило API-серверов по умолчанию содержит и `namespaceSelector: {}` (любые поды
+на тех же портах): оно нужно, когда API-сервер или IdP работают подом в этом же кластере. Если API-сервер вашего
+кластера — адрес узла управляющего слоя (режим `in-cluster`) и CNI его не пропускает, добавьте правило своей CNI через
+`networkPolicy.egress.extra` или задайте `clusterApi.to`. Какие именно правила нужны, зависит от CNI; проверьте
+подключение к кластеру после установки.
 
 ### Метрики
 
@@ -122,11 +172,40 @@ helm install kubron deploy/helm/kubron -n kubron \
 `request_id` (заголовок `X-Request-Id`). `kubron.auditStdout=true` дублирует аудит JSON-строками в stdout
 для внешнего сборщика. Подробности и гарантии по секретам — `docs/logging.md`.
 
-### Режим in-cluster и RBAC
+### RBAC режима in-cluster
 
-`inCluster.enabled=true` монтирует токен ServiceAccount (по умолчанию он не монтируется).
-`rbac.create=true` добавляет ClusterRole только на чтение без доступа к `secrets`. Это заготовка:
-полный набор прав появится вместе с тикетом 3.7.
+`inCluster.enabled=true` монтирует токен ServiceAccount (по умолчанию он не монтируется): Kubron ходит в кластер, где
+запущен сам, под этим ServiceAccount. `rbac.create=true` создаёт ClusterRole и привязывает её к ServiceAccount.
+
+**Профиль — потолок прав для всех пользователей.** Токен один на всех: подмены личности нет (ADR-0006), а права людей
+ограничивают только роли и команды самого Kubron. Поэтому RBAC ServiceAccount определяет максимум, который сможет сделать
+в этом кластере любой пользователь, включая администратора Kubron: если профиль не разрешает запись, запись не получится
+ни у кого. Выбирайте минимально достаточный профиль (`rbac.profile`):
+
+| Профиль | Что разрешено ServiceAccount | Что работает в Kubron |
+| --- | --- | --- |
+| `readonly` (по умолчанию) | `get/list/watch` по группам API, которые читает Kubron (workload'ы, сеть, хранилище, RBAC-объекты, CRD, метрики), **без `secrets`** | просмотр (`read`) |
+| `operator` | `readonly` плюс: `patch/update` Deployment, StatefulSet, DaemonSet (restart, rollback), `scale` Deployment и StatefulSet, `create/delete` Job (повтор), `patch` узлов (cordon) | просмотр и безопасные операции (`operate`): restart, scale, rollback, повтор Job, cordon |
+| `custom` | только `rbac.customRules` либо существующая ClusterRole (`rbac.existingClusterRole`) | то, что вы выдали |
+
+Правила профилей выведены из вызовов Kubernetes API в коде (`internal/k8s`) для прав `read` и `operate`; шаблоны лежат в
+`values.yaml` (`rbac.readonlyRules`, `rbac.operatorRules`).
+
+**Что профили не покрывают намеренно.** Терминал пода (`pods/exec`, `pods/attach`), port-forward, оболочка узла (создаёт
+привилегированный под), drain (`pods/eviction`), правка и удаление произвольных объектов, Helm (релизы хранятся в Secret'ах
+и применяют произвольные манифесты) требуют широких прав, и выдавать их по умолчанию нельзя. Включайте их осознанно через
+`custom`. Права Kubron `exec`, `nodeshell`, `portforward`, `write` при этом всё равно можно отключить для всех:
+`kubron.disableExec`, `kubron.disableNodeShell`, `kubron.disablePortForward`.
+
+- **Значения Secret.** По умолчанию ServiceAccount не читает `secrets`, поэтому значения Secret недоступны никому.
+  `rbac.allowSecretsRead=true` добавляет `get/list/watch` на `secrets` кластера для любого профиля: после этого их увидят
+  все, у кого в Kubron есть право `secrets.read` (роли `operator` и `admin`).
+- **Пользовательские ресурсы** (CRD, Argo CD `Application` и др.) в профили не входят: добавьте нужные группы в
+  `rbac.extraRules`.
+- **Существующая роль.** `rbac.profile=custom` и `rbac.existingClusterRole=view` привязывают ServiceAccount к встроенной
+  роли `view` без собственной ClusterRole. Встроенная `view` не включает `secrets`, а `edit` и `admin` включают и дают запись:
+  привязывайте их только когда это действительно нужно.
+- **Смена профиля** применяется сразу при `helm upgrade`; перезапуск подов не нужен, права проверяет API-сервер.
 
 ## Несколько реплик (HA)
 
@@ -158,8 +237,9 @@ helm install kubron deploy/helm/kubron -n kubron \
 открывается, каждый поток получает свой origin `https://{id}.pf.<base-domain>`. Что нужно:
 
 - `KUBRON_PF_BASE_DOMAIN` — базовый домен (например `kubron.example.com`; поток —
-  `{id}.pf.kubron.example.com`). Надёжнее всего отдельный регистрируемый домен; вложенный поддомен
-  допустим — cookie сессии защищена префиксом `__Host-`;
+  `{id}.pf.kubron.example.com`). **Используйте отдельный регистрируемый домен** (не поддомен домена Kubron): JS проксированного
+  приложения работает на `*.pf.<base-domain>` и на вложенном поддомене может подменить (cookie tossing) cookie родительского
+  домена. Префикс `__Host-` у cookie сессии защищает при HTTPS, но отдельный домен убирает класс атак целиком;
 - DNS-запись `*.pf.<base-domain>`, wildcard-сертификат и правило Ingress для этого хоста;
 - HTTPS: режим `proxy` требует TLS (`KUBRON_PF_SCHEME=http` допускается только на loopback).
 
@@ -232,7 +312,7 @@ Ingress привязку по cookie (`nginx.ingress.kubernetes.io/affinity: coo
 
 **Внимание при обновлении.** По умолчанию действует `strict`: репозиторий чартов на внутреннем адресе
 (`10.x`, `192.168.x`) перестанет открываться, пока его сеть не добавлена в `KUBRON_HELM_ALLOW_CIDRS`.
-Задайте переменные через `server.extraEnv` значений чарта (список в формате `container.env`).
+Задайте переменные через `kubron.extraEnv` значений чарта (список в формате `container.env`).
 
 ### Адрес API-сервера кластера
 
