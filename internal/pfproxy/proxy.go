@@ -71,6 +71,9 @@ type Service struct {
 	Registry *Registry
 	signer   *Signer
 	secure   bool
+	// zone — суффикс зоны потоков без порта: «.pf.<домен>». Порт в Host не участвует в сопоставлении, иначе запрос
+	// «id.pf.<домен>:8443» не распознавался бы как поток и попадал бы в основное приложение.
+	zone string
 
 	mu      sync.Mutex
 	streams map[string]*streamProxy
@@ -108,6 +111,7 @@ func NewService(cfg Config, secret []byte) (*Service, error) {
 		Registry: NewRegistry(orDefault(cfg.IdleTimeout, DefaultIdleTimeout), orDefault(cfg.MaxDuration, DefaultMaxDuration)),
 		signer:   NewSigner(secret),
 		secure:   cfg.Scheme == "https",
+		zone:     "." + hostLabel + "." + stripPort(cfg.BaseDomain),
 		streams:  map[string]*streamProxy{},
 	}
 	s.Registry.OnRemove(s.release)
@@ -133,21 +137,31 @@ func (s *Service) EntryURL(owner, id string) (string, error) {
 	return fmt.Sprintf("%s://%s.%s.%s%s?%s", s.cfg.Scheme, id, hostLabel, s.cfg.BaseDomain, EnterPath, q.Encode()), nil
 }
 
-// MatchHost возвращает идентификатор потока из заголовка Host ({id}.pf.<BaseDomain>).
+// stripPort возвращает имя хоста в нижнем регистре без порта и без завершающей точки (FQDN); IPv6 — без скобок.
+func stripPort(host string) string {
+	h := strings.ToLower(strings.TrimSpace(host))
+	if hh, _, err := net.SplitHostPort(h); err == nil {
+		h = hh
+	} else if strings.HasPrefix(h, "[") && strings.HasSuffix(h, "]") {
+		h = h[1 : len(h)-1]
+	}
+	return strings.TrimSuffix(h, ".")
+}
+
+// MatchHost возвращает идентификатор потока из заголовка Host ({id}.pf.<BaseDomain>). Порт в Host игнорируется.
 func (s *Service) MatchHost(host string) (string, bool) {
-	suffix := "." + hostLabel + "." + s.cfg.BaseDomain
-	h := strings.ToLower(host)
-	if !strings.HasSuffix(h, suffix) {
+	h := stripPort(host)
+	if !strings.HasSuffix(h, s.zone) {
 		return "", false
 	}
-	id := strings.TrimSuffix(h, suffix)
+	id := strings.TrimSuffix(h, s.zone)
 	return id, ValidID(id)
 }
 
-// IsPortForwardHost сообщает, что хост относится к зоне потоков (даже с недопустимым идентификатором):
-// такие запросы никогда не должны попадать в обработчик основного приложения.
+// IsPortForwardHost сообщает, что хост относится к зоне потоков (даже с недопустимым идентификатором и с любым
+// портом): такие запросы никогда не должны попадать в обработчик основного приложения.
 func (s *Service) IsPortForwardHost(host string) bool {
-	return strings.HasSuffix(strings.ToLower(host), "."+hostLabel+"."+s.cfg.BaseDomain)
+	return strings.HasSuffix(stripPort(host), s.zone)
 }
 
 // streamProxy — транспорт и reverse proxy одного потока.

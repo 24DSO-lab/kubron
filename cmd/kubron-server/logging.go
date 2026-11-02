@@ -46,6 +46,7 @@ func registerSecrets(cfg server.Config) {
 	for _, k := range cfg.PreviousSecretKeys {
 		logging.AddKeySecret(k)
 	}
+	logging.AddSecret(cfg.SetupToken)
 	logging.AddURLSecrets(cfg.DatabaseURL)
 	logging.AddURLSecrets(cfg.DBListenURL)
 }

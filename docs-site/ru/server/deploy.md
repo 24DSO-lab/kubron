@@ -37,11 +37,49 @@ helm install kubron oci://ghcr.io/24dso-labs/charts/kubron \
 
 Перед установкой изучите `values.yaml` и `values.schema.json`. Настройте TLS ingress, trusted proxy, network policy, requests/limits и резервное копирование PostgreSQL.
 
+## Первый администратор
+
+На пустой базе войти некому, поэтому Kubron должен создать первого администратора. Настройка по сети защищена
+токеном; выберите один из двух способов:
+
+- **Токен настройки.** Добавьте `KUBRON_SETUP_TOKEN` (не короче 16 символов) в secret и задайте
+  `--set secrets.keys.setupToken=KUBRON_SETUP_TOKEN`. Экран настройки запросит токен; он сравнивается за постоянное
+  время, неверные попытки ограничиваются по адресу.
+- **Командная строка.** Без токена настройка по сети отключена. Выполните
+  `kubron-server create-admin --username <имя>` рядом с сервером (команда работает с БД напрямую); пароль берётся из
+  `KUBRON_ADMIN_PASSWORD` или stdin, аргументом он не передаётся.
+
+Когда администратор создан, токен не нужен; сервер для одного пользователя на loopback его не использует.
+
 ## Самостоятельная сборка образа
 
 ```sh
 docker build -t kubron:dev .
 ```
+
+## Проверка образа и чарта
+
+Образы релизов и OCI-чарт подписаны cosign (keyless) и имеют аттестации происхождения сборки и SBOM. Проверьте перед установкой:
+
+```sh
+gh attestation verify oci://ghcr.io/24dso-labs/kubron:<версия> --repo 24DSO-labs/kubron
+cosign verify ghcr.io/24dso-labs/kubron:<версия> \
+  --certificate-identity-regexp '^https://github.com/24DSO-labs/kubron/\.github/workflows/publish\.yml@refs/tags/v' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+```
+
+Те же команды подходят для `oci://ghcr.io/24dso-labs/charts/kubron`. Подробности: [docs/deploy.md](https://github.com/24DSO-labs/kubron/blob/master/docs/deploy.md).
+
+## Сеть и RBAC
+
+- **NetworkPolicy.** Egress к API-серверам открыт, кроме link-local и адресов метаданных облака (`169.254.0.0/16`, `fd00:ec2::254/128`). Сузьте egress к PostgreSQL, API-серверам и IdP до своих сетей через `networkPolicy.egress.*.cidrs`.
+- **RBAC in-cluster.** `rbac.profile`: `readonly` (по умолчанию, без Secret), `operator` (restart, scale, rollback, повтор Job, cordon) или `custom`. ServiceAccount общий для всех пользователей, поэтому профиль — потолок прав любого пользователя в этом кластере.
+
+## Домены, Host и TLS
+
+- Чарт задаёт `KUBRON_ALLOWED_HOSTS` из `ingress.hosts` и `*.pf.<portForward.baseDomain>`; остальные адреса добавьте в `kubron.allowedHosts`.
+- Задавайте `portForward.baseDomain` на **отдельном регистрируемом домене**, а не поддомене хоста Kubron: иначе JS проксированного приложения сможет подменять cookie Kubron. Нужны wildcard DNS и wildcard-сертификат для `*.pf.<baseDomain>`.
+- `KUBRON_TRUST_PROXY` включайте, только если под доступен лишь через ваш прокси. На Ingress используйте sticky-сессии (cookie affinity): терминалы, логи и потоки port-forward живут на открывшей их реплике, а билет port-forward одноразовый в пределах реплики.
 
 ## Высокая доступность
 

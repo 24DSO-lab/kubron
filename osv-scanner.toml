@@ -1,0 +1,7 @@
+# Исключения osv-scanner (CI, job `deps-audit`). Те же правила, что и у .trivyignore (scripts/check-ignores.py):
+# у каждой записи обязательны `ignoreUntil` (не дальше 180 дней) и `reason` с обоснованием.
+#
+# [[IgnoredVulns]]
+# id = "GHSA-xxxx-xxxx-xxxx"
+# ignoreUntil = 2027-01-31
+# reason = "Уязвимый код не вызывается: ...; исправление: ...; пересмотр: ..."

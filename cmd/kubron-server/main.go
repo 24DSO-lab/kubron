@@ -93,8 +93,8 @@ func main() {
 	if err := setupHelmNetPolicy(os.Getenv); err != nil {
 		fatal("network policy", err)
 	}
-	// Адрес API-сервера кластера из kubeconfig пользователя; по умолчанию выключено (см. helmnet.go).
-	if err := setupClusterAddrPolicy(os.Getenv); err != nil {
+	// Адрес API-сервера кластера и IdP из kubeconfig пользователя; в сервисном режиме по умолчанию permissive (см. helmnet.go).
+	if err := setupClusterAddrPolicy(os.Getenv, cfg.ServiceMode()); err != nil {
 		fatal("network policy", err)
 	}
 
@@ -158,6 +158,7 @@ func main() {
 	guard := &server.Guard{Sessions: sessions, TrustProxy: cfg.TrustProxy, Hub: hub, Terminals: terminals,
 		TrustedProxyHops: cfg.TrustedProxyHops, TrustedProxies: cfg.TrustedProxies,
 		AnonLimiter: server.NewRateLimiter(server.DefaultAnonRate, server.DefaultAnonBurst), Lifecycle: lifecycle}
+	guard.Setup = setupGate(cfg, core)
 	app.SetResourceLimits(core, k8s.Limits{Terminals: cfg.MaxTerminals, LogStreams: cfg.MaxLogStreams, PortForwards: cfg.MaxPortForwards,
 		TerminalMaxDuration: cfg.TerminalMaxDuration, TerminalIdleTimeout: cfg.TerminalIdleTimeout})
 	app.SetInteractivePolicy(core, app.InteractivePolicy{DisableExec: cfg.DisableExec, DisableNodeShell: cfg.DisableNodeShell})
@@ -216,6 +217,12 @@ func main() {
 		// владелец проверяется на каждом запросе.
 		handler = server.WithPortForwardHosts(handler, pf.Handler(), pf.IsPortForwardHost)
 	}
+	// Host вне KUBRON_ALLOWED_HOSTS отклоняется до маршрутизации; потоки *.pf.<домен> разрешены, когда port-forward включён.
+	var pfHost func(string) bool
+	if pf != nil {
+		pfHost = pf.IsPortForwardHost
+	}
+	handler = server.WithAllowedHosts(handler, cfg.AllowedHosts, pfHost)
 	handler = server.WithRequestID(handler) // снаружи всех: каждая запись журнала запроса несёт request_id
 	// SIGTERM: draining (новые соединения не принимаются, /readyz смотрит на lifecycle.Draining()),
 	// пауза для балансировщика, затем закрытие WebSocket кадром 1012 и остановка HTTP-сервера.

@@ -66,6 +66,72 @@
             "minimum": 1,
             "maximum": 65535
           }
+        },
+        "cidrs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "egressApi": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "to": {
+          "$ref": "#/definitions/k8sObjectList"
+        },
+        "cidrs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "ports": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 65535
+          }
+        },
+        "except": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "allowCluster": {
+          "type": "boolean"
+        }
+      }
+    },
+    "egressIdp": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ports": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 65535
+          }
+        },
+        "to": {
+          "$ref": "#/definitions/k8sObjectList"
+        },
+        "cidrs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
         }
       }
     }
@@ -139,6 +205,9 @@
               "type": "string"
             },
             "dbListenUrl": {
+              "type": "string"
+            },
+            "setupToken": {
               "type": "string"
             }
           }
@@ -244,6 +313,34 @@
         },
         "auditStdout": {
           "type": "boolean"
+        },
+        "allowedHosts": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[^\\s,]+$"
+          },
+          "description": "Allowed Host header values; the chart adds ingress hosts and *.pf.<baseDomain>."
+        },
+        "clusterAddrPolicy": {
+          "type": "string",
+          "enum": [
+            "",
+            "off",
+            "permissive",
+            "strict"
+          ],
+          "description": "KUBRON_CLUSTER_ADDR_POLICY; empty keeps the server default (permissive in the service mode)."
+        },
+        "clusterAddrAllowCidrs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[^\\s,]+$"
+          },
+          "description": "KUBRON_CLUSTER_ADDR_ALLOW_CIDRS exceptions."
         }
       }
     },
@@ -380,11 +477,31 @@
         "create": {
           "type": "boolean"
         },
-        "rules": {
-          "$ref": "#/definitions/k8sObjectList"
-        },
         "extraRules": {
           "$ref": "#/definitions/k8sObjectList"
+        },
+        "profile": {
+          "type": "string",
+          "enum": [
+            "readonly",
+            "operator",
+            "custom"
+          ]
+        },
+        "allowSecretsRead": {
+          "type": "boolean"
+        },
+        "readonlyRules": {
+          "$ref": "#/definitions/k8sObjectList"
+        },
+        "operatorRules": {
+          "$ref": "#/definitions/k8sObjectList"
+        },
+        "customRules": {
+          "$ref": "#/definitions/k8sObjectList"
+        },
+        "existingClusterRole": {
+          "type": "string"
         }
       }
     },
@@ -524,10 +641,13 @@
               "$ref": "#/definitions/egressTarget"
             },
             "clusterApi": {
-              "$ref": "#/definitions/egressTarget"
+              "$ref": "#/definitions/egressApi"
             },
             "extra": {
               "$ref": "#/definitions/k8sObjectList"
+            },
+            "idp": {
+              "$ref": "#/definitions/egressIdp"
             }
           }
         },

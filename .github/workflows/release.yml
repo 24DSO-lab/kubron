@@ -129,10 +129,25 @@ jobs:
           path: dist/*
           if-no-files-found: error
 
+  # Образ и чарт сервера (publish.yml): публикация в ghcr.io, подпись cosign, аттестации и SBOM. Идёт после CI, как и
+  # десктопная сборка; SBOM возвращаются артефактом kubron-server-sbom и попадают в тот же неизменяемый релиз.
+  server:
+    name: Server image and chart
+    needs: verify
+    if: ${{ !cancelled() && startsWith(github.ref, 'refs/tags/v') && (needs.verify.result == 'success' || needs.verify.result == 'skipped') }}
+    uses: ./.github/workflows/publish.yml
+    with:
+      push: true
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+
   release:
     name: GitHub Release
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: build
+    needs: [build, server]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -150,15 +165,43 @@ jobs:
           pattern: kubron-*
           merge-multiple: true
 
+      # SBOM десктопных артефактов: по манифестам зависимостей (go.mod, pkg/ext/go.mod, package-lock.json).
+      # Отдельный каталог только с манифестами, чтобы в SBOM не попали документация, примеры и инструменты репозитория.
+      - name: Collect dependency manifests
+        run: |
+          mkdir -p sbom-src/frontend sbom-src/pkg/ext
+          cp go.mod go.sum sbom-src/
+          cp pkg/ext/go.mod sbom-src/pkg/ext/
+          cp frontend/package.json frontend/package-lock.json sbom-src/frontend/
+
+      - name: SBOM of the desktop build
+        uses: anchore/sbom-action@fffec3d851af758d56fee099cf3fbf8aa8779843 # v0.24.3
+        with:
+          path: sbom-src
+          format: cyclonedx-json
+          output-file: dist/kubron-sbom_${{ github.ref_name }}_desktop.cdx.json
+          upload-artifact: false
+          upload-release-assets: false
+
+      # kubron-sbom_* сервера (образ, чарт) уже в dist: артефакт kubron-server-sbom скачан вместе с остальными
       - name: Checksums
         working-directory: dist
-        run: sha256sum Kubron_* kubron_*.deb > SHA256SUMS.txt
+        run: sha256sum Kubron_* kubron_*.deb kubron-sbom_* > SHA256SUMS.txt
 
       - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4
         with:
           subject-path: |
             dist/Kubron_*
             dist/kubron_*.deb
+
+      # Состав десктопных файлов: один SBOM по манифестам на все артефакты (по подписи можно сопоставить файл и SBOM)
+      - name: Attest the desktop SBOM
+        uses: actions/attest-sbom@c604332985a26aa8cf1bdc465b92731239ec6b9e # v4.1.0
+        with:
+          subject-path: |
+            dist/Kubron_*
+            dist/kubron_*.deb
+          sbom-path: dist/kubron-sbom_${{ github.ref_name }}_desktop.cdx.json
 
       # Описание релиза берётся из CHANGELOG.md (раздел версии; для rc-тегов без раздела: [Unreleased])
       - name: Release notes

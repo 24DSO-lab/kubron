@@ -1,0 +1,8 @@
+# RBAC режима in-cluster, профиль operator: readonly плюс операции права operate (restart, scale, retry Job, cordon)
+secrets:
+  existingSecret: kubron-secrets
+inCluster:
+  enabled: true
+rbac:
+  create: true
+  profile: operator

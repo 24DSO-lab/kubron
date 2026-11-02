@@ -239,8 +239,13 @@ func (p *Policy) logger() *slog.Logger {
 // deny пишет причину в лог (только адрес и причина: ни URL, ни учётных данных) и возвращает ошибку,
 // неотличимую от отказа в соединении.
 func (p *Policy) deny(stage string, a netip.Addr, r Reason) error {
-	p.logger().Warn("outbound connection blocked by network policy",
-		"policy", p.Name, "profile", p.Profile.String(), "stage", stage, "reason", string(r), "ip", a.WithZone("").String())
+	// CheckURL is a preflight validation, not an attempted outbound connection. Logging every
+	// rejected URL as a warning is noisy (and especially misleading for the default service policy).
+	// Keep warnings for actual dial attempts and redirect-time enforcement.
+	if stage != "url" {
+		p.logger().Warn("outbound connection blocked by network policy",
+			"policy", p.Name, "profile", p.Profile.String(), "stage", stage, "reason", string(r), "ip", a.WithZone("").String())
+	}
 	return blockedError{reason: r}
 }
 

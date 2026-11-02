@@ -13,6 +13,8 @@ const B = process.env.E2E_HA_B_URL ?? 'http://127.0.0.1:8082'
 const PASS = 'e2e-password-1'
 const TMP = 'e2e-temp-pass-1'
 const JSON_HEADERS = { 'Content-Type': 'application/json' }
+/** Токен первичной настройки сервисного режима (KUBRON_SETUP_TOKEN сервера, см. ci.yml) */
+const SETUP_TOKEN = process.env.E2E_SETUP_TOKEN ?? ''
 
 interface Client { ctx: BrowserContext; pageA: Page; pageB: Page; csrf: string }
 
@@ -65,7 +67,7 @@ test.beforeAll(async ({ browser }) => {
 test.afterAll(async () => { await admin?.ctx.close() })
 
 test('вход на реплике A, запрос на реплике B', async () => {
-  const setup = await admin.ctx.request.post(`${A}/api/rpc/SetupAdmin`, { data: ['ha-admin', PASS], headers: JSON_HEADERS })
+  const setup = await admin.ctx.request.post(`${A}/api/rpc/SetupAdmin`, { data: ['ha-admin', PASS], headers: { ...JSON_HEADERS, 'X-Kubron-Setup-Token': SETUP_TOKEN } })
   if (setup.status() === 200) admin.csrf = setup.headers()['x-csrf-token']
   else expect((await login(admin, A, 'ha-admin', PASS)).status(), 'повторный запуск: администратор уже есть').toBe(200)
 

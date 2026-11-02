@@ -12,6 +12,7 @@ Kubron Server настраивается переменными окружени
 | `KUBRON_REPLICA_ID` | Необязательный уникальный идентификатор реплики |
 | `KUBRON_DRAIN_DELAY` | Пауза при graceful shutdown для удаления реплики из балансировщика |
 | `KUBRON_METRICS_LISTEN` | Необязательный отдельный listener Prometheus; по умолчанию выключен |
+| `KUBRON_ALLOWED_HOSTS` | Список допустимых значений `Host` через запятую (имя или IP, порт необязателен, IPv6 в скобках); остальные получают `421`. Пусто — проверка выключена; `*.pf.<домен>` разрешается автоматически при включённом port-forward |
 | `KUBRON_PF_BASE_DOMAIN` | Wildcard-домен, необходимый для port-forward в серверном режиме |
 | `KUBRON_DISABLE_EXEC` | Отключить pod exec и node shell |
 | `KUBRON_DISABLE_NODE_SHELL` | Отключить node shell |

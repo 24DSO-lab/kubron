@@ -345,6 +345,45 @@ jobs:
           go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
           govulncheck -tags $GO_TAGS ./...
 
+  # Зависимости. В отличие от govulncheck блокирует: npm audit по runtime-зависимостям (без dev) и osv-scanner по
+  # go.mod и lock-файлам. Исключения только в osv-scanner.toml с обоснованием и сроком (scripts/check-ignores.py).
+  deps-audit:
+    name: Dependencies (npm audit, osv-scanner)
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 22
+
+      # Срок и обоснование каждого исключения (.trivyignore, osv-scanner.toml)
+      - run: python3 scripts/check-ignores.py
+
+      # --omit=dev: в образ и в десктоп попадает только собранный фронтенд, dev-зависимости сборки не поставляются
+      - name: npm audit (frontend)
+        run: npm audit --omit=dev --audit-level=high
+        working-directory: frontend
+
+      - name: npm audit (docs-site)
+        run: npm audit --omit=dev --audit-level=high
+        working-directory: docs-site
+
+      - name: osv-scanner
+        uses: google/osv-scanner-action/osv-scanner-action@6ad84ce1ef2d4124ba333b221894c133c4a970ea # v2.7.0
+        with:
+          scan-args: |-
+            --config=osv-scanner.toml
+            --recursive
+            ./
+
   lint:
     name: Go (golangci-lint)
     needs: changes
@@ -617,6 +656,9 @@ jobs:
     if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && needs.build-web.result == 'success' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    env:
+      # Сервисный режим (БД): первичная настройка по сети требует токен (internal/server/setup.go)
+      E2E_SETUP_TOKEN: e2e-setup-token-0123456789
     services:
       postgres:
         image: postgres:16
@@ -661,7 +703,11 @@ jobs:
       - name: Start kubron-server on PostgreSQL
         run: |
           export KUBRON_DATABASE_URL="postgres://postgres:postgres@127.0.0.1:5432/kubron_e2e?sslmode=disable"
+          # Сервисный режим: политика адресов включена по умолчанию (permissive), а API-сервер kind слушает 127.0.0.1.
+          # Исключение открывает loopback, но не метаданные облака (ADR-0015, дополнение).
+          export KUBRON_CLUSTER_ADDR_ALLOW_CIDRS="127.0.0.0/8"
           export KUBRON_SECRET_KEY="ci1:$(openssl rand -base64 32)"
+          export KUBRON_SETUP_TOKEN="$E2E_SETUP_TOKEN"
           ./kubron-server --listen 127.0.0.1:8081 > "$RUNNER_TEMP/server-pg.log" 2>&1 &
           for i in $(seq 1 30); do curl -fs http://127.0.0.1:8081/healthz && exit 0; sleep 1; done
           cat "$RUNNER_TEMP/server-pg.log"; exit 1
@@ -697,6 +743,9 @@ jobs:
     if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && needs.build-web.result == 'success' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    env:
+      # Сервисный режим (БД): первичная настройка по сети требует токен (internal/server/setup.go)
+      E2E_SETUP_TOKEN: e2e-setup-token-0123456789
     services:
       postgres:
         image: postgres:16
@@ -748,7 +797,11 @@ jobs:
       - name: Start two kubron-server replicas
         run: |
           export KUBRON_DATABASE_URL="postgres://postgres:postgres@127.0.0.1:5432/kubron_ha?sslmode=disable"
+          # Сервисный режим: политика адресов включена по умолчанию (permissive), а API-сервер kind слушает 127.0.0.1.
+          # Исключение открывает loopback, но не метаданные облака (ADR-0015, дополнение).
+          export KUBRON_CLUSTER_ADDR_ALLOW_CIDRS="127.0.0.0/8"
           export KUBRON_SECRET_KEY="ci1:$(openssl rand -base64 32)"
+          export KUBRON_SETUP_TOKEN="$E2E_SETUP_TOKEN"
           export KUBRON_DRAIN_DELAY=0s
           KUBRON_REPLICA_ID=ha-a KUBRON_DATA_DIR="$RUNNER_TEMP/ha-a" ./kubron-server --listen 127.0.0.1:8081 > "$RUNNER_TEMP/server-ha-a.log" 2>&1 &
           echo $! > "$RUNNER_TEMP/ha-a.pid"
