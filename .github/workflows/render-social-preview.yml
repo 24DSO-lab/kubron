@@ -1,6 +1,11 @@
 name: Render social preview
 
 on:
+  push:
+    branches: [docs/social-preview-desktop-web]
+    paths:
+      - "docs/images/social-preview.svg"
+      - ".github/workflows/render-social-preview.yml"
   pull_request:
     branches: [refactor]
     paths:
@@ -16,8 +21,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.ref }}
-          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
+          repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Install SVG renderer
         run: sudo apt-get update && sudo apt-get install -y librsvg2-bin
