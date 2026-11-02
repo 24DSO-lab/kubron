@@ -617,6 +617,9 @@ jobs:
     if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && needs.build-web.result == 'success' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    env:
+      # Сервисный режим (БД): первичная настройка по сети требует токен (internal/server/setup.go)
+      E2E_SETUP_TOKEN: e2e-setup-token-0123456789
     services:
       postgres:
         image: postgres:16
@@ -662,6 +665,7 @@ jobs:
         run: |
           export KUBRON_DATABASE_URL="postgres://postgres:postgres@127.0.0.1:5432/kubron_e2e?sslmode=disable"
           export KUBRON_SECRET_KEY="ci1:$(openssl rand -base64 32)"
+          export KUBRON_SETUP_TOKEN="$E2E_SETUP_TOKEN"
           ./kubron-server --listen 127.0.0.1:8081 > "$RUNNER_TEMP/server-pg.log" 2>&1 &
           for i in $(seq 1 30); do curl -fs http://127.0.0.1:8081/healthz && exit 0; sleep 1; done
           cat "$RUNNER_TEMP/server-pg.log"; exit 1
@@ -697,6 +701,9 @@ jobs:
     if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && needs.build-web.result == 'success' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    env:
+      # Сервисный режим (БД): первичная настройка по сети требует токен (internal/server/setup.go)
+      E2E_SETUP_TOKEN: e2e-setup-token-0123456789
     services:
       postgres:
         image: postgres:16
@@ -749,6 +756,7 @@ jobs:
         run: |
           export KUBRON_DATABASE_URL="postgres://postgres:postgres@127.0.0.1:5432/kubron_ha?sslmode=disable"
           export KUBRON_SECRET_KEY="ci1:$(openssl rand -base64 32)"
+          export KUBRON_SETUP_TOKEN="$E2E_SETUP_TOKEN"
           export KUBRON_DRAIN_DELAY=0s
           KUBRON_REPLICA_ID=ha-a KUBRON_DATA_DIR="$RUNNER_TEMP/ha-a" ./kubron-server --listen 127.0.0.1:8081 > "$RUNNER_TEMP/server-ha-a.log" 2>&1 &
           echo $! > "$RUNNER_TEMP/ha-a.pid"

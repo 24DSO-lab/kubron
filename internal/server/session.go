@@ -670,6 +670,8 @@ type Guard struct {
 	TrustedProxies []netip.Prefix
 	// AnonLimiter — ограничение частоты запросов без сессии по адресу клиента; nil — без ограничения.
 	AnonLimiter *RateLimiter
+	// Setup — защита первичной настройки токеном (сервисный режим, setup.go); nil — токен не нужен.
+	Setup *SetupGate
 	// Hub — WebSocket-хаб событий; nil отключает /api/ws.
 	Hub *Hub
 	// Terminals — реестр веб-терминалов; nil отключает /api/terminal/{id}.

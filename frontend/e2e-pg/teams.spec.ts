@@ -16,6 +16,8 @@ test.describe.configure({ mode: 'serial' })
 const PASS = 'e2e-password-1'
 const TMP = 'e2e-temp-pass-1'
 const JSON_HEADERS = { 'Content-Type': 'application/json' }
+/** Токен первичной настройки сервисного режима (KUBRON_SETUP_TOKEN сервера, см. ci.yml) */
+const SETUP_TOKEN = process.env.E2E_SETUP_TOKEN ?? ''
 const KUBECONFIG_FILE = process.env.E2E_KUBECONFIG
 const HAS_KIND = !!KUBECONFIG_FILE
 
@@ -90,8 +92,20 @@ test.afterAll(async () => {
   for (const c of [admin, alice, bob]) await c?.ctx.close()
 })
 
+test('первичная настройка по сети без токена отклоняется', async () => {
+  const st = await admin.ctx.request.post('/api/rpc/AuthStatus', { data: [], headers: JSON_HEADERS })
+  const status = (await st.json()).result
+  test.skip(!status.needsSetup, 'повторный запуск: администратор уже создан')
+  expect(status.setupTokenRequired).toBe(true)
+  for (const headers of [JSON_HEADERS, { ...JSON_HEADERS, 'X-Kubron-Setup-Token': 'wrong-token-0123456789' }]) {
+    const res = await admin.ctx.request.post('/api/rpc/SetupAdmin', { data: ['intruder', PASS], headers })
+    expect(res.status()).toBe(403)
+    expect((await res.json()).error.code).toBe('setup_token_invalid')
+  }
+})
+
 test('подготовка: администратор организации, две команды, два администратора команд', async () => {
-  const setup = await admin.ctx.request.post('/api/rpc/SetupAdmin', { data: ['pg-admin', PASS], headers: JSON_HEADERS })
+  const setup = await admin.ctx.request.post('/api/rpc/SetupAdmin', { data: ['pg-admin', PASS], headers: { ...JSON_HEADERS, 'X-Kubron-Setup-Token': SETUP_TOKEN } })
   if (setup.status() === 200) admin.csrf = setup.headers()['x-csrf-token']
   else expect(await signIn(admin, 'pg-admin', [PASS]), 'первый запуск или вход под созданным администратором').toBe(true)
 

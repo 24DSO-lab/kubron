@@ -556,5 +556,8 @@
   "theArgoCdAddressIsLongerThan": "the Argo CD address is longer than {p0} characters",
   "theArgoCdAddressMustBeAn": "the Argo CD address must be an http or https URL without credentials, query or fragment",
   "unknownLogLevelExpectedDebugInfo": "unknown log level {p0} (expected debug, info, warn or error)",
-  "storedWithEncryptionKeyCannotBeRead": "{p0} stored with encryption key {p1} cannot be read with the configured keys: {p2}"
+  "storedWithEncryptionKeyCannotBeRead": "{p0} stored with encryption key {p1} cannot be read with the configured keys: {p2}",
+  "initialSetupOverTheNetworkIs": "initial setup over the network is disabled: set KUBRON_SETUP_TOKEN or run kubron-server create-admin",
+  "theSetupTokenIsMissingOr": "the setup token is missing or invalid",
+  "theSetupTokenIsTooShort": "the setup token is too short: use at least {p0} characters (KUBRON_SETUP_TOKEN)"
 }

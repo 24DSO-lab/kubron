@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { computed, readonly, ref } from 'vue'
-import { callApp, onSessionLost } from '../resources/wails'
+import { callApp, onSessionLost, setSetupToken } from '../resources/wails'
 import type { Permission, UserInfo } from '../types/auth'
 import { errorText } from './errorText'
 import { t } from '../i18n'
@@ -20,6 +20,8 @@ export type AuthScreen = 'loading' | 'fatal' | 'setup' | 'login' | 'change-passw
 
 const initialized = ref(false)
 const needsSetup = ref(false)
+/** Первичная настройка по сети требует токен (KUBRON_SETUP_TOKEN, сервисный режим) */
+const setupTokenRequired = ref(false)
 const user = ref<UserInfo | null>(null)
 const fatalError = ref('')
 /** Через сколько минут без действий сессия завершается; 0 — не завершается */
@@ -82,6 +84,7 @@ export function useAuth() {
       const st = await callApp('AuthStatus')
       idleTimeoutMinutes.value = st.idleTimeoutMinutes ?? 0
       needsSetup.value = !!st.needsSetup
+      setupTokenRequired.value = !!(st as unknown as Record<string, unknown>).setupTokenRequired
       user.value = (st.user as UserInfo | null) ?? null
       fatalError.value = ''
     } catch (e) {
@@ -100,7 +103,8 @@ export function useAuth() {
     }
   }
 
-  async function setup(username: string, password: string) {
+  async function setup(username: string, password: string, token = '') {
+    await setSetupToken(setupTokenRequired.value ? token : '')
     user.value = (await callApp('SetupAdmin', username.trim(), password)) as UserInfo
     needsSetup.value = false
     notice.value = ''
@@ -139,6 +143,7 @@ export function useAuth() {
   return {
     screen: readonly(screen),
     user: readonly(user),
+    setupTokenRequired: readonly(setupTokenRequired),
     fatalError: readonly(fatalError),
     idleTimeoutMinutes: readonly(idleTimeoutMinutes),
     notice: readonly(notice),

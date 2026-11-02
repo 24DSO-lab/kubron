@@ -27,6 +27,9 @@ func (s *Store) Users() ext.UserBackend { return userBackend{s} }
 
 // UserDelta — точечные операции над пользователями для сервиса с несколькими репликами (см. UpsertUser).
 type UserDelta interface {
+	// InsertFirstUser создаёт пользователя, только если в организации нет ни одного; false — они уже есть.
+	// Проверка и вставка идут под одной блокировкой БД: две реплики не создадут двух первых администраторов.
+	InsertFirstUser(u ext.UserRecord) (created bool, err error)
 	UpsertUser(u ext.UserRecord) error
 	TouchLogin(id string, at time.Time, passwordHash string) error
 	DeleteUser(id string) error
@@ -268,4 +271,42 @@ func (b userBackend) SaveSettings(st ext.SecuritySettings) error {
 		INSERT INTO settings (key, value) VALUES ($1, $2)
 		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`, settingsKeySecurity, raw)
 	return err
+}
+
+// InsertFirstUser создаёт первого пользователя атомарно относительно других реплик (та же advisory-блокировка, что в
+// UpsertUser). Если пользователи уже есть, ничего не записывает и возвращает false.
+func (b userBackend) InsertFirstUser(u ext.UserRecord) (bool, error) {
+	if err := b.s.ready(); err != nil {
+		return false, err
+	}
+	if err := validRole(u.Role); err != nil {
+		return false, err
+	}
+	ctx, cancel := opCtx()
+	defer cancel()
+	created := false
+	err := pgx.BeginFunc(ctx, b.s.pool, func(tx pgx.Tx) error {
+		if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock($1)`, int64(0x6B756274)); err != nil {
+			return err
+		}
+		var n int
+		if err := tx.QueryRow(ctx, `SELECT count(*) FROM users WHERE org_id = $1`, b.s.orgID).Scan(&n); err != nil {
+			return err
+		}
+		if n > 0 {
+			return nil
+		}
+		if err := upsertUser(ctx, tx, b.s.orgID, u, time.Now()); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO memberships (user_id, team_id, role) VALUES ($1, $2, $3)
+			ON CONFLICT (user_id, team_id) DO UPDATE SET role = EXCLUDED.role`, u.ID, b.s.teamID, u.Role); err != nil {
+			return err
+		}
+		created = true
+		return nil
+	})
+	b.s.invalidateAccess()
+	return created && err == nil, err
 }

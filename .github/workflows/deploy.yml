@@ -113,7 +113,8 @@ jobs:
           docker run -d --name kubron-smoke --read-only \
             --tmpfs /home/nonroot:uid=65532,gid=65532 --tmpfs /tmp \
             --cap-drop ALL --security-opt no-new-privileges \
-            -e KUBRON_ALLOW_REMOTE=1 -p 127.0.0.1:18080:8080 kubron:ci
+            -e KUBRON_ALLOW_REMOTE=1 -e KUBRON_SETUP_TOKEN=ci-setup-token-0123456789 \
+            -p 127.0.0.1:18080:8080 kubron:ci
           ok=
           for i in $(seq 1 30); do
             if curl -fs http://127.0.0.1:18080/healthz | grep -qx ok; then ok=1; break; fi
@@ -122,8 +123,11 @@ jobs:
           test -n "$ok" || { docker logs kubron-smoke; exit 1; }
           # встроена именно веб-сборка фронтенда
           curl -fs http://127.0.0.1:18080/ | grep -q 'name="kubron-target" content="web"'
-          curl -fs -X POST -H 'Content-Type: application/json' -d '["smoke-admin","smoke-password-1"]' \
-            http://127.0.0.1:18080/api/rpc/SetupAdmin | grep -q smoke-admin
+          # В сервисном режиме без токена первичная настройка отклоняется, с токеном проходит
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d '["smoke-admin","smoke-password-1"]' \
+            http://127.0.0.1:18080/api/rpc/SetupAdmin)" = 403
+          curl -fs -X POST -H 'Content-Type: application/json' -H 'X-Kubron-Setup-Token: ci-setup-token-0123456789' \
+            -d '["smoke-admin","smoke-password-1"]' http://127.0.0.1:18080/api/rpc/SetupAdmin | grep -q smoke-admin
           docker logs kubron-smoke
           docker rm -f kubron-smoke
 
@@ -145,13 +149,15 @@ jobs:
           echo "KUBRON_CI_KEY=$key" >> "$GITHUB_ENV"
           kubectl create secret generic kubron-secrets \
             --from-literal=KUBRON_SECRET_KEY="$key" \
-            --from-literal=KUBRON_DATABASE_URL='postgres://kubron:kubron@postgres:5432/kubron?sslmode=disable'
+            --from-literal=KUBRON_DATABASE_URL='postgres://kubron:kubron@postgres:5432/kubron?sslmode=disable' \
+            --from-literal=KUBRON_SETUP_TOKEN=ci-setup-token-0123456789
 
       - name: helm install
         run: |
           helm install kubron deploy/helm/kubron \
             -f deploy/helm/kubron/ci/minimal-values.yaml \
             --set image.repository=kubron --set image.tag=ci --set image.pullPolicy=Never \
+            --set secrets.keys.setupToken=KUBRON_SETUP_TOKEN \
             --wait --timeout 5m
 
       - name: Check the release
@@ -160,8 +166,8 @@ jobs:
           sleep 3
           curl -fs http://127.0.0.1:18081/healthz | grep -qx ok
           # Вход создаёт запись в PostgreSQL (миграции применены, БД доступна), а не в файлах пода
-          curl -fs -X POST -H 'Content-Type: application/json' -d '["kind-admin","kind-password-1"]' \
-            http://127.0.0.1:18081/api/rpc/SetupAdmin | grep -q kind-admin
+          curl -fs -X POST -H 'Content-Type: application/json' -H 'X-Kubron-Setup-Token: ci-setup-token-0123456789' \
+            -d '["kind-admin","kind-password-1"]' http://127.0.0.1:18081/api/rpc/SetupAdmin | grep -q kind-admin
           # Реплик две: миграции применяет та, что первой взяла блокировку, поэтому смотрим журналы всех подов
           kubectl logs -l app.kubernetes.io/name=kubron --tail=-1 --prefix | tee "$RUNNER_TEMP/kubron.log"
           grep -qE 'migrations applied|applied migrations' "$RUNNER_TEMP/kubron.log"
