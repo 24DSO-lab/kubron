@@ -40,6 +40,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Web mode:** `OpenArgoUI` was still on the denied-method list, so Argo CD could not be opened from the browser; it is now
+  allowed and returns the proxy stream address (or the published Argo CD address from the cluster settings).
+
+
 - **Helm with several replicas:** the repository index and OCI tag caches live in each replica's `emptyDir`; a
   repository added on one replica is now fetched on first use on the others (the list and update checks fill the cache
   in the background). Cache file names include a hash of the URL, so a repository re-added under the same name with
@@ -89,10 +93,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   immutable GitHub Release and the image is never published from an untested commit. A published image or chart version is
   never overwritten. `Chart.yaml` holds `0.0.0-dev` placeholders; the version comes from the tag.
 
-### Fixed
-
-- **Web mode:** `OpenArgoUI` was still on the denied-method list, so Argo CD could not be opened from the browser; it is now
-  allowed and returns the proxy stream address (or the published Argo CD address from the cluster settings).
 
 ## [0.6.0] - 2026-11-01
 
