@@ -556,8 +556,12 @@
   "theArgoCdAddressIsLongerThan": "Argo CD 地址超过 {p0} 个字符",
   "theArgoCdAddressMustBeAn": "Argo CD 地址必须是不含凭据、查询参数和片段的 http 或 https URL",
   "unknownLogLevelExpectedDebugInfo": "未知的日志级别 {p0}（可选：debug、info、warn 或 error）",
-  "storedWithEncryptionKeyCannotBeRead": "{p0} 使用加密密钥 {p1} 存储，无法用已配置的密钥读取：{p2}",
+  "storedWithEncryptionKeyCannotBeRead": "{p0} 使用加密密钥 {p1} 存储，无法用已配置的密钥读取：{p2}"
   "initialSetupOverTheNetworkIs": "已禁用通过网络进行初始设置：请设置 KUBRON_SETUP_TOKEN 或运行 kubron-server create-admin",
   "theSetupTokenIsMissingOr": "初始设置令牌缺失或无效",
   "theSetupTokenIsTooShort": "初始设置令牌太短：至少需要 {p0} 个字符（KUBRON_SETUP_TOKEN）"
+  "anAllowedHostMustBeA": "允许的主机必须是主机名或 IP 地址（可带端口），不含协议和路径",
+  "kubronAllowedHosts": "KUBRON_ALLOWED_HOSTS：{p0}"
+
+
 }

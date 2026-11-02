@@ -711,8 +711,18 @@ func (g *Guard) clientIP(r *http.Request) string {
 	return ProxyTrust{Enabled: g.TrustProxy, Hops: g.TrustedProxyHops, CIDRs: g.TrustedProxies}.ClientIP(r)
 }
 
+// token возвращает токен веб-сессии из cookie запроса.
+//
+// По защищённому каналу принимается только __Host-kubron_session: префикс __Host- гарантирует браузером Secure, Path=/
+// и отсутствие Domain, поэтому её нельзя подменить с соседнего поддомена или по открытому HTTP. Обычная kubron_session
+// на защищённом запросе игнорируется, даже когда она одна и верна: иначе подменённая cookie (cookie tossing) заняла бы
+// место настоящей. По HTTP и на loopback обычная cookie допустима: там __Host- выдать нельзя.
 func (g *Guard) token(r *http.Request) string {
-	for _, n := range []string{secureCookieName, cookieName} {
+	names := []string{secureCookieName, cookieName}
+	if g.secure(r) {
+		names = names[:1]
+	}
+	for _, n := range names {
 		if c, err := r.Cookie(n); err == nil && c.Value != "" {
 			return c.Value
 		}

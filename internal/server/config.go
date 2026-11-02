@@ -22,6 +22,9 @@ type Config struct {
 	// AllowRemote разрешает слушать не на loopback (KUBRON_ALLOW_REMOTE=1).
 	// Без TLS cookie уходит открытым текстом: для сети нужен обратный прокси с TLS.
 	AllowRemote bool
+	// AllowedHosts — допустимые значения заголовка Host (KUBRON_ALLOWED_HOSTS, через запятую; allowedhosts.go). Пусто —
+	// проверка выключена. Потоки port-forward (*.pf.<домен>) разрешаются автоматически.
+	AllowedHosts []string
 	// SetupToken — токен первичной настройки в сервисном режиме (KUBRON_SETUP_TOKEN, только окружение: аргументы
 	// видны в списке процессов). Без него сетевой SetupAdmin отклоняется; первого администратора создаёт
 	// «kubron-server create-admin». Токен не пишется в журнал и не уходит в API.
@@ -140,7 +143,6 @@ func LoadConfig(args []string, getenv func(string) string, out io.Writer) (Confi
 		cfg.Listen = v
 	}
 	cfg.AllowRemote = truthy(getenv("KUBRON_ALLOW_REMOTE"))
-	cfg.SetupToken = strings.TrimSpace(getenv("KUBRON_SETUP_TOKEN"))
 	cfg.ReplicaID = strings.TrimSpace(getenv("KUBRON_REPLICA_ID"))
 	cfg.MetricsListen = strings.TrimSpace(getenv("KUBRON_METRICS_LISTEN"))
 	cfg.DataDir = getenv("KUBRON_DATA_DIR")

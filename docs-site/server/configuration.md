@@ -12,6 +12,7 @@ Kubron Server is configured through environment variables and Helm chart values.
 | `KUBRON_REPLICA_ID` | Optional unique identity for a server replica |
 | `KUBRON_DRAIN_DELAY` | Delay during graceful shutdown while the load balancer removes a replica |
 | `KUBRON_METRICS_LISTEN` | Optional Prometheus listener on a separate port; disabled by default |
+| `KUBRON_ALLOWED_HOSTS` | Comma-separated list of accepted `Host` values (name or IP, optional port, IPv6 in brackets); other hosts get `421`. Empty disables the check; `*.pf.<domain>` is allowed automatically when port-forward is on |
 | `KUBRON_PF_BASE_DOMAIN` | Wildcard base domain required for server-mode port-forward |
 | `KUBRON_DISABLE_EXEC` | Disable pod exec and node shell capabilities |
 | `KUBRON_DISABLE_NODE_SHELL` | Disable node shell |

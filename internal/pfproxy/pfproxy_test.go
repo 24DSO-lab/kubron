@@ -624,7 +624,7 @@ func TestMatchHost(t *testing.T) {
 	if got, ok := svc.MatchHost(strings.ToUpper(id) + ".pf.kubron.example.com:8443"); !ok || got != id {
 		t.Errorf("got %q %v", got, ok)
 	}
-	for _, h := range []string{"kubron.example.com:8443", id + ".pf.kubron.example.com", "x.pf.kubron.example.com:8443",
+	for _, h := range []string{"kubron.example.com:8443", "x.pf.kubron.example.com:8443",
 		id + ".evil.kubron.example.com:8443", "a." + id + ".pf.kubron.example.com:8443"} {
 		if _, ok := svc.MatchHost(h); ok {
 			t.Errorf("%q must not match", h)
@@ -632,6 +632,45 @@ func TestMatchHost(t *testing.T) {
 	}
 	if !svc.IsPortForwardHost("x.pf.kubron.example.com:8443") || svc.IsPortForwardHost("kubron.example.com:8443") {
 		t.Error("IsPortForwardHost")
+	}
+}
+
+// Порт в Host не участвует в сравнении с суффиксом зоны: ни при совпадающем, ни при другом, ни при отсутствующем порте,
+// ни при завершающей точке FQDN.
+func TestMatchHostIgnoresPort(t *testing.T) {
+	for _, base := range []string{"kubron.example.com:8443", "kubron.example.com"} {
+		svc, err := NewService(Config{BaseDomain: base}, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		id := NewID()
+		for _, h := range []string{
+			id + ".pf.kubron.example.com:8443", id + ".pf.kubron.example.com:443", id + ".pf.kubron.example.com",
+			strings.ToUpper(id) + ".PF.Kubron.Example.com:8443", id + ".pf.kubron.example.com.:8443", id + ".pf.kubron.example.com.",
+		} {
+			if got, ok := svc.MatchHost(h); !ok || got != id {
+				t.Errorf("base %q, host %q: got (%q,%v)", base, h, got, ok)
+			}
+			if !svc.IsPortForwardHost(h) {
+				t.Errorf("base %q, host %q must belong to the zone", base, h)
+			}
+		}
+		// Чужие имена с тем же началом или суффиксом в зону не попадают
+		for _, h := range []string{
+			id + ".pf.kubron.example.com.evil.test:8443", "kubron.example.com:8443", id + ".pf.kubron.example.com@evil.test",
+			id + ".pf.evil.test:8443", id + "pf.kubron.example.com:8443",
+		} {
+			if _, ok := svc.MatchHost(h); ok {
+				t.Errorf("base %q, host %q must not match", base, h)
+			}
+		}
+		if svc.IsPortForwardHost("kubron.example.com:8443") || svc.IsPortForwardHost("pf.kubron.example.com:8443") {
+			t.Errorf("base %q: the main host and the zone root are not stream hosts", base)
+		}
+		// Невалидный идентификатор в зоне всё равно «хост потока» (не уходит в основное приложение), но не совпадает
+		if _, ok := svc.MatchHost("x.pf.kubron.example.com:8443"); ok || !svc.IsPortForwardHost("x.pf.kubron.example.com:8443") {
+			t.Errorf("base %q: an invalid id stays in the zone without matching", base)
+		}
 	}
 }
 
