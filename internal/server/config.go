@@ -146,6 +146,7 @@ func LoadConfig(args []string, getenv func(string) string, out io.Writer) (Confi
 	cfg.ReplicaID = strings.TrimSpace(getenv("KUBRON_REPLICA_ID"))
 	cfg.MetricsListen = strings.TrimSpace(getenv("KUBRON_METRICS_LISTEN"))
 	cfg.DataDir = getenv("KUBRON_DATA_DIR")
+	cfg.SetupToken = strings.TrimSpace(getenv("KUBRON_SETUP_TOKEN"))
 	cfg.TrustProxy = truthy(getenv("KUBRON_TRUST_PROXY"))
 	cfg.CSPReportOnly = truthy(getenv("KUBRON_CSP_REPORT_ONLY"))
 	cfg.DisablePortForward = truthy(getenv("KUBRON_DISABLE_PORT_FORWARD"))
@@ -271,6 +272,11 @@ func LoadConfig(args []string, getenv func(string) string, out io.Writer) (Confi
 		return Config{}, fmt.Errorf("KUBRON_TRUSTED_PROXIES %q: %w", trusted, err)
 	}
 	cfg.TrustedProxies = proxies
+	allowedHosts, err := ParseAllowedHosts(getenv("KUBRON_ALLOWED_HOSTS"))
+	if err != nil {
+		return Config{}, fmt.Errorf("KUBRON_ALLOWED_HOSTS: %w", err)
+	}
+	cfg.AllowedHosts = allowedHosts
 	return cfg, cfg.Validate()
 }
 
