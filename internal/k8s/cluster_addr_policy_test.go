@@ -4,8 +4,10 @@
 package k8s
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"os"
 	"strings"
 	"sync/atomic"
@@ -307,5 +309,144 @@ func TestIdPRequestsHonorAddressPolicy(t *testing.T) {
 	useClusterAddrPolicy(t, netpolicy.ProfilePermissive, "")
 	if _, err := newOIDCSecret(oidcpassword.ExecParams{IssuerURL: "https://169.254.169.254/", ClientID: "k"}, OIDCCredentials{Username: "u", Password: "p"}); err == nil {
 		t.Error("an issuer on the metadata address must be rejected when saving")
+	}
+}
+
+// rebindResolver имитирует DNS, который отдаёт внутренний адрес: проверка по имени его не видит (имена заранее не
+// разрешаются), на соединении адрес проверяется заново.
+type rebindResolver struct{ addr netip.Addr }
+
+func (r rebindResolver) LookupNetIP(context.Context, string, string) ([]netip.Addr, error) {
+	return []netip.Addr{r.addr}, nil
+}
+
+func useRebindPolicy(t *testing.T, addr string) {
+	t.Helper()
+	p := netpolicy.New("cluster-api", netpolicy.ProfilePermissive, nil)
+	p.Resolver = rebindResolver{netip.MustParseAddr(addr)}
+	netpolicy.Set(netpolicy.ScopeClusterAPI, p)
+	t.Cleanup(func() { netpolicy.Set(netpolicy.ScopeClusterAPI, nil) })
+}
+
+// Адрес API-сервера: metadata, loopback и link-local закрыты статически (IP-литерал) и на соединении (имя).
+func TestClusterAPIAddressBlocksMetadataLoopbackLinkLocal(t *testing.T) {
+	useClusterAddrPolicy(t, netpolicy.ProfilePermissive, "")
+	for _, server := range []string{
+		"https://169.254.169.254", "https://127.0.0.1:6443", "https://localhost.invalid.example@127.0.0.1:6443",
+		"https://[::1]:6443", "https://[fe80::1]:6443", "https://[::ffff:169.254.169.254]", "https://2130706433:6443",
+		"https://[64:ff9b::a9fe:a9fe]",
+	} {
+		if err := checkClusterAddress(cfgWithServer(server, ""), "ctx"); err == nil {
+			t.Errorf("%s must be rejected", server)
+		}
+	}
+	if err := checkClusterAddress(cfgWithServer("https://10.1.2.3:6443", ""), "ctx"); err != nil {
+		t.Errorf("a private address stays allowed in permissive: %v", err)
+	}
+	// proxy-url запрещён при любом включённом профиле
+	for _, profile := range []netpolicy.Profile{netpolicy.ProfilePermissive, netpolicy.ProfileStrict} {
+		useClusterAddrPolicy(t, profile, "")
+		if err := checkClusterAddress(cfgWithServer("https://10.1.2.3:6443", "http://proxy.example:3128"), "ctx"); err != ErrClusterProxyForbidden {
+			t.Errorf("%s: proxy-url must be forbidden, got %v", profile, err)
+		}
+	}
+}
+
+// Имя, прошедшее проверку по тексту, но резолвящееся в metadata или loopback на соединении, закрывается:
+// API-сервер кластера и IdP.
+func TestDNSRebindingBlockedForAPIServerAndIdP(t *testing.T) {
+	for _, addr := range []string{"169.254.169.254", "127.0.0.1", "::ffff:169.254.169.254"} {
+		useRebindPolicy(t, addr)
+
+		const server = "https://api.rebind.example:6443"
+		if err := checkClusterAddress(cfgWithServer(server, ""), "ctx"); err != nil {
+			t.Fatalf("a hostname passes the static check: %v", err)
+		}
+		cfg := &rest.Config{Host: server}
+		applyClusterAddrPolicy(cfg)
+		rt, err := rest.TransportFor(cfg)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, err = (&http.Client{Transport: rt, Timeout: 5 * time.Second}).Get(server + "/version")
+		if !netpolicy.IsBlocked(err) {
+			t.Errorf("API server resolving to %s must be blocked at dial time: %v", addr, err)
+		}
+
+		sec := &oidcSecret{IssuerURL: "https://idp.rebind.example", ClientID: "k", Username: "u", Password: "p"}
+		if _, _, err := sec.source().Token(t.Context()); !netpolicy.IsBlocked(err) {
+			t.Errorf("IdP resolving to %s must be blocked at dial time: %v", addr, err)
+		}
+	}
+}
+
+// IdP отвечает редиректом на внутренний адрес (discovery и token endpoint): переход проверяется заново.
+func TestIdPRedirectToForbiddenAddressIsBlocked(t *testing.T) {
+	var hits atomic.Int32
+	for _, target := range []string{"http://169.254.169.254/latest/meta-data/", "http://[fe80::1]/", "http://127.0.0.1:1/"} {
+		redirector := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			hits.Add(1)
+			http.Redirect(w, r, target, http.StatusFound)
+		}))
+		// Сам IdP на loopback разрешён исключением оператора; перенос на metadata исключение не снимает,
+		// а перенос на loopback другого порта проверяется тем же списком (открыт — для него важен лишь результат).
+		useClusterAddrPolicy(t, netpolicy.ProfilePermissive, "127.0.0.0/8")
+		sec := &oidcSecret{IssuerURL: redirector.URL, ClientID: "k", Username: "u", Password: "p"}
+		_, _, err := sec.source().Token(t.Context())
+		redirector.Close()
+		if err == nil {
+			t.Errorf("redirect to %s must not yield a token", target)
+			continue
+		}
+		if !strings.Contains(target, "127.0.0.1") && !netpolicy.IsBlocked(err) {
+			t.Errorf("redirect to %s must be blocked by the policy: %v", target, err)
+		}
+	}
+	if hits.Load() == 0 {
+		t.Error("the redirecting IdP must have been reached")
+	}
+
+	// token_endpoint, подмены на link-local, тоже закрыт
+	var evil *httptest.Server
+	evil = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, 200, map[string]string{"issuer": evil.URL, "token_endpoint": "http://[fe80::1]/token"})
+	}))
+	defer evil.Close()
+	bad := &oidcSecret{IssuerURL: evil.URL, ClientID: "k", Username: "u", Password: "p"}
+	if _, _, err := bad.source().Token(t.Context()); !netpolicy.IsBlocked(err) || netpolicy.BlockReason(err) != netpolicy.ReasonLinkLocal {
+		t.Errorf("a link-local token_endpoint must be blocked: %v", err)
+	}
+}
+
+// Обновление токена идёт через ту же политику: если адрес IdP перестал быть разрешённым, refresh и повторный вход
+// по паролю закрыты, а IdP не получает запросов.
+func TestIdPRefreshHonorsAddressPolicy(t *testing.T) {
+	idp := newFakeIdP(t)
+	allow, err := netpolicy.ParseAllowList("127.0.0.0/8")
+	if err != nil {
+		t.Fatal(err)
+	}
+	pol := netpolicy.New("cluster-api", netpolicy.ProfilePermissive, allow)
+	netpolicy.Set(netpolicy.ScopeClusterAPI, pol)
+	t.Cleanup(func() { netpolicy.Set(netpolicy.ScopeClusterAPI, nil) })
+
+	client := idpHTTPClient() // тот же клиент, что у oidcSecret.source(); его соединения закрываются явно ниже
+	src := oidcpassword.New(oidcpassword.Config{IssuerURL: idp.srv.URL, ClientID: "kubernetes", Username: "alice",
+		Password: "s3cret", Scopes: []string{"openid"}, HTTPClient: client})
+	if _, _, err := src.Token(t.Context()); err != nil {
+		t.Fatalf("password grant: %v", err)
+	}
+	if _, _, err := src.Token(t.Context()); err != nil || idp.refreshN.Load() == 0 {
+		t.Fatalf("refresh grant: %v (refresh requests: %d)", err, idp.refreshN.Load())
+	}
+
+	pol.Allow = nil               // оператор убрал исключение: loopback снова закрыт
+	client.CloseIdleConnections() // политика проверяет новые соединения: старое keep-alive её не увидело бы
+	passwords, refreshes := idp.passwordN.Load(), idp.refreshN.Load()
+	if _, _, err := src.Token(t.Context()); !netpolicy.IsBlocked(err) {
+		t.Fatalf("refresh must be blocked once the address is not allowed: %v", err)
+	}
+	if idp.passwordN.Load() != passwords || idp.refreshN.Load() != refreshes {
+		t.Error("the IdP must not receive any request after the address was closed")
 	}
 }
