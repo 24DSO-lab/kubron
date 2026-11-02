@@ -582,6 +582,22 @@
   "credCoreMasterKeyFileInsecure": "the master key file is accessible to other users",
   "credCoreNotEnvelopeRecord": "the data is not an envelope-encrypted record",
   "credCoreReadMasterKeyFile": "read master key file: {p0}",
-  "credCoreWriteMasterKeyFile": "write master key file: {p0}"
+  "credCoreWriteMasterKeyFile": "write master key file: {p0}",
+  "credCoreSavedSignInNotFound": "no saved sign-in data was found",
+  "credCoreSavedSignInChangedConcurrently": "the saved sign-in data was changed concurrently",
+  "credCoreInvalidSignInDataID": "invalid sign-in data identifier",
+  "credCoreSignInDataTooLarge": "the sign-in data is too large",
+  "credCoreLegacyFormatNotAllowed": "the legacy encryption format is not allowed for this record",
+  "credCoreUnknownEncryptionFormat": "the sign-in data uses an unknown encryption format",
+  "credCoreRekeyIncomplete": "some sign-in records could not be re-encrypted",
+  "credCoreStarvedAfterAttempts": "starved after {p0} attempts",
+  "credCoreResolveCredentialsPath": "resolve credentials file path: {p0}",
+  "credCoreCreateCredentialsDir": "create credentials directory: {p0}",
+  "credCoreReadCredentialsFile": "read credentials file: {p0}",
+  "credCoreCredentialsFileDamaged": "the credentials file is damaged",
+  "credCoreCredentialsFileVersionUnsupported": "the credentials file has an unsupported format version",
+  "credCoreWriteCredentialsFile": "write credentials file: {p0}",
+  "credCoreLockCredentialsFile": "lock credentials file: {p0}",
+  "credCoreCredentialsFileLocked": "the credentials file is locked by another process"
 
 }

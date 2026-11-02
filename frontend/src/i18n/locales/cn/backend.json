@@ -582,6 +582,22 @@
   "credCoreMasterKeyFileInsecure": "主密钥文件可被其他用户访问",
   "credCoreNotEnvelopeRecord": "该数据不是信封加密记录",
   "credCoreReadMasterKeyFile": "读取主密钥文件：{p0}",
-  "credCoreWriteMasterKeyFile": "写入主密钥文件：{p0}"
+  "credCoreWriteMasterKeyFile": "写入主密钥文件：{p0}",
+  "credCoreSavedSignInNotFound": "未找到已保存的登录数据",
+  "credCoreSavedSignInChangedConcurrently": "已保存的登录数据被并发修改",
+  "credCoreInvalidSignInDataID": "登录数据标识符无效",
+  "credCoreSignInDataTooLarge": "登录数据过大",
+  "credCoreLegacyFormatNotAllowed": "此记录不允许使用旧版加密格式",
+  "credCoreUnknownEncryptionFormat": "登录数据使用未知的加密格式",
+  "credCoreRekeyIncomplete": "部分登录记录无法重新加密",
+  "credCoreStarvedAfterAttempts": "经过 {p0} 次尝试后仍未获得访问",
+  "credCoreResolveCredentialsPath": "解析凭据文件路径：{p0}",
+  "credCoreCreateCredentialsDir": "创建凭据目录：{p0}",
+  "credCoreReadCredentialsFile": "读取凭据文件：{p0}",
+  "credCoreCredentialsFileDamaged": "凭据文件已损坏",
+  "credCoreCredentialsFileVersionUnsupported": "凭据文件的格式版本不受支持",
+  "credCoreWriteCredentialsFile": "写入凭据文件：{p0}",
+  "credCoreLockCredentialsFile": "锁定凭据文件：{p0}",
+  "credCoreCredentialsFileLocked": "凭据文件被其他进程锁定"
 
 }
