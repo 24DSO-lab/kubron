@@ -22,6 +22,9 @@ type Config struct {
 	// AllowRemote разрешает слушать не на loopback (KUBRON_ALLOW_REMOTE=1).
 	// Без TLS cookie уходит открытым текстом: для сети нужен обратный прокси с TLS.
 	AllowRemote bool
+	// AllowedHosts — допустимые значения заголовка Host (KUBRON_ALLOWED_HOSTS, через запятую; allowedhosts.go). Пусто —
+	// проверка выключена. Потоки port-forward (*.pf.<домен>) разрешаются автоматически.
+	AllowedHosts []string
 	// DataDir — каталог данных (пользователи, кластеры, журнал); пусто — ~/.kubron
 	// (--data-dir или KUBRON_DATA_DIR). Читается только сервером: десктоп переменную игнорирует.
 	DataDir string
@@ -136,6 +139,11 @@ func LoadConfig(args []string, getenv func(string) string, out io.Writer) (Confi
 		cfg.Listen = v
 	}
 	cfg.AllowRemote = truthy(getenv("KUBRON_ALLOW_REMOTE"))
+	hosts, err := ParseAllowedHosts(getenv("KUBRON_ALLOWED_HOSTS"))
+	if err != nil {
+		return Config{}, fmt.Errorf("KUBRON_ALLOWED_HOSTS: %w", err)
+	}
+	cfg.AllowedHosts = hosts
 	cfg.ReplicaID = strings.TrimSpace(getenv("KUBRON_REPLICA_ID"))
 	cfg.MetricsListen = strings.TrimSpace(getenv("KUBRON_METRICS_LISTEN"))
 	cfg.DataDir = getenv("KUBRON_DATA_DIR")

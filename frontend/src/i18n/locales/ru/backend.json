@@ -556,5 +556,7 @@
   "theArgoCdAddressIsLongerThan": "Адрес Argo CD длиннее {p0} символов",
   "theArgoCdAddressMustBeAn": "Адрес Argo CD должен быть URL http или https без учётных данных, query и fragment",
   "unknownLogLevelExpectedDebugInfo": "неизвестный уровень логирования {p0} (допустимо: debug, info, warn или error)",
-  "storedWithEncryptionKeyCannotBeRead": "{p0}: данные зашифрованы ключом {p1} и не читаются настроенными ключами: {p2}"
+  "storedWithEncryptionKeyCannotBeRead": "{p0}: данные зашифрованы ключом {p1} и не читаются настроенными ключами: {p2}",
+  "anAllowedHostMustBeA": "разрешённый хост должен быть именем или IP-адресом с необязательным портом, без схемы и пути",
+  "kubronAllowedHosts": "KUBRON_ALLOWED_HOSTS: {p0}"
 }

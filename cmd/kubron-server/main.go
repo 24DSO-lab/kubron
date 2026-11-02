@@ -216,6 +216,12 @@ func main() {
 		// владелец проверяется на каждом запросе.
 		handler = server.WithPortForwardHosts(handler, pf.Handler(), pf.IsPortForwardHost)
 	}
+	// Host вне KUBRON_ALLOWED_HOSTS отклоняется до маршрутизации; потоки *.pf.<домен> разрешены, когда port-forward включён.
+	var pfHost func(string) bool
+	if pf != nil {
+		pfHost = pf.IsPortForwardHost
+	}
+	handler = server.WithAllowedHosts(handler, cfg.AllowedHosts, pfHost)
 	handler = server.WithRequestID(handler) // снаружи всех: каждая запись журнала запроса несёт request_id
 	// SIGTERM: draining (новые соединения не принимаются, /readyz смотрит на lifecycle.Draining()),
 	// пауза для балансировщика, затем закрытие WebSocket кадром 1012 и остановка HTTP-сервера.
