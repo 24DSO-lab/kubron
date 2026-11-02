@@ -573,6 +573,15 @@
   "credCoreSignInRequestExpired": "登录请求已过期",
   "credCoreCredentialsRejected": "凭据被拒绝",
   "credCoreSavedSignInInvalid": "已保存的登录已失效",
-  "credCoreSignInMethodUnsupported": "不支持此登录方式"
+  "credCoreSignInMethodUnsupported": "不支持此登录方式",
+  "credCoreMasterKeyNotConfigured": "未配置主加密密钥",
+  "credCoreSecretKeyRequiredWithPostgres": "使用 PostgreSQL 时必须设置 KUBRON_SECRET_KEY",
+  "credCoreMasterKeyStorageUnavailable": "主密钥存储不可用",
+  "credCoreMasterKeyAlreadyExists": "主加密密钥已存在",
+  "credCoreMasterKeySourceReadOnly": "此主密钥来源为只读",
+  "credCoreMasterKeyFileInsecure": "主密钥文件可被其他用户访问",
+  "credCoreNotEnvelopeRecord": "该数据不是信封加密记录",
+  "credCoreReadMasterKeyFile": "读取主密钥文件：{p0}",
+  "credCoreWriteMasterKeyFile": "写入主密钥文件：{p0}"
 
 }

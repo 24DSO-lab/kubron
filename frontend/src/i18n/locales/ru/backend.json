@@ -573,6 +573,15 @@
   "credCoreSignInRequestExpired": "срок действия запроса на вход истёк",
   "credCoreCredentialsRejected": "учётные данные отклонены",
   "credCoreSavedSignInInvalid": "сохранённый вход больше не действителен",
-  "credCoreSignInMethodUnsupported": "этот способ входа не поддерживается"
+  "credCoreSignInMethodUnsupported": "этот способ входа не поддерживается",
+  "credCoreMasterKeyNotConfigured": "главный ключ шифрования не настроен",
+  "credCoreSecretKeyRequiredWithPostgres": "при использовании PostgreSQL необходимо задать KUBRON_SECRET_KEY",
+  "credCoreMasterKeyStorageUnavailable": "хранилище главного ключа недоступно",
+  "credCoreMasterKeyAlreadyExists": "главный ключ шифрования уже существует",
+  "credCoreMasterKeySourceReadOnly": "этот источник главного ключа доступен только для чтения",
+  "credCoreMasterKeyFileInsecure": "файл главного ключа доступен другим пользователям",
+  "credCoreNotEnvelopeRecord": "данные не являются записью с конвертным шифрованием",
+  "credCoreReadMasterKeyFile": "чтение файла главного ключа: {p0}",
+  "credCoreWriteMasterKeyFile": "запись файла главного ключа: {p0}"
 
 }

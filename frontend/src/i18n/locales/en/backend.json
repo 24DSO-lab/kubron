@@ -573,6 +573,15 @@
   "credCoreSignInRequestExpired": "the sign-in request has expired",
   "credCoreCredentialsRejected": "the credentials were rejected",
   "credCoreSavedSignInInvalid": "the saved sign-in is no longer valid",
-  "credCoreSignInMethodUnsupported": "this sign-in method is not supported"
+  "credCoreSignInMethodUnsupported": "this sign-in method is not supported",
+  "credCoreMasterKeyNotConfigured": "master encryption key is not configured",
+  "credCoreSecretKeyRequiredWithPostgres": "KUBRON_SECRET_KEY is required when PostgreSQL is used",
+  "credCoreMasterKeyStorageUnavailable": "the master key storage is unavailable",
+  "credCoreMasterKeyAlreadyExists": "a master encryption key already exists",
+  "credCoreMasterKeySourceReadOnly": "this master key source is read-only",
+  "credCoreMasterKeyFileInsecure": "the master key file is accessible to other users",
+  "credCoreNotEnvelopeRecord": "the data is not an envelope-encrypted record",
+  "credCoreReadMasterKeyFile": "read master key file: {p0}",
+  "credCoreWriteMasterKeyFile": "write master key file: {p0}"
 
 }
