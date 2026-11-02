@@ -24,6 +24,8 @@ const maxRPCBody = 4 << 20
 type rpcError struct {
 	Code    string `json:"code"`
 	Message string `json:"message"`
+	// RequestID — идентификатор запроса при внутренней ошибке (тот же, что в журнале сервера и в X-Request-Id).
+	RequestID string `json:"requestId,omitempty"`
 }
 
 type rpcResponse struct {
@@ -144,14 +146,20 @@ func RPCHandler(d *Dispatcher, g *Guard) http.Handler {
 		if err != nil {
 			g.dropView(fresh)
 			status, code := MapError(err)
+			msg := err.Error()
+			var reqID string
 			if status == http.StatusInternalServerError {
-				slog.ErrorContext(r.Context(), "rpc call failed", "method", method, "error", err)
+				// Внутренние детали (адреса, БД, TLS) уходят только в журнал; клиент получает общий текст и request id.
+				reqID, r = requestIDFor(w, r)
+				var hidden bool
+				msg, hidden = exposeMessage(err, reqID)
+				logInternal(r, method, err, hidden)
 			}
 			if g != nil && code == "unauthenticated" && authed {
 				g.endSession(token) // ядро закрыло сессию (простой, выход): cookie больше не действует
 				g.clearCookie(w, r)
 			}
-			writeError(w, status, code, err.Error())
+			writeErrorID(w, status, code, msg, reqID)
 			return
 		}
 		if g != nil {
@@ -287,6 +295,10 @@ func sameOrigin(r *http.Request) bool {
 
 func writeError(w http.ResponseWriter, status int, code, msg string) {
 	writeJSON(w, status, rpcResponse{Error: &rpcError{Code: code, Message: msg}})
+}
+
+func writeErrorID(w http.ResponseWriter, status int, code, msg, requestID string) {
+	writeJSON(w, status, rpcResponse{Error: &rpcError{Code: code, Message: msg, RequestID: requestID}})
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
