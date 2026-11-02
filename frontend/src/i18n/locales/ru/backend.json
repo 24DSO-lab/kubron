@@ -555,5 +555,6 @@
   "terminalTimeoutsCannotBeNegative": "Сроки терминала не могут быть отрицательными",
   "theArgoCdAddressIsLongerThan": "Адрес Argo CD длиннее {p0} символов",
   "theArgoCdAddressMustBeAn": "Адрес Argo CD должен быть URL http или https без учётных данных, query и fragment",
-  "unknownLogLevelExpectedDebugInfo": "неизвестный уровень логирования {p0} (допустимо: debug, info, warn или error)"
+  "unknownLogLevelExpectedDebugInfo": "неизвестный уровень логирования {p0} (допустимо: debug, info, warn или error)",
+  "storedWithEncryptionKeyCannotBeRead": "{p0}: данные зашифрованы ключом {p1} и не читаются настроенными ключами: {p2}"
 }

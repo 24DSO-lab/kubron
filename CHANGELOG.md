@@ -43,6 +43,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   another replica gets `421` before the one-time ticket is spent, and `GetPortForwardURL`/`StopPortForward` answer
   `409 stream_elsewhere` (the UI retries). See ADR-0017, section 7.
 
+### Fixed
+
+- **Web mode:** `OpenArgoUI` was still on the denied-method list, so Argo CD could not be opened from the browser; it is now
+  allowed and returns the proxy stream address (or the published Argo CD address from the cluster settings).
+
 ## [0.6.0] - 2026-11-01
 
 - **Argo CD:** published address in cluster settings (`argoUrl`, migration `0007`). If set, `OpenArgoUI` opens it

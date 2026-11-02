@@ -36,7 +36,7 @@ async function result<T = unknown>(page: Page, method: string, args: unknown[] =
   return body.result as T
 }
 
-test('Argo CD открывается через прокси потока, порт на хосте не открывается', async ({ page }) => {
+test('Argo CD открывается через прокси потока: UI, API, вход и SSE, порт на хосте не открывается', async ({ page }) => {
   await page.goto('/')
   const setup = await page.request.post('/api/rpc/SetupAdmin', { data: [ADMIN.name, ADMIN.pass], headers: JSON_HEADERS })
   const res = setup.status() === 200
@@ -63,12 +63,8 @@ test('Argo CD открывается через прокси потока, по�
   const ui = await page.goto(streamUrl)
   expect(ui!.status()).toBe(200)
   await expect(page).toHaveTitle(/Argo CD/)
-})
 
-test('API Argo CD и вход работают на origin потока, cookie приложения не теряется', async ({ page }) => {
-  await page.goto(streamUrl)
-  await expect(page).toHaveTitle(/Argo CD/)
-
+  // Дальше та же страница: адрес входа одноразовый, дальше работает cookie потока (kpf)
   const version = await page.evaluate(async () => {
     const r = await fetch('/api/version')
     return { status: r.status, body: await r.json() }
@@ -93,27 +89,33 @@ test('API Argo CD и вход работают на origin потока, cookie 
   }, login.token)
   expect(apps).toBe(200)
 
-  // Поток событий (SSE) отдаётся без буферизации: заголовки приходят, не дожидаясь конца ответа
+  // Поток событий (SSE) отдаётся без буферизации: заголовки и первые события приходят, не дожидаясь конца ответа
+  // (в кластере есть приложение e2e-guestbook: Argo CD начинает с событий по существующим приложениям)
   const sse = await page.evaluate(async (token) => {
     const ctl = new AbortController()
-    const timer = setTimeout(() => ctl.abort(), 30000)
+    const timer = setTimeout(() => ctl.abort(), 45000)
     try {
-      const r = await fetch('/api/v1/stream/applications', { headers: { Authorization: `Bearer ${token}` }, signal: ctl.signal })
-      return { status: r.status, type: r.headers.get('content-type') ?? '' }
+      const r = await fetch('/api/v1/stream/applications', { headers: { Authorization: `Bearer ${token}`, Accept: 'text/event-stream' }, signal: ctl.signal })
+      const reader = r.body!.getReader()
+      const first = await reader.read() // первый кусок данных, поток остаётся открытым
+      return { status: r.status, type: r.headers.get('content-type') ?? '', data: new TextDecoder().decode(first.value) }
     } finally {
       clearTimeout(timer)
       ctl.abort()
     }
   }, login.token)
   expect(sse.status).toBe(200)
-  expect(sse.type).toContain('text/event-stream')
-})
+  // Argo CD отвечает построчным JSON или text/event-stream в зависимости от версии; важно, что первое событие дошло
+  // через прокси, пока поток открыт (без буферизации)
+  test.info().annotations.push({ type: 'sse-content-type', description: sse.type })
+  expect(sse.data).toContain('e2e-guestbook')
 
-test('остановка потока закрывает доступ', async ({ page }) => {
-  await page.goto('/')
+  // Остановка потока его владельцем (той же веб-сессией) закрывает доступ; чужая сессия его бы не нашла
   await result(page, 'StopPortForward', [streamId])
-  const stopped = await page.request.get(streamUrl.replace(/\?.*$/, ''), { failOnStatusCode: false }).catch(() => null)
-  if (stopped) expect(stopped.status()).not.toBe(200)
   const again = await (await rpc(page, 'GetPortForwardURL', [streamId])).json()
   expect(again.error).toBeTruthy()
+  const after = await page.evaluate(async () => {
+    try { return (await fetch('/api/version')).status } catch { return 0 } // закрытое соединение тоже считается отказом
+  })
+  expect(after, 'после остановки запросы к потоку не проксируются').not.toBe(200)
 })

@@ -555,5 +555,6 @@
   "terminalTimeoutsCannotBeNegative": "terminal timeouts cannot be negative",
   "theArgoCdAddressIsLongerThan": "the Argo CD address is longer than {p0} characters",
   "theArgoCdAddressMustBeAn": "the Argo CD address must be an http or https URL without credentials, query or fragment",
-  "unknownLogLevelExpectedDebugInfo": "unknown log level {p0} (expected debug, info, warn or error)"
+  "unknownLogLevelExpectedDebugInfo": "unknown log level {p0} (expected debug, info, warn or error)",
+  "storedWithEncryptionKeyCannotBeRead": "{p0} stored with encryption key {p1} cannot be read with the configured keys: {p2}"
 }

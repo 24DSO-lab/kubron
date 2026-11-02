@@ -534,6 +534,23 @@ jobs:
             sleep 2
           done
           kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d > "$RUNNER_TEMP/argo-password"
+          # Приложение нужно потоку событий: Argo CD отдаёт события (и заголовки SSE) только когда есть приложения
+          kubectl apply -f - <<'EOF'
+          apiVersion: argoproj.io/v1alpha1
+          kind: Application
+          metadata:
+            name: e2e-guestbook
+            namespace: argocd
+          spec:
+            project: default
+            source:
+              repoURL: https://github.com/argoproj/argocd-example-apps.git
+              path: guestbook
+              targetRevision: HEAD
+            destination:
+              server: https://kubernetes.default.svc
+              namespace: default
+          EOF
 
       - name: Export kubeconfig
         run: kind export kubeconfig --name kubron-e2e --kubeconfig "$RUNNER_TEMP/kind.kubeconfig"
