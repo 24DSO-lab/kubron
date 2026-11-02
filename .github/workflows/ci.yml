@@ -11,10 +11,12 @@ on:
 permissions:
   contents: read
 
-# Новый push в PR отменяет прежний прогон; прогоны веток (dev, master) не отменяются
+# Новый push в PR или в рабочую ветку refactor отменяет прежний прогон: он уже устарел, а раннеров
+# GitHub выдаёт ограниченное число (два прогона подряд простаивали в очереди по ~5 минут).
+# Прогоны остальных веток (dev, master) не отменяются: у каждого коммита остаётся свой результат.
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/refactor' }}
 
 env:
   # Wails на Linux собирается с webkit2gtk 4.1
@@ -113,6 +115,8 @@ jobs:
         run: mkdir -p frontend/dist && touch frontend/dist/.keep
 
       - uses: ./.github/actions/go-build-cache
+        with:
+          scope: misc
 
       # Go: только разрешённые лицензии (свой модуль kubron не проверяем).
       # go-licenses v1 не имеет флага --include_tags: теги сборки передаются через GOFLAGS.
@@ -153,6 +157,8 @@ jobs:
         run: mkdir -p frontend/dist && touch frontend/dist/.keep
 
       - uses: ./.github/actions/go-build-cache
+        with:
+          scope: test
 
       - name: gofmt
         run: test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
@@ -161,10 +167,6 @@ jobs:
       - run: go build -tags $GO_TAGS ./...
       - run: go test -tags $GO_TAGS ./...
 
-      # Конкурентный код: informer'ы, стримы логов, exec-сессии, RPC-сервер
-      - name: go test -race
-        run: go test -race -tags $GO_TAGS ./internal/...
-
       # pkg/ext и пример внешнего модуля — отдельные Go-модули (go test ./... в корне их не видит)
       - name: pkg/ext
         run: go vet ./... && go test ./...
@@ -172,6 +174,38 @@ jobs:
       - name: examples/ext-authenticator (внешний модуль собирается без правок ядра)
         run: go vet ./... && go test ./...
         working-directory: examples/ext-authenticator
+
+  # Конкурентный код: informer'ы, стримы логов, exec-сессии, RPC-сервер. Отдельный job, а не шаг в `go`:
+  # гонки собираются с другой инструментацией и занимали ~3 из 7 минут последовательного пути.
+  # Если ветка защищена обязательными проверками, добавьте в них «Go (race)».
+  go-race:
+    name: Go (race)
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: stable
+
+      - uses: ./.github/actions/linux-build-deps
+
+      # main.go встраивает frontend/dist (//go:embed): для Go-проверок достаточно заглушки
+      - name: Stub frontend/dist
+        run: mkdir -p frontend/dist && touch frontend/dist/.keep
+
+      # Отдельная линия кэша: объекты с -race не совпадают с обычными, а прежний общий ключ их не хранил
+      - uses: ./.github/actions/go-build-cache
+        with:
+          scope: race
+
+      - name: go test -race
+        run: go test -race -tags $GO_TAGS ./internal/...
 
   # SQL-схема сервиса: применяется и откатывается на настоящем PostgreSQL (задача 3.1a).
   migrations:
@@ -206,6 +240,8 @@ jobs:
         with:
           go-version-file: go.mod
       - uses: ./.github/actions/go-build-cache
+        with:
+          scope: pg
       - name: Integration tests of the PostgreSQL store
         env:
           KUBRON_TEST_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/kubron_test?sslmode=disable
@@ -246,8 +282,15 @@ jobs:
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
           go-version-file: go.mod
+      # Сервер собирается одинаково во всех job'ах, где он нужен (CGO_ENABLED=0, как в Dockerfile), поэтому
+      # они делят одну линию кэша: чей кэш сохранится, неважно
+      - uses: ./.github/actions/go-build-cache
+        with:
+          scope: server
       - name: Build the server
         # Заглушка вместо собранного фронтенда: для проверки данных он не нужен
+        env:
+          CGO_ENABLED: "0"
         run: |
           mkdir -p frontend/dist && touch frontend/dist/.keep
           go build -o kubron-server ./cmd/kubron-server
@@ -293,6 +336,8 @@ jobs:
       - name: Stub frontend/dist
         run: mkdir -p frontend/dist && touch frontend/dist/.keep
       - uses: ./.github/actions/go-build-cache
+        with:
+          scope: misc
       - name: govulncheck
         continue-on-error: true
         # Версия зафиксирована: @latest качается каждый раз и недетерминирован
@@ -316,6 +361,11 @@ jobs:
       - uses: ./.github/actions/linux-build-deps
       - name: Stub frontend/dist
         run: mkdir -p frontend/dist && touch frontend/dist/.keep
+      # golangci-lint кэширует лишь собственный анализ, а зависимости компилирует go list: без этого шага
+      # они собирались заново в каждом прогоне
+      - uses: ./.github/actions/go-build-cache
+        with:
+          scope: lint
       - uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9
         with:
           version: v2.15
@@ -344,6 +394,8 @@ jobs:
       - uses: ./.github/actions/linux-build-deps
 
       - uses: ./.github/actions/go-build-cache
+        with:
+          scope: frontend
 
       - uses: ./.github/actions/wails-cli
 
@@ -368,14 +420,16 @@ jobs:
       - run: npm run build
         working-directory: frontend
 
-  # Сквозная проверка веб-версии: браузер → kubron-server → kind (docs/e2e.md).
-  # Блокирует сборку: gate этапов 1 и 2 (в том числе два пользователя одновременно).
-  e2e:
-    name: E2E (web, Playwright + kind)
+  # Веб-фронтенд и сервер собираются ОДИН раз, а не в каждом e2e-job'е (там это были GTK-зависимости, Wails-CLI,
+  # генерация биндингов, vue-tsc, vite и go build — по ~1,5 минуты на job). Бинарник kubron-server со встроенным
+  # фронтендом уходит артефактом; e2e-job'ы его скачивают и запускают. Сервер статический (CGO_ENABLED=0, как в
+  # Dockerfile): GTK нужен только `wails generate module` для типов vue-tsc.
+  build-web:
+    name: Build (web frontend + server)
     needs: changes
     if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
@@ -393,7 +447,10 @@ jobs:
 
       - uses: ./.github/actions/linux-build-deps
 
+      # Общая линия с restore-check: оба собирают один и тот же статический сервер
       - uses: ./.github/actions/go-build-cache
+        with:
+          scope: server
 
       - uses: ./.github/actions/wails-cli
 
@@ -407,9 +464,46 @@ jobs:
           wails generate module -tags $GO_TAGS
 
       - name: Build web frontend and server
+        env:
+          CGO_ENABLED: "0"
         run: |
           npm run build:web
-          cd .. && go build -tags "$GO_TAGS" -o kubron-server ./cmd/kubron-server
+          cd .. && go build -o kubron-server ./cmd/kubron-server
+        working-directory: frontend
+
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: kubron-server
+          path: kubron-server
+          if-no-files-found: error
+          retention-days: 1
+
+  # Сквозная проверка веб-версии: браузер → kubron-server → kind (docs/e2e.md).
+  # Блокирует сборку: gate этапов 1 и 2 (в том числе два пользователя одновременно).
+  e2e:
+    name: E2E (web, Playwright + kind)
+    needs: [changes, build-web]
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && needs.build-web.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      # Сервер собран в job'е build-web; Go, GTK и Wails здесь не нужны
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          name: kubron-server
+      - run: chmod +x kubron-server
+
+      - run: npm ci
         working-directory: frontend
 
       - name: kind cluster
@@ -502,8 +596,8 @@ jobs:
   # администратор команды управляет составом, администратор организации без членства не читает кластер (docs/e2e.md).
   e2e-pg:
     name: E2E (web on PostgreSQL, teams)
-    needs: changes
-    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
+    needs: [changes, build-web]
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && needs.build-web.result == 'success' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     services:
@@ -524,34 +618,19 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
-        with:
-          go-version-file: go.mod
-
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
-      - uses: ./.github/actions/linux-build-deps
-
-      - uses: ./.github/actions/go-build-cache
-
-      - uses: ./.github/actions/wails-cli
+      # Сервер собран в job'е build-web; Go, GTK и Wails здесь не нужны
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          name: kubron-server
+      - run: chmod +x kubron-server
 
       - run: npm ci
-        working-directory: frontend
-
-      - name: Generate Wails bindings
-        run: |
-          mkdir -p frontend/dist && touch frontend/dist/.keep
-          wails generate module -tags $GO_TAGS
-
-      - name: Build web frontend and server
-        run: |
-          npm run build:web
-          cd .. && go build -tags "$GO_TAGS" -o kubron-server ./cmd/kubron-server
         working-directory: frontend
 
       - name: kind cluster
@@ -597,8 +676,8 @@ jobs:
 
   e2e-ha:
     name: E2E (HA, two replicas on one PostgreSQL)
-    needs: changes
-    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
+    needs: [changes, build-web]
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && needs.build-web.result == 'success' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     services:
@@ -619,34 +698,19 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
-        with:
-          go-version-file: go.mod
-
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
-      - uses: ./.github/actions/linux-build-deps
-
-      - uses: ./.github/actions/go-build-cache
-
-      - uses: ./.github/actions/wails-cli
+      # Сервер собран в job'е build-web; Go, GTK и Wails здесь не нужны
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          name: kubron-server
+      - run: chmod +x kubron-server
 
       - run: npm ci
-        working-directory: frontend
-
-      - name: Generate Wails bindings
-        run: |
-          mkdir -p frontend/dist && touch frontend/dist/.keep
-          wails generate module -tags $GO_TAGS
-
-      - name: Build web frontend and server
-        run: |
-          npm run build:web
-          cd .. && go build -tags "$GO_TAGS" -o kubron-server ./cmd/kubron-server
         working-directory: frontend
 
       - name: kind cluster
