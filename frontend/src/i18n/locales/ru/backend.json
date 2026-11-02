@@ -556,11 +556,11 @@
   "theArgoCdAddressIsLongerThan": "Адрес Argo CD длиннее {p0} символов",
   "theArgoCdAddressMustBeAn": "Адрес Argo CD должен быть URL http или https без учётных данных, query и fragment",
   "unknownLogLevelExpectedDebugInfo": "неизвестный уровень логирования {p0} (допустимо: debug, info, warn или error)",
-  "storedWithEncryptionKeyCannotBeRead": "{p0}: данные зашифрованы ключом {p1} и не читаются настроенными ключами: {p2}"
-  "internalErrorRequestId": "внутренняя ошибка, идентификатор запроса {p0}"  
+  "storedWithEncryptionKeyCannotBeRead": "{p0}: данные зашифрованы ключом {p1} и не читаются настроенными ключами: {p2}",
+  "internalErrorRequestId": "внутренняя ошибка, идентификатор запроса {p0}",
   "initialSetupOverTheNetworkIs": "первичная настройка по сети отключена: задайте KUBRON_SETUP_TOKEN или выполните kubron-server create-admin",
   "theSetupTokenIsMissingOr": "токен первичной настройки не передан или неверен",
-  "theSetupTokenIsTooShort": "токен первичной настройки слишком короткий: нужно не менее {p0} символов (KUBRON_SETUP_TOKEN)"
+  "theSetupTokenIsTooShort": "токен первичной настройки слишком короткий: нужно не менее {p0} символов (KUBRON_SETUP_TOKEN)",
   "anAllowedHostMustBeA": "разрешённый хост должен быть именем или IP-адресом с необязательным портом, без схемы и пути",
   "kubronAllowedHosts": "KUBRON_ALLOWED_HOSTS: {p0}"
 }
