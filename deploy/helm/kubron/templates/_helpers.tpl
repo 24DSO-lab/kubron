@@ -140,3 +140,19 @@ except и allowCluster), open — true: без to и cidrs разрешить л
 {{- toYaml $dests }}
 {{- end }}
 {{- end }}
+
+{{/*
+  Токен первичной настройки. Источник по приоритету: secrets.keys.setupToken (ключ в основном Secret) >
+  setup.existingSecret > Secret <fullname>-setup, который создаёт чарт (setup-secret.yaml).
+  Пустой результат — токен не используется (setup.enabled=false).
+*/}}
+{{- define "kubron.setupSecretName" -}}
+{{- if .Values.secrets.keys.setupToken }}{{ include "kubron.secretName" . }}
+{{- else if .Values.setup.existingSecret }}{{ .Values.setup.existingSecret }}
+{{- else }}{{ printf "%s-setup" (include "kubron.fullname" .) | trunc 63 | trimSuffix "-" }}
+{{- end }}
+{{- end }}
+
+{{- define "kubron.setupTokenKey" -}}
+{{- default .Values.setup.tokenKey .Values.secrets.keys.setupToken -}}
+{{- end }}

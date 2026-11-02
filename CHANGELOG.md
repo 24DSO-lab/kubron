@@ -21,7 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   service mode (PostgreSQL or a non-loopback listener) `SetupAdmin` requires a **setup token** (`KUBRON_SETUP_TOKEN`)
   while there are no users. **Upgrade:** a new mandatory step for new installations. The Helm chart creates the token in
   a Secret (or reads `setup.existingSecret`), and its `NOTES.txt` shows how to read it; the administrator can also be
-  created with `kubectl exec -it deploy/<name> -- /kubron-server create-admin` (the password is never an argument).
+  created with `kubectl exec -i deploy/<name> -- /kubron-server create-admin --username <name>` (the password goes on stdin or in
+  `KUBRON_ADMIN_PASSWORD`, never as an argument).
   Installations that already have users are not affected. See `docs/deploy.md`.
 - **Cluster addresses:** `KUBRON_CLUSTER_ADDR_POLICY` now defaults to `permissive` (it was `off`): API-server addresses
   in loopback, link-local and cloud-metadata ranges are rejected. **Upgrade:** a cluster whose API server is on such

@@ -70,6 +70,16 @@ cosign verify ghcr.io/24dso-labs/kubron:<version> \
 
 The same commands work for `oci://ghcr.io/24dso-labs/charts/kubron`. See the [deployment guide](https://github.com/24DSO-labs/kubron/blob/master/docs/deploy.md) for details.
 
+## First run
+
+Until the first administrator exists, the server accepts the initial setup only with a setup token (`KUBRON_SETUP_TOKEN`, at least 16 characters). The chart generates one into the Secret `<release>-setup` unless you set `setup.existingSecret` (required for GitOps: Argo CD and `helm template` cannot read it back). Read it with `kubectl get secret <release>-setup -o jsonpath='{.data.KUBRON_SETUP_TOKEN}' | base64 -d`.
+
+Without the network you can create the administrator directly in the database; pass the password on stdin or in `KUBRON_ADMIN_PASSWORD`, never as an argument:
+
+```sh
+kubectl exec -i deploy/<release> -- /kubron-server create-admin --username admin < password.txt
+```
+
 ## Network and RBAC
 
 - **NetworkPolicy.** Egress to cluster API servers is open except link-local and cloud metadata addresses (`169.254.0.0/16`, `fd00:ec2::254/128`). Narrow PostgreSQL, API-server and IdP egress to your own networks with `networkPolicy.egress.*.cidrs`.
