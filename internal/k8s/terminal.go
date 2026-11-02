@@ -456,8 +456,10 @@ func (m *Manager) watchTerminal(s *TerminalSession) {
 			default:
 				continue
 			}
-			s.finish(reason)
+			// Сначала отправляем причину в терминал и только потом уведомляем observer:
+			// observer может разбудить вызывающий код, который сразу прочитает вывод.
 			s.out.Data([]byte("\r\n[session closed: " + note + "]\r\n"))
+			s.finish(reason)
 			_ = m.CloseTerminal(s.ID)
 			return
 		}
