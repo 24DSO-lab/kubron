@@ -17,6 +17,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Port-forward proxy and terminals:** with `KUBRON_CLUSTER_ADDR_POLICY` enabled, the HTTP port-forward proxy
   (ADR-0017) and terminals open their connection to the API server through the address policy as well; a test
   forbids calling the stock SPDY/WebSocket dialers directly.
+- **First-run setup:** the first administrator can no longer be created by whoever reaches the server first. In the
+  service mode (PostgreSQL or a non-loopback listener) `SetupAdmin` requires a **setup token** (`KUBRON_SETUP_TOKEN`)
+  while there are no users. **Upgrade:** a new mandatory step for new installations. The Helm chart creates the token in
+  a Secret (or reads `setup.existingSecret`), and its `NOTES.txt` shows how to read it; the administrator can also be
+  created with `kubectl exec -it deploy/<name> -- /kubron-server create-admin` (the password is never an argument).
+  Installations that already have users are not affected. See `docs/deploy.md`.
+- **Cluster addresses:** `KUBRON_CLUSTER_ADDR_POLICY` now defaults to `permissive` (it was `off`): API-server addresses
+  in loopback, link-local and cloud-metadata ranges are rejected. **Upgrade:** a cluster whose API server is on such
+  an address (for example kind on `127.0.0.1`) needs `KUBRON_CLUSTER_ADDR_ALLOW_CIDRS` (chart:
+  `kubron.clusterAddrAllowCidrs`) or `KUBRON_CLUSTER_ADDR_POLICY=off`.
+- **Roles:** the `user` role no longer sees the values of Secrets and the values of Helm releases (`secrets.read` is
+  now held by `operator` and `admin` only); reading them is audited as before.
+- **Cluster settings:** secrets inside a kubeconfig (tokens, client keys, passwords) are masked when a cluster is
+  opened for editing; a secret is replaced only when a new value is entered.
+- **Chart:** the egress NetworkPolicy to cluster API servers and identity providers excludes link-local and
+  cloud-metadata addresses (`169.254.0.0/16`, `fd00:ec2::254/128`) by default; the setup token and the Host allowlist
+  (`KUBRON_ALLOWED_HOSTS`, taken from `ingress.hosts` and `*.pf.<baseDomain>`) are set by the chart.
+- **Supply chain:** the server image and the chart are signed with cosign (keyless) and carry GitHub attestations of
+  provenance and SBOM; Trivy blocks publishing an image with a fixable HIGH/CRITICAL vulnerability. How to verify:
+  `docs/deploy.md`, "Image and chart verification".
 
 ### Fixed
 
@@ -27,6 +47,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Release:** SBOMs for the image (SPDX), the chart and the desktop build (CycloneDX) are attached to the GitHub Release
+  and listed in `SHA256SUMS.txt`; `docs/releasing.md` now covers the server side (image, chart, signatures), the
+  pre-tag checklist, the single version number and rollback (`helm rollback`, migration policy).
+- **CI:** `deps-audit` job (`npm audit --omit=dev --audit-level=high`, osv-scanner), Trivy reports for the image and the
+  rendered chart, a weekly scan of the latest published image (issue with the `security` label), exceptions only in
+  `.trivyignore` / `osv-scanner.toml` with a reason and an expiry (checked by `scripts/check-ignores.py`); Dependabot
+  also covers `pkg/ext`, `docs-site`, Docker and weekly GitHub Actions updates.
+- **Chart:** `setup.existingSecret` / `setup.tokenKey` (generated and kept across upgrades when not set),
+  `kubron.allowedHosts`, `kubron.clusterAddrPolicy`, `kubron.clusterAddrAllowCidrs`, `rbac.profile`
+  (`readonly` | `operator` | `custom`) and `networkPolicy.egress.{clusterApi,idp}` with configurable CIDRs and ports.
 - **Chart:** `portForward` values (`baseDomain`, `scheme`, `idleTimeout`, `maxDuration`) set the `KUBRON_PF_*` variables and add the
   `*.pf.<baseDomain>` rule to the Ingress; without a domain port-forward stays off in the service mode.
 - **High availability:** the Helm chart now defaults to two replicas (PodDisruptionBudget, spreading across nodes,
@@ -52,6 +82,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Port-forward:** with several replicas a stream carries its owner in the id (one DNS label); a request to a stream of
   another replica gets `421` before the one-time ticket is spent, and `GetPortForwardURL`/`StopPortForward` answer
   `409 stream_elsewhere` (the UI retries). See ADR-0017, section 7.
+
+### Changed
+
+- **Release:** `publish.yml` is called by `release.yml` after CI instead of reacting to the tag on its own, so SBOMs reach the
+  immutable GitHub Release and the image is never published from an untested commit. A published image or chart version is
+  never overwritten. `Chart.yaml` holds `0.0.0-dev` placeholders; the version comes from the tag.
 
 ### Fixed
 
