@@ -2,25 +2,21 @@
 
 Thank you for helping the project. Brief rules below.
 
-## License and DCO
+## License and contributions
 
 Kubron's core is licensed under [Apache-2.0](LICENSE). By submitting a change you
-confirm that you have the right to contribute it and agree to license it under Apache-2.0
-in accordance with the [Developer Certificate of Origin](https://developercertificate.org/).
+confirm that you have the right to contribute it and agree to license it under Apache-2.0.
 
-Confirmation is a `Signed-off-by` line in every commit. Git adds it automatically:
+For contributions from external contributors (pull requests opened from a fork), every
+commit must include a DCO `Signed-off-by` line. Create signed-off commits with:
 
 ```
 git commit -s -m "feat: ..."
 ```
 
-Forgot? For the last commit use `git commit --amend -s --no-edit`; for several commits
-use `git rebase --signoff <base>`. CI checks signatures in pull requests (`scripts/check-dco.sh`).
-
-Commits created since 2026-10-30 (`DCO_SINCE` in `scripts/check-dco.sh`) are checked;
-earlier ones made before the check was introduced are not rewritten.
-To avoid typing `-s`, enable sign-off in your IDE: VS Code — `"git.alwaysSignOff": true`,
-JetBrains — check "Sign-off commit" in the commit dialog.
+If you forgot, use `git commit --amend -s --no-edit` for the last commit or
+`git rebase --signoff <base>` for several commits. CI checks DCO only for pull requests
+from forks. Pull requests from repository collaborators do not require sign-off.
 
 No separate CLA is required.
 
