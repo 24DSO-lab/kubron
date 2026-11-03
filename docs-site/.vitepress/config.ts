@@ -46,10 +46,13 @@ export default defineConfig({
           '/features/': [{ text: 'Features', items: [
             { text: 'Overview', link: '/features/' },
             { text: 'Multi-cluster', link: '/features/multi-cluster' },
+            { text: 'Cluster authentication', link: '/features/cluster-auth' },
             { text: 'Dashboard', link: '/features/dashboard' },
             { text: 'Resources & YAML', link: '/features/resources' },
+            { text: 'Operations', link: '/features/operations' },
             { text: 'Helm', link: '/features/helm' },
             { text: 'GitOps', link: '/features/gitops' },
+            { text: 'Teams & shared access', link: '/features/teams' },
             { text: 'Security & access', link: '/features/security' }
           ]}],
           '/server/': [{ text: 'Web version', items: [
@@ -92,10 +95,13 @@ export default defineConfig({
           '/ru/features/': [{ text: 'Возможности', items: [
             { text: 'Обзор', link: '/ru/features/' },
             { text: 'Несколько кластеров', link: '/ru/features/multi-cluster' },
+            { text: 'Подключение кластера', link: '/ru/features/cluster-auth' },
             { text: 'Дашборд', link: '/ru/features/dashboard' },
             { text: 'Ресурсы и YAML', link: '/ru/features/resources' },
+            { text: 'Операции', link: '/ru/features/operations' },
             { text: 'Helm', link: '/ru/features/helm' },
             { text: 'GitOps', link: '/ru/features/gitops' },
+            { text: 'Команды и совместный доступ', link: '/ru/features/teams' },
             { text: 'Безопасность и доступ', link: '/ru/features/security' }
           ]}],
           '/ru/server/': [{ text: 'Web-версия', items: [
