@@ -8,7 +8,7 @@ const releases = `${repo}/releases`
 
 export default defineConfig({
   title: 'Kubron',
-  description: 'A fast, private Kubernetes desktop IDE. Multi-cluster operations, Helm and GitOps in one workspace.',
+  description: 'A private Kubernetes Operations Workspace for desktop and web. Multi-cluster operations, Helm and GitOps in one place.',
   lang: 'en-US',
   base: process.env.DOCS_BASE || '/',
   appearance: 'dark',
@@ -18,7 +18,7 @@ export default defineConfig({
     ['meta', { property: 'og:type', content: 'website' }],
     ['meta', { property: 'og:site_name', content: 'Kubron' }],
     ['meta', { property: 'og:title', content: 'Kubron — Kubernetes, under control.' }],
-    ['meta', { property: 'og:description', content: 'A fast, private Kubernetes desktop IDE. Clusters, workloads, Helm and GitOps in one workspace.' }],
+    ['meta', { property: 'og:description', content: 'A private Kubernetes Operations Workspace for desktop and web. Clusters, workloads, Helm and GitOps in one place.' }],
     ['meta', { property: 'og:image', content: 'https://raw.githubusercontent.com/24DSO-labs/kubron/master/docs/images/social-preview.png' }],
     ['meta', { name: 'twitter:card', content: 'summary_large_image' }]
   ],
