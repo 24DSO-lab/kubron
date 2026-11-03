@@ -98,7 +98,7 @@ func Resolve(ctx context.Context, o Options) (Selection, error) {
 }
 
 func resolveDesktop(ctx context.Context, o Options, log *slog.Logger) (Selection, error) {
-	var ks MasterKeyStore = o.Keyring
+	ks := o.Keyring
 	if ks == nil {
 		ks = NewKeyringStore("kubron", "master-key")
 	}

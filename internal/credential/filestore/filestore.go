@@ -222,7 +222,7 @@ func (s *Store) Get(_ context.Context, k credential.Key) (credential.Record, err
 
 // Put implements credential.CredentialStore.
 func (s *Store) Put(ctx context.Context, r credential.Record, expected int64) (credential.Meta, error) {
-	if err := r.Key.Validate(); err != nil {
+	if err := r.Validate(); err != nil {
 		return credential.Meta{}, err
 	}
 	blob, keyID, err := s.sealer.Seal(r.Key, r.Secret)
