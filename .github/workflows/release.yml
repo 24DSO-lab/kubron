@@ -13,11 +13,17 @@ permissions:
 
 jobs:
   # Тег проходит те же проверки, что и ветка: не полагаемся на то, что CI уже видел этот коммит.
+  # Пропуск по отметке «содержимое уже проверено» на теге выключен (verified-tree): здесь всегда полный прогон.
   # На PR, меняющем только release.yml, пробная сборка идёт без полного CI.
   verify:
     name: Verify
     if: startsWith(github.ref, 'refs/tags/v')
     uses: ./.github/workflows/ci.yml
+    # Вызываемый workflow не получает прав больше, чем у вызывающего: job `changes` в ci.yml читает
+    # список артефактов (actions: read). Без этой строки вызов не запустится.
+    permissions:
+      contents: read
+      actions: read
 
   build:
     name: Build (${{ matrix.name }})
