@@ -14,7 +14,7 @@
 [![Downloads](https://img.shields.io/github/downloads/24DSO-labs/kubron/total)](https://github.com/24DSO-labs/kubron/releases)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/24DSO-labs/kubron/badge)](https://scorecard.dev/viewer/?uri=github.com/24DSO-labs/kubron)
 
-[Download](#download) · [Features](#features) · [Documentation](#documentation) · [Build from source](#build-from-source) · [Server mode](#server-mode-experimental) · [Roadmap](#roadmap)
+[Download](#download) · [Features](#features) · [Documentation](#documentation) · [Build from source](#build-from-source) · [Server mode](#server-mode) · [Roadmap](#roadmap)
 
 </div>
 
@@ -47,7 +47,7 @@ Kubron is a lightweight, open-source Kubernetes desktop IDE built with **Go** an
 
 - **Lightweight and native** — written in Go with Wails: a compact desktop app that uses the system webview
 - **Private by default** — no telemetry and no mandatory account; your kubeconfig never leaves your machine
-- **Desktop and web** — the same UI as a desktop app or served over HTTP for teams (web mode is experimental)
+- **Desktop and web** — the same UI as a desktop app or served over HTTP for teams (web mode supports multi-user teams)
 - **Helm and GitOps built in** — manage releases and applications without installing extra plugins
 - **Open source** — Apache-2.0, with a public `pkg/ext` API for extensions
 
@@ -150,7 +150,7 @@ On Linux add `-tags webkit2_41` to `wails dev` / `wails build` (WebKitGTK 4.1, a
 - **Architecture decisions** — [docs/adr](docs/adr)
 - **Releasing** — [docs/releasing.md](docs/releasing.md)
 
-## Server mode (experimental)
+## Server mode
 
 Besides the desktop app, Kubron ships `kubron-server`: the same UI served over HTTP for teams. It stores users, clusters and the audit log in **PostgreSQL 14+**, encrypts kubeconfigs and GitOps integration tokens at rest (`KUBRON_SECRET_KEY`) and is meant to run behind a TLS-terminating reverse proxy.
 
@@ -171,7 +171,7 @@ cd frontend && npm ci && npm run build:web && cd ..
 go run ./cmd/kubron-server --listen 127.0.0.1:8080
 ```
 
-> The web UI is under active development. Listening on a non-loopback address requires `KUBRON_ALLOW_REMOTE=1` and a TLS proxy in front.
+> Listening on a non-loopback address requires `KUBRON_ALLOW_REMOTE=1` and a TLS proxy in front.
 
 ## Roadmap
 
@@ -179,7 +179,7 @@ go run ./cmd/kubron-server --listen 127.0.0.1:8080
 - [x] Helm releases management
 - [x] GitOps applications management
 - [ ] Support for more GitOps tools
-- [x] Web mode with multi-user support, teams and session auth — *experimental*
+- [x] Web mode with multi-user support, teams and session auth
 - [x] High availability for the server (more than one replica)
 - [x] Shared, persistent Helm catalog in server mode
 - [x] Publish the signed container image and Helm chart to a registry
