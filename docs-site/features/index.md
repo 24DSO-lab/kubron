@@ -1,6 +1,6 @@
 # Features overview
 
-Kubron covers the day-to-day work of a Kubernetes operator in a single desktop (or web) window.
+Kubron is a Kubernetes Operations Workspace available as a native Desktop application and a self-hosted Web application. The core workflow is the same across editions: inspect clusters, troubleshoot workloads and operate Kubernetes resources. Web adds shared, multi-user access and centralized administration.
 
 ## Clusters & dashboard
 
