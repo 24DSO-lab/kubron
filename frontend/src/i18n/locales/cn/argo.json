@@ -241,6 +241,7 @@
     "rollbackConfirm": "将 {name} 回滚到部署 #{id}？资源将同步到该修订（不清理）。",
     "rollbackStarted": "{name}：开始回滚到 #{id}",
     "uiOpened": "Argo CD 界面：{url}",
+    "externalUrlConfirm": "您即将离开 Kubron 并打开外部 Argo CD 地址：{host}。请仅在确认并信任此地址时继续。是否继续？",
     "deletedCascade": "{name}：已删除及其资源",
     "deletedKept": "{name}：已删除（资源保留）",
     "autoSyncConfirmOne": "为 {name} 启用自动同步？不同步的资源将自动应用。",
