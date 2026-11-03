@@ -4,7 +4,7 @@ layout: home
 hero:
   name: Kubron
   text: Kubernetes под контролем.
-  tagline: Kubernetes Operations Workspace в двух версиях: Desktop-приложение и самостоятельно разворачиваемая Web-версия. Кластеры, ресурсы, Helm и GitOps — в одном месте.
+  tagline: "Kubernetes Operations Workspace в двух версиях: Desktop-приложение и самостоятельно разворачиваемая Web-версия. Кластеры, ресурсы, Helm и GitOps — в одном месте."
   actions:
     - theme: brand
       text: Скачать Kubron
