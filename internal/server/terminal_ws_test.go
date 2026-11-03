@@ -136,7 +136,7 @@ func TestTerminalWSMalformedControlDoesNotLogUserInput(t *testing.T) {
 	}
 	defer ws.Close()
 
-	payload := "invalid-control\\nforged-log-entry secret=terminal-secret"
+	payload := "invalid-control\nforged-log-entry secret=terminal-secret"
 	if err := ws.WriteMessage(websocket.TextMessage, []byte(payload)); err != nil {
 		t.Fatal(err)
 	}
