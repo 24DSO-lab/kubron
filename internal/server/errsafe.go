@@ -117,10 +117,9 @@ func requestIDFor(w http.ResponseWriter, r *http.Request) (string, *http.Request
 	return id, r.WithContext(logging.WithRequestID(r.Context(), id))
 }
 
-// logInternal пишет факт сбоя, тип ошибки и request_id. Текст ошибки не журналируется:
-// он может содержать ключи шифрования, токены и другие секреты.
+// logInternal пишет факт сбоя, класс ошибки и request_id. Текст ошибки и имя её типа не журналируются:
+// ошибка может содержать ключи шифрования, токены и другие секреты. Для диагностики хватает константы из
+// logging.ErrorKind (timeout, network, tls, filesystem, database, other).
 func logInternal(r *http.Request, method string, err error, hidden bool) {
-	// Ошибка может содержать ключи шифрования, токены или данные БД. Для диагностики
-	// сохраняем только динамический тип, но не пользовательский текст ошибки.
-	slog.ErrorContext(r.Context(), "rpc call failed", "method", method, "error_type", fmt.Sprintf("%T", err), "hidden_from_client", hidden)
+	slog.ErrorContext(r.Context(), "rpc call failed", "method", method, "error_type", logging.ErrorKind(err), "hidden_from_client", hidden)
 }

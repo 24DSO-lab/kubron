@@ -5,12 +5,12 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/24DSO-labs/kubron/internal/logging"
 	"github.com/24DSO-labs/kubron/internal/pgstore"
 )
 
@@ -38,7 +38,7 @@ func checkSecretKey(ctx context.Context, pg *pgstore.Store) error {
 	}
 	switch strings.ToLower(strings.TrimSpace(os.Getenv("KUBRON_ALLOW_KEY_MISMATCH"))) {
 	case "1", "true", "yes", "on":
-		slog.Warn("KUBRON_ALLOW_KEY_MISMATCH is set: starting although the key does not read the database; cluster secrets are unavailable", "error_type", fmt.Sprintf("%T", err))
+		slog.Warn("KUBRON_ALLOW_KEY_MISMATCH is set: starting although the key does not read the database; cluster secrets are unavailable", "error_type", logging.ErrorKind(err))
 		return nil
 	}
 	// Не оборачиваем исходную ошибку: драйвер/secretbox может включить в неё значения ключей.
