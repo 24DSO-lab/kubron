@@ -38,7 +38,7 @@ func TestDeleteOwnerRemovesCredentials(t *testing.T) {
 
 	putCred(t, s, "c1", credential.ScopeUser, "gone-user")
 	putCred(t, s, "c1", credential.ScopeUser, "other-user")
-	if err := s.Users().DeleteUser("gone-user"); err != nil {
+	if err := (userBackend{s}).DeleteUser("gone-user"); err != nil {
 		t.Fatal(err)
 	}
 	if n := countCreds(t, s, "user", "gone-user"); n != 0 {
