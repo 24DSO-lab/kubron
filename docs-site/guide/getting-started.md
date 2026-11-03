@@ -1,6 +1,6 @@
 # Getting Started
 
-Kubron is a lightweight, open-source Kubernetes desktop IDE built with **Go** and **Wails**.
+Kubron is an open-source **Kubernetes Operations Workspace** for desktop and web, built with **Go**, **Wails** and **Vue**.
 
 No telemetry, no mandatory account — your kubeconfig stays on your machine.
 
