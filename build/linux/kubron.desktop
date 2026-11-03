@@ -2,7 +2,7 @@
 Type=Application
 Name=Kubron
 GenericName=Kubernetes Operations Workspace
-Comment=Desktop application for managing Kubernetes clusters
+Comment=Workspace for Kubernetes operations across clusters
 Exec=kubron
 Icon=kubron
 Terminal=false
