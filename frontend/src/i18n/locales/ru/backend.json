@@ -598,6 +598,8 @@
   "credCoreCredentialsFileVersionUnsupported": "версия формата файла учётных данных не поддерживается",
   "credCoreWriteCredentialsFile": "запись файла учётных данных: {p0}",
   "credCoreLockCredentialsFile": "блокировка файла учётных данных: {p0}",
-  "credCoreCredentialsFileLocked": "файл учётных данных заблокирован другим процессом"
+  "credCoreCredentialsFileLocked": "файл учётных данных заблокирован другим процессом",
+  "credCoreKubeconfigUnreadable": "не удалось прочитать kubeconfig",
+  "credCoreKubeconfigContextNotFound": "контекст kubeconfig не найден"
 
 }

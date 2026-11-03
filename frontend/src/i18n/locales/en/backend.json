@@ -598,6 +598,8 @@
   "credCoreCredentialsFileVersionUnsupported": "the credentials file has an unsupported format version",
   "credCoreWriteCredentialsFile": "write credentials file: {p0}",
   "credCoreLockCredentialsFile": "lock credentials file: {p0}",
-  "credCoreCredentialsFileLocked": "the credentials file is locked by another process"
+  "credCoreCredentialsFileLocked": "the credentials file is locked by another process",
+  "credCoreKubeconfigUnreadable": "the kubeconfig could not be read",
+  "credCoreKubeconfigContextNotFound": "the kubeconfig context was not found"
 
 }

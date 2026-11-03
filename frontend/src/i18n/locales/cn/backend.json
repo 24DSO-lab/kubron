@@ -598,6 +598,8 @@
   "credCoreCredentialsFileVersionUnsupported": "凭据文件的格式版本不受支持",
   "credCoreWriteCredentialsFile": "写入凭据文件：{p0}",
   "credCoreLockCredentialsFile": "锁定凭据文件：{p0}",
-  "credCoreCredentialsFileLocked": "凭据文件被其他进程锁定"
+  "credCoreCredentialsFileLocked": "凭据文件被其他进程锁定",
+  "credCoreKubeconfigUnreadable": "无法读取 kubeconfig",
+  "credCoreKubeconfigContextNotFound": "未找到 kubeconfig 上下文"
 
 }
