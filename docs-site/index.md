@@ -79,7 +79,7 @@ Kubron brings the everyday Kubernetes workflow into one desktop application: ins
 
 ## Desktop first. Web when you need it.
 
-The desktop application is built with Go, Wails and Vue. An experimental server mode serves the same UI over HTTP for multi-user teams, with PostgreSQL-backed state, encrypted credentials and support for multiple replicas. It is designed to run behind a TLS-terminating reverse proxy.
+The desktop application is built with Go, Wails and Vue. Server mode serves the same UI over HTTP for multi-user teams, with PostgreSQL-backed state, encrypted credentials and support for multiple replicas. It is designed to run behind a TLS-terminating reverse proxy.
 
 [Explore server mode →](/server/)
 
