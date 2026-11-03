@@ -28,8 +28,7 @@ GitHub — основной репозиторий. GitLab (`origin`) — вто
 
 ## Порядок действий
 
-1. **Коммит в `refactor`** из IDE (подпись включена: VS Code `git.alwaysSignOff`, JetBrains
-   «Sign-off commit»), затем `git push github refactor`.
+1. **Коммит в `refactor`** из IDE, затем `git push github refactor`. Для внешних PR из fork CI отдельно проверяет DCO.
 2. **CHANGELOG.** Если изменение заметно пользователю, добавьте строку в `CHANGELOG.md` в раздел
    `## [Unreleased]` (Added / Changed / Fixed / Removed / Security). Эти строки станут описанием релиза.
 3. **В `dev`.** Когда всё готово к выпуску: слейте `refactor` в `dev` (в IDE: Merge, либо
@@ -79,7 +78,7 @@ workflow'ов запускается только по путям файлов: 
 
 ## Что делает `scripts/release.sh`
 
-1. Проверяет: вы в `dev`, дерево чистое, `dev` совпадает с GitHub, тега нет, подписи DCO в порядке.
+1. Проверяет: вы в `dev`, дерево чистое, `dev` совпадает с GitHub, тега нет.
 2. Переносит `[Unreleased]` в раздел `## [X.Y.Z] - дата`, обновляет ссылки внизу CHANGELOG и версии
    в `wails.json` и `frontend/package*.json`; коммит `chore(release): vX.Y.Z`, push в `dev`.
 3. Создаёт pull request `dev` → `master`, ждёт зелёных проверок, сливает его (merge commit).
@@ -124,8 +123,7 @@ workflow'ов запускается только по путям файлов: 
 2. **Защита `dev`:** в ruleset `protect-main-branches` оставьте целью только `master`; создайте
    ruleset `protect-dev` (Branch, цель `dev`) с правилами Restrict deletions и Block force pushes.
    Обязательный PR и проверки для `dev` не включайте: тогда слияние в IDE работает как в GitLab.
-3. **Защита `master`** остаётся как есть. Допустимые способы слияния PR: Merge (скрипт использует его;
-   squash ломает проверку DCO, а rebase снимите).
+3. **Защита `master`** остаётся как есть. Скрипт выпускает PR с merge commit.
 4. **Не выключайте rulesets и не делайте force-push в `master`/`dev`**, в том числе `git push --all --force`
    и `--mirror`: это уже один раз откатило `master` назад.
 
