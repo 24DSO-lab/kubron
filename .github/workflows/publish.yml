@@ -138,14 +138,15 @@ jobs:
           trivyignores: .trivyignore
           format: table
 
-      # SBOM состава образа (пакеты Go и npm в бинарнике и дистрибутив). Файл попадёт в GitHub Release.
+      # SBOM состава только что собранного локального образа (Syft читает Docker daemon, не registry).
+      # Файл попадёт в GitHub Release. Префикс docker: важен для пробного запуска без PUSH.
       - name: Prepare the SBOM directory
         run: mkdir -p "$RUNNER_TEMP/sbom"
 
       - name: SBOM of the image
         uses: anchore/sbom-action@fffec3d851af758d56fee099cf3fbf8aa8779843 # v0.24.3
         with:
-          image: ${{ steps.v.outputs.image }}:${{ steps.v.outputs.version }}
+          image: docker:${{ steps.v.outputs.image }}:${{ steps.v.outputs.version }}
           format: spdx-json
           output-file: ${{ runner.temp }}/sbom/kubron-sbom_${{ steps.v.outputs.version }}_image.spdx.json
           upload-artifact: false
