@@ -562,8 +562,7 @@
   "hiddenSecretsRebound": "集群地址或上下文的用户已更改，无法保留已隐藏的密钥：请重新输入",
   "kubeconfigCannotBeShownSafely": "无法安全显示 kubeconfig：有密钥未能隐藏",
   "hiddenSecretHasNoSavedCounterpart": "用户 {p1} 的隐藏密钥 {p0} 没有已保存的值：请输入其值",
-  "hiddenSecretPlaceholderMisplaced": "隐藏密钥的占位符出现在密钥字段之外"
-
+  "hiddenSecretPlaceholderMisplaced": "隐藏密钥的占位符出现在密钥字段之外",
   "internalErrorRequestId": "内部错误，请求 ID：{p0}",
   "initialSetupOverTheNetworkIs": "已禁用通过网络进行初始设置：请设置 KUBRON_SETUP_TOKEN 或运行 kubron-server create-admin",
   "theSetupTokenIsMissingOr": "初始设置令牌缺失或无效",
