@@ -31,7 +31,7 @@ Kubron has three built-in roles:
 
 | Role | Access |
 |---|---|
-| `admin` | Full access, including user/cluster administration and privileged operations |
+| `admin` | Full access within the team, including team membership, cluster management and privileged operations |
 | `operator` | Read access, Secret values and safe workload operations such as scale, restart and rollback |
 | `user` | Read-only access; no Secret values or privileged operations |
 
