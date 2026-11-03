@@ -251,12 +251,16 @@ func (a *App) ConnectToCluster(clusterID string) error {
 	if err != nil {
 		return err
 	}
-	config, _ := k8s.LoadKubronConfig()
-	if config == nil {
-		config = &k8s.KubronConfig{}
+	// Последний кластер — пользовательская настройка десктопа. В вебе активный кластер
+	// принадлежит веб-сессии и сохраняется отдельно в websession (для восстановления на другой реплике).
+	if a.sessionID == "" {
+		config, _ := k8s.LoadKubronConfig()
+		if config == nil {
+			config = &k8s.KubronConfig{}
+		}
+		config.LastActiveCluster = clusterID
+		_ = k8s.SaveKubronConfig(config) // запоминание последнего кластера не критично
 	}
-	config.LastActiveCluster = clusterID
-	_ = k8s.SaveKubronConfig(config) // запоминание последнего кластера не критично
 
 	return a.k8sMgr.TestConnection()
 }
@@ -264,6 +268,11 @@ func (a *App) ConnectToCluster(clusterID string) error {
 func (a *App) GetLastActiveCluster() string {
 	if a.authz(auth.PermRead) != nil {
 		return ""
+	}
+	// В веб-режиме не читаем общую настройку: она раскрывает выбор другого пользователя
+	// и заставляет новую сессию автоматически подключаться к его кластеру.
+	if a.sessionID != "" {
+		return a.k8sMgr.GetActiveContext()
 	}
 	config, err := k8s.LoadKubronConfig()
 	if err != nil || !a.auth.CanSeeCluster(config.LastActiveCluster) {

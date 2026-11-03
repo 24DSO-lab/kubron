@@ -83,13 +83,13 @@ test('экран входа, интерфейс и диалог добавлен
   await expect(page.locator('#app[data-v-app]')).not.toBeEmpty() // скрипты приложения выполнились
   await signIn(page)
 
-  // Диалог добавления кластера: форма, поля ввода, кнопки (стили Vue через CSSOM, шрифты)
-  const welcome = page.locator('.welcome-screen')
-  if (await welcome.isVisible()) {
-    await welcome.getByRole('button', { name: 'Добавить кластер' }).click()
-    await expect(page.locator('.cl-dialog')).toBeVisible()
-    await page.locator('.cl-dialog').getByRole('button', { name: /Отмена|Закрыть/ }).first().click().catch(() => {})
-  }
+  // Кнопка находится в навигации кластеров, а не внутри welcome-screen.
+  // Проверяем диалог и после первого входа, и при уже существующем кластере.
+  const addClusterButton = page.getByRole('button', { name: 'Добавить кластер', exact: true })
+  await expect(addClusterButton).toBeVisible()
+  await addClusterButton.click()
+  await expect(page.locator('.cl-dialog')).toBeVisible()
+  await page.locator('.cl-dialog').getByRole('button', { name: /Отмена|Закрыть/ }).first().click()
 
   // Выход и повторная загрузка: те же страницы после перезагрузки
   await page.reload()
