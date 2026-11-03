@@ -99,7 +99,9 @@ for f in "$min" "$inc"; do
 done
 # Секреты: ключ и строка подключения только из Secret, значений в рендере нет
 has   "$min" 'secretKeyRef' "secrets must be referenced from a Secret"
-hasnt "$min" '^kind: Secret$' "Secret rendered without secrets.create"
+# Единственный Secret по умолчанию — токен первичной настройки <release>-setup (setup-secret.yaml); значений ключа и БД в рендере нет
+[ "$(grep -c '^kind: Secret$' "$min")" = 1 ] || fail "only the setup-token Secret may be rendered without secrets.create"
+has "$min" 'name: test-kubron-setup' "the rendered Secret must be the setup-token Secret"
 has   "$dev" '^kind: Secret$' "Secret missing with secrets.create"
 has   "$dev" 'helm.sh/resource-policy: keep' "dev Secret must survive uninstall"
 # Writable-каталоги под emptyDir (HOME и TMPDIR)
@@ -172,13 +174,13 @@ render -f "$chart/ci/incluster-values.yaml" --set rbac.allowSecretsRead=true | g
 
 echo "== negative cases (must fail)"
 # Токен первичной настройки: по умолчанию Secret создаёт чарт, существующий Secret и выключение работают
-render -f "$chart/ci/minimal-values.yaml" --show-only templates/setup-secret.yaml | grep -q 'name: kubron-setup' \
+render -f "$chart/ci/minimal-values.yaml" --show-only templates/setup-secret.yaml | grep -q 'name: test-kubron-setup' \
   || fail "the chart must create the setup-token Secret by default"
 render -f "$chart/ci/minimal-values.yaml" --show-only templates/deployment.yaml | grep -q 'name: KUBRON_SETUP_TOKEN' \
   || fail "KUBRON_SETUP_TOKEN must be set by default"
 out="$(render -f "$chart/ci/minimal-values.yaml" --set setup.existingSecret=my-setup)"
 grep -q 'name: my-setup' <<<"$out" || fail "setup.existingSecret must be referenced"
-! grep -q 'name: kubron-setup' <<<"$out" || fail "no generated setup Secret expected with setup.existingSecret"
+! grep -q 'name: test-kubron-setup' <<<"$out" || fail "no generated setup Secret expected with setup.existingSecret"
 out="$(render -f "$chart/ci/minimal-values.yaml" --set setup.enabled=false)"
 ! grep -q 'KUBRON_SETUP_TOKEN' <<<"$out" || fail "setup.enabled=false must not set KUBRON_SETUP_TOKEN"
 
