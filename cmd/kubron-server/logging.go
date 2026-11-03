@@ -63,17 +63,18 @@ func enableAuditStdout(getenv func(string) string, w io.Writer) bool {
 	return false
 }
 
-// fatal пишет безопасную метаинформацию об ошибке и завершает процесс с кодом 1 (замена log.Fatalf).
+// logFatal пишет безопасную метаинформацию об ошибке. Только keyMismatchError имеет фиксированный
+// безопасный текст. Остальные ошибки могут содержать конфигурационные секреты, поэтому в журнал идёт
+// лишь класс ошибки — константа из logging.ErrorKind, а не её текст и не имя типа.
 func logFatal(what string, err error) {
-	// Только keyMismatchError имеет фиксированный безопасный текст. Остальные ошибки
-	// могут содержать конфигурационные секреты, поэтому пишем только их тип.
 	if _, ok := err.(keyMismatchError); ok {
 		slog.Error(what, "error", keyMismatchError{}.Error())
 		return
 	}
-	slog.Error(what, "error_type", fmt.Sprintf("%T", err))
+	slog.Error(what, "error_type", logging.ErrorKind(err))
 }
 
+// fatal журналирует ошибку (logFatal) и завершает процесс с кодом 1 (замена log.Fatalf).
 func fatal(what string, err error) {
 	logFatal(what, err)
 	os.Exit(1)
