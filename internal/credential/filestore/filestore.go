@@ -17,6 +17,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"sync"
@@ -83,7 +84,7 @@ func New(path string, sealer *credential.Sealer) (*Store, error) {
 }
 
 func (s *Store) load() (doc, error) {
-	raw, err := os.ReadFile(s.path)
+	raw, err := retryWindows(func() ([]byte, error) { return os.ReadFile(s.path) })
 	if errors.Is(err, fs.ErrNotExist) {
 		return doc{Version: formatVersion}, nil
 	}
@@ -131,7 +132,7 @@ func (s *Store) save(d doc) error {
 	if err := tmp.Close(); err != nil {
 		return fmt.Errorf("write credentials file: %w", err)
 	}
-	if err := os.Rename(name, s.path); err != nil {
+	if _, err := retryWindows(func() (struct{}, error) { return struct{}{}, os.Rename(name, s.path) }); err != nil {
 		return fmt.Errorf("write credentials file: %w", err)
 	}
 	ok = true
@@ -143,6 +144,25 @@ func (s *Store) save(d doc) error {
 }
 
 func isWindowsChmod(error) bool { return os.PathSeparator == '\\' }
+
+// retryWindows repeats a file operation for a short while on Windows. There a rename over a file that
+// another process (or another Store instance) has open for reading fails with a sharing violation or
+// "access denied", and a read that races a rename fails the same way; both pass within milliseconds.
+// Elsewhere the operation runs once. A missing file is returned at once (the caller handles it).
+func retryWindows[T any](op func() (T, error)) (T, error) {
+	v, err := op()
+	if err == nil || runtime.GOOS != "windows" || errors.Is(err, fs.ErrNotExist) {
+		return v, err
+	}
+	deadline := time.Now().Add(2 * time.Second)
+	for delay := time.Millisecond; time.Now().Before(deadline); delay = min(delay*2, 50*time.Millisecond) {
+		time.Sleep(delay)
+		if v, err = op(); err == nil || errors.Is(err, fs.ErrNotExist) {
+			return v, err
+		}
+	}
+	return v, err
+}
 
 // lock serializes writers of the same file: a mutex inside the process and a lock file between processes.
 func (s *Store) lock(ctx context.Context) (func(), error) {
