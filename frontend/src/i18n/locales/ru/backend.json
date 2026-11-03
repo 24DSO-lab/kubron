@@ -557,7 +557,6 @@
   "theArgoCdAddressMustBeAn": "Адрес Argo CD должен быть URL http или https без учётных данных, query и fragment",
   "unknownLogLevelExpectedDebugInfo": "неизвестный уровень логирования {p0} (допустимо: debug, info, warn или error)",
   "storedWithEncryptionKeyCannotBeRead": "{p0}: данные зашифрованы ключом {p1} и не читаются настроенными ключами: {p2}",
-
   "hiddenSecretsNoSavedCluster": "в kubeconfig есть скрытые секреты, но не указан сохранённый кластер, откуда их взять",
   "hiddenSecretsRebound": "изменился адрес кластера или пользователь контекста, поэтому скрытые секреты сохранить нельзя: введите их заново",
   "kubeconfigCannotBeShownSafely": "kubeconfig нельзя показать безопасно: не удалось скрыть секрет",
@@ -603,6 +602,6 @@
   "credCoreKubeconfigContextNotFound": "контекст kubeconfig не найден",
   "credCoreProviderAlreadyRegistered": "провайдер для этого вида входа уже зарегистрирован",
   "credCoreSignInRequestNotFound": "запрос на вход не найден",
-  "credCoreSignInServiceNotConfigured": "служба входа настроена не полностью"
-
+  "credCoreSignInServiceNotConfigured": "служба входа настроена не полностью",
+  "credAppSignInUnavailable": "вход недоступен"
 }

@@ -557,7 +557,6 @@
   "theArgoCdAddressMustBeAn": "Argo CD 地址必须是不含凭据、查询参数和片段的 http 或 https URL",
   "unknownLogLevelExpectedDebugInfo": "未知的日志级别 {p0}（可选：debug、info、warn 或 error）",
   "storedWithEncryptionKeyCannotBeRead": "{p0} 使用加密密钥 {p1} 存储，无法用已配置的密钥读取：{p2}",
-
   "hiddenSecretsNoSavedCluster": "kubeconfig 包含已隐藏的密钥，但未指定可从中获取它们的已保存集群",
   "hiddenSecretsRebound": "集群地址或上下文的用户已更改，无法保留已隐藏的密钥：请重新输入",
   "kubeconfigCannotBeShownSafely": "无法安全显示 kubeconfig：有密钥未能隐藏",
@@ -603,6 +602,6 @@
   "credCoreKubeconfigContextNotFound": "未找到 kubeconfig 上下文",
   "credCoreProviderAlreadyRegistered": "此登录方式的提供程序已注册",
   "credCoreSignInRequestNotFound": "未找到登录请求",
-  "credCoreSignInServiceNotConfigured": "登录服务配置不完整"
-
+  "credCoreSignInServiceNotConfigured": "登录服务配置不完整",
+  "credAppSignInUnavailable": "登录不可用"
 }

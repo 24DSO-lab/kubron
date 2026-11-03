@@ -66,7 +66,8 @@ func NewSessionView(root *App, source string) *App {
 	// Свой вид менеджеров: активный кластер, терминалы, логи и port-forward принадлежат сессии;
 	// пул подключений (informers) общий.
 	v.k8sMgr = root.k8sMgr.ForSession()
-	v.k8sMgr.SetNotifier(nil) // события пойдут владельцу после BindView; до входа адресата нет
+	v.conn = newConnectState() // входы принадлежат сессии
+	v.k8sMgr.SetNotifier(nil)  // события пойдут владельцу после BindView; до входа адресата нет
 	v.pfMgr = k8s.NewSessionPortForwardManager(v.k8sMgr)
 	v.configureTerminals()
 	v.configurePortForward() // владелец потоков пока неизвестен: режим proxy включается в BindView

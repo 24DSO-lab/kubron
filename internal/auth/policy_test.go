@@ -129,6 +129,13 @@ var exactPermission = map[string]Permission{
 	"AddInClusterToTeam":        PermClusterManage,
 	"SetClusterOIDCCredentials": PermClusterManage,
 	"MoveCluster":               PermClusterManage,
+	// Вход в кластер (ADR-0018): личные данные пользователя, права кластера проверяет Broker и authzCluster.
+	"ConnectCluster":    PermRead,
+	"AnswerChallenge":   PermRead,
+	"PollChallenge":     PermRead,
+	"CancelChallenge":   PermRead,
+	"ListMyConnections": PermRead,
+	"DisconnectCluster": PermRead,
 }
 
 // Глаголы, по которым метод считается изменяющим: слабое право чтения для них недопустимо.

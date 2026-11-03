@@ -557,7 +557,6 @@
   "theArgoCdAddressMustBeAn": "the Argo CD address must be an http or https URL without credentials, query or fragment",
   "unknownLogLevelExpectedDebugInfo": "unknown log level {p0} (expected debug, info, warn or error)",
   "storedWithEncryptionKeyCannotBeRead": "{p0} stored with encryption key {p1} cannot be read with the configured keys: {p2}",
-
   "hiddenSecretsNoSavedCluster": "the kubeconfig contains hidden secrets but no saved cluster to take them from",
   "hiddenSecretsRebound": "the cluster address or the user of a context changed, so hidden secrets cannot be kept: enter them again",
   "kubeconfigCannotBeShownSafely": "the kubeconfig cannot be shown safely: a secret could not be hidden",
@@ -603,6 +602,6 @@
   "credCoreKubeconfigContextNotFound": "the kubeconfig context was not found",
   "credCoreProviderAlreadyRegistered": "a provider for this sign-in kind is already registered",
   "credCoreSignInRequestNotFound": "the sign-in request was not found",
-  "credCoreSignInServiceNotConfigured": "the sign-in service is not configured completely"
-
+  "credCoreSignInServiceNotConfigured": "the sign-in service is not configured completely",
+  "credAppSignInUnavailable": "sign-in is not available"
 }
