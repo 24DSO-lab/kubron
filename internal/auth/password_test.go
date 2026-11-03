@@ -17,7 +17,7 @@ func TestArgon2idEncodingAndVerification(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(hash) == 0 || hash[:8] != "argon2id$" {
+	if len(hash) == 0 || hash[:9] != "argon2id$" {
 		t.Fatalf("new hash must use Argon2id, got %q", hash)
 	}
 	if ok, rehash := verifyPassword("correct horse", hash); !ok || rehash {
