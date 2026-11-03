@@ -73,7 +73,9 @@ func hashPassword(password string) (string, error) {
 		base64.RawStdEncoding.EncodeToString(key)), nil
 }
 
-func passwordBytes(password string) []byte { return []byte(password) }
+func passwordBytes(password string) []byte {
+	return []byte(password)
+}
 
 // verifyPassword uses constant-time comparison and reports whether a successful login
 // should upgrade the stored hash to the current Argon2id parameters.
@@ -100,7 +102,9 @@ func verifyPassword(password, encoded string) (ok, needsRehash bool) {
 		switch kv[0] {
 		case "m":
 			n, err := strconv.ParseUint(kv[1], 10, 32)
-			if err != nil { return false, false }
+			if err != nil {
+				return false, false
+			}
 			memory = uint32(n)
 		case "t":
 			n, err := strconv.ParseUint(kv[1], 10, 32)
