@@ -120,8 +120,11 @@ func TestInternalErrorsAreHiddenWithRequestID(t *testing.T) {
 		if !strings.Contains(logged, id) || !strings.Contains(logged, "rpc call failed") {
 			t.Errorf("%s: the log must carry the request id and the failure: %s", method, logged)
 		}
-		if method == "DB" && !strings.Contains(logged, "users_pkey") {
-			t.Errorf("DB: the log must keep the details: %s", logged)
+		if strings.Contains(logged, "users_pkey") || strings.Contains(logged, "s3cret") {
+			t.Errorf("%s: sensitive error details must not reach the log: %s", method, logged)
+		}
+		if !strings.Contains(logged, "error_type") {
+			t.Errorf("%s: the log must retain the error type for diagnostics: %s", method, logged)
 		}
 	}
 }
