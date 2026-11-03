@@ -50,7 +50,7 @@ jobs:
     env:
       PUSH: ${{ inputs.push }}
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
@@ -81,6 +81,7 @@ jobs:
             echo "version=$version"
             echo "image=ghcr.io/${GITHUB_REPOSITORY,,}"
             echo "chart_repo=oci://ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/charts"
+            echo "chart_registry=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/charts"
             # :latest получают только стабильные версии (без -rc, -beta и т. п.)
             if [[ "$version" == *-* ]]; then echo "stable=false"; else echo "stable=true"; fi
           } >> "$GITHUB_OUTPUT"
@@ -102,7 +103,7 @@ jobs:
         run: python3 scripts/check-ignores.py
 
       - name: Trivy (image gate)
-        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: image
           image-ref: ${{ steps.v.outputs.image }}:${{ steps.v.outputs.version }}
@@ -129,7 +130,7 @@ jobs:
 
       # Конфигурация чарта: отчёт (не ворота): находки разбирает человек по docs/security-review.md
       - name: Trivy (chart misconfiguration report)
-        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: config
           scan-ref: ${{ runner.temp }}/rendered
@@ -144,7 +145,7 @@ jobs:
         run: mkdir -p "$RUNNER_TEMP/sbom"
 
       - name: SBOM of the image
-        uses: anchore/sbom-action@fffec3d851af758d56fee099cf3fbf8aa8779843 # v0.24.3
+        uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
         with:
           image: docker:${{ steps.v.outputs.image }}:${{ steps.v.outputs.version }}
           format: spdx-json
@@ -262,14 +263,14 @@ jobs:
       - name: Sign the chart (cosign keyless)
         if: env.PUSH == 'true'
         env:
-          CHART_REPO: ${{ steps.v.outputs.chart_repo }}
+          CHART_REGISTRY: ${{ steps.v.outputs.chart_registry }}
           DIGEST: ${{ steps.chart.outputs.digest }}
-        run: cosign sign --yes "$CHART_REPO/kubron@$DIGEST"
+        run: cosign sign --yes "$CHART_REGISTRY/kubron@$DIGEST"
 
       - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4
         if: env.PUSH == 'true'
         with:
-          subject-name: ${{ steps.v.outputs.chart_repo }}/kubron
+          subject-name: ${{ steps.v.outputs.chart_registry }}/kubron
           subject-digest: ${{ steps.chart.outputs.digest }}
           push-to-registry: true
 
@@ -277,7 +278,7 @@ jobs:
         if: env.PUSH == 'true'
         uses: actions/attest-sbom@c604332985a26aa8cf1bdc465b92731239ec6b9e # v4.1.0
         with:
-          subject-name: ${{ steps.v.outputs.chart_repo }}/kubron
+          subject-name: ${{ steps.v.outputs.chart_registry }}/kubron
           subject-digest: ${{ steps.chart.outputs.digest }}
           sbom-path: ${{ runner.temp }}/sbom/kubron-sbom_${{ steps.v.outputs.version }}_chart.cdx.json
           push-to-registry: true
