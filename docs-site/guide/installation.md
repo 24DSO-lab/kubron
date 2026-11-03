@@ -1,4 +1,4 @@
-# Installation
+# Desktop installation
 
 ## Pre-built binaries
 
