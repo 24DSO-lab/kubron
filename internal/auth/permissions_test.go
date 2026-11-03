@@ -18,7 +18,8 @@ func TestAdminHasEverything(t *testing.T) {
 }
 
 func TestUserIsReadOnly(t *testing.T) {
-	allowed := map[Permission]bool{PermRead: true, PermSecretsRead: true}
+	// secrets.read у пользователя нет: значения секретов, содержимое релизов Helm и сертификаты ему недоступны.
+	allowed := map[Permission]bool{PermRead: true}
 	for _, p := range allPermissions {
 		if got := RoleUser.Has(p); got != allowed[p] {
 			t.Errorf("user.Has(%q) = %v, expected %v", p, got, allowed[p])

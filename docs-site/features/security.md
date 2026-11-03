@@ -2,7 +2,7 @@
 
 ## Local users & roles
 
-Built-in roles: `admin`, `operator`, `user`.
+Built-in roles: `admin`, `operator`, `user`. The `user` role is read-only: it does not have `secrets.read`, so Secret values, Helm release content (values, manifest, revision diff) and certificate expiry are not available to it; `operator` and `admin` have this permission.
 
 Permissions are fine-grained: read, secrets, operate, write, exec, port-forward, cluster and user management, audit.
 

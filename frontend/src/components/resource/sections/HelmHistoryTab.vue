@@ -18,6 +18,7 @@
             <td class="hh-actions">
               <template v-if="h.revision !== current">
                 <button v-if="can(Perm.SecretsRead)" class="rd-btn" @click="showDiff(h.revision)">{{ $t('helm.history.diff') }}</button>
+                <span v-else class="rd-muted" :title="$t('helm.history.diffNoAccess')">{{ $t('helm.history.noAccess') }}</span>
                 <button v-if="can(Perm.Operate)" class="rd-btn" :disabled="busy" @click="rollback(h.revision)">{{ $t('helm.history.rollback') }}</button>
               </template>
             </td>
