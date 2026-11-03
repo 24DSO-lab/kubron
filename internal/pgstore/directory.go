@@ -102,14 +102,23 @@ func (d directory) DeleteTeam(id string) error {
 	ctx, cancel := opCtx()
 	defer cancel()
 	defer d.s.invalidateAccess()
-	tag, err := d.s.pool.Exec(ctx, `DELETE FROM teams WHERE id = $1 AND org_id = $2`, id, d.s.orgID)
-	if pgCode(err) == "23503" { // clusters.team_id RESTRICT
+	var found bool
+	err := pgx.BeginFunc(ctx, d.s.pool, func(tx pgx.Tx) error {
+		// Данные входа команды (после передачи кластера другой команде они могли остаться за прежним владельцем).
+		if err := dropOwnerCredentials(ctx, tx, "team", id); err != nil {
+			return err
+		}
+		tag, err := tx.Exec(ctx, `DELETE FROM teams WHERE id = $1 AND org_id = $2`, id, d.s.orgID)
+		found = err == nil && tag.RowsAffected() > 0
+		return err
+	})
+	if code := pgCode(err); code == "23503" || code == "23001" { // clusters.team_id RESTRICT (23001), NO ACTION (23503)
 		return ErrTeamNotEmpty
 	}
 	if err != nil {
 		return err
 	}
-	if tag.RowsAffected() == 0 {
+	if !found {
 		return auth.ErrTeamNotFound
 	}
 	return nil
