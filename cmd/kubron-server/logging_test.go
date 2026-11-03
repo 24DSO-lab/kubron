@@ -6,6 +6,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"log"
 	"log/slog"
 	"strings"
@@ -84,6 +85,21 @@ func TestRegisterSecrets(t *testing.T) {
 		if got := logging.Redact("error near " + secret + " here"); strings.Contains(got, secret) {
 			t.Errorf("%q is not redacted: %q", secret, got)
 		}
+	}
+}
+
+func TestFatalLogDoesNotExposeErrorContents(t *testing.T) {
+	restoreLogging(t)
+	var buf bytes.Buffer
+	if err := setupLogging(envMap(nil), &buf); err != nil {
+		t.Fatal(err)
+	}
+	logFatal("database", errors.New("failed to load key super-secret-encryption-key"))
+	if strings.Contains(buf.String(), "super-secret-encryption-key") {
+		t.Fatalf("fatal log leaked error contents: %s", buf.String())
+	}
+	if !strings.Contains(buf.String(), "error_type") {
+		t.Fatalf("fatal log must retain the error type: %s", buf.String())
 	}
 }
 
