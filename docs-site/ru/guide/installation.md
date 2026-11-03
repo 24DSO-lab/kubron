@@ -1,6 +1,6 @@
-# Установка
+# Установка Desktop-версии
 
-См. подробную инструкцию на английском: [Installation](/guide/installation).
+Подробности также доступны в англоязычной инструкции: [Desktop installation](/guide/installation).
 
 Кратко для Linux:
 
