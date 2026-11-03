@@ -127,6 +127,25 @@ func TestTerminalWSOutputInputResizeAndExit(t *testing.T) {
 	}
 }
 
+func TestTerminalWSMalformedControlDoesNotLogUserInput(t *testing.T) {
+	f := newTermFixture(t)
+	buf := captureLog(t)
+	ws, _, err := f.dial(f.id, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ws.Close()
+
+	payload := "invalid-control\nforged-log-entry secret=terminal-secret"
+	if err := ws.WriteMessage(websocket.TextMessage, []byte(payload)); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, func() bool { return strings.Contains(buf.String(), "rejected malformed control message") })
+	if strings.Contains(buf.String(), "forged-log-entry") || strings.Contains(buf.String(), "terminal-secret") {
+		t.Fatalf("untrusted control payload reached the log: %s", buf.String())
+	}
+}
+
 func TestTerminalWSSecondConnectionRejected(t *testing.T) {
 	f := newTermFixture(t)
 	ws1, _, err := f.dial(f.id, nil)
