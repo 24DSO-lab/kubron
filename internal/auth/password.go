@@ -31,7 +31,7 @@ const (
 	maxPassBytes     = 256
 
 	maxPBKDF2Iter = 10_000_000
-	maxArgonMemory = 256 * 1024 // KiB; reject hostile parameters before allocating memory.
+	maxArgonMemory = 64 * 1024 // KiB; reject hostile parameters before allocating memory.
 	maxArgonTime = 10
 	maxArgonThreads = 16
 )
