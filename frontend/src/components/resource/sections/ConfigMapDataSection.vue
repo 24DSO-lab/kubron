@@ -23,7 +23,8 @@
 <script lang="ts" setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, onUpdated, reactive } from 'vue'
 
-import * as monaco from 'monaco-editor'
+import 'monaco-editor'
+import * as monaco from 'monaco-editor/editor/editor.api'
 import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
 
 // Configure Monaco web workers
