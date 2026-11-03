@@ -92,6 +92,8 @@ test('активный кластер у каждого свой', async () => {
   const cluster = list.find(c => c.displayName === 'e2e-kind')
   expect(cluster, 'кластер добавлен smoke-тестом').toBeTruthy()
 
+  // Общая настройка LastActiveCluster не должна автоматически подключать кластер в новой веб-сессии.
+  expect(await result<string>(bob, 'GetLastActiveCluster')).toBe('')
   expect(await result<string>(bob, 'GetActiveContext')).toBe('')
   await result(admin, 'ConnectToCluster', [cluster!.id])
   expect(await result<string>(admin, 'GetActiveContext')).toBe(cluster!.id)
