@@ -1,8 +1,8 @@
-# Installation
+# Desktop installation
 
 ## Pre-built binaries
 
-See [Getting Started](/guide/getting-started#1-download).
+See [Desktop edition: download and launch](/guide/desktop).
 
 ### Linux dependencies
 
@@ -50,6 +50,7 @@ wails dev -tags webkit2_41
 wails build -tags webkit2_41
 ```
 
+
 ## Server binary
 
 The web server is built as `kubron-server`:
@@ -59,3 +60,4 @@ go build -o kubron-server ./cmd/kubron-server
 ```
 
 See [Server mode](/server/) for running it.
+
