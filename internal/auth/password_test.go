@@ -32,7 +32,9 @@ func TestLegacyPBKDF2IsVerifiedAndMarkedForUpgrade(t *testing.T) {
 	const password = "legacy-password"
 	salt := []byte("0123456789abcdef")
 	key, err := pbkdf2.Key(sha256.New, password, salt, 600_000, keyLength)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	encoded := fmt.Sprintf("%s$600000$%s$%s", legacyHashScheme,
 		base64.RawStdEncoding.EncodeToString(salt),
 		base64.RawStdEncoding.EncodeToString(key))
@@ -67,7 +69,9 @@ func TestLoginUpgradesLegacyPBKDF2Hash(t *testing.T) {
 
 	salt := []byte("0123456789abcdef")
 	key, err := pbkdf2.Key(sha256.New, goodPass, salt, 1000, keyLength)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	legacy := fmt.Sprintf("%s$1000$%s$%s", legacyHashScheme,
 		base64.RawStdEncoding.EncodeToString(salt),
 		base64.RawStdEncoding.EncodeToString(key))
