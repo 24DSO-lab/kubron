@@ -130,7 +130,7 @@ func TerminalHandler(g *Guard) http.Handler {
 			case websocket.TextMessage:
 				cols, rows, err := parseTermControl(msg)
 				if err != nil {
-					slog.Warn("terminal: bad control message", "terminal", id[:8], "error", err)
+					slog.Warn("terminal: rejected malformed control message", "terminal", id[:8])
 					continue
 				}
 				if att.Resize(cols, rows) != nil {

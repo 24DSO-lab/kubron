@@ -106,7 +106,10 @@ func TestRPCErrorLogCarriesRequestIDAndNoSecrets(t *testing.T) {
 	if rec1["request_id"] != "req-0123456789" || rec1["method"] != "Leak" || rec1["level"] != "ERROR" {
 		t.Errorf("record: %v", rec1)
 	}
-	if e, _ := rec1["error"].(string); !strings.Contains(e, "postgres://kubron:") || !strings.Contains(e, "@db:5432") {
-		t.Errorf("host and user must stay readable for diagnostics: %q", e)
+	if _, ok := rec1["error"]; ok {
+		t.Errorf("the raw error must not be logged: %v", rec1)
+	}
+	if _, ok := rec1["error_type"].(string); !ok {
+		t.Errorf("the error type must remain available for diagnostics: %v", rec1)
 	}
 }
