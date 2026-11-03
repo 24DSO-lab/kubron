@@ -8,8 +8,8 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
-	"testing"
 	"strings"
+	"testing"
 )
 
 func TestArgon2idEncodingAndVerification(t *testing.T) {
