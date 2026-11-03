@@ -24,7 +24,7 @@ jobs:
       contents: read
     steps:
       # Check out the PR merge ref with read-only credentials; never push from untrusted code.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
       - name: Install SVG renderer
@@ -40,7 +40,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install SVG renderer
         if: hashFiles('docs/images/social-preview.svg') != ''
         run: sudo apt-get update && sudo apt-get install -y librsvg2-bin
