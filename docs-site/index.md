@@ -4,7 +4,7 @@ layout: home
 hero:
   name: Kubron
   text: Kubernetes, under control.
-  tagline: A fast, private Kubernetes desktop IDE. Manage clusters, workloads, Helm and GitOps from one focused workspace.
+  tagline: A Kubernetes Operations Workspace for Desktop and self-hosted Web. Manage clusters, workloads, Helm and GitOps from one focused workspace.
   actions:
     - theme: brand
       text: Download Kubron
@@ -46,7 +46,7 @@ features:
 
 ## Kubernetes operations, without the clutter
 
-Kubron brings the everyday Kubernetes workflow into one desktop application: inspect the state of your clusters, understand what changed, and take action without switching between a dozen tools.
+Kubron brings everyday Kubernetes operations into one workspace. Choose a native Desktop application for individual work or a self-hosted Web edition for teams.
 
 <div class="screenshot-grid">
   <figure>
@@ -67,6 +67,20 @@ Kubron brings the everyday Kubernetes workflow into one desktop application: ins
   </figure>
 </div>
 
+## Two editions. One Kubernetes workspace.
+
+### Desktop
+
+Run Kubron locally on Windows, Linux or macOS. No server deployment or mandatory account is required; your kubeconfig stays on your machine.
+
+[Get started with Desktop →](/guide/desktop)
+
+### Web
+
+Deploy Kubron in your own infrastructure and access it through a browser. Web adds multi-user accounts, roles, permissions and shared state backed by PostgreSQL. It is self-hosted, not a hosted SaaS service.
+
+[Get started with Web →](/guide/web)
+
 ## Built for the way Kubernetes is operated
 
 - **Multi-cluster workflows** — name and color-code clusters, tag environments, and choose one or several namespaces. Restricted RBAC is supported; partial access failures are surfaced.
@@ -77,15 +91,15 @@ Kubron brings the everyday Kubernetes workflow into one desktop application: ins
 - **Argo CD integration** — applications, ApplicationSets, projects, sync controls, live-vs-desired diff and resource graph.
 - **Optional metrics** — charts for pods, workloads, nodes, PVCs and ingresses when the metrics stack is installed.
 
-## Desktop first. Web when you need it.
+## Built with Go, Wails and Vue
 
-The desktop application is built with Go, Wails and Vue. An experimental server mode serves the same UI over HTTP for multi-user teams, with PostgreSQL-backed state, encrypted credentials and support for multiple replicas. It is designed to run behind a TLS-terminating reverse proxy.
+Both editions share the Kubron interface and core Kubernetes workflows. The Web edition adds centralized, multi-user operation on infrastructure you control.
 
-[Explore server mode →](/server/)
+[Explore the Web edition →](/server/)
 
-## Private by default
+## Privacy and access control
 
-Desktop mode does not require an account, does not send telemetry and keeps your kubeconfig on your machine. Server mode adds local users, fine-grained roles and permissions, session management and an audit log for shared environments.
+Desktop does not require an account, sends no telemetry and keeps your kubeconfig on your machine. Web adds local user accounts, fine-grained roles and permissions, session management and an audit log for shared environments.
 
 [Read about security →](/features/security)
 

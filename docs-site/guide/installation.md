@@ -1,8 +1,8 @@
-# Installation
+# Desktop installation
 
 ## Pre-built binaries
 
-See [Getting Started](/guide/getting-started#1-download).
+See [Desktop edition: download and launch](/guide/desktop).
 
 ### Linux dependencies
 
@@ -49,13 +49,3 @@ On Linux add the WebKit 4.1 tag (same as CI and releases):
 wails dev -tags webkit2_41
 wails build -tags webkit2_41
 ```
-
-## Server binary
-
-The experimental web server is built as `kubron-server`:
-
-```bash
-go build -o kubron-server ./cmd/kubron-server
-```
-
-See [Server mode](/server/) for running it.

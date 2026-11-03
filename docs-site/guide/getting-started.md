@@ -1,41 +1,23 @@
-# Getting Started
+# Getting started
 
-Kubron is a lightweight, open-source Kubernetes desktop IDE built with **Go** and **Wails**.
+Kubron is a Kubernetes Operations Workspace available in two editions. Both editions provide the Kubron interface for working with clusters, workloads, Helm and GitOps. Choose the way that fits your workflow:
 
-No telemetry, no mandatory account — your kubeconfig stays on your machine.
+## Desktop
 
-## 1. Download
+Run Kubron as a native desktop application on your own computer. It is the simplest way to get started as an individual operator: no server to deploy, no mandatory account and no telemetry. Your kubeconfig remains on your machine.
 
-Grab the latest release for your platform from the [Releases](https://github.com/24DSO-labs/kubron/releases) page:
+[Download and set up Desktop](/guide/desktop).
 
-| Platform | File |
-|---|---|
-| Windows (x64) | `Kubron_<version>_windows-amd64.zip` |
-| Linux (x64) | `Kubron_<version>_linux-amd64.tar.gz` |
-| Linux (Debian/Ubuntu) | `kubron_<version>_amd64.deb` |
-| macOS (Apple Silicon + Intel) | `Kubron_<version>_macos-universal.zip` |
+## Web
 
-Checksums are in `SHA256SUMS.txt`. Releases also carry build provenance:
+Run Kubron as a self-hosted web application and access it through a browser. This edition is designed for shared environments with multiple users, local accounts, roles, an audit log and centrally stored configuration.
 
-```bash
-gh attestation verify <file> --repo 24DSO-labs/kubron
-```
+You or your team must deploy and operate the Kubron server. Kubron is not a hosted SaaS service.
 
-::: tip
-Builds are not code-signed yet. On Windows SmartScreen may warn you. On macOS right-click → Open, or run:
+[Get started with Web](/guide/web).
 
-```bash
-xattr -dr com.apple.quarantine Kubron.app
-```
-:::
+## Explore Kubron
 
-## 2. Run
-
-Unzip / install and start the app. On first launch Kubron will ask you to import a kubeconfig (or pick the default `~/.kube/config`).
-
-## 3. Next steps
-
-- [Installation details](/guide/installation) — system dependencies, build from source
+- [See the product capabilities](/features/)
 - [Add your first cluster](/guide/first-cluster)
-- [Features overview](/features/)
-- [Server mode](/server/) (experimental multi-user)
+- [Keyboard shortcuts](/guide/shortcuts)
