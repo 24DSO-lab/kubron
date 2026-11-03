@@ -21,13 +21,13 @@ func NewHandler(d *Dispatcher, static fs.FS, g *Guard, opts ...HandlerOption) ht
 		opt(&o)
 	}
 	mux := http.NewServeMux()
-	mux.Handle("POST /api/rpc/{method}", RPCHandler(d, g))
+	mux.Handle("POST /api/rpc/{method}", contractGuard(o.build, RPCHandler(d, g)))
 	mux.Handle("GET /api/session", SessionHandler(g))
 	if g != nil && g.Hub != nil {
-		mux.Handle("GET /api/ws", WSHandler(g))
+		mux.Handle("GET /api/ws", contractGuard(o.build, WSHandler(g)))
 	}
 	if g != nil && g.Terminals != nil {
-		mux.Handle("GET /api/terminal/{id}", TerminalHandler(g))
+		mux.Handle("GET /api/terminal/{id}", contractGuard(o.build, TerminalHandler(g)))
 	}
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")

@@ -1,4 +1,5 @@
 {
+  "contractMismatch": "The page was built for another server version. Reload the page.",
   "noConnection": "No connection to the Kubron server",
   "httpStatus": "Server responded with HTTP {status}",
   "terminalConnect": "Could not connect to the terminal",

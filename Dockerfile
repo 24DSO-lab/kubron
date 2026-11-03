@@ -54,6 +54,9 @@ RUN --mount=type=cache,target=/root/.npm \
     npm ci
 COPY frontend/ ./
 COPY --from=bindings /src/frontend/wailsjs ./wailsjs
+# Страница знает версию сервера (X-Kubron-Build) и перезагружается, если сервер обновили, а вкладка осталась старой
+ARG VERSION=dev
+ENV VITE_KUBRON_BUILD=${VERSION}
 RUN npm run build:web \
  && grep -q 'name="kubron-target" content="web"' dist/index.html
 

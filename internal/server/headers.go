@@ -16,6 +16,7 @@ type HandlerOption func(*handlerOptions)
 type handlerOptions struct {
 	cspReportOnly bool
 	readyz        ReadyzConfig
+	build         string // версия сервера для проверки контракта RPC (WithContractBuild)
 }
 
 // WithCSPReportOnly отдаёт политику в заголовке Content-Security-Policy-Report-Only: браузер
