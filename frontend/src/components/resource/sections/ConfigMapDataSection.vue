@@ -25,7 +25,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, onUpdated, reactive } f
 
 import 'monaco-editor'
 import * as monaco from 'monaco-editor/editor/editor.api'
-import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
+import editorWorker from 'monaco-editor/editor/editor.worker?worker'
 
 // Configure Monaco web workers
 if (typeof window !== 'undefined') {
