@@ -600,6 +600,9 @@
   "credCoreLockCredentialsFile": "lock credentials file: {p0}",
   "credCoreCredentialsFileLocked": "the credentials file is locked by another process",
   "credCoreKubeconfigUnreadable": "the kubeconfig could not be read",
-  "credCoreKubeconfigContextNotFound": "the kubeconfig context was not found"
+  "credCoreKubeconfigContextNotFound": "the kubeconfig context was not found",
+  "credCoreProviderAlreadyRegistered": "a provider for this sign-in kind is already registered",
+  "credCoreSignInRequestNotFound": "the sign-in request was not found",
+  "credCoreSignInServiceNotConfigured": "the sign-in service is not configured completely"
 
 }

@@ -600,6 +600,9 @@
   "credCoreLockCredentialsFile": "блокировка файла учётных данных: {p0}",
   "credCoreCredentialsFileLocked": "файл учётных данных заблокирован другим процессом",
   "credCoreKubeconfigUnreadable": "не удалось прочитать kubeconfig",
-  "credCoreKubeconfigContextNotFound": "контекст kubeconfig не найден"
+  "credCoreKubeconfigContextNotFound": "контекст kubeconfig не найден",
+  "credCoreProviderAlreadyRegistered": "провайдер для этого вида входа уже зарегистрирован",
+  "credCoreSignInRequestNotFound": "запрос на вход не найден",
+  "credCoreSignInServiceNotConfigured": "служба входа настроена не полностью"
 
 }

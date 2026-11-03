@@ -600,6 +600,9 @@
   "credCoreLockCredentialsFile": "锁定凭据文件：{p0}",
   "credCoreCredentialsFileLocked": "凭据文件被其他进程锁定",
   "credCoreKubeconfigUnreadable": "无法读取 kubeconfig",
-  "credCoreKubeconfigContextNotFound": "未找到 kubeconfig 上下文"
+  "credCoreKubeconfigContextNotFound": "未找到 kubeconfig 上下文",
+  "credCoreProviderAlreadyRegistered": "此登录方式的提供程序已注册",
+  "credCoreSignInRequestNotFound": "未找到登录请求",
+  "credCoreSignInServiceNotConfigured": "登录服务配置不完整"
 
 }
