@@ -14,6 +14,14 @@ import (
 	"github.com/24DSO-labs/kubron/internal/pgstore"
 )
 
+type keyMismatchError struct{}
+
+func (keyMismatchError) Error() string {
+	return "KUBRON_SECRET_KEY does not match the encrypted data in the database " +
+		"(pass the key the data was encrypted with and earlier keys in KUBRON_SECRET_KEY_PREVIOUS; " +
+		"see docs/backup.md; KUBRON_ALLOW_KEY_MISMATCH=1 starts without access to cluster secrets)"
+}
+
 // checkSecretKey проверяет при старте, что KUBRON_SECRET_KEY (и прежние ключи) читают данные в БД. Без
 // этого неверный ключ после восстановления из резервной копии или при ошибке в Secret выяснялся бы только
 // при первом обращении к кластеру, с ошибкой «failed to decrypt» посреди работы пользователя. Сервер с
@@ -35,7 +43,5 @@ func checkSecretKey(ctx context.Context, pg *pgstore.Store) error {
 	}
 	// Не оборачиваем исходную ошибку: драйвер/secretbox может включить в неё значения ключей.
 	// Для диагностики достаточно безопасного сообщения и ссылки на инструкцию восстановления.
-	return fmt.Errorf("KUBRON_SECRET_KEY does not match the encrypted data in the database "+
-		"(pass the key the data was encrypted with and earlier keys in KUBRON_SECRET_KEY_PREVIOUS; "+
-		"see docs/backup.md; KUBRON_ALLOW_KEY_MISMATCH=1 starts without access to cluster secrets)")
+	return keyMismatchError{}
 }
