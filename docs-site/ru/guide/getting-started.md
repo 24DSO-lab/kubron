@@ -1,22 +1,23 @@
-# Быстрый старт
+# Начало работы
 
-Kubron — лёгкий open-source Kubernetes desktop IDE на **Go** и **Wails**.
+Kubron — Kubernetes Operations Workspace в двух версиях. Обе версии предоставляют интерфейс Kubron для работы с кластерами, workloads, Helm и GitOps. Выберите подходящий способ использования:
 
-Без телеметрии и обязательного аккаунта: kubeconfig остаётся на вашей машине.
+## Desktop
 
-## 1. Скачать
+Запускайте Kubron как desktop-приложение на своём компьютере. Это самый простой вариант для индивидуальной работы: не нужно разворачивать сервер, нет обязательной учётной записи и телеметрии. Kubeconfig остаётся на вашем компьютере.
 
-Актуальные сборки: [Releases](https://github.com/24DSO-labs/kubron/releases).
+[Скачать и настроить Desktop](/ru/guide/desktop).
 
-| Платформа | Файл |
-|---|---|
-| Windows (x64) | `Kubron_<version>_windows-amd64.zip` |
-| Linux (x64) | `Kubron_<version>_linux-amd64.tar.gz` |
-| Linux (Debian/Ubuntu) | `kubron_<version>_amd64.deb` |
-| macOS (Apple Silicon + Intel) | `Kubron_<version>_macos-universal.zip` |
+## Web
 
-## 2. Запуск
+Разверните Kubron как собственное web-приложение и открывайте его в браузере. Эта версия предназначена для совместной работы: локальные учётные записи, роли, журнал аудита и централизованное хранение конфигурации.
 
-Распакуйте / установите и запустите. При первом старте импортируйте kubeconfig.
+Сервер Kubron разворачиваете и обслуживаете вы или ваша команда. Это не облачный SaaS-сервис, предоставляемый Kubron.
 
-Дальше см. англоязычные разделы [Installation](/guide/installation) и [Features](/features/).
+[Начать работу с Web](/ru/guide/web).
+
+## Дальше
+
+- [Возможности Kubron](/ru/features/)
+- [Добавить первый кластер](/ru/guide/first-cluster)
+- [Горячие клавиши](/ru/guide/shortcuts)
