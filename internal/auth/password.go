@@ -44,6 +44,7 @@ var (
 	usernameRe = regexp.MustCompile(`^[A-Za-z0-9._-]{3,32}$`)
 )
 
+// ValidateUsername проверяет формат логина.
 func ValidateUsername(username string) error {
 	if !usernameRe.MatchString(username) {
 		return errors.New("username must be 3–32 characters: Latin letters, digits, dot, hyphen and underscore")
@@ -51,6 +52,7 @@ func ValidateUsername(username string) error {
 	return nil
 }
 
+// ValidatePassword проверяет требования к паролю.
 func ValidatePassword(password string) error {
 	if utf8.RuneCountInString(password) < minPassRunes {
 		return fmt.Errorf("password must be at least %d characters", minPassRunes)
