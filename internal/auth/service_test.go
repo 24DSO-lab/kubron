@@ -501,7 +501,9 @@ func TestRehashOnOutdatedParameters(t *testing.T) {
 	oldMemory, oldTime := argon2Memory, argon2Time
 	argon2Memory, argon2Time = 32, 1
 	h, err := hashPassword(goodPass)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	argon2Memory, argon2Time = oldMemory, oldTime
 	ok, rehash := verifyPassword(goodPass, h)
 	if !ok || !rehash {
