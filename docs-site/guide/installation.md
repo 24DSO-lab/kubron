@@ -52,7 +52,7 @@ wails build -tags webkit2_41
 
 ## Server binary
 
-The experimental web server is built as `kubron-server`:
+The web server is built as `kubron-server`:
 
 ```bash
 go build -o kubron-server ./cmd/kubron-server
