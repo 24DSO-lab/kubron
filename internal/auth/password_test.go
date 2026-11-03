@@ -14,7 +14,9 @@ import (
 
 func TestArgon2idEncodingAndVerification(t *testing.T) {
 	hash, err := hashPassword("correct horse")
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	if len(hash) == 0 || hash[:8] != "argon2id$" {
 		t.Fatalf("new hash must use Argon2id, got %q", hash)
 	}
@@ -59,7 +61,9 @@ func TestArgon2idRejectsUntrustedParameters(t *testing.T) {
 
 func TestLoginUpgradesLegacyPBKDF2Hash(t *testing.T) {
 	s, _ := newTestService(t)
-	if _, err := s.Setup("admin", goodPass); err != nil { t.Fatal(err) }
+	if _, err := s.Setup("admin", goodPass); err != nil {
+		t.Fatal(err)
+	}
 
 	salt := []byte("0123456789abcdef")
 	key, err := pbkdf2.Key(sha256.New, goodPass, salt, 1000, keyLength)
@@ -72,7 +76,9 @@ func TestLoginUpgradesLegacyPBKDF2Hash(t *testing.T) {
 	s.st.findByName("admin").PasswordHash = legacy
 	s.mu.Unlock()
 
-	if _, err := s.Login("admin", goodPass); err != nil { t.Fatalf("legacy login failed: %v", err) }
+	if _, err := s.Login("admin", goodPass); err != nil {
+		t.Fatalf("legacy login failed: %v", err)
+	}
 	s.mu.Lock()
 	stored := s.st.findByName("admin").PasswordHash
 	s.mu.Unlock()
