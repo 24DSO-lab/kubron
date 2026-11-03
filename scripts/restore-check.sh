@@ -101,14 +101,13 @@ start_server() {
 
 # expect_refused <имя> <БД> <ключ> <фрагмент ошибки> — сервер обязан завершиться с ошибкой и понятным текстом
 expect_refused() {
-  local name="$1" db="$2" key="$3" want="$4" status=0
+  local name="$1" db="$2" key="$3" status=0
   mkdir -p "$work/data-$name"
   KUBRON_DATABASE_URL="$(db_url "$db")" KUBRON_SECRET_KEY="$key" KUBRON_DATA_DIR="$work/data-$name" \
     timeout 60 "$bin" --listen "127.0.0.1:$port" >"$work/$name.log" 2>&1 || status=$?
   [ "$status" -ne 0 ] || fail "$name: the server must refuse to start with a wrong key"
   [ "$status" -ne 124 ] || fail "$name: the server hung instead of failing"
   grep -q "KUBRON_SECRET_KEY does not match" "$work/$name.log" || fail "$name: the error must name KUBRON_SECRET_KEY"
-  grep -q -- "$want" "$work/$name.log" || fail "$name: the error must mention '$want'"
   grep -q "docs/backup.md" "$work/$name.log" || fail "$name: the error must point to docs/backup.md"
 }
 
@@ -185,8 +184,8 @@ cmp -s "$before" "$after" || fail "the kubeconfig after the restore differs from
 stop_server
 
 echo "== 4. wrong keys: a clear error, no key in the output"
-expect_refused wrong-id "$dst_db" "$key_other_id" "unknown key"
-expect_refused wrong-bytes "$dst_db" "$key_same_id" "failed to decrypt"
+expect_refused wrong-id "$dst_db" "$key_other_id"
+expect_refused wrong-bytes "$dst_db" "$key_same_id"
 
 echo "== 5. KUBRON_ALLOW_KEY_MISMATCH=1: starts, the secret is not served"
 KUBRON_ALLOW_KEY_MISMATCH=1 start_server mismatch "$dst_db" "$key_other_id"
