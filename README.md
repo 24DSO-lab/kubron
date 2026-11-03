@@ -4,7 +4,7 @@
 
 # Kubron
 
-**A fast, private Kubernetes desktop IDE.**
+**A fast, private Kubernetes Operations Workspace.**
 
 [![CI](https://github.com/24DSO-labs/kubron/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/24DSO-labs/kubron/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/24DSO-labs/kubron?include_prereleases)](https://github.com/24DSO-labs/kubron/releases)
@@ -18,7 +18,7 @@
 
 </div>
 
-Kubron is a lightweight, open-source Kubernetes desktop IDE built with **Go** and **Wails**: fast and private, with Helm and GitOps tooling built in. No telemetry, no mandatory account, your kubeconfig never leaves your machine.
+Kubron is an open-source **Kubernetes Operations Workspace** for desktop and web, built with **Go**, **Wails** and **Vue**. Bring cluster visibility, troubleshooting and day-to-day operations together with Helm and GitOps built in. No telemetry, no mandatory account, your kubeconfig never leaves your machine.
 
 <p align="center">
   <img src="docs/images/screenshots/overview.png" alt="Kubron cluster overview: node and pod counts, CPU and memory usage, pods closest to their limits, workloads, recent changes, blockers and certificate expiry" width="100%">
