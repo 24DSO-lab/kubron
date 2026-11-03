@@ -38,7 +38,7 @@
 | T | CSRF | проверка Origin/`Sec-Fetch-Site` и CSRF-токен для всех методов, кроме публичных | `internal/server/http.go` |
 | T/S | Подмена заголовка Host (ссылки, cookie, кэш) | allowlist Host: `KUBRON_ALLOWED_HOSTS` (чарт собирает из Ingress и `baseDomain`) | `internal/server/allowedhosts.go`, `deploy/helm/kubron/templates/_helpers.tpl` |
 | S | Подделка адреса клиента через `X-Forwarded-*` | `KUBRON_TRUST_PROXY` включается явно и только за доверенным прокси | `internal/server/clientip.go`, `docs/deploy.md` |
-| R | Отрицание действий | аудит каждого изменяющего вызова с пользователем и request id | `internal/audit`, `internal/server/requestid.go` |
+| R | Отрицание действий | в аудит пишутся вызовы с правами `operate`, `write`, `exec`, `port-forward`, `clusters.manage`, `secrets.read` и отказы, с пользователем, ролью, адресом клиента, командой и кластером; чтение не журналируется. Request id в запись аудита не входит (он есть только в журнале запросов) | `internal/audit`, `internal/app/app_auth.go` (`auditedPermissions`), `internal/server/requestid.go` |
 | I | Внутренние ошибки раскрывают устройство сервера | в ответ 500 идёт общий текст и request id, подробности — в журнал | `internal/server/errsafe.go`, `internal/publicerr` |
 | I | Секреты в журналах и ответах API | ключ не логируется (проверка в kind-job), секреты kubeconfig маскируются | `internal/k8s/kubeconfig_mask.go`, `internal/logging` |
 | D | Заливка запросами | rate limit, лимит размера тела RPC (`maxRPCBody`) | `internal/server/ratelimit.go`, `internal/server/http.go` |
@@ -60,8 +60,9 @@
 | # | Угроза | Мера | Где |
 | --- | --- | --- | --- |
 | S/E | Общая учётка кластера: любой участник с `write` действует от её имени | права людей ограничивает app-RBAC Kubron (ADR-0006); см. остаточные риски | `docs/adr/0006-k8s-access-model.md` |
-| E | Подключение kubeconfig, исполняющего чужой код (`exec`) или читающего файлы сервера | в веб-режиме exec-плагины и локальные файлы запрещены | `internal/k8s/connection.go` (`ErrExecForbidden`, `ErrLocalFilesForbidden`) |
+| E | Подключение kubeconfig, исполняющего чужой код (`exec`) или читающего файлы сервера | в веб-режиме exec-плагины и локальные файлы запрещены (исключение — `oidc-password`: сервер входит в IdP сам). Проверяется выбранный контекст при добавлении и обновлении кластера (`CheckKubeconfigPolicy`), поэтому смена контекста перепроверяется | `internal/k8s/connection.go` (`ErrExecForbidden`, `ErrLocalFilesForbidden`) |
 | E | SSRF: адрес API-сервера указывает на metadata, loopback, внутренние сервисы | политика адресов проверяется при каждом соединении (в том числе после DNS), по умолчанию включена; NetworkPolicy закрывает `169.254.0.0/16` и `fd00:ec2::254/128` | `internal/netpolicy`, `internal/k8s/cluster_addr_policy.go`, `deploy/helm/kubron/templates/networkpolicy.yaml` |
+| E | SSRF через адрес Argo CD: `ArgoURL` в настройках кластера (право `clusters.manage`) и токен Argo используются в запросах сервера | **Мера не реализована**: клиент Argo (`internal/k8s/argocd_api.go`, `argocd_token_gen.go`) не использует `netpolicy` при `dial == nil`, у loopback-хостов отключена проверка TLS. Остаточная защита — только egress-NetworkPolicy. См. находку 10 | `internal/k8s/argocd_api.go`, `docs/security-review.md` |
 | I | Вынос сохранённого токена подменой адреса сервера в kubeconfig | подстановка секрета отказывает при смене адреса, `proxy-url` или пользователя | `internal/k8s/kubeconfig_mask.go`, `docs/http-security.md` |
 | E | Избыточные права in-cluster ServiceAccount | профиль `readonly` по умолчанию, Secret недоступны | `deploy/helm/kubron/templates/rbac.yaml`, `docs/deploy.md` «RBAC режима in-cluster» |
 
