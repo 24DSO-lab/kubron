@@ -38,7 +38,7 @@
 
 <script lang="ts" setup>
 import { ref, computed, onMounted } from 'vue'
-import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
+import editorWorker from 'monaco-editor/editor/editor.worker?worker'
 import { globalTabbedPanel } from '../../composables/useTabbedPanel'
 import LogsView from './LogsView.vue'
 import YamlView from './YamlView.vue'
