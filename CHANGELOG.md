@@ -7,8 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.0.0] - 2026-11-03
-
 ### Security
 
 - **Password hashing:** new passwords use Argon2id (v=19, 19 MiB, 2 iterations, 1 lane). Existing PBKDF2-HMAC-SHA256 hashes remain verifiable and are upgraded after a successful login; no forced password reset is required.
@@ -249,8 +247,7 @@ First public release.
 - Experimental web mode (`cmd/kubron-server`): several concurrent sessions, per-session
   cluster managers with per-user resource limits, idle informers released after a TTL.
 
-[Unreleased]: https://github.com/24DSO-labs/kubron/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/24DSO-labs/kubron/compare/v0.6.0...v1.0.0
+[Unreleased]: https://github.com/24DSO-labs/kubron/compare/v0.6.0...HEAD
 [0.6.0]: https://github.com/24DSO-labs/kubron/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/24DSO-labs/kubron/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/24DSO-labs/kubron/compare/v0.3.0...v0.4.0
