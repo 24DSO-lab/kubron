@@ -246,7 +246,7 @@ First public release.
 - Local users with `admin` / `operator` / `user` roles, audit log with rotation and client
   address, auto-logout on inactivity.
 - Public extension API (`pkg/ext`) for external modules.
-- Experimental web mode (`cmd/kubron-server`): several concurrent sessions, per-session
+- Web mode (`cmd/kubron-server`): several concurrent sessions, per-session
   cluster managers with per-user resource limits, idle informers released after a TTL.
 
 [Unreleased]: https://github.com/24DSO-labs/kubron/compare/v1.0.0...HEAD
