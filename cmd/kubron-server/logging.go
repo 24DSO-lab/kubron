@@ -63,7 +63,7 @@ func enableAuditStdout(getenv func(string) string, w io.Writer) bool {
 	return false
 }
 
-// fatal пишет ошибку в журнал и завершает процесс с кодом 1 (замена log.Fatalf).
+// fatal пишет безопасную метаинформацию об ошибке и завершает процесс с кодом 1 (замена log.Fatalf).
 func logFatal(what string, err error) {
 	slog.Error(what, "error_type", fmt.Sprintf("%T", err))
 }
