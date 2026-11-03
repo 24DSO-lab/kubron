@@ -22,6 +22,18 @@ const (
 	argoParamsConfig   = "argocd-cmd-params-cm"
 )
 
+// ArgoModeExternal — Argo CD открывается по адресу из настроек кластера, без port-forward.
+const ArgoModeExternal = "external"
+
+// externalArgoURL возвращает адрес Argo CD из настроек активного кластера (пусто — не задан).
+func (pfm *PortForwardManager) externalArgoURL() string {
+	meta, err := LoadClusterMeta(pfm.k8sMgr.GetActiveContext())
+	if err != nil || meta == nil {
+		return ""
+	}
+	return meta.ArgoURL
+}
+
 // ArgoUIInfo — куда открыть Argo CD UI в браузере.
 type ArgoUIInfo struct {
 	// URL — адрес для браузера. В режиме proxy он одноразовый и живёт секунды: открывать сразу.
@@ -59,6 +71,10 @@ func (pfm *PortForwardManager) findArgoTarget(ctx context.Context, conn *Cluster
 // активную сессию, а не плодит туннели. В режиме local — localhost-порт, в режиме proxy — адрес прокси на
 // отдельном origin (ADR-0017), порты на хосте не открываются.
 func (pfm *PortForwardManager) OpenArgoUI() (*ArgoUIInfo, error) {
+	// Опубликованный адрес из настроек кластера: поток не нужен, поэтому он работает и при отключённом port-forward.
+	if u := pfm.externalArgoURL(); u != "" {
+		return &ArgoUIInfo{URL: u, Mode: ArgoModeExternal}, nil
+	}
 	switch pfm.Mode() {
 	case PortForwardModeOff:
 		return nil, ErrPortForwardDisabled

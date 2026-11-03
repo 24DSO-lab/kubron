@@ -66,6 +66,72 @@
             "minimum": 1,
             "maximum": 65535
           }
+        },
+        "cidrs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "egressApi": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "to": {
+          "$ref": "#/definitions/k8sObjectList"
+        },
+        "cidrs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "ports": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 65535
+          }
+        },
+        "except": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "allowCluster": {
+          "type": "boolean"
+        }
+      }
+    },
+    "egressIdp": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ports": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 65535
+          }
+        },
+        "to": {
+          "$ref": "#/definitions/k8sObjectList"
+        },
+        "cidrs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
         }
       }
     }
@@ -77,7 +143,7 @@
     "replicaCount": {
       "type": "integer",
       "minimum": 1,
-      "description": "Only 1 is supported until HA (stage 4): sessions and events live in process memory."
+      "description": "Replicas of kubron-server on one PostgreSQL (ADR-0016). 2 by default; 1 is allowed."
     },
     "image": {
       "type": "object",
@@ -137,6 +203,12 @@
             },
             "previousSecretKey": {
               "type": "string"
+            },
+            "dbListenUrl": {
+              "type": "string"
+            },
+            "setupToken": {
+              "type": "string"
             }
           }
         },
@@ -166,6 +238,16 @@
             "boolean",
             "null"
           ]
+        },
+        "drainDelay": {
+          "type": "string",
+          "pattern": "^([0-9]+(\\.[0-9]+)?(ns|us|µs|ms|s|m|h))*$",
+          "description": "Go duration, 0 to 60s: pause between SIGTERM and closing connections."
+        },
+        "auditRetention": {
+          "type": "string",
+          "pattern": "^([0-9]+(\\.[0-9]+)?(ns|us|µs|ms|s|m|h))*$",
+          "description": "Go duration of at least 24h; empty keeps the audit log forever."
         },
         "sessionTTL": {
           "type": "string",
@@ -210,6 +292,55 @@
         },
         "extraEnv": {
           "$ref": "#/definitions/k8sObjectList"
+        },
+        "logLevel": {
+          "type": "string",
+          "enum": [
+            "",
+            "debug",
+            "info",
+            "warn",
+            "error"
+          ]
+        },
+        "logFormat": {
+          "type": "string",
+          "enum": [
+            "",
+            "json",
+            "text"
+          ]
+        },
+        "auditStdout": {
+          "type": "boolean"
+        },
+        "allowedHosts": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[^\\s,]+$"
+          },
+          "description": "Allowed Host header values; the chart adds ingress hosts and *.pf.<baseDomain>."
+        },
+        "clusterAddrPolicy": {
+          "type": "string",
+          "enum": [
+            "",
+            "off",
+            "permissive",
+            "strict"
+          ],
+          "description": "KUBRON_CLUSTER_ADDR_POLICY; empty keeps the server default (permissive in the service mode)."
+        },
+        "clusterAddrAllowCidrs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[^\\s,]+$"
+          },
+          "description": "KUBRON_CLUSTER_ADDR_ALLOW_CIDRS exceptions."
         }
       }
     },
@@ -346,11 +477,31 @@
         "create": {
           "type": "boolean"
         },
-        "rules": {
-          "$ref": "#/definitions/k8sObjectList"
-        },
         "extraRules": {
           "$ref": "#/definitions/k8sObjectList"
+        },
+        "profile": {
+          "type": "string",
+          "enum": [
+            "readonly",
+            "operator",
+            "custom"
+          ]
+        },
+        "allowSecretsRead": {
+          "type": "boolean"
+        },
+        "readonlyRules": {
+          "$ref": "#/definitions/k8sObjectList"
+        },
+        "operatorRules": {
+          "$ref": "#/definitions/k8sObjectList"
+        },
+        "customRules": {
+          "$ref": "#/definitions/k8sObjectList"
+        },
+        "existingClusterRole": {
+          "type": "string"
         }
       }
     },
@@ -490,10 +641,13 @@
               "$ref": "#/definitions/egressTarget"
             },
             "clusterApi": {
-              "$ref": "#/definitions/egressTarget"
+              "$ref": "#/definitions/egressApi"
             },
             "extra": {
               "$ref": "#/definitions/k8sObjectList"
+            },
+            "idp": {
+              "$ref": "#/definitions/egressIdp"
             }
           }
         },
@@ -582,6 +736,51 @@
               "$ref": "#/definitions/k8sObjectList"
             }
           }
+        }
+      }
+    },
+    "portForward": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "baseDomain": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9.-]*$"
+        },
+        "scheme": {
+          "type": "string",
+          "enum": [
+            "",
+            "https",
+            "http"
+          ]
+        },
+        "idleTimeout": {
+          "type": "string"
+        },
+        "maxDuration": {
+          "type": "string"
+        }
+      }
+    },
+    "setup": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "existingSecret": {
+          "type": "string"
+        },
+        "tokenKey": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tokenLength": {
+          "type": "integer",
+          "minimum": 16,
+          "maximum": 128
         }
       }
     }

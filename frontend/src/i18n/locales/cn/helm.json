@@ -8,6 +8,8 @@
     "noUserValues": "# 无用户提供的值：使用 chart 默认值"
   },
   "history": {
+    "noAccess": "无权限",
+    "diffNoAccess": "比较修订版本需要“查看密钥值”权限",
     "current": "当前",
     "empty": "无历史",
     "diff": "差异",

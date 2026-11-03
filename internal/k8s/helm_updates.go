@@ -4,6 +4,8 @@
 package k8s
 
 import (
+	"errors"
+	"os"
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
@@ -39,6 +41,8 @@ func (m *Manager) helmAllIndexes() []helmRepoIndex {
 		}
 		if idx, _, err := loadHelmIndex(sc, r.Name); err == nil {
 			repos = append(repos, helmRepoIndex{name: r.Name, idx: idx})
+		} else if errors.Is(err, os.ErrNotExist) {
+			sc.warmIndex(r.Name) // список релизов не ждёт сеть
 		}
 	}
 	return append(repos, sc.ociIndexes(recs)...)

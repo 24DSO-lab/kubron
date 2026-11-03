@@ -1,0 +1,25 @@
+# Port-forward в браузере: wildcard-хост потоков *.pf.<домен> в Ingress и wildcard-сертификат (ADR-0017)
+secrets:
+  existingSecret: kubron-secrets
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/affinity: cookie
+    nginx.ingress.kubernetes.io/session-cookie-name: kubron-affinity
+    nginx.ingress.kubernetes.io/session-cookie-secure: "true"
+  hosts:
+    - host: kubron.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: kubron-tls
+      hosts:
+        - kubron.example.com
+        - "*.pf.kubron.example.com"
+portForward:
+  baseDomain: kubron.example.com
+  idleTimeout: 10m
+  maxDuration: 4h

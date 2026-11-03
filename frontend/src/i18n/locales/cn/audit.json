@@ -104,6 +104,11 @@
       "start": "Port-forward 已启动",
       "stop": "Port-forward 已停止"
     },
+    "cluster": {
+      "credentials": {
+        "update": "集群凭据已替换"
+      }
+    },
     "terminal": {
       "start": "终端已打开",
       "stop": "终端已关闭"

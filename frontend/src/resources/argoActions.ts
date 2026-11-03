@@ -105,7 +105,14 @@ export async function rollbackArgo(app: Pick<ArgoApplicationInfo, 'namespace' | 
 export async function openArgoUI(): Promise<void> {
   try {
     const info = await callApp('OpenArgoUI')
-    await useK8s().refreshPortForwards()
+    if (info.mode === 'external') {
+      // Внешний Argo URL задаётся администратором команды. Показываем origin до перехода,
+      // чтобы пользователь мог заметить неожиданный или подменённый домен.
+      const host = new URL(info.url).host
+      if (!(await askConfirm(t('argo.actions.externalUrlConfirm', { host })))) return
+    } else {
+      await useK8s().refreshPortForwards()
+    }
     openUrl(info.url)
     // В режиме proxy адрес одноразовый и пользователю бесполезен: показываем, что именно открыто
     if (!info.reused) notifications.notifySuccess(t('argo.actions.uiOpened', { url: info.mode === 'proxy' ? `${info.namespace}/${info.service}` : info.url }))

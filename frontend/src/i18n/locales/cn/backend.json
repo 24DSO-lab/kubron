@@ -547,7 +547,27 @@
   "helmRepositoryOptionsAreCorrupted": "Helm 仓库选项已损坏：{p0}",
   "proxyUrlInTheKubeconfigIsNotAllowedWhileTheClusterAddressPolicyIsEnabled": "启用集群地址策略时不允许 kubeconfig 中的 proxy-url",
   "streamIsOnAnotherReplica": "该流位于另一个副本上",
+  "kubronAuditRetention": "KUBRON_AUDIT_RETENTION {p0}：{p1}",
+  "auditRetentionMustBe0ForeverOr": "审计保留期必须为 0（永久）或至少 24 小时",
+  "panic": "panic：{p0}",
   "terminalsAreDisabledByTheAdministrator": "终端已被管理员禁用",
   "nodeShellIsDisabledByTheAdministrator": "节点 Shell 已被管理员禁用",
-  "terminalTimeoutsCannotBeNegative": "终端超时时间不能为负数"
+  "terminalTimeoutsCannotBeNegative": "终端超时时间不能为负数",
+  "theArgoCdAddressIsLongerThan": "Argo CD 地址超过 {p0} 个字符",
+  "theArgoCdAddressMustBeAn": "Argo CD 地址必须是不含凭据、查询参数和片段的 http 或 https URL",
+  "unknownLogLevelExpectedDebugInfo": "未知的日志级别 {p0}（可选：debug、info、warn 或 error）",
+  "storedWithEncryptionKeyCannotBeRead": "{p0} 使用加密密钥 {p1} 存储，无法用已配置的密钥读取：{p2}",
+
+  "hiddenSecretsNoSavedCluster": "kubeconfig 包含已隐藏的密钥，但未指定可从中获取它们的已保存集群",
+  "hiddenSecretsRebound": "集群地址或上下文的用户已更改，无法保留已隐藏的密钥：请重新输入",
+  "kubeconfigCannotBeShownSafely": "无法安全显示 kubeconfig：有密钥未能隐藏",
+  "hiddenSecretHasNoSavedCounterpart": "用户 {p1} 的隐藏密钥 {p0} 没有已保存的值：请输入其值",
+  "hiddenSecretPlaceholderMisplaced": "隐藏密钥的占位符出现在密钥字段之外",
+  "internalErrorRequestId": "内部错误，请求 ID：{p0}",
+  "initialSetupOverTheNetworkIs": "已禁用通过网络进行初始设置：请设置 KUBRON_SETUP_TOKEN 或运行 kubron-server create-admin",
+  "theSetupTokenIsMissingOr": "初始设置令牌缺失或无效",
+  "theSetupTokenIsTooShort": "初始设置令牌太短：至少需要 {p0} 个字符（KUBRON_SETUP_TOKEN）",
+  "anAllowedHostMustBeA": "允许的主机必须是主机名或 IP 地址（可带端口），不含协议和路径",
+  "kubronAllowedHosts": "KUBRON_ALLOWED_HOSTS：{p0}"  
+
 }

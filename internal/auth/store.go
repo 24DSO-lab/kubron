@@ -58,6 +58,27 @@ type DeltaBackend interface {
 	SaveSettings(SecuritySettings) error
 }
 
+// FirstUserBackend — необязательное расширение DeltaBackend: создание первого пользователя атомарно относительно
+// других реплик. Без него две реплики с пустой БД могли бы одновременно создать двух первых администраторов.
+type FirstUserBackend interface {
+	DeltaBackend
+	// InsertFirstUser записывает пользователя, только если в хранилище нет ни одного; false — пользователи уже есть.
+	InsertFirstUser(u UserRecord) (created bool, err error)
+}
+
+// FailureBackend — необязательное расширение Backend: счётчики неудачных входов по логину в общем хранилище
+// (PostgreSQL), чтобы блокировку нельзя было обойти, перебирая пароли через разные реплики (ADR-0016, раздел 5).
+// Счётчики по адресу клиента остаются в памяти процесса. Ключ — нормализованный логин (в том числе
+// несуществующего: по записи нельзя понять, есть ли такой пользователь); хранилище не должно хранить его открыто.
+type FailureBackend interface {
+	// LockRemaining возвращает, сколько ещё действует блокировка ключа (0 — не заблокирован).
+	LockRemaining(key string) (time.Duration, error)
+	// RecordFailure атомарно учитывает неудачу. С free-й неудачи ключ блокируется на base·2^(n−free), не дольше max.
+	RecordFailure(key string, free int, base, max time.Duration) error
+	// ClearFailures забывает счётчик ключа (успешный вход, смена пароля).
+	ClearFailures(key string) error
+}
+
 // store — пользователи и настройки в памяти поверх Backend. Не потокобезопасно: синхронизацию делает Service.
 type store struct {
 	backend  Backend
@@ -100,6 +121,19 @@ func (s *store) saveUser(u *UserRecord) error {
 	}
 	s.gen++
 	return s.delta.UpsertUser(*u)
+}
+
+// saveFirstUser сохраняет первого пользователя. Для общего хранилища проверка «пользователей нет» и запись идут
+// атомарно; false — пользователь уже появился на другой реплике.
+func (s *store) saveFirstUser(u *UserRecord) (bool, error) {
+	s.gen++
+	if fb, ok := s.backend.(FirstUserBackend); ok {
+		return fb.InsertFirstUser(*u)
+	}
+	if s.delta == nil {
+		return true, s.backend.Save(&Data{Users: s.users, Settings: s.settings})
+	}
+	return true, s.delta.UpsertUser(*u)
 }
 
 // saveLogin сохраняет вход: время и, если нужно, обновлённый хэш пароля.

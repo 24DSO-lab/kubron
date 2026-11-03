@@ -17,10 +17,34 @@ data:
   KUBRON_METRICS_LISTEN: {{ printf "0.0.0.0:%d" (int .Values.metrics.port) | quote }}
   {{- end }}
   KUBRON_TRUST_PROXY: {{ include "kubron.trustProxy" . | quote }}
+  {{- with (include "kubron.allowedHosts" .) }}
+  KUBRON_ALLOWED_HOSTS: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.kubron.clusterAddrPolicy }}
+  KUBRON_CLUSTER_ADDR_POLICY: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.kubron.clusterAddrAllowCidrs }}
+  KUBRON_CLUSTER_ADDR_ALLOW_CIDRS: {{ join "," . | quote }}
+  {{- end }}
   # Данные в PostgreSQL; каталог данных нужен только как рабочий (внутри emptyDir)
   KUBRON_DATA_DIR: "/home/nonroot/.kubron"
+  {{- with .Values.kubron.drainDelay }}
+  KUBRON_DRAIN_DELAY: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.kubron.auditRetention }}
+  KUBRON_AUDIT_RETENTION: {{ . | quote }}
+  {{- end }}
   {{- with .Values.kubron.sessionTTL }}
   KUBRON_SESSION_TTL: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.kubron.logLevel }}
+  KUBRON_LOG_LEVEL: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.kubron.logFormat }}
+  KUBRON_LOG_FORMAT: {{ . | quote }}
+  {{- end }}
+  {{- if .Values.kubron.auditStdout }}
+  KUBRON_AUDIT_STDOUT: "1"
   {{- end }}
   {{- if not (kindIs "invalid" .Values.kubron.maxTerminals) }}
   KUBRON_MAX_TERMINALS: {{ .Values.kubron.maxTerminals | quote }}
@@ -30,6 +54,18 @@ data:
   {{- end }}
   {{- if not (kindIs "invalid" .Values.kubron.maxPortForwards) }}
   KUBRON_MAX_PORT_FORWARDS: {{ .Values.kubron.maxPortForwards | quote }}
+  {{- end }}
+  {{- with .Values.portForward.baseDomain }}
+  KUBRON_PF_BASE_DOMAIN: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.portForward.scheme }}
+  KUBRON_PF_SCHEME: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.portForward.idleTimeout }}
+  KUBRON_PF_IDLE_TIMEOUT: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.portForward.maxDuration }}
+  KUBRON_PF_MAX_DURATION: {{ . | quote }}
   {{- end }}
   {{- with .Values.kubron.terminalMaxDuration }}
   KUBRON_TERMINAL_MAX_DURATION: {{ . | quote }}

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { RpcError, resetWebSession, rpc } from './rpc.web'
+import { RpcError, resetWebSession, rpc, setSetupToken } from './rpc.web'
 import * as events from './events.web'
 
 vi.mock('./events.web', () => ({
@@ -112,5 +112,34 @@ describe('rpc.web', () => {
     queue.push({ body: { result: null } })
     await rpc('GetCapabilities', [])
     expect(events.flushSubscriptions).toHaveBeenCalled()
+  })
+
+  it('токен первичной настройки уходит только с SetupAdmin и только один раз', async () => {
+    setSetupToken('  tok-0123456789abcdef \n')
+    queue.push({ body: { result: { id: 'u' } }, headers: { 'X-CSRF-Token': 'c1' } })
+    await rpc('SetupAdmin', ['admin', 'pw'])
+    expect(hdr(calls[0], 'X-Kubron-Setup-Token')).toBe('tok-0123456789abcdef')
+    queue.push({ body: { result: null } })
+    await rpc('GetClusterStatuses', [])
+    expect(hdr(calls[1], 'X-Kubron-Setup-Token')).toBeUndefined()
+    queue.push({ status: 403, body: { error: { code: 'setup_disabled', message: 'x' } } })
+    await rpc('SetupAdmin', ['admin', 'pw']).catch(() => {})
+    expect(hdr(calls[2], 'X-Kubron-Setup-Token')).toBeUndefined() // после успешной настройки токен забыт
+  })
+
+  it('отказ SetupAdmin сохраняет токен для повторной попытки', async () => {
+    setSetupToken('tok-0123456789abcdef')
+    queue.push({ status: 403, body: { error: { code: 'setup_token_invalid', message: 'bad' } } })
+    await expect(rpc('SetupAdmin', ['admin', 'pw'])).rejects.toMatchObject({ code: 'setup_token_invalid' })
+    queue.push({ body: { result: { id: 'u' } }, headers: { 'X-CSRF-Token': 'c1' } })
+    await rpc('SetupAdmin', ['admin', 'pw'])
+    expect(hdr(calls[1], 'X-Kubron-Setup-Token')).toBe('tok-0123456789abcdef')
+  })
+
+  it('Login токен настройки не отправляет', async () => {
+    setSetupToken('tok-0123456789abcdef')
+    queue.push({ body: { result: { id: 'u' } }, headers: { 'X-CSRF-Token': 'c1' } })
+    await rpc('Login', ['a', 'b'])
+    expect(hdr(calls[0], 'X-Kubron-Setup-Token')).toBeUndefined()
   })
 })

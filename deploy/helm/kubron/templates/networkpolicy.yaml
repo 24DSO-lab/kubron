@@ -47,20 +47,29 @@ spec:
         - port: {{ int . }}
           protocol: TCP
         {{- end }}
-      {{- with .Values.networkPolicy.egress.postgres.to }}
+      {{- with (include "kubron.egressTo" (dict "target" .Values.networkPolicy.egress.postgres "open" false)) }}
       to:
-        {{- toYaml . | nindent 8 }}
+        {{- . | nindent 8 }}
       {{- end }}
-    # API-серверы кластеров и провайдеры OIDC. По умолчанию открыто, см. values.yaml (политика SSRF, раздел 8 плана)
+    # API-серверы кластеров. По умолчанию любые адреса, кроме link-local и метаданных облака (SSRF): см. values.yaml
     - ports:
         {{- range .Values.networkPolicy.egress.clusterApi.ports }}
         - port: {{ int . }}
           protocol: TCP
         {{- end }}
-      {{- with .Values.networkPolicy.egress.clusterApi.to }}
       to:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
+        {{- include "kubron.egressTo" (dict "target" .Values.networkPolicy.egress.clusterApi "open" true) | nindent 8 }}
+    {{- if .Values.networkPolicy.egress.idp.ports }}
+    # Провайдеры OIDC на нестандартных портах (oidc-password); порт 443 входит в правило API-серверов
+    - ports:
+        {{- range .Values.networkPolicy.egress.idp.ports }}
+        - port: {{ int . }}
+          protocol: TCP
+        {{- end }}
+      to:
+        {{- $idp := dict "to" .Values.networkPolicy.egress.idp.to "cidrs" .Values.networkPolicy.egress.idp.cidrs "except" .Values.networkPolicy.egress.clusterApi.except "allowCluster" false }}
+        {{- include "kubron.egressTo" (dict "target" $idp "open" true) | nindent 8 }}
+    {{- end }}
     {{- with .Values.networkPolicy.egress.extra }}
     {{- toYaml . | nindent 4 }}
     {{- end }}

@@ -456,8 +456,10 @@ func (m *Manager) watchTerminal(s *TerminalSession) {
 			default:
 				continue
 			}
-			s.finish(reason)
+			// Сначала отправляем причину в терминал и только потом уведомляем observer:
+			// observer может разбудить вызывающий код, который сразу прочитает вывод.
 			s.out.Data([]byte("\r\n[session closed: " + note + "]\r\n"))
+			s.finish(reason)
 			_ = m.CloseTerminal(s.ID)
 			return
 		}
@@ -499,7 +501,7 @@ func (m *Manager) execRaw(namespace, pod, container string, command []string) (s
 			Stderr:    true,
 		}, scheme.ParameterCodec)
 
-	exec, err := remotecommand.NewSPDYExecutor(conn.Config, "POST", req.URL())
+	exec, err := spdyExecutorFor(conn.Config, "POST", req.URL()) // через политику адреса API-сервера
 	if err != nil {
 		return "", err
 	}

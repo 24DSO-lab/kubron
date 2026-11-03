@@ -13,6 +13,9 @@ on:
       - .hadolint.yaml
       - deploy/**
       - scripts/check-chart.sh
+      - scripts/check-ignores.py
+      - scripts/chart-sbom.py
+      - .trivyignore
       - .github/workflows/deploy.yml
       - go.mod
       - go.sum
@@ -76,6 +79,29 @@ jobs:
       - run: helm version
       - run: scripts/check-chart.sh
 
+      # Конфигурация чарта: отчёт по всем наборам values (не ворота). Ворота образа — в publish.yml.
+      - name: Render the chart for trivy config
+        run: |
+          mkdir -p "$RUNNER_TEMP/rendered"
+          for f in deploy/helm/kubron/ci/*-values.yaml; do
+            helm template kubron deploy/helm/kubron --namespace kubron -f "$f" > "$RUNNER_TEMP/rendered/$(basename "$f" .yaml).yaml"
+          done
+      - name: Trivy (chart misconfiguration report)
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        with:
+          scan-type: config
+          scan-ref: ${{ runner.temp }}/rendered
+          severity: HIGH,CRITICAL
+          exit-code: "0"
+          trivyignores: .trivyignore
+          format: table
+
+      - name: SBOM of the chart (script check)
+        run: |
+          python3 scripts/check-ignores.py
+          python3 scripts/chart-sbom.py --chart deploy/helm/kubron --version 0.0.0-ci --image ghcr.io/example/kubron \
+            --image-digest "sha256:$(printf '0%.0s' $(seq 64))" --chart-repo oci://ghcr.io/example/charts --out "$RUNNER_TEMP/chart.cdx.json"
+
   # Сборка образа без push, проверка под non-root с read-only rootfs, затем установка чарта в kind
   # с внешним PostgreSQL и существующим Secret.
   kind:
@@ -106,6 +132,20 @@ jobs:
           test "$user" = "65532:65532"
           docker image inspect kubron:ci --format '{{json .Config.Entrypoint}} {{json .Config.ExposedPorts}}'
 
+      # Отчёт об уязвимостях образа (HIGH/CRITICAL с исправлением). В PR только информирует; ворота перед push
+      # образа — в publish.yml. Исключения: .trivyignore.
+      - name: Trivy (image report)
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: kubron:ci
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "0"
+          trivyignores: .trivyignore
+          format: table
+
       # Без кластера и БД: файловое хранилище в HOME. Корневая ФС только для чтения, HOME и /tmp — tmpfs.
       # Первичная настройка пишет в каталог данных, то есть проверяет, что writable-каталоги достаточны.
       - name: Run read-only as non-root
@@ -113,7 +153,8 @@ jobs:
           docker run -d --name kubron-smoke --read-only \
             --tmpfs /home/nonroot:uid=65532,gid=65532 --tmpfs /tmp \
             --cap-drop ALL --security-opt no-new-privileges \
-            -e KUBRON_ALLOW_REMOTE=1 -p 127.0.0.1:18080:8080 kubron:ci
+            -e KUBRON_ALLOW_REMOTE=1 -e KUBRON_SETUP_TOKEN=ci-setup-token-0123456789 \
+            -p 127.0.0.1:18080:8080 kubron:ci
           ok=
           for i in $(seq 1 30); do
             if curl -fs http://127.0.0.1:18080/healthz | grep -qx ok; then ok=1; break; fi
@@ -122,8 +163,11 @@ jobs:
           test -n "$ok" || { docker logs kubron-smoke; exit 1; }
           # встроена именно веб-сборка фронтенда
           curl -fs http://127.0.0.1:18080/ | grep -q 'name="kubron-target" content="web"'
-          curl -fs -X POST -H 'Content-Type: application/json' -d '["smoke-admin","smoke-password-1"]' \
-            http://127.0.0.1:18080/api/rpc/SetupAdmin | grep -q smoke-admin
+          # В сервисном режиме без токена первичная настройка отклоняется, с токеном проходит
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d '["smoke-admin","smoke-password-1"]' \
+            http://127.0.0.1:18080/api/rpc/SetupAdmin)" = 403
+          curl -fs -X POST -H 'Content-Type: application/json' -H 'X-Kubron-Setup-Token: ci-setup-token-0123456789' \
+            -d '["smoke-admin","smoke-password-1"]' http://127.0.0.1:18080/api/rpc/SetupAdmin | grep -q smoke-admin
           docker logs kubron-smoke
           docker rm -f kubron-smoke
 
@@ -160,10 +204,18 @@ jobs:
           sleep 3
           curl -fs http://127.0.0.1:18081/healthz | grep -qx ok
           # Вход создаёт запись в PostgreSQL (миграции применены, БД доступна), а не в файлах пода
-          curl -fs -X POST -H 'Content-Type: application/json' -d '["kind-admin","kind-password-1"]' \
-            http://127.0.0.1:18081/api/rpc/SetupAdmin | grep -q kind-admin
-          kubectl logs deploy/kubron | tee "$RUNNER_TEMP/kubron.log"
-          grep -q 'applied migrations' "$RUNNER_TEMP/kubron.log"
+          # Токен создал чарт (Secret <release>-setup): без него SetupAdmin отклоняется
+          token="$(kubectl get secret kubron-setup -o jsonpath='{.data.KUBRON_SETUP_TOKEN}' | base64 -d)"
+          echo "::add-mask::$token"
+          test "${#token}" -ge 32
+          code="$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' \
+            -d '["kind-admin","kind-password-1"]' http://127.0.0.1:18081/api/rpc/SetupAdmin)"
+          test "$code" != 200
+          curl -fs -X POST -H 'Content-Type: application/json' -H "X-Kubron-Setup-Token: $token" \
+            -d '["kind-admin","kind-password-1"]' http://127.0.0.1:18081/api/rpc/SetupAdmin | grep -q kind-admin
+          # Реплик две: миграции применяет та, что первой взяла блокировку, поэтому смотрим журналы всех подов
+          kubectl logs -l app.kubernetes.io/name=kubron --tail=-1 --prefix | tee "$RUNNER_TEMP/kubron.log"
+          grep -qE 'migrations applied|applied migrations' "$RUNNER_TEMP/kubron.log"
           # Ключ шифрования не попадает в логи
           ! grep -qF "${KUBRON_CI_KEY#*:}" "$RUNNER_TEMP/kubron.log"
           # Токен ServiceAccount не смонтирован (режим in-cluster выключен)

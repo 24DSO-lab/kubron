@@ -4,6 +4,9 @@
 package main
 
 import (
+	"bytes"
+	"log/slog"
+	"strings"
 	"testing"
 
 	"github.com/24DSO-labs/kubron/internal/netpolicy"
@@ -57,8 +60,8 @@ func TestSetupHelmNetPolicy(t *testing.T) {
 func TestSetupClusterAddrPolicy(t *testing.T) {
 	t.Cleanup(func() { netpolicy.Set(netpolicy.ScopeClusterAPI, nil) })
 
-	// По умолчанию выключена: e2e в CI ходит на API-сервер kind по 127.0.0.1.
-	if err := setupClusterAddrPolicy(envOf(nil)); err != nil {
+	// Режим одного пользователя на loopback: по умолчанию выключена.
+	if err := setupClusterAddrPolicy(envOf(nil), false); err != nil {
 		t.Fatal(err)
 	}
 	if netpolicy.For(netpolicy.ScopeClusterAPI) != nil {
@@ -66,7 +69,7 @@ func TestSetupClusterAddrPolicy(t *testing.T) {
 	}
 
 	// permissive закрывает loopback и метаданные, но не частные сети.
-	if err := setupClusterAddrPolicy(envOf(map[string]string{envClusterAddrPolicy: "permissive"})); err != nil {
+	if err := setupClusterAddrPolicy(envOf(map[string]string{envClusterAddrPolicy: "permissive"}), false); err != nil {
 		t.Fatal(err)
 	}
 	p := netpolicy.For(netpolicy.ScopeClusterAPI)
@@ -78,7 +81,7 @@ func TestSetupClusterAddrPolicy(t *testing.T) {
 	}
 
 	// Исключение для CI (kind на 127.0.0.1) открывает loopback, но не метаданные.
-	if err := setupClusterAddrPolicy(envOf(map[string]string{envClusterAddrPolicy: "permissive", envClusterAllowCIDRs: "127.0.0.0/8"})); err != nil {
+	if err := setupClusterAddrPolicy(envOf(map[string]string{envClusterAddrPolicy: "permissive", envClusterAllowCIDRs: "127.0.0.0/8"}), false); err != nil {
 		t.Fatal(err)
 	}
 	p = netpolicy.For(netpolicy.ScopeClusterAPI)
@@ -86,15 +89,77 @@ func TestSetupClusterAddrPolicy(t *testing.T) {
 		t.Error("the CI exception must open loopback only")
 	}
 
-	if err := setupClusterAddrPolicy(envOf(map[string]string{envClusterAddrPolicy: "stict"})); err == nil {
+	if err := setupClusterAddrPolicy(envOf(map[string]string{envClusterAddrPolicy: "stict"}), false); err == nil {
 		t.Error("an unknown profile must be an error")
 	}
 	// Политики Helm и кластера независимы.
 	netpolicy.Set(netpolicy.ScopeHelm, nil)
-	if err := setupClusterAddrPolicy(envOf(map[string]string{envClusterAddrPolicy: "strict"})); err != nil {
+	if err := setupClusterAddrPolicy(envOf(map[string]string{envClusterAddrPolicy: "strict"}), false); err != nil {
 		t.Fatal(err)
 	}
 	if netpolicy.For(netpolicy.ScopeHelm) != nil {
 		t.Error("enabling the cluster policy must not enable the Helm one")
+	}
+}
+
+// В сервисном режиме защита от SSRF для адреса API-сервера и IdP включена по умолчанию (permissive).
+func TestClusterAddrPolicyDefaultsToPermissiveInServiceMode(t *testing.T) {
+	t.Cleanup(func() { netpolicy.Set(netpolicy.ScopeClusterAPI, nil) })
+	var logBuf bytes.Buffer
+	prev := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logBuf, nil)))
+	t.Cleanup(func() { slog.SetDefault(prev) })
+
+	if err := setupClusterAddrPolicy(envOf(nil), true); err != nil {
+		t.Fatal(err)
+	}
+	p := netpolicy.For(netpolicy.ScopeClusterAPI)
+	if p == nil || p.Profile != netpolicy.ProfilePermissive {
+		t.Fatalf("permissive by default in the service mode: %+v", p)
+	}
+	for _, u := range []string{"https://127.0.0.1:6443", "https://[::1]:6443", "https://169.254.169.254/", "https://[fe80::1]:6443", "https://[::ffff:169.254.169.254]/"} {
+		if p.CheckURL(u) == nil {
+			t.Errorf("%s must be blocked by default", u)
+		}
+	}
+	if p.CheckURL("https://10.0.0.5:6443") != nil {
+		t.Error("private networks stay allowed in permissive")
+	}
+	if logBuf.Len() != 0 {
+		t.Errorf("the default must not warn: %s", logBuf.String())
+	}
+
+	// Исключение для CI открывает loopback, но не метаданные.
+	if err := setupClusterAddrPolicy(envOf(map[string]string{envClusterAllowCIDRs: "127.0.0.0/8"}), true); err != nil {
+		t.Fatal(err)
+	}
+	p = netpolicy.For(netpolicy.ScopeClusterAPI)
+	if p == nil || p.CheckURL("https://127.0.0.1:6443") != nil || p.CheckURL("https://169.254.169.254/") == nil {
+		t.Error("the allow list must override the loopback ban and never the metadata ban")
+	}
+
+	// Явное off: защиты нет, сервер предупреждает.
+	if err := setupClusterAddrPolicy(envOf(map[string]string{envClusterAddrPolicy: "off"}), true); err != nil {
+		t.Fatal(err)
+	}
+	if netpolicy.For(netpolicy.ScopeClusterAPI) != nil {
+		t.Error("an explicit off must leave no policy")
+	}
+	if !strings.Contains(logBuf.String(), "WARN") || !strings.Contains(logBuf.String(), envClusterAddrPolicy) {
+		t.Errorf("an explicit off in the service mode must be logged as a warning: %q", logBuf.String())
+	}
+
+	// Вне сервисного режима off — значение по умолчанию и без предупреждения.
+	logBuf.Reset()
+	if err := setupClusterAddrPolicy(envOf(nil), false); err != nil {
+		t.Fatal(err)
+	}
+	if netpolicy.For(netpolicy.ScopeClusterAPI) != nil || logBuf.Len() != 0 {
+		t.Errorf("single-user mode: no policy, no warning: %q", logBuf.String())
+	}
+
+	// Опечатка не выключает защиту молча.
+	if err := setupClusterAddrPolicy(envOf(map[string]string{envClusterAddrPolicy: "permisive"}), true); err == nil {
+		t.Error("an unknown profile must be an error")
 	}
 }

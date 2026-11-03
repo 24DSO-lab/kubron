@@ -450,6 +450,7 @@ func (m *Manager) AddHelmOCIChart(repoName, chart string) error {
 
 	helmCacheMu.Lock()
 	defer helmCacheMu.Unlock()
+	sc.invalidate()
 	cur, ok, err := sc.ociFind(repoName) // набор чартов мог измениться, пока шёл запрос тегов
 	if err != nil {
 		return err
@@ -489,6 +490,7 @@ func (m *Manager) RemoveHelmOCIChart(repoName, chart string) error {
 	}
 	helmCacheMu.Lock()
 	defer helmCacheMu.Unlock()
+	sc.invalidate()
 	cur, ok, err := sc.ociFind(repoName)
 	if err != nil {
 		return err
@@ -537,6 +539,7 @@ func (sc *helmScope) ociUpdateOne(rec HelmRepoRecord) HelmRepoUpdateResult {
 		cache.Updated = time.Now().UTC()
 		helmCacheMu.Lock()
 		// реестр могли удалить, пока шло обновление
+		sc.invalidate()
 		if _, ok, err := sc.ociFind(r.Name); err == nil && ok {
 			if err := sc.ociWriteTags(r.Name, cache); err != nil {
 				errs = append(errs, err.Error())
@@ -557,6 +560,7 @@ func (sc *helmScope) ociInfo(r HelmRepoRecord) HelmRepoInfo {
 		info.Updated = c.Updated.UTC().Format(time.RFC3339)
 	} else {
 		info.Error = "tags are not loaded: run Update"
+		sc.warmOCI(r) // сервис: кэш этой реплики докачается в фоне
 	}
 	return info
 }
@@ -581,11 +585,16 @@ func (sc *helmScope) ociSearch(recs []HelmRepoRecord, terms []string, repoName s
 		}
 		cache, err := sc.ociReadTags(r.Name)
 		if err != nil {
+			sc.warmOCI(r)
 			continue
 		}
 		for _, ch := range r.Charts {
 			tags := cache.Tags[ch]
-			if len(tags) == 0 || !helmMatches(terms, ch, "", nil) {
+			if len(tags) == 0 {
+				sc.warmOCI(r) // чарт добавлен на другой реплике: теги докачаются в фоне
+				continue
+			}
+			if !helmMatches(terms, ch, "", nil) {
 				continue
 			}
 			out = append(out, HelmCatalogChart{Repo: r.Name, Name: ch, Version: latestStable(tags), Description: "OCI: " + r.URL, Versions: len(tags)})
@@ -595,13 +604,9 @@ func (sc *helmScope) ociSearch(recs []HelmRepoRecord, terms []string, repoName s
 }
 
 func (sc *helmScope) ociVersions(r ociRepo, chart string) ([]HelmChartVersionInfo, error) {
-	cache, err := sc.ociReadTags(r.Name)
+	tags, err := sc.ociTags(r, chart)
 	if err != nil {
-		return nil, fmt.Errorf("tags of registry %q are not loaded: run Update", r.Name)
-	}
-	tags := cache.Tags[chart]
-	if len(tags) == 0 {
-		return nil, fmt.Errorf("chart %q not found in registry %q", chart, r.Name)
+		return nil, err
 	}
 	out := make([]HelmChartVersionInfo, 0, len(tags))
 	for _, t := range tags {
@@ -610,7 +615,6 @@ func (sc *helmScope) ociVersions(r ociRepo, chart string) ([]HelmChartVersionInf
 	return out, nil
 }
 
-// ociIndexes строит из кеша тегов «индексы» для поиска обновлений установленных релизов.
 func (sc *helmScope) ociIndexes(recs []HelmRepoRecord) []helmRepoIndex {
 	var out []helmRepoIndex
 	for _, r := range recs {
@@ -619,6 +623,7 @@ func (sc *helmScope) ociIndexes(recs []HelmRepoRecord) []helmRepoIndex {
 		}
 		cache, err := sc.ociReadTags(r.Name)
 		if err != nil {
+			sc.warmOCI(r)
 			continue
 		}
 		idx := &repo.IndexFile{Entries: map[string]repo.ChartVersions{}}

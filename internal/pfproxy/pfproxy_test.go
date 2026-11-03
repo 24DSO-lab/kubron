@@ -624,7 +624,7 @@ func TestMatchHost(t *testing.T) {
 	if got, ok := svc.MatchHost(strings.ToUpper(id) + ".pf.kubron.example.com:8443"); !ok || got != id {
 		t.Errorf("got %q %v", got, ok)
 	}
-	for _, h := range []string{"kubron.example.com:8443", id + ".pf.kubron.example.com", "x.pf.kubron.example.com:8443",
+	for _, h := range []string{"kubron.example.com:8443", "x.pf.kubron.example.com:8443",
 		id + ".evil.kubron.example.com:8443", "a." + id + ".pf.kubron.example.com:8443"} {
 		if _, ok := svc.MatchHost(h); ok {
 			t.Errorf("%q must not match", h)
@@ -632,6 +632,45 @@ func TestMatchHost(t *testing.T) {
 	}
 	if !svc.IsPortForwardHost("x.pf.kubron.example.com:8443") || svc.IsPortForwardHost("kubron.example.com:8443") {
 		t.Error("IsPortForwardHost")
+	}
+}
+
+// Порт в Host не участвует в сравнении с суффиксом зоны: ни при совпадающем, ни при другом, ни при отсутствующем порте,
+// ни при завершающей точке FQDN.
+func TestMatchHostIgnoresPort(t *testing.T) {
+	for _, base := range []string{"kubron.example.com:8443", "kubron.example.com"} {
+		svc, err := NewService(Config{BaseDomain: base}, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		id := NewID()
+		for _, h := range []string{
+			id + ".pf.kubron.example.com:8443", id + ".pf.kubron.example.com:443", id + ".pf.kubron.example.com",
+			strings.ToUpper(id) + ".PF.Kubron.Example.com:8443", id + ".pf.kubron.example.com.:8443", id + ".pf.kubron.example.com.",
+		} {
+			if got, ok := svc.MatchHost(h); !ok || got != id {
+				t.Errorf("base %q, host %q: got (%q,%v)", base, h, got, ok)
+			}
+			if !svc.IsPortForwardHost(h) {
+				t.Errorf("base %q, host %q must belong to the zone", base, h)
+			}
+		}
+		// Чужие имена с тем же началом или суффиксом в зону не попадают
+		for _, h := range []string{
+			id + ".pf.kubron.example.com.evil.test:8443", "kubron.example.com:8443", id + ".pf.kubron.example.com@evil.test",
+			id + ".pf.evil.test:8443", id + "pf.kubron.example.com:8443",
+		} {
+			if _, ok := svc.MatchHost(h); ok {
+				t.Errorf("base %q, host %q must not match", base, h)
+			}
+		}
+		if svc.IsPortForwardHost("kubron.example.com:8443") || svc.IsPortForwardHost("pf.kubron.example.com:8443") {
+			t.Errorf("base %q: the main host and the zone root are not stream hosts", base)
+		}
+		// Невалидный идентификатор в зоне всё равно «хост потока» (не уходит в основное приложение), но не совпадает
+		if _, ok := svc.MatchHost("x.pf.kubron.example.com:8443"); ok || !svc.IsPortForwardHost("x.pf.kubron.example.com:8443") {
+			t.Errorf("base %q: an invalid id stays in the zone without matching", base)
+		}
 	}
 }
 
@@ -643,5 +682,66 @@ func TestNewServiceValidation(t *testing.T) {
 	}
 	if _, err := NewService(Config{BaseDomain: "x.test", Scheme: "ftp"}, nil); err == nil {
 		t.Error("unknown scheme must be rejected")
+	}
+}
+
+func TestStreamIDCarriesTheOwnerAsOneDNSLabel(t *testing.T) {
+	a, b := NewIDFor("kubron-0_ab12"), NewIDFor("kubron-1_cd34")
+	for _, id := range []string{a, b, NewID()} {
+		if !ValidID(id) || len(id) > 63 || strings.Contains(id, ".") {
+			t.Errorf("%q must be a valid single DNS label", id)
+		}
+	}
+	if !OwnedBy("kubron-0_ab12", a) || OwnedBy("kubron-0_ab12", b) || OwnedBy("kubron-1_cd34", a) {
+		t.Error("a stream belongs only to the replica that issued it")
+	}
+	if !OwnedBy("", a) || !OwnedBy("", NewID()) {
+		t.Error("a single replica accepts any stream")
+	}
+	if OwnedBy("kubron-0_ab12", NewID()) {
+		t.Error("an untagged stream does not belong to a replica that tags its streams")
+	}
+	if !OwnedBy("kubron-0_ab12", "pf-local-1") {
+		t.Error("a local-mode id is not a proxy stream: the check does not apply")
+	}
+	if NewIDFor("kubron-0_ab12") == a {
+		t.Error("ids must be unique")
+	}
+}
+
+// Запрос к потоку другой реплики получает 421 и не расходует одноразовый ticket: повтор на владельце проходит.
+func TestStreamOnAnotherReplicaGets421WithoutSpendingTheTicket(t *testing.T) {
+	up := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { _, _ = io.WriteString(w, "ok") }))
+	t.Cleanup(up.Close)
+	mk := func(replica string) *Service {
+		s, err := NewService(Config{BaseDomain: "kubron.test", Scheme: "https", ReplicaID: replica}, []byte("shared-key"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return s
+	}
+	a, b := mk("a"), mk("b")
+	id := a.NewStreamID()
+	if err := a.Registry.Add(Target{ID: id, Owner: "alice", Namespace: "ns", Pod: "p", Port: 80, Dial: dialer(up.Listener.Addr().String())}, nil); err != nil {
+		t.Fatal(err)
+	}
+	entry, err := a.EntryURL("alice", id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	u, _ := url.Parse(entry)
+
+	w := do(b, u.Host, u.RequestURI(), nil)
+	if w.Code != http.StatusMisdirectedRequest {
+		t.Fatalf("a foreign replica must answer 421, got %d", w.Code)
+	}
+	if w.Header().Get("Set-Cookie") != "" || strings.Contains(w.Body.String(), "ok") {
+		t.Errorf("nothing must be issued or proxied: %v %q", w.Header(), w.Body.String())
+	}
+	if w := do(b, u.Host, "/", nil); w.Code != http.StatusMisdirectedRequest {
+		t.Errorf("a plain request is also misdirected: %d", w.Code)
+	}
+	if w := do(a, u.Host, u.RequestURI(), nil); w.Code != http.StatusFound {
+		t.Fatalf("the ticket must still work on the owner: %d", w.Code)
 	}
 }

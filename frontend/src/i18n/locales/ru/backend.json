@@ -547,7 +547,27 @@
   "helmRepositoryOptionsAreCorrupted": "Настройки репозитория Helm повреждены: {p0}",
   "proxyUrlInTheKubeconfigIsNotAllowedWhileTheClusterAddressPolicyIsEnabled": "proxy-url в kubeconfig не допускается, пока включена политика адресов кластеров",
   "streamIsOnAnotherReplica": "поток открыт на другой реплике",
+  "kubronAuditRetention": "KUBRON_AUDIT_RETENTION {p0}: {p1}",
+  "auditRetentionMustBe0ForeverOr": "срок хранения аудита должен быть 0 (бессрочно) или не меньше 24 часов",
+  "panic": "паника: {p0}",
   "terminalsAreDisabledByTheAdministrator": "Терминалы отключены администратором",
   "nodeShellIsDisabledByTheAdministrator": "Оболочка на узле отключена администратором",
-  "terminalTimeoutsCannotBeNegative": "Сроки терминала не могут быть отрицательными"
+  "terminalTimeoutsCannotBeNegative": "Сроки терминала не могут быть отрицательными",
+  "theArgoCdAddressIsLongerThan": "Адрес Argo CD длиннее {p0} символов",
+  "theArgoCdAddressMustBeAn": "Адрес Argo CD должен быть URL http или https без учётных данных, query и fragment",
+  "unknownLogLevelExpectedDebugInfo": "неизвестный уровень логирования {p0} (допустимо: debug, info, warn или error)",
+  "storedWithEncryptionKeyCannotBeRead": "{p0}: данные зашифрованы ключом {p1} и не читаются настроенными ключами: {p2}",
+
+  "hiddenSecretsNoSavedCluster": "в kubeconfig есть скрытые секреты, но не указан сохранённый кластер, откуда их взять",
+  "hiddenSecretsRebound": "изменился адрес кластера или пользователь контекста, поэтому скрытые секреты сохранить нельзя: введите их заново",
+  "kubeconfigCannotBeShownSafely": "kubeconfig нельзя показать безопасно: не удалось скрыть секрет",
+  "hiddenSecretHasNoSavedCounterpart": "у скрытого секрета {p0} пользователя {p1} нет сохранённого значения: введите его",
+  "hiddenSecretPlaceholderMisplaced": "заполнитель скрытого секрета стоит вне поля секрета",
+  "internalErrorRequestId": "внутренняя ошибка, идентификатор запроса {p0}",
+  "initialSetupOverTheNetworkIs": "первичная настройка по сети отключена: задайте KUBRON_SETUP_TOKEN или выполните kubron-server create-admin",
+  "theSetupTokenIsMissingOr": "токен первичной настройки не передан или неверен",
+  "theSetupTokenIsTooShort": "токен первичной настройки слишком короткий: нужно не менее {p0} символов (KUBRON_SETUP_TOKEN)",
+  "anAllowedHostMustBeA": "разрешённый хост должен быть именем или IP-адресом с необязательным портом, без схемы и пути",
+  "kubronAllowedHosts": "KUBRON_ALLOWED_HOSTS: {p0}"
+
 }

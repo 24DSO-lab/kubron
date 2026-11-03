@@ -175,6 +175,7 @@
     "noTarget": "无法确定命名空间或 ConfigMap 名称"
   },
   "secretData": {
+    "noAccess": "无权查看密钥值",
     "hide": "隐藏（显示编码）",
     "reveal": "显示（解码）",
     "decoded": "已解码",

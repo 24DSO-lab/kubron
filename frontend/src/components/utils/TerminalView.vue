@@ -22,12 +22,13 @@
 <script lang="ts" setup>
 import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Terminal } from 'xterm'
-import { FitAddon } from 'xterm-addon-fit'
-import 'xterm/css/xterm.css'
+import { Terminal } from '@xterm/xterm'
+import { FitAddon } from '@xterm/addon-fit'
+import '@xterm/xterm/css/xterm.css'
 import type { TerminalTab } from '../../composables/useTabbedPanel'
 import { callApp } from '../../platform/api'
 import { openTerminal, type TerminalHandle } from '../../platform/terminal'
+import { ReopenPolicy } from '../../platform/reopen'
 
 const props = defineProps<{ tab: TerminalTab; active: boolean }>()
 const { t } = useI18n()
@@ -173,7 +174,7 @@ async function initTerminal() {
       return
     }
     session = s
-    lastOpenedAt = Date.now()
+    reopenPolicy.opened()
     if (reopenNote) { terminal.write(reopenNote); reopenNote = '' }
     setState('🟢', false)
 
@@ -198,16 +199,10 @@ async function initTerminal() {
 // Потеря соединения в вебе (реплика остановилась): открываем новую оболочку на живой реплике и пишем об этом.
 // Процесс прежнего терминала погиб вместе с репликой, поэтому состояние не восстановить. Число подряд идущих
 // попыток ограничено, чтобы не зациклиться, если терминал не открывается.
-const MAX_AUTO_REOPEN = 3
-const REOPEN_HEALTHY_MS = 30_000
-let autoReopens = 0
-let lastOpenedAt = 0
+const reopenPolicy = new ReopenPolicy()
 let reopenNote = ''
 function reopenAfterLoss() {
-  if (import.meta.env.VITE_TARGET !== 'web' || unmounted) return
-  if (Date.now() - lastOpenedAt > REOPEN_HEALTHY_MS) autoReopens = 0
-  if (autoReopens >= MAX_AUTO_REOPEN) return
-  autoReopens++
+  if (import.meta.env.VITE_TARGET !== 'web' || unmounted || !reopenPolicy.allow()) return
   reopenNote = '\r\n[Connection restored: new shell]\r\n'
   setTimeout(() => { if (!unmounted) reconnect() }, 300 + Math.random() * 1000)
 }

@@ -52,6 +52,8 @@ jobs:
       - uses: ./.github/actions/linux-build-deps
 
       - uses: ./.github/actions/go-build-cache
+        with:
+          scope: firefox
 
       - uses: ./.github/actions/wails-cli
 

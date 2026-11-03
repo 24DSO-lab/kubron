@@ -1,0 +1,84 @@
+# Этапы 4–6: безопасность, эксплуатация, HA, port-forward и терминалы — статус
+
+Документ собран по плану (`docs/Kubron план разработки веб-версии и доработки десктопа.md`, разделы 5, 8, 9), `CHANGELOG.md`,
+ADR-0015…0017, `docs/threat-model.md`, `docs/security-review.md` и коду ветки `refactor` на 2026-11-03. Он продолжает
+`stage-0.md`…`stage-3.md`: для этапов 4–6 отдельных тикетов не вели, поэтому здесь только итоговые статусы и то, что осталось.
+
+Способ подтверждения: «код» — проверка реализации; «CI» — автоматическая проверка; «владелец» — ручная проверка выполнена владельцем проекта и подтверждена 2026-11-03.
+
+**Итог этапов 4–5: ЗАВЕРШЕНЫ.** Безопасность, эксплуатация, HA, port-forward, Argo UI и терминалы реализованы и приняты. Gate 3 пройден.
+
+## Этап 4. Безопасность, эксплуатация, HA
+
+| Пункт плана | Состояние | Подтверждение, где |
+|---|---|---|
+| Заголовки безопасности (CSP без `unsafe-inline` для скриптов, HSTS, `Permissions-Policy`, COOP/CORP) | сделано | CI (`web-csp.spec.ts`), `docs/http-security.md` |
+| Cookie `__Host-kubron_session` по HTTPS, allowlist Host (`KUBRON_ALLOWED_HOSTS`), общий ответ вместо сырых 500 | сделано | код, находки 4, 7–9 в `docs/security-review.md` |
+| Блокировка входа по логину — общая между репликами (PostgreSQL) | сделано | CI (`e2e-ha`), `docs/http-security.md` |
+| Счётчики по адресу клиента и token bucket анонимных вызовов | в памяти реплики; предел растёт с числом реплик | `docs/http-security.md`, решение принято и описано |
+| Шифрование секретов (kubeconfig, токены, пароли `oidc-password`, пароли реестров Helm), ротация `rekey` | сделано | код, CI (`migrations`), `docs/backup.md` |
+| Проверка ключа при старте: сервер не стартует, если `KUBRON_SECRET_KEY` не читает данные БД | сделано | `CHANGELOG.md`, `docs/backup.md` |
+| Резервное копирование и восстановление | сделано, проверяется автоматически | CI (`restore-check`, `scripts/restore-check.sh`), `docs/backup.md` |
+| Защита от SSRF: Helm HTTP/OCI, адрес API-сервера кластера, адрес IdP; политика `KUBRON_CLUSTER_ADDR_POLICY` по умолчанию `permissive` | сделано | ADR-0015, находки 2–3 |
+| `exec` и ссылки на файлы сервера в kubeconfig запрещены в вебе | сделано | тикет 3.7, `internal/k8s/connection.go` |
+| Первый администратор: токен первичной настройки или `kubron-server create-admin` | сделано (раньше `SetupAdmin` был открыт) | находка 1, `docs/deploy.md` |
+| Роль `user` без `secrets.read`; секреты kubeconfig маскируются при правке | сделано | находки 5–6 |
+| Dockerfile (distroless, non-root, read-only rootfs), Helm-чарт, NetworkPolicy, профили RBAC (`readonly`/`operator`/`custom`) | сделано | `Dockerfile`, `deploy/helm/kubron`, CI (`hadolint`, `chart`, `kind` в `deploy.yml`) |
+| Публикация образа и чарта в ghcr.io из `release.yml` после CI | сделано | `publish.yml`, `docs/releasing.md` |
+| Подпись cosign (keyless), аттестации происхождения и SBOM, Trivy как ворота публикации образа | сделано | `publish.yml`, `docs/deploy.md` («Проверка образа и чарта») |
+| `npm audit`, `osv-scanner` и еженедельный скан опубликованного образа | сделано | CI (`deps-audit`), `.trivyignore`/`osv-scanner.toml` с проверкой сроков |
+| `govulncheck` | есть, **не блокирует** сборку намеренно («чужой CVE не должен держать релиз») | CI (`vulncheck`) |
+| Метрики Prometheus, `/healthz`, `/readyz` с проверкой БД и draining | сделано | `docs/metrics.md`; 0.6.0 |
+| Структурированные логи `slog` с редактором секретов, `request_id`, аудит в stdout (`KUBRON_AUDIT_STDOUT=1`) | сделано | `docs/logging.md` |
+| HA: сессии и пользователи в PostgreSQL, `LISTEN/NOTIFY`, лидер проверок под `pg_advisory_lock`, graceful shutdown (`1012`), чарт на две реплики по умолчанию, PDB | сделано | `docs/ha.md`, ADR-0016, CI (`e2e-ha`: вход на одной реплике и запрос на другой, 50 сессий, `SIGKILL` реплики во время сессии) |
+| Версия контракта RPC (`X-Kubron-Build`): сервер отклоняет старый фронтенд | сделано | `internal/server/contract.go` |
+| Модель угроз STRIDE | написана, независимое ревью выполнено (подтверждено владельцем 2026-11-03) | `docs/threat-model.md`, запись приёмки |
+| Ревью безопасности | независимое ревью и эксплуатационные сценарии выполнены (подтверждено владельцем 2026-11-03); находка 10 закрыта PR #111: подтверждение внешнего перехода | `docs/security-review.md`, запись приёмки |
+| Нагрузочный тест | расширенный прогон на 20–50 пользователей и реальные измерения Kubernetes API выполнены владельцем 2026-11-03 | `docs/acceptance/2026-11-03-owner-acceptance.md` |
+| Алгоритм хэша паролей | Argon2id v=19, m=19 MiB, t=2, p=1; legacy PBKDF2-HMAC-SHA256 автоматически обновляется при успешном входе | `internal/auth/password.go`, `docs/threat-model.md` |
+
+## Этап 5. Port-forward, Argo UI, терминалы
+
+| Задача плана | Состояние | Где |
+|---|---|---|
+| 5.1 `portForward` по умолчанию включён, организация может отключить | сделано | `KUBRON_DISABLE_PORT_FORWARD`, `GetCapabilities` |
+| 5.2 HTTP-прокси port-forward: отдельный origin на поток, одноразовый ticket, cookie без `Domain`, лимиты простоя и длительности; при нескольких репликах владелец потока в id, чужая реплика отвечает `421`/`409 stream_elsewhere` | сделано | ADR-0017, CI (`pf-terminals.spec.ts`) |
+| 5.3 `OpenArgoUI` в вебе: адрес потока прокси или опубликованный адрес Argo CD (`argoUrl`) | сделано | `internal/server/methods.go`, CI (`pf-argocd.spec.ts`) |
+| 5.4 Право `nodeshell`, аудит начала и конца, лимиты времени и числа, флаги отключения, проверка владельца на каждом кадре | сделано | 0.6.0, CI (`pf-terminals.spec.ts`) |
+
+## Этап 6. SSO/OIDC для входа в приложение
+
+**Этап 6 — отдельная будущая фаза, вне объёма приёмки этапов 0–5.**
+
+Не начат (по плану — фаза 2, платный модуль, ADR-0011 и ADR-0013). Заложено: интерфейсы `Authenticator`, `Platform`, `Store`
+и реестр в публичном `pkg/ext`; пример внешнего модуля `examples/ext-authenticator` собирается в CI; поля `external_id`,
+`provider` и пустая таблица `group_mappings` в схеме БД.
+
+Не сделано: маршруты `/auth/login`, `/auth/callback`, `/auth/logout`, OIDC (code + PKCE, `state`, `nonce`, discovery), роли из
+групп IdP, JIT-создание пользователей, режимы «только SSO» и «локальный + SSO», приватный репозиторий платного модуля,
+лицензионный ключ, образ `kubron-enterprise`, тесты на Keycloak.
+
+Не путать с входом **в кластеры** (ADR-0018, `docs/tickets/cluster-auth.md`): это отдельная реализованная возможность этапа 3; ADR-0018 утверждён (статус `принято`).
+
+## Gate 3
+
+| Условие плана | Состояние |
+|---|---|
+| Эксплуатационная проверка (PostgreSQL, HA, backup/restore, отзыв доступа) | выполнена владельцем 2026-11-03 |
+| Раздел 8 выполнен | да; независимое ревью и ручные проверки выполнены (подтверждено владельцем 2026-11-03) |
+| Внутренний security review (или pentest) | независимое ревью и сценарии на стенде выполнены владельцем 2026-11-03 |
+| Dockerfile, Helm | да |
+| Восстановление из бэкапа | да, проверяется в CI (`restore-check`) |
+| Терминал и HTTP port-forward проходят e2e в вебе | да |
+| Сервис на двух репликах переживает потерю одной | да, CI (`e2e-ha`) |
+
+## За пределами завершённой базовой веб-версии
+
+Этап 6 — SSO/OIDC для входа в само приложение — отдельная будущая фаза/модуль. Он не является частью приёмки этапов 0–5. Не путать с OIDC-аутентификацией Kubernetes-кластеров, которая реализована в этапе 3.
+
+## Автоматическая проверка на 2026-11-03
+
+- `refactor` на коммите `6103faa` (до документационного PR #109): все jobs основного CI прошли, включая Go build/vet/test, race, lint, frontend, migrations, restore-check, e2e kind, e2e PostgreSQL/teams и HA.
+- После merge PR #109 коммит `99df253`: workflow CI завершился успешно; тяжёлые jobs корректно пропущены, поскольку изменения были только в документации.
+- Отдельный ручной пробный запуск `Publish (image and Helm chart)` на коммите `7b5c006` выявил ошибку источника SBOM. Исправление (`docker:` source для локального Docker image) влито через PR #110. Повторный `workflow_dispatch` на `refactor` (`257d78c`, run `41575481088`) завершился успешно: job `Image and chart` — `success`.
+- Эти результаты подтверждают автоматические проверки CI, но не заменяют ручные проверки реального IdP, кластера и desktop GUI.

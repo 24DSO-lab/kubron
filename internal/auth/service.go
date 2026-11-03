@@ -82,8 +82,10 @@ type UserInfo struct {
 
 // Status — состояние аутентификации при старте интерфейса.
 type Status struct {
-	NeedsSetup bool      `json:"needsSetup"`
-	User       *UserInfo `json:"user"`
+	NeedsSetup bool `json:"needsSetup"`
+	// SetupTokenRequired — первичная настройка по сети требует токен (заполняет серверный слой в сервисном режиме).
+	SetupTokenRequired bool      `json:"setupTokenRequired,omitempty"`
+	User               *UserInfo `json:"user"`
 	// IdleTimeoutMinutes — через сколько минут без действий пользователя сессия завершается (0 — не завершается).
 	IdleTimeoutMinutes int `json:"idleTimeoutMinutes"`
 }
@@ -113,7 +115,8 @@ type Actor struct {
 type shared struct {
 	mu       sync.Mutex
 	st       *store
-	failures map[string]*failure
+	failures map[string]*failure // счётчики по адресу (и по логину, если нет общего хранилища fail)
+	fail     FailureBackend      // не nil: блокировки по логину общие для всех реплик
 	now      func() time.Time
 	rec      Recorder
 	access   Access                // nil — прежняя модель: глобальная роль пользователя
@@ -156,6 +159,7 @@ func NewServiceWithBackend(b Backend) (*Service, error) {
 		return nil, err
 	}
 	sh := &shared{st: st, failures: map[string]*failure{}, now: time.Now, sessions: map[*Service]struct{}{}}
+	sh.fail, _ = b.(FailureBackend)
 	svc := &Service{shared: sh}
 	sh.sessions[svc] = struct{}{}
 	return svc, nil
@@ -512,9 +516,15 @@ func (s *Service) Setup(username, password string) (*UserInfo, error) {
 		CreatedAt: now, UpdatedAt: now, LastLoginAt: &now,
 	}
 	s.st.users = append(s.st.users, rec)
-	if err := s.st.saveUser(&rec); err != nil {
+	created, err := s.st.saveFirstUser(&rec)
+	if err != nil {
 		s.st.users = nil
 		return nil, fmt.Errorf("failed to save user: %w", err)
+	}
+	if !created { // первого администратора создала другая реплика
+		s.st.users = nil
+		s.refreshLocked()
+		return nil, ErrSetupDone
 	}
 	s.sessionID = rec.ID
 	s.touchLocked()
@@ -531,6 +541,7 @@ func (s *Service) dummy() string {
 func (s *Service) Login(username, password string) (*UserInfo, error) {
 	key := normalizeUsername(username)
 
+	shared := s.sharedLockRemaining(key) // общее хранилище: вне блокировки, до проверки пароля
 	s.mu.Lock()
 	if len(s.st.users) == 0 {
 		s.mu.Unlock()
@@ -538,7 +549,7 @@ func (s *Service) Login(username, password string) (*UserInfo, error) {
 	}
 
 	ipKey := s.ipKey()
-	if remaining := max(s.lockRemainingLocked(key), s.lockRemainingLocked(ipKey)); remaining > 0 {
+	if remaining := max(s.lockRemainingLocked(key), shared, s.lockRemainingLocked(ipKey)); remaining > 0 {
 		s.loginBlocked.Add(1)
 		s.record(&UserRecord{Username: username}, "Login", audit.ResultDenied, "login temporarily blocked after failed attempts")
 
@@ -575,10 +586,13 @@ func (s *Service) Login(username, password string) (*UserInfo, error) {
 
 	s.mu.Lock()
 	if !ok || snapshot == nil {
-		s.recordFailureLocked(key, freeAttempts)
+		if s.fail == nil {
+			s.recordFailureLocked(key, freeAttempts)
+		}
 		s.recordSourceFailureLocked(ipKey)
 		s.record(&UserRecord{Username: username}, "Login", audit.ResultFailed, ErrInvalidCredentials.Error())
 		s.mu.Unlock()
+		s.sharedRecordFailure(key)
 		return nil, ErrInvalidCredentials
 	}
 	rec := s.st.findByID(snapshot.ID)
@@ -608,6 +622,7 @@ func (s *Service) Login(username, password string) (*UserInfo, error) {
 	info := toInfo(rec)
 	hook := s.onLogout
 	s.mu.Unlock()
+	s.sharedClearFailures(key) // в общем хранилище — после снятия блокировки
 
 	if replaced && hook != nil {
 		hook()
@@ -713,6 +728,17 @@ func (s *Service) refreshOnMiss() bool {
 // Shared — пользователи лежат в хранилище, общем для нескольких процессов (PostgreSQL), и RunRefresher нужен.
 func (s *Service) Shared() bool { return s.st.delta != nil }
 
+// RefreshNow немедленно перечитывает пользователей из общего хранилища (сообщение от другой реплики об изменении
+// пользователей или прав). Для файлового хранилища ничего не делает.
+func (s *Service) RefreshNow() {
+	if s.st.delta == nil {
+		return
+	}
+	if err := s.refresh(); err != nil {
+		log.Printf("auth: users were not refreshed: %v", err)
+	}
+}
+
 // RunRefresher периодически перечитывает пользователей, пока ctx не отменён: роль, блокировка и новые
 // пользователи, изменённые на другой реплике, становятся видны здесь не позже чем через every.
 func (s *Service) RunRefresher(ctx context.Context, every time.Duration) {
@@ -757,6 +783,41 @@ func (s *Service) lockRemainingLocked(key string) time.Duration {
 		return d
 	}
 	return 0
+}
+
+// sharedLockRemaining — остаток блокировки логина в общем хранилище (0 — блокировки нет или хранилища нет).
+// Если хранилище недоступно, блокировка не проверяется (ошибка в журнал): сессию без него всё равно не открыть.
+// Вызывать без s.mu.
+func (s *Service) sharedLockRemaining(key string) time.Duration {
+	if s.fail == nil {
+		return 0
+	}
+	d, err := s.fail.LockRemaining(key)
+	if err != nil {
+		log.Printf("auth: login lockout is not checked: %v", err)
+		return 0
+	}
+	return d
+}
+
+// sharedRecordFailure учитывает неудачу в общем хранилище (без s.mu; нет хранилища — ничего не делает).
+func (s *Service) sharedRecordFailure(key string) {
+	if s.fail == nil {
+		return
+	}
+	if err := s.fail.RecordFailure(key, freeAttempts, baseLockout, maxLockout); err != nil {
+		log.Printf("auth: failed login is not counted: %v", err)
+	}
+}
+
+// sharedClearFailures забывает счётчик в общем хранилище (без s.mu).
+func (s *Service) sharedClearFailures(key string) {
+	if s.fail == nil {
+		return
+	}
+	if err := s.fail.ClearFailures(key); err != nil {
+		log.Printf("auth: failure counter is not cleared: %v", err)
+	}
 }
 
 // ipKey — ключ блокировки по адресу клиента ("" — адрес неизвестен, блокировки по адресу нет).
@@ -856,7 +917,10 @@ func (s *Service) ChangePassword(oldPassword, newPassword string) error {
 	id, username, oldHash := u.ID, u.Username, u.PasswordHash
 	// Подбор старого пароля (украденная сессия) ограничивается так же, как вход: по логину и по адресу
 	pwKey, ipKey := "pw:"+normalizeUsername(username), s.ipKey()
-	if remaining := max(s.lockRemainingLocked(pwKey), s.lockRemainingLocked(ipKey)); remaining > 0 {
+	s.mu.Unlock()
+	shared := s.sharedLockRemaining(pwKey)
+	s.mu.Lock()
+	if remaining := max(s.lockRemainingLocked(pwKey), shared, s.lockRemainingLocked(ipKey)); remaining > 0 {
 		s.record(u, "ChangePassword", audit.ResultDenied, "password change temporarily blocked after failed attempts")
 		s.mu.Unlock()
 		return &LockedError{RetryAfter: remaining}
@@ -868,10 +932,13 @@ func (s *Service) ChangePassword(oldPassword, newPassword string) error {
 	}
 	if ok, _ := verifyPassword(oldPassword, oldHash); !ok {
 		s.mu.Lock()
-		s.recordFailureLocked(pwKey, freeAttempts)
+		if s.fail == nil {
+			s.recordFailureLocked(pwKey, freeAttempts)
+		}
 		s.recordSourceFailureLocked(ipKey)
 		s.record(s.st.findByID(id), "ChangePassword", audit.ResultFailed, ErrWrongPassword.Error())
 		s.mu.Unlock()
+		s.sharedRecordFailure(pwKey)
 		return ErrWrongPassword
 	}
 	if oldPassword == newPassword {
@@ -884,6 +951,12 @@ func (s *Service) ChangePassword(oldPassword, newPassword string) error {
 
 	var hooks []func()
 	defer func() { runAll(hooks) }() // после снятия блокировки (defer выполняются в обратном порядке)
+	changed := false
+	defer func() {
+		if changed {
+			s.sharedClearFailures(pwKey)
+		}
+	}()
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.refreshLocked()
@@ -900,6 +973,7 @@ func (s *Service) ChangePassword(oldPassword, newPassword string) error {
 		return fmt.Errorf("failed to save password: %w", err)
 	}
 	delete(s.failures, pwKey)
+	changed = true
 	s.touchLocked()
 	s.record(rec, "ChangePassword", audit.ResultOK, "")
 	// Остальные сессии этого пользователя (другие браузеры) завершаются: пароль мог быть скомпрометирован

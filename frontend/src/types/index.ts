@@ -17,6 +17,8 @@ export interface ClusterMeta {
   teamId?: string
   /** Способ подключения: kubeconfig (или пусто), in-cluster, oidc-password (сервисный режим) */
   mode?: string
+  /** Опубликованный адрес Argo CD; '' — открытие через port-forward или прокси */
+  argoUrl?: string
 }
 
 /** Результат фоновой проверки соединения с кластером (сервисный режим; в десктопе поля нет) */
@@ -43,6 +45,8 @@ export interface ClusterSettings {
   environment: string
   defaultNamespace: string
   contextName: string
+  /** Опубликованный адрес Argo CD (http/https); '' — через port-forward или прокси потоков */
+  argoUrl: string
 }
 
 /** Источник kubeconfig: задаётся ровно одно поле (зеркало k8s.KubeconfigSource) */
@@ -50,6 +54,8 @@ export interface KubeconfigSource {
   path: string
   text: string
   clusterId: string
+  /** Сохранённый кластер, откуда сервер подставляет скрытые секреты (плейсхолдер) в text */
+  baseClusterId?: string
 }
 
 export interface KubeconfigContextInfo {

@@ -104,6 +104,11 @@
       "start": "Port-forward started",
       "stop": "Port-forward stopped"
     },
+    "cluster": {
+      "credentials": {
+        "update": "Cluster credentials replaced"
+      }
+    },
     "terminal": {
       "start": "Terminal opened",
       "stop": "Terminal closed"

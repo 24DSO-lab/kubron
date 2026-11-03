@@ -142,6 +142,7 @@ var allowedMethods = []string{
 	"ListUsers",
 	"Login",
 	"Logout",
+	"OpenArgoUI", // в вебе: адрес потока прокси port-forward или опубликованный адрес Argo CD (ADR-0017)
 	"OpenTerminal",
 	"PreviewHelmChartUpgrade",
 	"PreviewHelmInstall",
@@ -203,7 +204,6 @@ var deniedMethods = map[string]string{
 	"StartTerminalSession": "the session id is chosen by the client; in web mode the server issues an unguessable id itself (OpenTerminal)",
 	"WriteTerminal":        "terminal input goes over WebSocket /api/terminal/{id}",
 	"ResizeTerminal":       "terminal size is sent as a control frame over WebSocket /api/terminal/{id}",
-	"OpenArgoUI":           "starts port-forward and opens a browser on the server; in web mode it is an HTTP proxy (stage 5)",
 }
 
 // NewAppDispatcher строит диспетчер для app.App с allowlist по умолчанию.

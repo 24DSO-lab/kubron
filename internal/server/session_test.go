@@ -303,3 +303,76 @@ func TestReapAlsoSweepsExpired(t *testing.T) {
 		t.Fatalf("Reap=%d released=%d", n, released)
 	}
 }
+
+// По защищённому каналу принимается только __Host- cookie: обычная kubron_session (её может подменить соседний
+// поддомен или открытое HTTP-соединение) игнорируется, в том числе когда есть и настоящая __Host- cookie.
+func TestSecureRequestIgnoresPlainSessionCookie(t *testing.T) {
+	tg := &guardTarget{}
+	d, _ := NewDispatcher(tg, []string{"Login", "AuthStatus", "Add"}, nil)
+	g := &Guard{Sessions: NewSessions(time.Hour, true), TrustProxy: true}
+	h := NewHandler(d, nil, g)
+	xfp := map[string]string{"X-Forwarded-Proto": "https"}
+
+	rec, _ := post(h, "/api/rpc/Login", `["alice","ok"]`, xfp)
+	real := cookieOf(rec)
+	csrf := rec.Header().Get(csrfHeader)
+	if real == nil || real.Name != secureCookieName {
+		t.Fatalf("login over HTTPS must set the __Host- cookie: %+v", real)
+	}
+	withCookies := func(secure bool, csrf string, cs ...*http.Cookie) (*httptest.ResponseRecorder, rpcReply) {
+		req := httptest.NewRequest(http.MethodPost, "/api/rpc/Add", strings.NewReader(`[1,2]`))
+		req.Header.Set("Content-Type", "application/json")
+		if secure {
+			req.Header.Set("X-Forwarded-Proto", "https")
+		}
+		if csrf != "" {
+			req.Header.Set(csrfHeader, csrf)
+		}
+		for _, c := range cs {
+			req.AddCookie(c)
+		}
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, req)
+		var rep rpcReply
+		_ = json.Unmarshal(w.Body.Bytes(), &rep)
+		return w, rep
+	}
+	plain := &http.Cookie{Name: cookieName, Value: real.Value}
+
+	// Настоящая сессия, но под обычным именем: по HTTPS не принимается
+	if w, _ := withCookies(true, csrf, plain); w.Code != http.StatusUnauthorized {
+		t.Errorf("a plain cookie over HTTPS must not authenticate: %d", w.Code)
+	}
+	// Подменная обычная cookie рядом с настоящей __Host-: берётся настоящая, подмена не влияет
+	forged := &http.Cookie{Name: cookieName, Value: "forged-token-value"}
+	if w, rep := withCookies(true, csrf, forged, real); w.Code != 200 || rep.Error != nil {
+		t.Errorf("the real __Host- cookie must win over a forged plain one: %d %s", w.Code, w.Body.String())
+	}
+	// Обратный порядок cookie даёт тот же результат
+	if w, _ := withCookies(true, csrf, real, forged); w.Code != 200 {
+		t.Errorf("cookie order must not matter: %d", w.Code)
+	}
+	// Подмена вместо настоящей по HTTPS — отказ
+	if w, _ := withCookies(true, csrf, forged); w.Code != http.StatusUnauthorized {
+		t.Errorf("a forged plain cookie alone must not authenticate: %d", w.Code)
+	}
+	// /api/session тоже не видит обычную cookie по HTTPS
+	req := httptest.NewRequest(http.MethodGet, "/api/session", nil)
+	req.Header.Set("X-Forwarded-Proto", "https")
+	req.AddCookie(plain)
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+	if strings.Contains(w.Body.String(), `"authenticated":true`) {
+		t.Errorf("/api/session must ignore the plain cookie over HTTPS: %s", w.Body.String())
+	}
+	// По HTTP (loopback, без прокси) обычная cookie по-прежнему работает, а __Host- — тоже принимается
+	hp := NewHandler(d, nil, &Guard{Sessions: NewSessions(time.Hour, true)})
+	rec, _ = post(hp, "/api/rpc/Login", `["bob","ok"]`, nil)
+	c, csrf2 := cookieOf(rec), rec.Header().Get(csrfHeader)
+	if c == nil || c.Name != cookieName {
+		t.Fatalf("plain HTTP issues the plain cookie: %+v", c)
+	}
+	if w, rep := call(hp, "Add", `[1,2]`, c, csrf2); w.Code != 200 || rep.Error != nil {
+		t.Errorf("the plain cookie works over plain HTTP: %d", w.Code)
+	}
+}

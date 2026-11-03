@@ -271,6 +271,7 @@ async function submit() {
     environment: environment.value,
     defaultNamespace: namespace.value,
     contextName: contextName.value,
+    argoUrl: '',
   }
   const teamOwner = capabilities.value.teams ? teamId.value : undefined
   let payload: AddClusterPayload

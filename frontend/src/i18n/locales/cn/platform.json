@@ -1,4 +1,5 @@
 {
+  "contractMismatch": "该页面对应的服务器版本不同，请刷新页面。",
   "noConnection": "无法连接到 Kubron 服务器",
   "httpStatus": "服务器返回 HTTP {status}",
   "terminalConnect": "无法连接到终端",

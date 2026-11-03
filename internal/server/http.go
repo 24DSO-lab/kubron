@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"log"
+	"log/slog"
 	"mime"
 	"net/http"
 	"net/url"
@@ -24,6 +24,8 @@ const maxRPCBody = 4 << 20
 type rpcError struct {
 	Code    string `json:"code"`
 	Message string `json:"message"`
+	// RequestID — идентификатор запроса при внутренней ошибке (тот же, что в журнале сервера и в X-Request-Id).
+	RequestID string `json:"requestId,omitempty"`
 }
 
 type rpcResponse struct {
@@ -81,6 +83,11 @@ func RPCHandler(d *Dispatcher, g *Guard) http.Handler {
 			return
 		}
 		method := r.PathValue("method")
+		// Первичная настройка — единственный анонимный RPC, который создаёт привилегированного пользователя.
+		// В сервисном режиме токен проверяется до диспетчеризации и до вызова App.SetupAdmin.
+		if method == "SetupAdmin" && g != nil && !g.checkSetup(w, r) {
+			return
+		}
 
 		var token string
 		var sess Session
@@ -135,7 +142,7 @@ func RPCHandler(d *Dispatcher, g *Guard) http.Handler {
 				// Сессию открыли на другой реплике: активный кластер подключается при первом запросе здесь.
 				if c := g.Sessions.TakePendingCluster(sess.ID); c != "" && g.RestoreCluster != nil && sess.View != nil {
 					if err := g.RestoreCluster(sess.View, c); err != nil {
-						log.Printf("rpc: the active cluster of session %s was not restored: %v", sess.ID, err)
+						slog.WarnContext(r.Context(), "rpc: the active cluster of the session was not restored", "session", sess.ID, "error", err)
 					}
 				}
 			}
@@ -144,20 +151,26 @@ func RPCHandler(d *Dispatcher, g *Guard) http.Handler {
 		if err != nil {
 			g.dropView(fresh)
 			status, code := MapError(err)
+			msg := err.Error()
+			var reqID string
 			if status == http.StatusInternalServerError {
-				log.Printf("rpc %s: %v", method, err)
+				// Внутренние детали (адреса, БД, TLS) уходят только в журнал; клиент получает общий текст и request id.
+				reqID, r = requestIDFor(w, r)
+				var hidden bool
+				msg, hidden = exposeMessage(err, reqID)
+				logInternal(r, method, err, hidden)
 			}
 			if g != nil && code == "unauthenticated" && authed {
 				g.endSession(token) // ядро закрыло сессию (простой, выход): cookie больше не действует
 				g.clearCookie(w, r)
 			}
-			writeError(w, status, code, err.Error())
+			writeErrorID(w, status, code, msg, reqID)
 			return
 		}
 		if g != nil {
 			var aerr error
 			if result, aerr = g.afterCall(w, r, method, result, token, sess, authed, fresh); aerr != nil {
-				log.Printf("rpc %s: the web session was not saved: %v", method, aerr)
+				slog.ErrorContext(r.Context(), "rpc: the web session was not saved", "method", method, "error", aerr)
 				writeUnavailable(w)
 				return
 			}
@@ -203,25 +216,33 @@ func (g *Guard) afterCall(w http.ResponseWriter, r *http.Request, method string,
 		// Остальные сессии пользователя (в том числе на других репликах) завершаются, текущая получает новый токен.
 		if authed {
 			if err := g.Sessions.EndUser(sess.UserID, sess.ID); err != nil {
-				log.Printf("rpc ChangePassword: the other sessions of the user were not ended: %v", err)
+				slog.WarnContext(r.Context(), "rpc ChangePassword: the other sessions of the user were not ended", "error", err)
 			}
 			if tok, err := g.Sessions.Rotate(token); err == nil {
 				g.setCookie(w, r, tok, time.Until(sess.Expires))
 			} else {
-				log.Printf("rpc ChangePassword: the token was not rotated: %v", err)
+				slog.WarnContext(r.Context(), "rpc ChangePassword: the token was not rotated", "error", err)
 			}
 		}
 	case "SetUserDisabled", "ResetUserPassword":
 		if u, ok := result.(*auth.UserInfo); ok && u != nil && (method == "ResetUserPassword" || u.Disabled) {
 			if err := g.Sessions.EndUser(u.ID, ""); err != nil {
-				log.Printf("rpc %s: the sessions of the user were not ended: %v", method, err)
+				slog.WarnContext(r.Context(), "rpc: the sessions of the user were not ended", "method", method, "error", err)
 			}
 		}
 	case "AuthStatus":
-		if st, ok := result.(*auth.Status); ok && st != nil && !authed && st.User != nil {
+		if st, ok := result.(*auth.Status); ok && st != nil {
 			cp := *st
-			cp.User = nil
-			return &cp, nil
+			changed := false
+			if !authed && cp.User != nil {
+				cp.User, changed = nil, true
+			}
+			if cp.NeedsSetup && g.Setup != nil { // экран настройки запросит токен
+				cp.SetupTokenRequired, changed = true, true
+			}
+			if changed {
+				return &cp, nil
+			}
 		}
 	}
 	if authed && sess.View != nil && g.ActiveCluster != nil && g.Sessions.Backend != nil {
@@ -236,7 +257,7 @@ func (g *Guard) afterCall(w http.ResponseWriter, r *http.Request, method string,
 // endSession закрывает веб-сессию; ошибку хранилища пишет в журнал (cookie всё равно сбрасывается).
 func (g *Guard) endSession(token string) {
 	if err := g.Sessions.Delete(token); err != nil {
-		log.Printf("sessions: the session was not removed from the store: %v", err)
+		slog.Warn("sessions: the session was not removed from the store", "error", err)
 	}
 }
 
@@ -289,12 +310,16 @@ func writeError(w http.ResponseWriter, status int, code, msg string) {
 	writeJSON(w, status, rpcResponse{Error: &rpcError{Code: code, Message: msg}})
 }
 
+func writeErrorID(w http.ResponseWriter, status int, code, msg, requestID string) {
+	writeJSON(w, status, rpcResponse{Error: &rpcError{Code: code, Message: msg, RequestID: requestID}})
+}
+
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(status)
 	if err := json.NewEncoder(w).Encode(v); err != nil {
-		log.Printf("rpc: failed to write response: %v", err)
+		slog.Warn("rpc: failed to write response", "error", err)
 	}
 }
 

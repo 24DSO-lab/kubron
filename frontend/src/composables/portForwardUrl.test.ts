@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 vi.mock('../platform/api', () => ({ callApp: vi.fn() }))
 
 import { callApp } from '../platform/api'
-import { getPortForwardUrl, isProxyForward } from './portForwardUrl'
+import { getPortForwardUrl, isProxyForward, stopPortForward } from './portForwardUrl'
 
 describe('getPortForwardUrl', () => {
   beforeEach(() => { vi.mocked(callApp).mockReset() })
@@ -29,5 +29,29 @@ describe('isProxyForward', () => {
     expect(isProxyForward({ mode: 'proxy' })).toBe(true)
     expect(isProxyForward({ mode: 'local' })).toBe(false)
     expect(isProxyForward(null)).toBe(false) // по умолчанию local
+  })
+})
+
+describe('поток на другой реплике', () => {
+  beforeEach(() => { vi.mocked(callApp).mockReset() })
+
+  it('адрес и остановка повторяются, пока запрос не попадёт на владельца', async () => {
+    const elsewhere = Object.assign(new Error('stream is on another replica'), { code: 'stream_elsewhere' })
+    vi.mocked(callApp)
+      .mockRejectedValueOnce(elsewhere as never)
+      .mockResolvedValueOnce('https://abc.pf.example.com/__kubron/enter?ticket=t' as never)
+    expect(await getPortForwardUrl('abc')).toBe('https://abc.pf.example.com/__kubron/enter?ticket=t')
+    expect(callApp).toHaveBeenCalledTimes(2)
+
+    vi.mocked(callApp).mockReset()
+    vi.mocked(callApp).mockRejectedValueOnce(elsewhere as never).mockResolvedValueOnce(undefined as never)
+    await stopPortForward('abc')
+    expect(callApp).toHaveBeenLastCalledWith('StopPortForward', 'abc')
+  })
+
+  it('другие ошибки не повторяются', async () => {
+    vi.mocked(callApp).mockRejectedValue(new Error('forbidden') as never)
+    await expect(stopPortForward('abc')).rejects.toThrow('forbidden')
+    expect(callApp).toHaveBeenCalledTimes(1)
   })
 })

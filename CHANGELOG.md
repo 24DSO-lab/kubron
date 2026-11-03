@@ -7,10 +7,103 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-03
+
+### Security
+
+- **Password hashing:** new passwords use Argon2id (v=19, 19 MiB, 2 iterations, 1 lane). Existing PBKDF2-HMAC-SHA256 hashes remain verifiable and are upgraded after a successful login; no forced password reset is required.
+- **Roles:** the `user` role no longer has `secrets.read`. It could read Secret values, Helm release values/manifests
+  and certificate expiry, which contradicts a read-only role. `operator` and `admin` keep the permission. The UI shows
+  “no access” instead of hidden controls. **Behavior change:** grant the `operator` role to users who need these values.
+- **Helm:** managing Helm repositories, OCI registries and the operation journal is now checked against the team
+  of the **active cluster**. Before, `clusters.manage` was accepted from an admin of *any* team, so an admin of
+  one team with a read-only role in another could change that team's repositories while its cluster was active.
+  No new permission was introduced.
+- **Port-forward proxy and terminals:** with `KUBRON_CLUSTER_ADDR_POLICY` enabled, the HTTP port-forward proxy
+  (ADR-0017) and terminals open their connection to the API server through the address policy as well; a test
+  forbids calling the stock SPDY/WebSocket dialers directly.
+- **First-run setup:** the first administrator can no longer be created by whoever reaches the server first. In the
+  service mode (PostgreSQL or a non-loopback listener) `SetupAdmin` requires a **setup token** (`KUBRON_SETUP_TOKEN`)
+  while there are no users. **Upgrade:** a new mandatory step for new installations. The Helm chart creates the token in
+  a Secret (or reads `setup.existingSecret`), and its `NOTES.txt` shows how to read it; the administrator can also be
+  created with `kubectl exec -i deploy/<name> -- /kubron-server create-admin --username <name>` (the password goes on stdin or in
+  `KUBRON_ADMIN_PASSWORD`, never as an argument).
+  Installations that already have users are not affected. See `docs/deploy.md`.
+- **Cluster addresses:** `KUBRON_CLUSTER_ADDR_POLICY` now defaults to `permissive` (it was `off`): API-server addresses
+  in loopback, link-local and cloud-metadata ranges are rejected. **Upgrade:** a cluster whose API server is on such
+  an address (for example kind on `127.0.0.1`) needs `KUBRON_CLUSTER_ADDR_ALLOW_CIDRS` (chart:
+  `kubron.clusterAddrAllowCidrs`) or `KUBRON_CLUSTER_ADDR_POLICY=off`.
+- **Cluster settings:** secrets inside a kubeconfig (tokens, client keys, passwords) are masked when a cluster is
+  opened for editing; a secret is replaced only when a new value is entered.
+- **Chart:** the egress NetworkPolicy to cluster API servers and identity providers excludes link-local and
+  cloud-metadata addresses (`169.254.0.0/16`, `fd00:ec2::254/128`) by default; the setup token and the Host allowlist
+  (`KUBRON_ALLOWED_HOSTS`, taken from `ingress.hosts` and `*.pf.<baseDomain>`) are set by the chart.
+- **Supply chain:** the server image and the chart are signed with cosign (keyless) and carry GitHub attestations of
+  provenance and SBOM; Trivy blocks publishing an image with a fixable HIGH/CRITICAL vulnerability. How to verify:
+  `docs/deploy.md`, "Image and chart verification".
+
+### Fixed
+
+- **Web mode:** `OpenArgoUI` was still on the denied-method list, so Argo CD could not be opened from the browser; it is now
+  allowed and returns the proxy stream address (or the published Argo CD address from the cluster settings).
+- **Helm with several replicas:** the repository index and OCI tag caches live in each replica's `emptyDir`; a
+  repository added on one replica is now fetched on first use on the others (the list and update checks fill the cache
+  in the background). Cache file names include a hash of the URL, so a repository re-added under the same name with
+  another address does not pick up a stale cache.
+
+### Added
+
+- **Release:** SBOMs for the image (SPDX), the chart and the desktop build (CycloneDX) are attached to the GitHub Release
+  and listed in `SHA256SUMS.txt`; `docs/releasing.md` now covers the server side (image, chart, signatures), the
+  pre-tag checklist, the single version number and rollback (`helm rollback`, migration policy).
+- **CI:** `deps-audit` job (`npm audit --omit=dev --audit-level=high`, osv-scanner), Trivy reports for the image and the
+  rendered chart, a weekly scan of the latest published image (issue with the `security` label), exceptions only in
+  `.trivyignore` / `osv-scanner.toml` with a reason and an expiry (checked by `scripts/check-ignores.py`); Dependabot
+  also covers `pkg/ext`, `docs-site`, Docker and weekly GitHub Actions updates.
+- **Chart:** `setup.existingSecret` / `setup.tokenKey` (generated and kept across upgrades when not set),
+  `kubron.allowedHosts`, `kubron.clusterAddrPolicy`, `kubron.clusterAddrAllowCidrs`, `rbac.profile`
+  (`readonly` | `operator` | `custom`) and `networkPolicy.egress.{clusterApi,idp}` with configurable CIDRs and ports.
+- **Chart:** `portForward` values (`baseDomain`, `scheme`, `idleTimeout`, `maxDuration`) set the `KUBRON_PF_*` variables and add the
+  `*.pf.<baseDomain>` rule to the Ingress; without a domain port-forward stays off in the service mode.
+- **High availability:** the Helm chart now defaults to two replicas (PodDisruptionBudget, spreading across nodes,
+  `kubron.drainDelay`, optional `secrets.keys.dbListenUrl`, `kubron.auditRetention`); the "several replicas are not
+  supported" warning is gone. New CI job `e2e-ha` runs two replicas on one PostgreSQL: login on one replica and a request
+  on the other, session end and login lockouts across replicas, 50 sessions, and killing a replica during a session.
+- **Network policy:** the `oidc-password` identity provider address (issuer and the `token_endpoint` from its answer)
+  follows `KUBRON_CLUSTER_ADDR_POLICY` as well.
+- **Decision log:** `docs/decisions/` records the decisions taken without a separate discussion, who took them and
+  how to revert.
+- **Tests:** Helm through the PostgreSQL store end to end, and `kubron-server rekey` re-encrypting the Helm secrets.
+- **Operations:** structured JSON logging (`log/slog`) in `kubron-server` with a secret redactor (passwords,
+  tokens, `Authorization` headers, URL credentials, encryption key, database passwords), a per-request
+  `request_id` (`X-Request-Id` header), `KUBRON_LOG_LEVEL` and `KUBRON_LOG_FORMAT`. `KUBRON_AUDIT_STDOUT=1`
+  mirrors every audit record to stdout as a JSON line (`"type":"audit"`) for an external collector. See
+  `docs/logging.md`.
+- **Operations:** `docs/backup.md` (order of backup, restore, key rotation and `rekey`) and a CI job
+  `restore-check` (`scripts/restore-check.sh`: data → `pg_dump` → empty database → same key reads the secret;
+  a wrong key gives a clear error). The server now checks at startup that `KUBRON_SECRET_KEY` reads the
+  encrypted data in the database and refuses to start otherwise; `KUBRON_ALLOW_KEY_MISMATCH=1` starts it
+  without access to cluster secrets.
+- **Port-forward:** with several replicas a stream carries its owner in the id (one DNS label); a request to a stream of
+  another replica gets `421` before the one-time ticket is spent, and `GetPortForwardURL`/`StopPortForward` answer
+  `409 stream_elsewhere` (the UI retries). See ADR-0017, section 7.
+
+### Changed
+
+- **Docs:** README, the roadmap and `docs/tickets/stage-1.md` no longer describe the image as unpublished, the server as
+  single-replica or `SetupAdmin` as open; stale "PR n" and branch notes were removed from `docs/ha.md` and
+  `docs/ha-sessions.md`; `docs/tickets/stage-4-5.md` records the status of stages 4-6 and what is still open.
+- **Release:** `publish.yml` is called by `release.yml` after CI instead of reacting to the tag on its own, so SBOMs reach the
+  immutable GitHub Release and the image is never published from an untested commit. A published image or chart version is
+  never overwritten. `Chart.yaml` holds `0.0.0-dev` placeholders; the version comes from the tag.
+
 ## [0.6.0] - 2026-11-01
 
 ### Added
 
+- **Argo CD:** published address in cluster settings (`argoUrl`, migration `0007`). If set, `OpenArgoUI` opens it
+  (`mode=external`) and does not create a port-forward or a proxy stream; works even with
+  `KUBRON_DISABLE_PORT_FORWARD`. Only `http(s)` addresses without credentials, query or fragment are accepted.
 - **Terminals:** separate `nodeshell` permission for the node shell (admin only by default), flags
   `KUBRON_DISABLE_EXEC`, `KUBRON_DISABLE_NODE_SHELL`, `KUBRON_DISABLE_PORT_FORWARD` (reflected in
   `GetCapabilities`), `KUBRON_TERMINAL_MAX_DURATION` / `KUBRON_TERMINAL_IDLE_TIMEOUT`, audit of terminal
@@ -156,7 +249,8 @@ First public release.
 - Experimental web mode (`cmd/kubron-server`): several concurrent sessions, per-session
   cluster managers with per-user resource limits, idle informers released after a TTL.
 
-[Unreleased]: https://github.com/24DSO-labs/kubron/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/24DSO-labs/kubron/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/24DSO-labs/kubron/compare/v0.6.0...v1.0.0
 [0.6.0]: https://github.com/24DSO-labs/kubron/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/24DSO-labs/kubron/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/24DSO-labs/kubron/compare/v0.3.0...v0.4.0

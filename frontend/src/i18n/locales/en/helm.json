@@ -8,6 +8,8 @@
     "noUserValues": "# No user-supplied values: chart defaults are used"
   },
   "history": {
+    "noAccess": "No access",
+    "diffNoAccess": "Viewing revision differences requires the “View secret values” permission",
     "current": "current",
     "empty": "No history",
     "diff": "Diff",

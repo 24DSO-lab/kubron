@@ -4,6 +4,7 @@
 import { callApp } from './api'
 import type { TerminalHandle, TerminalHandlers, TerminalParams } from './terminal'
 import { t } from '../i18n'
+import { withBuild } from './build'
 
 /**
  * Веб-терминал: RPC OpenTerminal (сервер выдаёт неугадываемый id и копит вывод) и бинарный
@@ -13,7 +14,7 @@ import { t } from '../i18n'
 export async function openWebTerminal(p: TerminalParams, h: TerminalHandlers): Promise<TerminalHandle> {
   const id = await callApp('OpenTerminal', p.namespace, p.pod, p.container, p.shell, p.cols, p.rows)
   const proto = location.protocol === 'https:' ? 'wss' : 'ws'
-  const url = `${proto}://${location.host}/api/terminal/${encodeURIComponent(id)}`
+  const url = withBuild(`${proto}://${location.host}/api/terminal/${encodeURIComponent(id)}`)
   const ws = await connectToOwner(url)
 
   let closedByUs = false

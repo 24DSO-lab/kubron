@@ -1,0 +1,24 @@
+# Ужесточённая сеть и политика адресов: свои CIDR для API-серверов, PostgreSQL и IdP на другом порту,
+# строгая политика адресов с исключением для loopback, свой адрес в списке допустимых Host
+secrets:
+  existingSecret: kubron-secrets
+kubron:
+  clusterAddrPolicy: strict
+  clusterAddrAllowCidrs:
+    - 127.0.0.0/8
+  allowedHosts:
+    - kubron.internal.example
+networkPolicy:
+  egress:
+    postgres:
+      cidrs:
+        - 10.30.0.0/24
+    clusterApi:
+      cidrs:
+        - 10.20.0.0/16
+        - 192.168.50.0/24
+      ports: [443, 6443]
+    idp:
+      ports: [8443]
+      cidrs:
+        - 10.40.0.0/24

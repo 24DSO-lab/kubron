@@ -2,15 +2,16 @@
 
 Please read the full [CONTRIBUTING.md](https://github.com/24DSO-labs/kubron/blob/master/CONTRIBUTING.md) in the repository. Short summary:
 
-## DCO
+## DCO for external contributions
 
-Every commit must be signed off:
+Pull requests opened from a fork must have a DCO `Signed-off-by` line in every commit:
 
 ```bash
 git commit -s -m "feat: ..."
 ```
 
-CI checks the Developer Certificate of Origin.
+CI checks DCO for external fork-based pull requests. Pull requests from repository
+collaborators do not require sign-off.
 
 ## License headers
 

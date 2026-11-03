@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { CLOSE_SERVICE_RESTART, RECONNECTED, __resetForTests, closeEvents, connectEvents, flushSubscriptions, onEvent } from './events.web'
+import { CLOSE_SERVICE_RESTART, RECONNECTED, __resetForTests, closeEvents, connectEvents, eventsReplica, flushSubscriptions, onEvent, waitReplica } from './events.web'
 
 class FakeWS {
   static all: FakeWS[] = []
@@ -145,5 +145,37 @@ describe('events.web', () => {
     const p = flushSubscriptions()
     vi.advanceTimersByTime(2100)
     await expect(p).resolves.toBeUndefined()
+  })
+
+  it('кадр ready называет реплику; после разрыва она неизвестна, после переподключения — новая', () => {
+    onEvent('a', () => {})
+    expect(eventsReplica()).toBe('') // до ready реплика неизвестна
+    last().push({ op: 'ready', replica: 'ha-a' })
+    expect(eventsReplica()).toBe('ha-a')
+    last().drop()
+    expect(eventsReplica()).toBe('')
+    vi.advanceTimersByTime(60_000)
+    last().push({ op: 'ready', replica: 'ha-b' })
+    expect(eventsReplica()).toBe('ha-b')
+  })
+
+  it('ready без реплики (одна реплика, десктоп) даёт пустой префикс', () => {
+    onEvent('a', () => {})
+    last().push({ op: 'ready' })
+    expect(eventsReplica()).toBe('')
+  })
+
+  it('waitReplica сама открывает соединение и возвращает реплику после ready', async () => {
+    const p = waitReplica()
+    expect(FakeWS.all).toHaveLength(1)
+    last().push({ op: 'ready', replica: 'ha-a' })
+    last().push({ op: 'sub_ok' })
+    await expect(p).resolves.toBe('ha-a')
+  })
+
+  it('waitReplica не блокирует дольше таймаута, если сокет не открылся', async () => {
+    const p = waitReplica()
+    await vi.advanceTimersByTimeAsync(2_500)
+    await expect(p).resolves.toBe('')
   })
 })

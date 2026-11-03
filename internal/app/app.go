@@ -213,12 +213,16 @@ func (a *App) UpdateCluster(id string, settings k8s.ClusterSettings, kubeconfig 
 	if err := a.authzCluster(auth.PermClusterManage, id, "id", id, "displayName", settings.DisplayName, "kubeconfig", kubeconfigChange(kubeconfig)); err != nil {
 		return nil, err
 	}
+	kubeconfig.BaseClusterID = id // скрытые секреты берутся только у редактируемого кластера
 	if err := a.checkKubeconfigSource(kubeconfig); err != nil {
 		return nil, err
 	}
 	res, err := k8s.UpdateClusterSettings(id, settings, kubeconfig)
 	if err != nil {
 		return nil, err
+	}
+	if res.CredentialsChanged {
+		a.recordCredentialsUpdate(id)
 	}
 	// Подключение собрано по прежнему kubeconfig/контексту: забываем его, следующее
 	// подключение построит новое. Проброшенные порты старого активного кластера теряют смысл.
@@ -247,12 +251,16 @@ func (a *App) ConnectToCluster(clusterID string) error {
 	if err != nil {
 		return err
 	}
-	config, _ := k8s.LoadKubronConfig()
-	if config == nil {
-		config = &k8s.KubronConfig{}
+	// Последний кластер — пользовательская настройка десктопа. В вебе активный кластер
+	// принадлежит веб-сессии и сохраняется отдельно в websession (для восстановления на другой реплике).
+	if a.sessionID == "" {
+		config, _ := k8s.LoadKubronConfig()
+		if config == nil {
+			config = &k8s.KubronConfig{}
+		}
+		config.LastActiveCluster = clusterID
+		_ = k8s.SaveKubronConfig(config) // запоминание последнего кластера не критично
 	}
-	config.LastActiveCluster = clusterID
-	_ = k8s.SaveKubronConfig(config) // запоминание последнего кластера не критично
 
 	return a.k8sMgr.TestConnection()
 }
@@ -260,6 +268,11 @@ func (a *App) ConnectToCluster(clusterID string) error {
 func (a *App) GetLastActiveCluster() string {
 	if a.authz(auth.PermRead) != nil {
 		return ""
+	}
+	// В веб-режиме не читаем общую настройку: она раскрывает выбор другого пользователя
+	// и заставляет новую сессию автоматически подключаться к его кластеру.
+	if a.sessionID != "" {
+		return a.k8sMgr.GetActiveContext()
 	}
 	config, err := k8s.LoadKubronConfig()
 	if err != nil || !a.auth.CanSeeCluster(config.LastActiveCluster) {
@@ -821,7 +834,7 @@ func (a *App) ListHelmRepos() ([]k8s.HelmRepoInfo, error) {
 
 // AddHelmRepo добавляет репозиторий и проверяет его, скачав index.yaml.
 func (a *App) AddHelmRepo(name, url, username, password string, insecureTLS bool) error {
-	if err := a.authz(auth.PermClusterManage, "name", name); err != nil {
+	if err := a.authzCluster(auth.PermClusterManage, a.activeClusterID(), "name", name); err != nil {
 		return err
 	}
 	a.rememberHelmActor()
@@ -829,7 +842,7 @@ func (a *App) AddHelmRepo(name, url, username, password string, insecureTLS bool
 }
 
 func (a *App) RemoveHelmRepo(name string) error {
-	if err := a.authz(auth.PermClusterManage, "name", name); err != nil {
+	if err := a.authzCluster(auth.PermClusterManage, a.activeClusterID(), "name", name); err != nil {
 		return err
 	}
 	return a.k8sMgr.RemoveHelmRepo(name)
@@ -837,7 +850,7 @@ func (a *App) RemoveHelmRepo(name string) error {
 
 // UpdateHelmRepos обновляет индекс одного репозитория; пустое имя — всех.
 func (a *App) UpdateHelmRepos(name string) ([]k8s.HelmRepoUpdateResult, error) {
-	if err := a.authz(auth.PermClusterManage, "name", name); err != nil {
+	if err := a.authzCluster(auth.PermClusterManage, a.activeClusterID(), "name", name); err != nil {
 		return nil, err
 	}
 	return a.k8sMgr.UpdateHelmRepos(name)
@@ -945,7 +958,7 @@ func (a *App) CancelHelmOperation(opID string) error {
 
 // AddHelmOCIRepo добавляет OCI-реестр с набором чартов. В authz — только имя: пароль и адрес не логируются.
 func (a *App) AddHelmOCIRepo(name, url string, charts []string, username, password string) error {
-	if err := a.authz(auth.PermClusterManage, "name", name); err != nil {
+	if err := a.authzCluster(auth.PermClusterManage, a.activeClusterID(), "name", name); err != nil {
 		return err
 	}
 	a.rememberHelmActor()
@@ -953,14 +966,14 @@ func (a *App) AddHelmOCIRepo(name, url string, charts []string, username, passwo
 }
 
 func (a *App) AddHelmOCIChart(repo, chart string) error {
-	if err := a.authz(auth.PermClusterManage, "repo", repo, "chart", chart); err != nil {
+	if err := a.authzCluster(auth.PermClusterManage, a.activeClusterID(), "repo", repo, "chart", chart); err != nil {
 		return err
 	}
 	return a.k8sMgr.AddHelmOCIChart(repo, chart)
 }
 
 func (a *App) RemoveHelmOCIChart(repo, chart string) error {
-	if err := a.authz(auth.PermClusterManage, "repo", repo, "chart", chart); err != nil {
+	if err := a.authzCluster(auth.PermClusterManage, a.activeClusterID(), "repo", repo, "chart", chart); err != nil {
 		return err
 	}
 	return a.k8sMgr.RemoveHelmOCIChart(repo, chart)
@@ -984,7 +997,7 @@ func (a *App) GetHelmOperation(id string) (*k8s.HelmOperationRecord, error) {
 
 // ClearHelmOperations стирает историю Helm-операций.
 func (a *App) ClearHelmOperations() error {
-	if err := a.authz(auth.PermClusterManage); err != nil {
+	if err := a.authzCluster(auth.PermClusterManage, a.activeClusterID()); err != nil {
 		return err
 	}
 	return a.k8sMgr.ClearHelmOperations()
@@ -1349,6 +1362,9 @@ func (a *App) StopPortForward(id string) error {
 	if err := a.authz(auth.PermPortForward, "id", id); err != nil {
 		return err
 	}
+	if !pfproxy.OwnedBy(a.replicaID, id) { // поток открыт на другой реплике: клиент повторит запрос
+		return streamid.ErrElsewhere
+	}
 	return a.pfMgr.StopPortForward(id)
 }
 
@@ -1512,4 +1528,14 @@ func (a *App) rememberHelmActor() {
 	if u, err := a.auth.Current(); err == nil && u != nil {
 		a.k8sMgr.SetHelmActor(u.ID)
 	}
+}
+
+// activeClusterID — активный кластер вида (пусто, если его нет). Состояние Helm принадлежит команде этого кластера,
+// поэтому право управлять репозиториями проверяется по ней, а не по «админу хотя бы одной команды»: иначе админ
+// команды Blue мог бы менять репозитории Red, пока у него в Red только чтение.
+func (a *App) activeClusterID() string {
+	if a.k8sMgr == nil {
+		return ""
+	}
+	return a.k8sMgr.GetActiveContext()
 }

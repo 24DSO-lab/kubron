@@ -7,8 +7,11 @@
  */
 import { closeEvents, connectEvents, flushSubscriptions } from './events.web'
 import { t } from '../i18n'
+import { BUILD_HEADER, BUILD_ID, reloadForNewBuild } from './build'
 
 const CSRF_HEADER = 'X-CSRF-Token'
+/** Токен первичной настройки сервисного режима (internal/server/setup.go); уходит только с SetupAdmin. */
+const SETUP_TOKEN_HEADER = 'X-Kubron-Setup-Token'
 
 /** Методы, доступные без сессии (internal/server publicMethods): CSRF-токен им не нужен. */
 const PUBLIC_METHODS = new Set(['AuthStatus', 'SetupAdmin', 'Login', 'GetCapabilities'])
@@ -24,6 +27,12 @@ export class RpcError extends Error {
 }
 
 let csrf = ''
+let setupToken = ''
+
+/** Токен для следующего SetupAdmin; хранится в памяти страницы и после вызова забывается. */
+export function setSetupToken(token: string) {
+  setupToken = token.trim()
+}
 
 /** Забывает сессию на стороне страницы (выход, 401) и закрывает WebSocket. */
 export function resetWebSession() {
@@ -44,8 +53,9 @@ async function loadCsrf(): Promise<void> {
 interface Reply { status: number; body: any; csrf: string | null }
 
 async function post(method: string, args: unknown[]): Promise<Reply> {
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  const headers: Record<string, string> = { 'Content-Type': 'application/json', [BUILD_HEADER]: BUILD_ID }
   if (csrf) headers[CSRF_HEADER] = csrf
+  if (method === 'SetupAdmin' && setupToken) headers[SETUP_TOKEN_HEADER] = setupToken
   let res: Response
   try {
     res = await fetch(`/api/rpc/${encodeURIComponent(method)}`, {
@@ -56,6 +66,7 @@ async function post(method: string, args: unknown[]): Promise<Reply> {
   }
   let body: any = null
   try { body = await res.json() } catch { /* не JSON: прокси, 502 */ }
+  if (method === 'SetupAdmin' && res.ok) setupToken = '' // токен нужен один раз
   return { status: res.status, body, csrf: res.headers.get(CSRF_HEADER) }
 }
 
@@ -80,6 +91,11 @@ export async function rpc(method: string, args: unknown[]): Promise<unknown> {
   }
 
   const err = reply.body?.error
+  if (err?.code === 'contract_mismatch') {
+    // Страница и сервер разных версий: свежая страница подтянет совместимый набор методов
+    reloadForNewBuild()
+    throw new RpcError(t('platform.contractMismatch'), 'contract_mismatch', reply.status)
+  }
   if (err?.code === 'unauthenticated' && !PRE_LOGIN_METHODS.has(method)) resetWebSession()
   throw new RpcError(
     err?.message || t('platform.httpStatus', { status: reply.status }),

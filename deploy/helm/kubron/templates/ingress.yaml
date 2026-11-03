@@ -32,4 +32,17 @@ spec:
                   name: http
           {{- end }}
     {{- end }}
+    {{- with .Values.portForward.baseDomain }}
+    # Потоки port-forward: {id}.pf.<домен> обслуживает тот же сервис, хост выбирает сам сервер (ADR-0017)
+    - host: {{ printf "*.pf.%s" . | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "kubron.fullname" $ }}
+                port:
+                  name: http
+    {{- end }}
 {{- end }}

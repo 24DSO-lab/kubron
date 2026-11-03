@@ -1,4 +1,4 @@
-# Две реплики: рендерится PodDisruptionBudget, NOTES.txt предупреждает, что HA ещё не поддержан
+# Две реплики: рендерится PodDisruptionBudget и правила размещения по узлам
 secrets:
   existingSecret: kubron-secrets
 replicaCount: 2

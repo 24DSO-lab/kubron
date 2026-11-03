@@ -8,6 +8,9 @@ runs:
   using: composite
   steps:
     - shell: bash
+      # Индекс пакетов в образе раннера свежий: `apt-get update` (10–15 с в каждом job'е) нужен только если
+      # установка не удалась из-за устаревшего индекса
       run: |
-        sudo apt-get update
-        sudo apt-get install -y --no-install-recommends libgtk-3-dev libwebkit2gtk-4.1-dev
+        pkgs="libgtk-3-dev libwebkit2gtk-4.1-dev"
+        sudo apt-get install -y --no-install-recommends $pkgs ||
+          { sudo apt-get update && sudo apt-get install -y --no-install-recommends $pkgs; }

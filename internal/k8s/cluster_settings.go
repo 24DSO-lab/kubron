@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -53,6 +54,29 @@ type ClusterSettings struct {
 	DefaultNamespace string `json:"defaultNamespace"`
 	// ContextName — контекст kubeconfig; пусто — current-context.
 	ContextName string `json:"contextName"`
+	// ArgoURL — опубликованный адрес Argo CD (Ingress). Если задан, OpenArgoUI открывает его и не создаёт
+	// port-forward; пусто — открытие через port-forward или прокси потоков (ADR-0017).
+	ArgoURL string `json:"argoUrl"`
+}
+
+const maxArgoURLLen = 512
+
+// normalizeArgoURL проверяет адрес Argo CD: только http(s) с хостом, без учётных данных, query и fragment.
+// Адрес открывается в браузере пользователя, поэтому другие схемы (javascript:, data:, file:) недопустимы.
+func normalizeArgoURL(raw string) (string, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return "", nil
+	}
+	if len(raw) > maxArgoURLLen {
+		return "", fmt.Errorf("the Argo CD address is longer than %d characters", maxArgoURLLen)
+	}
+	u, err := url.Parse(raw)
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Hostname() == "" ||
+		u.User != nil || u.RawQuery != "" || u.Fragment != "" || u.Opaque != "" {
+		return "", errors.New("the Argo CD address must be an http or https URL without credentials, query or fragment")
+	}
+	return strings.TrimRight(u.String(), "/"), nil
 }
 
 // normalize проверяет настройки и приводит их к каноничному виду.
@@ -89,6 +113,11 @@ func (s ClusterSettings) normalize(legacyIcon string) (ClusterSettings, error) {
 	}
 
 	s.ContextName = strings.TrimSpace(s.ContextName)
+
+	var err error
+	if s.ArgoURL, err = normalizeArgoURL(s.ArgoURL); err != nil {
+		return s, err
+	}
 	return s, nil
 }
 
@@ -98,6 +127,9 @@ type KubeconfigSource struct {
 	Path      string `json:"path"`
 	Text      string `json:"text"`
 	ClusterID string `json:"clusterId"`
+	// BaseClusterID — сохранённый кластер, из которого сервер подставляет скрытые секреты (MaskPlaceholder) в Text.
+	// Источником не считается: задаёт только место, откуда берутся значения, и проверяется на право управления кластером.
+	BaseClusterID string `json:"baseClusterId,omitempty"`
 }
 
 func (s KubeconfigSource) isEmpty() bool {
@@ -128,7 +160,26 @@ func (s KubeconfigSource) read() ([]byte, error) {
 	if len(s.Text) > maxKubeconfigBytes {
 		return nil, errKubeconfigTooLarge
 	}
+	if HasSecretPlaceholder(s.Text) {
+		return expandPlaceholders(s.Text, s.BaseClusterID)
+	}
 	return []byte(s.Text), nil
+}
+
+// expandPlaceholders подставляет в текст скрытые секреты из сохранённого kubeconfig кластера base.
+func expandPlaceholders(text, base string) ([]byte, error) {
+	if base == "" {
+		return nil, ErrSecretPlaceholderNoCluster
+	}
+	stored, err := readStoredKubeconfig(base)
+	if err != nil {
+		return nil, err
+	}
+	out, err := ExpandKubeconfigSecrets(text, string(stored))
+	if err != nil {
+		return nil, err
+	}
+	return []byte(out), nil
 }
 
 func readKubeconfigFile(path string) ([]byte, error) {
@@ -154,10 +205,16 @@ func readStoredKubeconfig(id string) ([]byte, error) {
 }
 
 // ReadClusterKubeconfig возвращает текст сохранённого kubeconfig кластера (для правки в приложении).
+//
+// В сервисном режиме значения секретов заменены плейсхолдером MaskPlaceholder и до клиента не доходят; если скрыть секрет
+// не удалось, ошибка вместо текста.
 func ReadClusterKubeconfig(id string) (string, error) {
 	data, err := readStoredKubeconfig(id)
 	if err != nil {
 		return "", err
+	}
+	if ClusterSecretsMasked() {
+		return MaskKubeconfigSecrets(string(data))
 	}
 	return string(data), nil
 }
@@ -326,6 +383,8 @@ type ClusterUpdateResult struct {
 	Cluster ClusterMeta `json:"cluster"`
 	// ConnectionChanged — изменился kubeconfig или контекст: существующее подключение устарело.
 	ConnectionChanged bool `json:"connectionChanged"`
+	// CredentialsChanged — в новом kubeconfig изменились секреты (токен, пароль, ключ): для журнала аудита.
+	CredentialsChanged bool `json:"credentialsChanged"`
 }
 
 // UpdateClusterSettings сохраняет настройки кластера и, если replace непуст, заменяет его kubeconfig.
@@ -347,6 +406,7 @@ func UpdateClusterSettings(id string, settings ClusterSettings, replace Kubeconf
 		if replace.ClusterID != "" {
 			return nil, errors.New("kubeconfig can only be replaced with a file or text")
 		}
+		replace.BaseClusterID = id // скрытые секреты берутся только у редактируемого кластера
 		if newData, err = replace.read(); err != nil {
 			return nil, err
 		}
@@ -377,18 +437,20 @@ func UpdateClusterSettings(id string, settings ClusterSettings, replace Kubeconf
 	}
 
 	changed := newData != nil || contextName != meta.ContextName
+	credsChanged := newData != nil && (readErr != nil || KubeconfigSecretsChanged(string(newData), string(oldData)))
 	meta.DisplayName = settings.DisplayName
 	meta.Icon = settings.Icon
 	meta.Color = settings.Color
 	meta.Environment = settings.Environment
 	meta.DefaultNamespace = settings.DefaultNamespace
+	meta.ArgoURL = settings.ArgoURL
 	meta.ContextName = contextName
 
 	// Хранилище заменяет kubeconfig и метаданные вместе и при сбое возвращает прежний kubeconfig.
 	if err := clusterStore.Save(meta, newData); err != nil {
 		return nil, err
 	}
-	return &ClusterUpdateResult{Cluster: *meta, ConnectionChanged: changed}, nil
+	return &ClusterUpdateResult{Cluster: *meta, ConnectionChanged: changed, CredentialsChanged: credsChanged}, nil
 }
 
 // writeFileAtomic пишет файл через временный и переименование: при сбое остаётся прежнее содержимое,

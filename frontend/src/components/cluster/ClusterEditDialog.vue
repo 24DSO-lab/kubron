@@ -27,6 +27,19 @@
         </section>
 
         <section class="cl-section">
+          <h3 class="cl-section-title">{{ $t('cluster.dialog.sectionArgo') }}</h3>
+          <div class="cl-field">
+            <label :for="`${uid}-argo-url`" class="cl-label">{{ $t('cluster.dialog.argoUrl') }}</label>
+            <input :id="`${uid}-argo-url`" v-model="argoUrl" class="cl-input" :maxlength="MAX_ARGO_URL"
+              :placeholder="$t('cluster.dialog.argoUrlPlaceholder')" autocomplete="off" spellcheck="false"
+              :aria-invalid="!argoUrlValid" @keydown.enter.prevent="submit" />
+            <p class="cl-hint" :class="{ 'is-error': !argoUrlValid }">
+              {{ argoUrlValid ? $t('cluster.dialog.argoUrlHint') : $t('cluster.dialog.argoUrlInvalid') }}
+            </p>
+          </div>
+        </section>
+
+        <section class="cl-section">
           <h3 class="cl-section-title">{{ $t('cluster.dialog.sectionAppearance') }}</h3>
           <ClusterAppearanceFields v-model:icon="icon" v-model:color="color" v-model:environment="environment"
             :name="name" />
@@ -57,9 +70,15 @@
             </div>
 
             <template v-if="kcMode === 'text'">
-              <textarea v-model="kcText" class="cl-textarea cl-mono" spellcheck="false" :aria-label="$t('cluster.dialog.kubeconfigText')"
-                style="margin-top: 8px" @input="onTextInput"></textarea>
-              <p class="cl-hint is-warn">{{ $t('cluster.edit.textWarning') }}</p>
+              <textarea ref="kcTextarea" v-model="kcText" class="cl-textarea cl-mono" spellcheck="false"
+                :aria-label="$t('cluster.dialog.kubeconfigText')" style="margin-top: 8px" @input="onTextInput"></textarea>
+              <p v-if="secretsHidden" class="cl-hint" data-testid="secret-hidden">
+                {{ $t('cluster.edit.secretHidden') }}
+                <button type="button" class="cl-btn cl-btn-sm" data-testid="secret-replace" @click="replaceSecret">
+                  {{ $t('cluster.edit.replaceSecret') }}
+                </button>
+              </p>
+              <p v-else class="cl-hint is-warn">{{ $t('cluster.edit.textWarning') }}</p>
             </template>
             <p v-if="hasReplacement && probe.inspectError.value" class="cl-hint is-error">
               {{ probe.inspectError.value }}
@@ -111,8 +130,10 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { ClusterSettings, ClusterStatus, KubeconfigSource } from '../../types'
+import { isValidArgoUrl, MAX_ARGO_URL } from '../../composables/argoUrl'
 import { NO_KUBECONFIG_SOURCE, pickContextName, useKubeconfigProbe } from '../../composables/useKubeconfigProbe'
 import { errorText } from '../../composables/errorText'
+import { firstPlaceholderRange, hasHiddenSecret } from '../../composables/kubeconfigSecrets'
 import ClusterAvatar from './ClusterAvatar.vue'
 import ClusterAppearanceFields from './ClusterAppearanceFields.vue'
 import ClusterConnectionFields from './ClusterConnectionFields.vue'
@@ -147,6 +168,7 @@ const initial = {
   environment: props.cluster.environment || '',
   namespace: props.cluster.defaultNamespace || '',
   context: props.cluster.contextName,
+  argoUrl: props.cluster.argoUrl || '',
 }
 
 const name = ref(initial.name)
@@ -155,6 +177,7 @@ const color = ref(initial.color)
 const environment = ref(initial.environment)
 const namespace = ref(initial.namespace)
 const contextName = ref(initial.context)
+const argoUrl = ref(initial.argoUrl)
 
 type KubeconfigMode = 'keep' | 'file' | 'text'
 const { capabilities } = useCapabilities()
@@ -162,6 +185,19 @@ const kcMode = ref<KubeconfigMode>('keep')
 const kcPath = ref('')
 const kcText = ref('')
 const kcOriginalText = ref('')
+const kcTextarea = ref<HTMLTextAreaElement | null>(null)
+
+// Сервер не отдаёт значения секретов (сервисный режим): на их месте плейсхолдер, при сохранении сервер подставит прежние
+const secretsHidden = computed(() => hasHiddenSecret(kcText.value))
+
+// Выделяет первый плейсхолдер: вводимое значение заменит его
+function replaceSecret() {
+  const el = kcTextarea.value
+  const range = firstPlaceholderRange(kcText.value)
+  if (!el || !range) return
+  el.focus()
+  el.setSelectionRange(range[0], range[1])
+}
 
 // Смена логина и пароля oidc-password: действие отдельное от «Сохранить», пароль в форме не задерживается
 const oidcUser = ref('')
@@ -199,7 +235,7 @@ const hasReplacement = computed(() => (kcMode.value === 'file' && !!kcPath.value
 // Что отправить на сохранение: пустой источник означает «kubeconfig не менять»
 const replacement = computed<KubeconfigSource>(() => {
   if (kcMode.value === 'file' && kcPath.value) return { ...NO_KUBECONFIG_SOURCE, path: kcPath.value }
-  if (textDirty.value) return { ...NO_KUBECONFIG_SOURCE, text: kcText.value }
+  if (textDirty.value) return { ...NO_KUBECONFIG_SOURCE, text: kcText.value, baseClusterId: props.cluster.id }
   return { ...NO_KUBECONFIG_SOURCE }
 })
 
@@ -210,16 +246,17 @@ const probeSource = computed<KubeconfigSource>(() =>
 
 const nameValid = computed(() => name.value.trim().length > 0)
 const namespaceValid = computed(() => isValidNamespace(namespace.value))
+const argoUrlValid = computed(() => isValidArgoUrl(argoUrl.value))
 const canTest = computed(() => !!probe.info.value && !probe.inspecting.value)
 const canSave = computed(() =>
-  !saving.value && nameValid.value && namespaceValid.value &&
+  !saving.value && nameValid.value && namespaceValid.value && argoUrlValid.value &&
   !(hasReplacement.value && (probe.inspecting.value || !!probe.inspectError.value)),
 )
 
 const dirty = computed(() =>
   name.value !== initial.name || icon.value !== initial.icon || color.value !== initial.color ||
   environment.value !== initial.environment || namespace.value !== initial.namespace ||
-  contextName.value !== initial.context || hasReplacement.value,
+  contextName.value !== initial.context || argoUrl.value.trim() !== initial.argoUrl || hasReplacement.value,
 )
 
 const selectedServer = computed(() => probe.info.value?.contexts.find(c => c.name === contextName.value)?.server ?? '')
@@ -314,6 +351,7 @@ async function submit() {
     environment: environment.value,
     defaultNamespace: namespace.value,
     contextName: contextName.value,
+    argoUrl: argoUrl.value.trim(),
   }
   const err = await props.save(props.cluster.id, settings, replacement.value)
   saving.value = false

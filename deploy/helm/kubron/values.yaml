@@ -5,16 +5,18 @@
 # сохранённых секретов (kubeconfig, токены Argo CD), см. ADR-0008.
 
 # ── Реплики ──────────────────────────────────────────────────────────────────
-# Только 1. Веб-сессии и хаб событий пока живут в памяти процесса, поэтому вторая реплика не видит
-# сессий первой, а события и потоки (терминал, логи) доходят не туда.
-# TODO(этап 4, HA): сессии и события в PostgreSQL готовы; по умолчанию станет 2 в задаче HA.
-# При replicaCount > 1 чарт отрисуется, но NOTES.txt выведет предупреждение.
-replicaCount: 1
+# Две реплики на одной PostgreSQL (ADR-0016, docs/ha.md): веб-сессии, права, блокировки входа и события между
+# репликами лежат в БД, поэтому потеря одной реплики не сбрасывает сессии; любая реплика обслуживает любой запрос.
+# Открытые терминалы, логи и port-forward живут в процессе реплики и после её потери открываются заново.
+# 1 допустимо (PodDisruptionBudget тогда не создаётся); для сервера без PostgreSQL реплика должна быть одна.
+# Для событий между репликами нужно прямое соединение с PostgreSQL (не pgbouncer в режиме transaction):
+# secrets.keys.dbListenUrl.
+replicaCount: 2
 
 image:
   # Образ публикует .github/workflows/publish.yml при теге vX.Y.Z; для собственной сборки укажите свой реестр.
   repository: ghcr.io/24dso-labs/kubron
-  # Пусто — appVersion чарта
+  # Пусто — appVersion чарта. В опубликованном чарте это версия релиза; в исходниках — 0.0.0-dev (задайте тег явно).
   tag: ""
   # Если задан, имеет приоритет над tag: repository@sha256:...
   digest: ""
@@ -37,6 +39,12 @@ secrets:
     databaseUrl: KUBRON_DATABASE_URL
     # KUBRON_SECRET_KEY_PREVIOUS: прежние ключи через запятую, нужны на время ротации. Пусто — не используется.
     previousSecretKey: ""
+    # KUBRON_DB_LISTEN_URL: прямой адрес PostgreSQL для LISTEN/NOTIFY, если KUBRON_DATABASE_URL ведёт через
+    # pgbouncer в режиме transaction. Пусто — используется KUBRON_DATABASE_URL.
+    dbListenUrl: ""
+    # Ключ токена первичной настройки В ЭТОМ ЖЕ Secret (secrets.existingSecret). Пусто — токен берётся из блока
+    # setup ниже. Токен — не короче 16 символов.
+    setupToken: ""
   # ТОЛЬКО ДЛЯ РАЗРАБОТКИ. Чарт создаст Secret из значений ниже. Ключ в values попадает в историю релиза
   # Helm, в CI-логи и в репозиторий, поэтому в production не используйте. Ключ не генерируется:
   # создайте его сами и сохраните вне кластера.
@@ -45,6 +53,21 @@ secrets:
     secretKey: ""
     databaseUrl: ""
 
+# ── Первичная настройка ──────────────────────────────────────────────────────
+# Пока в БД нет пользователей, создать первого администратора по сети можно только с токеном
+# (заголовок X-Kubron-Setup-Token, KUBRON_SETUP_TOKEN). Без токена сервер отклоняет SetupAdmin.
+# Либо создайте администратора напрямую в БД: «kubron-server create-admin --username <имя>» в поде
+# (пароль через stdin или KUBRON_ADMIN_PASSWORD, не аргументом). См. NOTES.txt и docs/deploy.md.
+setup:
+  enabled: true
+  # Существующий Secret с токеном. Пусто — чарт создаёт Secret <release>-setup со случайным токеном.
+  # Для GitOps (Argo CD, helm template) задайте существующий Secret: lookup там не работает.
+  existingSecret: ""
+  # Ключ токена в Secret
+  tokenKey: KUBRON_SETUP_TOKEN
+  # Длина сгенерированного токена (не меньше 16)
+  tokenLength: 32
+
 # ── Настройки сервера (ConfigMap → переменные окружения, config.go) ──────────
 kubron:
   # Доверять X-Forwarded-Proto обратного прокси: cookie получает Secure (KUBRON_TRUST_PROXY).
@@ -52,6 +75,12 @@ kubron:
   # если TLS завершает балансировщик перед Service без ingress). Включайте только когда под
   # доступен лишь через прокси (см. networkPolicy.ingress).
   trustProxy: null
+  # Пауза между SIGTERM и закрытием соединений (KUBRON_DRAIN_DELAY): балансировщик успевает снять реплику.
+  # Меньше terminationGracePeriodSeconds минус 10 с; "0" — без паузы.
+  drainDelay: 5s
+  # Срок хранения записей журнала аудита в PostgreSQL (KUBRON_AUDIT_RETENTION, например 2160h; не меньше 24h).
+  # Пусто — бессрочно. Удаляет одна реплика.
+  auditRetention: ""
   # Абсолютный срок веб-сессии (KUBRON_SESSION_TTL), например 12h. Пусто — по умолчанию сервера.
   sessionTTL: ""
   # Лимиты на одного пользователя (0 — без ограничения); пусто — по умолчанию сервера
@@ -66,8 +95,40 @@ kubron:
   disablePortForward: false
   disableNodeShell: false
   disableExec: false
+  # Журнал процесса (stderr, JSON): debug | info | warn | error; пусто — info (KUBRON_LOG_LEVEL).
+  # Формат text (KUBRON_LOG_FORMAT) нужен только для разработки.
+  logLevel: ""
+  logFormat: ""
+  # Дублировать журнал аудита строками JSON в stdout для внешнего сборщика (KUBRON_AUDIT_STDOUT=1).
+  # Журнал аудита в БД остаётся; stdout содержит только строки аудита ("type":"audit").
+  auditStdout: false
+  # Допустимые значения заголовка Host (KUBRON_ALLOWED_HOSTS). Чарт сам собирает список: хосты ingress.hosts (при
+  # ingress.enabled), «*.pf.<portForward.baseDomain>» (при port-forward) и значения ниже. Список нужен, чтобы сервер не
+  # обслуживал запросы с чужим Host (подмена адреса в ссылках и cookie). Если ingress выключен, а доступ идёт через
+  # Service или LoadBalancer, перечислите здесь свой адрес. Пусто и нечего собрать — переменная не задаётся.
+  allowedHosts: []
+  # Политика адреса API-сервера кластеров и провайдера OIDC (KUBRON_CLUSTER_ADDR_POLICY): off | permissive | strict.
+  # Пусто — выбор сервера: в сервисном режиме permissive (закрыты loopback, link-local и метаданные облака, частные сети
+  # разрешены). Явное off сервер принимает, но пишет предупреждение (docs/deploy.md, «Адрес API-сервера кластера»).
+  clusterAddrPolicy: ""
+  # Исключения из политики (KUBRON_CLUSTER_ADDR_ALLOW_CIDRS): CIDR или адреса. Снимают запрет с loopback и link-local
+  # (например, 127.0.0.0/8 для kind), а при strict ещё и с частных сетей, но не с адресов метаданных облака.
+  clusterAddrAllowCidrs: []
   # Дополнительные переменные окружения (список как в container.env)
   extraEnv: []
+
+# ── Port-forward в браузере (ADR-0017) ───────────────────────────────────────
+# В сервисе порт на хосте не открывается: каждый поток живёт на своём origin {id}.pf.<baseDomain>. Для этого нужны
+# DNS-запись *.pf.<baseDomain>, wildcard-сертификат (добавьте *.pf.<baseDomain> в ingress.tls) и правило Ingress для
+# этого хоста: при ingress.enabled его создаёт чарт. Пусто — port-forward выключен (Argo CD при этом можно открывать
+# по опубликованному адресу из настроек кластера). Надёжнее всего отдельный регистрируемый домен.
+portForward:
+  baseDomain: ""
+  # https (по умолчанию) или http (только для localhost-домена)
+  scheme: ""
+  # Простой и абсолютный срок потока ("15m", "8h"); пусто — значения сервера (15m и 8h)
+  idleTimeout: ""
+  maxDuration: ""
 
 # Порт, на котором слушает сервер в контейнере (KUBRON_LISTEN=0.0.0.0:<port>)
 containerPort: 8080
@@ -105,8 +166,8 @@ metrics:
 ingress:
   enabled: false
   className: ""
-  # Пример для ingress-nginx (WebSocket + привязка по cookie для будущего HA; с одной репликой
-  # привязка не нужна, но безвредна):
+  # Пример для ingress-nginx (WebSocket + привязка по cookie). Привязка не обязательна: любая реплика обслуживает
+  # любой запрос, но она реже отправляет терминал и логи не на ту реплику (docs/ha.md, «Потоки»):
   #   annotations:
   #     nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
   #     nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
@@ -140,13 +201,27 @@ serviceAccount:
   name: ""
   annotations: {}
 
+# RBAC режима in-cluster. Kubron ходит в кластер под ServiceAccount пода, один для ВСЕХ пользователей (ADR-0006:
+# подмены личности нет), а права людей ограничивает только встроенный RBAC Kubron (роли и команды). Поэтому профиль ниже
+# — потолок прав для любого пользователя: даже администратор Kubron не сделает в кластере больше, чем разрешено
+# ServiceAccount. Выбирайте минимально достаточный профиль (docs/deploy.md, «RBAC режима in-cluster»).
 rbac:
-  # Создать ClusterRole только на чтение и привязать к ServiceAccount. Требует inCluster.enabled.
-  # TODO(тикет 3.7): полный набор прав появится вместе с режимом in-cluster; сейчас это заготовка.
+  # Создать ClusterRole и привязать к ServiceAccount. Требует inCluster.enabled и serviceAccount.create.
   create: false
-  # Правила ClusterRole. По умолчанию только get/list/watch, без secrets, без pods/exec и без
-  # каких-либо прав на запись. Секреты намеренно исключены: токен общий для всех пользователей.
-  rules:
+  # readonly (по умолчанию): get/list/watch без secrets, без pods/exec и без записи. Все права `read`.
+  # operator: readonly + безопасные операции права `operate`: restart и scale (Deployment, StatefulSet, DaemonSet),
+  #           rollback Deployment, повтор Job (создание и удаление Job), cordon узла. Без exec, port-forward,
+  #           оболочки узла, drain, правки и удаления произвольных объектов, Helm и без secrets.
+  # custom:   только customRules (или существующая роль existingClusterRole); встроенных правил нет.
+  # Права exec, port-forward, правка YAML, удаление, drain, Helm и оболочка узла профилями не покрыты намеренно:
+  # они требуют широких прав (оболочка узла создаёт привилегированный под), выдавайте их через custom осознанно.
+  profile: readonly
+  # Значения секретов в Kubron читают роли operator и admin (право secrets.read), но ServiceAccount по умолчанию не
+  # имеет доступа к secrets. true добавляет get/list/watch на secrets (для любого профиля): токен общий для всех.
+  allowSecretsRead: false
+  # Правила профиля readonly (они же база operator): только на чтение, по группам API, которые использует Kubron.
+  # Пользовательские ресурсы (CRD, Argo CD Application и др.) не входят: добавьте их в extraRules.
+  readonlyRules:
     - apiGroups: [""]
       resources:
         - namespaces
@@ -184,10 +259,35 @@ rbac:
     - apiGroups: [policy]
       resources: [poddisruptionbudgets]
       verbs: [get, list, watch]
+    - apiGroups: [rbac.authorization.k8s.io]
+      resources: [roles, rolebindings, clusterroles, clusterrolebindings]
+      verbs: [get, list, watch]
+    - apiGroups: [apiextensions.k8s.io]
+      resources: [customresourcedefinitions]
+      verbs: [get, list, watch]
     - apiGroups: [metrics.k8s.io]
       resources: [pods, nodes]
       verbs: [get, list]
-  # Дополнительные правила поверх rules
+  # Добавка профиля operator к readonlyRules (операции права `operate`)
+  operatorRules:
+    - apiGroups: [apps]
+      resources: [deployments, statefulsets, daemonsets]
+      verbs: [patch, update]
+    - apiGroups: [apps]
+      resources: [deployments/scale, statefulsets/scale]
+      verbs: [get, patch, update]
+    - apiGroups: [batch]
+      resources: [jobs]
+      verbs: [create, delete]
+    - apiGroups: [""]
+      resources: [nodes]
+      verbs: [patch]
+  # Правила профиля custom (ClusterRole создаётся из них; без правил и без existingClusterRole чарт не установится)
+  customRules: []
+  # Привязать ServiceAccount к уже существующей ClusterRole (например, встроенной view) вместо создания своей.
+  # Только с profile: custom; customRules и extraRules при этом не используются.
+  existingClusterRole: ""
+  # Дополнительные правила поверх выбранного профиля (кроме existingClusterRole)
   extraRules: []
 
 # ── Безопасность пода ────────────────────────────────────────────────────────
@@ -230,8 +330,6 @@ resources:
 # остановке реплики (draining после SIGTERM). Отвечает JSON; используется как readiness.
 # Миграции БД идут до открытия порта, поэтому нужен startupProbe: пока он не прошёл, liveness
 # не убьёт под, застрявший на долгой миграции.
-startupProbe: пока он не прошёл, liveness
-# не убьёт под, застрявший на долгой миграции.
 startupProbe:
   path: /healthz
   periodSeconds: 2
@@ -252,11 +350,10 @@ readinessProbe:
 terminationGracePeriodSeconds: 30
 
 # ── Обновление ───────────────────────────────────────────────────────────────
-# Одна реплика + миграции под advisory-lock: RollingUpdate с maxUnavailable: 0 держит старый под,
-# пока новый не пройдёт readiness. Миграции применяет тот, кто первым взял блокировку, а прежняя
-# версия работает с более новой схемой в режиме совместимости. Веб-сессии в памяти при переключении
-# теряются в любом случае (потребуется повторный вход). Recreate выбирайте, если схема меняется
-# несовместимо (в примечаниях к релизу).
+# Реплики обновляются по очереди: RollingUpdate с maxUnavailable: 0 держит старые поды, пока новый не пройдёт
+# readiness. Миграции применяет тот, кто первым взял advisory-lock, а прежняя версия работает с более новой схемой
+# в режиме совместимости. Веб-сессии лежат в PostgreSQL и переживают обновление; открытые терминалы и логи
+# открываются заново. Recreate выбирайте, если схема меняется несовместимо (в примечаниях к релизу).
 strategy:
   type: RollingUpdate
   rollingUpdate:
@@ -302,18 +399,35 @@ networkPolicy:
             matchLabels:
               k8s-app: kube-dns
     postgres:
-      # Адресаты PostgreSQL. Пустой список — порт из ports куда угодно: сузьте до своего сервера БД
-      # (ipBlock или namespaceSelector/podSelector).
+      # Адресаты PostgreSQL: to — готовые правила NetworkPolicy (приоритет), cidrs — упрощённо список CIDR (ipBlock).
+      # Оба пусты — порт из ports куда угодно: сузьте до своего сервера БД (ipBlock или namespaceSelector/podSelector).
       to: []
+      cidrs: []
       ports: [5432]
     clusterApi:
-      # API-серверы подключаемых кластеров и провайдеры OIDC (oidc-password).
-      # По умолчанию открыто: адреса кластеров добавляют пользователи, а проверка адреса API-сервера
-      # по политике сети (SSRF, раздел 8 плана) ещё не реализована в самом приложении.
-      # TODO(SSRF-политика): после её появления сузьте `to` до доверенных CIDR, исключив метаданные
-      # облака (169.254.169.254) и служебные сети кластера.
+      # API-серверы подключаемых кластеров. Адреса задают пользователи Kubron, а само приложение проверяет их политикой
+      # kubron.clusterAddrPolicy (SSRF); сетевое правило — второй рубеж. По умолчанию разрешены ЛЮБЫЕ адреса, КРОМЕ
+      # except (метаданные облака и link-local), на портах ports. Приоритет: to > cidrs > «любые, кроме except».
+      #   to    — готовые правила NetworkPolicy (заменяют всё остальное, except и allowCluster не действуют);
+      #   cidrs — разрешить только эти CIDR (например, сети ваших кластеров): самый строгий и рекомендуемый вариант.
       to: []
+      cidrs: []
       ports: [443, 6443]
+      # Исключения из «любых адресов». IPv4 и IPv6 в одном списке (чарт разделяет их сам): каждый CIDR обязан входить
+      # в 0.0.0.0/0 или ::/0. 169.254.0.0/16 — link-local и метаданные (169.254.169.254), fd00:ec2::254/128 — метаданные AWS по IPv6.
+      except:
+        - 169.254.0.0/16
+        - fd00:ec2::254/128
+      # Разрешить те же порты к любым подам кластера. Нужно, если API-сервер подключаемого кластера или IdP работает подом
+      # в этом же кластере; многие CNI (например, Cilium) не относят адреса подов и узлов к ipBlock. false — только ipBlock.
+      allowCluster: true
+    idp:
+      # Провайдеры OIDC (кластеры с oidc-password). Порт 443 уже входит в clusterApi.ports; здесь добавляются другие порты
+      # IdP (например, [8443]). Пусто — отдельное правило не создаётся. Адреса: to > cidrs > «любые, кроме
+      # clusterApi.except».
+      ports: []
+      to: []
+      cidrs: []
     # Любые дополнительные правила egress в формате NetworkPolicy (например, Helm-репозитории, 443)
     extra: []
 

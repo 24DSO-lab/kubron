@@ -108,6 +108,14 @@ func StartUserRefresh(ctx context.Context, root *App, every time.Duration) {
 	go root.auth.RunRefresher(ctx, every)
 }
 
+// RefreshUsers немедленно перечитывает пользователей из общего хранилища: другая реплика сообщила, что изменила
+// пользователей или права. Не ждёт периодического перечитывания (StartUserRefresh).
+func RefreshUsers(root *App) {
+	if root != nil && root.auth != nil {
+		root.auth.RefreshNow()
+	}
+}
+
 // ResumeView открывает сессию пользователя на виде, построенном заново для уже существующей веб-сессии
 // (другая реплика, перезапуск): пароль не нужен, веб-сессию проверило общее хранилище сессий.
 func ResumeView(v *App, userID string, lastActive time.Time) error {
@@ -248,6 +256,12 @@ func (a *App) defaultTeam() string {
 func (a *App) checkKubeconfigSource(src k8s.KubeconfigSource) error {
 	if src.Path != "" && !a.platform.Capabilities().LocalKubeconfig {
 		return errors.New("reading a kubeconfig from a file path is available only on desktop")
+	}
+	if src.BaseClusterID != "" {
+		// Скрытые секреты берутся из этого кластера: нужно право управлять им.
+		if err := a.authzCluster(auth.PermClusterManage, src.BaseClusterID, "source", "secrets"); err != nil {
+			return err
+		}
 	}
 	if src.ClusterID != "" {
 		return a.authzCluster(auth.PermClusterManage, src.ClusterID, "source", "cluster")

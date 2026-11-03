@@ -6,7 +6,7 @@ package server
 import (
 	"context"
 	"errors"
-	"log"
+	"log/slog"
 	"net"
 	"net/http"
 	"sync/atomic"
@@ -122,7 +122,7 @@ func ServeWith(ctx context.Context, ln net.Listener, h http.Handler, plan Shutdo
 	}
 	errc := make(chan error, 1)
 	go func() { errc <- srv.Serve(ln) }()
-	log.Printf("kubron-server is listening on http://%s", ln.Addr())
+	slog.Info("kubron-server is listening", "addr", ln.Addr().String())
 
 	select {
 	case err := <-errc:
@@ -137,7 +137,7 @@ func ServeWith(ctx context.Context, ln net.Listener, h http.Handler, plan Shutdo
 		plan.Drain()
 	}
 	if plan.DrainDelay > 0 {
-		log.Printf("shutdown: draining for %s before closing connections", plan.DrainDelay)
+		slog.Info("shutdown: draining before closing connections", "delay", plan.DrainDelay.String())
 		select {
 		case <-time.After(plan.DrainDelay):
 		case err := <-errc:

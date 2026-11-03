@@ -57,9 +57,8 @@ if git rev-parse -q --verify "refs/tags/$tag" >/dev/null || git ls-remote --exit
   die "тег $tag уже существует"
 fi
 git merge-base --is-ancestor "$remote/master" HEAD || die "в $remote/master есть коммиты, которых нет в dev: сначала git merge $remote/master в dev"
-scripts/check-dco.sh "$remote/master" HEAD || die "есть неподписанные коммиты (см. выше)"
 node scripts/changelog.mjs check || die "CHANGELOG.md составлен неверно (см. выше)"
-info "окружение, ветка и подписи в порядке"
+info "окружение, ветка и версии в порядке"
 
 already_rolled=0
 if [ "$pre" -eq 1 ]; then
