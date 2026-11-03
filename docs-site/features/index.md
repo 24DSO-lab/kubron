@@ -1,50 +1,66 @@
 # Features overview
 
-Kubron is a Kubernetes Operations Workspace available as a native Desktop application and a self-hosted Web application. The core workflow is the same across editions: inspect clusters, troubleshoot workloads and operate Kubernetes resources. Web adds shared, multi-user access and centralized administration.
+Kubron is a Kubernetes Operations Workspace available as a native Desktop application and a self-hosted Web application. Both editions share the same core workflows. Web can add shared access, team isolation and centralized administration when configured with PostgreSQL.
 
-## Clusters & dashboard
+## At a glance
 
-- Multi-cluster management with names, colors, icons and environment tags
-- Namespace scoping that works with restricted RBAC
-- Live updates via shared informers
-- Cluster overview: nodes, workloads, capacity, storage, health
-- Problem detection (problem pods, blockers, hot pods, low headroom nodes)
-- Recent changes and expiring certificates
+| Capability | Desktop | Web |
+|---|---|---|
+| Cluster and resource management | Yes | Yes |
+| Local users and roles | Yes | Yes |
+| Organization, teams and team-scoped clusters | — | PostgreSQL service mode |
+| Helm and Argo CD workflows | Yes | Yes |
+| Optional Prometheus metrics stack | Yes | Yes |
+| Multiple server replicas (HA) | — | PostgreSQL service mode |
+| Port-forward | Local port | Local single-user mode or configured proxy mode |
 
-## Resources
+## Clusters and dashboard
 
-- Wide coverage of built-in types (workloads, networking, config, storage, RBAC, …)
-- Automatic CRD discovery with `additionalPrinterColumns`
-- Detail panels (conditions, events, owners, containers, …)
-- Monaco-based YAML editor with diff before apply
-- Bulk actions and keyboard shortcuts
+- Connect multiple clusters and contexts, give each cluster a name, icon, color and environment tag.
+- Scope resource views to one, several or all namespaces; restricted Kubernetes RBAC is supported.
+- Keep resource lists current with shared informers rather than aggressive polling.
+- Review cluster health, nodes, workloads, capacity, storage, recent rollouts and changes.
+- Surface problem Pods, resource hotspots, pending/lost PVCs and expiring TLS certificates.
+- Add optional resource usage charts when the metrics stack is installed.
+
+## Kubernetes resources
+
+- Browse workloads, networking, configuration, storage, RBAC and policy-related resources.
+- Discover CRDs dynamically and display their `additionalPrinterColumns`.
+- Inspect conditions, events, owners, containers, volumes and scheduling details.
+- View and edit YAML with a Monaco editor and review a diff before applying changes.
+- Create resources from manifests, delete objects and use supported bulk actions.
 
 ## Operations
 
-- Pod logs, exec, port-forward, eviction
-- Deployment scale / restart / history / rollback
-- Node cordon, drain, shell
-- Optional one-click metrics stack (Prometheus, kube-state-metrics, node-exporter)
+- Follow Pod logs and open Pod terminals when allowed.
+- Scale, restart and roll back supported workloads; operate Jobs and CronJobs.
+- Cordon and drain nodes; node shell is a separate, privileged permission.
+- Port-forward to Pods and Services, subject to edition and server configuration.
+- Optionally install Prometheus, kube-state-metrics and node-exporter in a cluster.
 
-## Helm
+## Helm and GitOps
 
-- Releases, history, diff, rollback, uninstall
-- Chart catalog (including OCI and basic-auth repositories)
-- Install / upgrade with dry-run and manifest diff
-- Update hints for newer chart versions
+- Browse chart repositories and OCI registries, install and upgrade releases with dry-run and manifest diff.
+- Inspect release values, manifests, notes, revision history and diffs; roll back or uninstall.
+- Work with Argo CD Applications, ApplicationSets and Projects: sync, refresh, rollback, diff and resource graph.
 
-## GitOps
+## Security and shared access
 
-- Built-in Argo CD applications, ApplicationSets and projects
-- Sync, refresh, terminate, rollback, suspend/resume
-- Live-vs-desired diff and resource graph
+- Built-in `admin`, `operator` and `user` roles with backend-enforced fine-grained permissions.
+- Local user accounts, password hashing, login lockout and automatic logout.
+- Audit history for privileged and administrative actions.
+- Web team mode scopes users and clusters by organization and team; kubeconfig and Helm secrets stored in PostgreSQL are encrypted at rest.
+- No telemetry. Desktop keeps kubeconfig on the local machine; Kubron does not require a Kubron-hosted SaaS account.
 
-## Security
+## Learn more
 
-- Local users with `admin` / `operator` / `user` roles
-- Fine-grained permissions, PBKDF2-SHA256, lockout, auto-logout
-- Audit log
-- Public `pkg/ext` API for external modules (SSO/OIDC planned as commercial add-on)
-- No telemetry
-
-See the individual feature pages for more detail.
+- [Multi-cluster management](/features/multi-cluster)
+- [Connecting to Kubernetes](/features/cluster-auth)
+- [Cluster dashboard](/features/dashboard)
+- [Resources and YAML editor](/features/resources)
+- [Day-to-day operations](/features/operations)
+- [Helm](/features/helm)
+- [GitOps with Argo CD](/features/gitops)
+- [Teams and shared access](/features/teams)
+- [Security and access control](/features/security)
