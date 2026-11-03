@@ -4,7 +4,7 @@ layout: home
 hero:
   name: Kubron
   text: Kubernetes, under control.
-  tagline: A fast, private Kubernetes desktop IDE. Manage clusters, workloads, Helm and GitOps from one focused workspace.
+  tagline: A private Kubernetes Operations Workspace for desktop and web. Manage clusters, workloads, Helm and GitOps from one focused workspace.
   actions:
     - theme: brand
       text: Download Kubron
@@ -46,7 +46,7 @@ features:
 
 ## Kubernetes operations, without the clutter
 
-Kubron brings the everyday Kubernetes workflow into one desktop application: inspect the state of your clusters, understand what changed, and take action without switching between a dozen tools.
+Kubron brings everyday Kubernetes operations into one workspace across desktop and web: inspect cluster health, understand what changed, troubleshoot issues and take action without switching between a dozen tools.
 
 <div class="screenshot-grid">
   <figure>
