@@ -241,6 +241,7 @@
     "rollbackConfirm": "Roll back {name} to deployment #{id}? Resources will be synced to that revision (no prune).",
     "rollbackStarted": "{name}: rollback to #{id} started",
     "uiOpened": "Argo CD UI: {url}",
+    "externalUrlConfirm": "You are leaving Kubron and opening Argo CD at {host}. Only continue if you recognize and trust this address. Continue?",
     "deletedCascade": "{name}: deleted with its resources",
     "deletedKept": "{name}: deleted (resources kept)",
     "autoSyncConfirmOne": "Enable automated sync for {name}? Out-of-sync resources will be applied automatically.",
