@@ -54,7 +54,7 @@ export default defineConfig({
           ]}],
           '/server/': [{ text: 'Web version', items: [
             { text: 'Overview', link: '/server/' },
-            { text: 'Quick start', link: '/server/quick-start' },
+            { text: 'Local quick start', link: '/server/quick-start' },
             { text: 'Docker & Kubernetes', link: '/server/deploy' },
             { text: 'Configuration', link: '/server/configuration' }
           ]}],
@@ -100,7 +100,7 @@ export default defineConfig({
           ]}],
           '/ru/server/': [{ text: 'Web-версия', items: [
             { text: 'Обзор', link: '/ru/server/' },
-            { text: 'Быстрый запуск', link: '/ru/server/quick-start' },
+            { text: 'Локальный быстрый запуск', link: '/ru/server/quick-start' },
             { text: 'Docker и Kubernetes', link: '/ru/server/deploy' },
             { text: 'Конфигурация', link: '/ru/server/configuration' }
           ]}],
