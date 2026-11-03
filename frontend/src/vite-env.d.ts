@@ -6,6 +6,8 @@
 interface ImportMetaEnv {
   /** 'web' — сборка для kubron-server (`vite build --mode web`); не задано — десктоп (Wails) */
   readonly VITE_TARGET?: 'web'
+  /** Версия сборки для проверки RPC-контракта (образ: VERSION); не задано — "dev", сервер не проверяет */
+  readonly VITE_KUBRON_BUILD?: string
 }
 
 declare module '*.vue' {

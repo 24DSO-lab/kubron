@@ -14,6 +14,8 @@
  *   запрос, запускающий поток (терминал, логи), не должен обогнать подписку на его события.
  */
 
+import { withBuild } from './build'
+
 export type Unsubscribe = () => void
 type Handler = (...args: any[]) => void
 
@@ -38,7 +40,7 @@ let unacked = 0
 let waiters: Array<() => void> = []
 
 function wsUrl(): string {
-  return `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/api/ws`
+  return withBuild(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/api/ws`)
 }
 
 function send(frame: object): boolean {
