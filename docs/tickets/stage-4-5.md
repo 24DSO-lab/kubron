@@ -48,7 +48,7 @@ ADR-0015…0017, `docs/threat-model.md`, `docs/security-review.md` и коду �
 
 ## Этап 6. SSO/OIDC для входа в приложение
 
-<badge color="warning">Отдельная будущая фаза — вне объёма приёмки этапов 0–5</badge>
+**Этап 6 — отдельная будущая фаза, вне объёма приёмки этапов 0–5.**
 
 Не начат (по плану — фаза 2, платный модуль, ADR-0011 и ADR-0013). Заложено: интерфейсы `Authenticator`, `Platform`, `Store`
 и реестр в публичном `pkg/ext`; пример внешнего модуля `examples/ext-authenticator` собирается в CI; поля `external_id`,
