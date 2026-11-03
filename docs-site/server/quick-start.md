@@ -1,4 +1,4 @@
-# Server quick start (local)
+# Web quick start (local)
 
 Without a database the server uses file storage in your home directory and listens on loopback only:
 
