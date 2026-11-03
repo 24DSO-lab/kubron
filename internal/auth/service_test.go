@@ -137,12 +137,10 @@ func TestUserRoleEnforcement(t *testing.T) {
 	if _, err := s.Login("bob", "bobs-own-pass"); err != nil {
 		t.Fatal(err)
 	}
-	for _, p := range []Permission{PermRead, PermSecretsRead} {
-		if err := s.Authorize(p); err != nil {
-			t.Errorf("user must have %q: %v", p, err)
-		}
+	if err := s.Authorize(PermRead); err != nil {
+		t.Errorf("user must have %q: %v", PermRead, err)
 	}
-	for _, p := range []Permission{PermWrite, PermExec, PermPortForward, PermClusterManage, PermUsersManage} {
+	for _, p := range []Permission{PermSecretsRead, PermWrite, PermExec, PermPortForward, PermClusterManage, PermUsersManage} {
 		if err := s.Authorize(p); !errors.Is(err, ErrForbidden) {
 			t.Errorf("user must not have %q, got %v", p, err)
 		}

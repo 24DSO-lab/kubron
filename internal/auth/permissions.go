@@ -74,8 +74,9 @@ var roles = map[Role]roleDef{
 	// Не может удалять ресурсы, менять YAML, открывать терминал, пробрасывать порты и управлять
 	// кластерами и пользователями.
 	RoleOperator: {label: "Operator", permissions: []Permission{PermRead, PermSecretsRead, PermOperate}},
-	// Пользователь: только чтение всего (включая значения секретов, как и договорено).
-	RoleUser: {label: "User", permissions: []Permission{PermRead, PermSecretsRead}},
+	// Пользователь: только чтение. Значения Secret, содержимое релизов Helm (values, манифест, diff ревизий) и сроки
+	// сертификатов требуют отдельного права secrets.read, которого у пользователя нет (оно у оператора и администратора).
+	RoleUser: {label: "User", permissions: []Permission{PermRead}},
 }
 
 var roleOrder = []Role{RoleAdmin, RoleOperator, RoleUser}

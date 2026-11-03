@@ -1,7 +1,8 @@
 <!-- Copyright 2026 The Kubron Authors -->
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <template>
-  <div v-if="keys.length" class="sec-data">
+  <div v-if="!can(Perm.SecretsRead)" class="sec-empty" data-testid="secret-no-access">{{ $t('sections.secretData.noAccess') }}</div>
+  <div v-else-if="keys.length" class="sec-data">
     <div v-for="k in keys" :key="k" class="sec-item">
       <div class="sec-header">
         <span class="sec-key">{{ k }}</span>
@@ -48,6 +49,8 @@ import { callApp } from '../../../resources/wails'
 import { useNotifications } from '../../../composables/useNotifications'
 import { t } from '../../../i18n'
 import { errorText } from '../../../composables/errorText'
+import { can } from '../../../composables/useAuth'
+import { Perm } from '../../../types/auth'
 
 const props = defineProps<{ resource: any }>()
 const { notifySuccess, notifyError } = useNotifications()
@@ -76,6 +79,7 @@ const saving = reactive<Record<string, boolean>>({})
 
 // Load base64 values on mount
 onMounted(async () => {
+  if (!can(Perm.SecretsRead)) return
   for (const k of keys.value) {
     try {
       const v = await callApp('GetSecretBase64Value', props.resource.namespace, props.resource.name, k)

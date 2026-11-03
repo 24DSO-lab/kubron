@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- **Roles:** the `user` role no longer has `secrets.read`. It could read Secret values, Helm release values/manifests
+  and certificate expiry, which contradicts a read-only role. `operator` and `admin` keep the permission. The UI shows
+  “no access” instead of hidden controls. **Behavior change:** grant the `operator` role to users who need these values.
 - **Helm:** managing Helm repositories, OCI registries and the operation journal is now checked against the team
   of the **active cluster**. Before, `clusters.manage` was accepted from an admin of *any* team, so an admin of
   one team with a read-only role in another could change that team's repositories while its cluster was active.

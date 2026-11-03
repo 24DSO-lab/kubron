@@ -175,6 +175,7 @@
     "noTarget": "Could not determine the namespace or ConfigMap name"
   },
   "secretData": {
+    "noAccess": "No access to secret values",
     "hide": "Hide (show encoded)",
     "reveal": "Reveal (show decoded)",
     "decoded": "Decoded",
