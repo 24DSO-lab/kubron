@@ -8,7 +8,7 @@
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import 'monaco-editor'
 import * as monaco from 'monaco-editor/editor/editor.api'
-import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
+import editorWorker from 'monaco-editor/editor/editor.worker?worker'
 
 if (typeof window !== 'undefined' && !(window as any).MonacoEnvironment) {
   (window as any).MonacoEnvironment = { getWorker: () => new editorWorker() }
