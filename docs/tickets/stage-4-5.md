@@ -79,5 +79,5 @@ ADR-0015…0017, `docs/threat-model.md`, `docs/security-review.md` и коду �
 
 - `refactor` на коммите `6103faa` (до документационного PR #109): все jobs основного CI прошли, включая Go build/vet/test, race, lint, frontend, migrations, restore-check, e2e kind, e2e PostgreSQL/teams и HA.
 - После merge PR #109 коммит `99df253`: workflow CI завершился успешно; тяжёлые jobs корректно пропущены, поскольку изменения были только в документации.
-- Отдельный ручной пробный запуск `Publish (image and Helm chart)` на коммите `7b5c006` упал на генерации SBOM образа: Syft пытался открыть registry reference вместо локального Docker image. Исправление (`docker:` source для локального образа) влито через PR #110; повторный `workflow_dispatch` на текущем `refactor` выполняется.
+- Отдельный ручной пробный запуск `Publish (image and Helm chart)` на коммите `7b5c006` выявил ошибку источника SBOM. Исправление (`docker:` source для локального Docker image) влито через PR #110. Повторный `workflow_dispatch` на `refactor` (`257d78c`, run `41575481088`) завершился успешно: job `Image and chart` — `success`.
 - Эти результаты подтверждают автоматические проверки CI, но не заменяют ручные проверки реального IdP, кластера и desktop GUI.
