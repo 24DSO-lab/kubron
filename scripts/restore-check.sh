@@ -163,7 +163,10 @@ cluster_id="$(ok "$user" AddClusterToTeam "$(jq -nc --arg t "$team_id" --arg k "
 
 before="$work/kubeconfig.before"
 ok "$user" GetClusterKubeconfig "$(jq -nc --arg c "$cluster_id" '[$c]')" | jq -r '.result' >"$before"
-grep -q "$secret_token" "$before" || fail "the source server must return the stored kubeconfig with the secret"
+# Сервер отдаёт kubeconfig с замаскированными секретами (docs/http-security.md): токена в ответе быть не должно.
+# Расшифровка при этом обязательна (маскируется расшифрованный текст), поэтому ответ без ошибки подтверждает ключ.
+grep -q "<kubron:unchanged>" "$before" || fail "the source server must return the kubeconfig with masked secrets"
+! grep -q "$secret_token" "$before" || fail "the source server returned the kubeconfig secret in clear text"
 
 echo "== 2. pg_dump of the running server, restore into an empty database"
 pg_dump -Fc --no-owner --no-privileges -f "$work/kubron.dump" "$src_db"
