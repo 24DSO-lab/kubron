@@ -8,7 +8,7 @@ Kubron has local user accounts and three built-in roles:
 
 | Role | Permissions |
 |---|---|
-| `admin` | All application permissions, including user and cluster administration, audit access and privileged operations |
+| `admin` | Full cluster access and privileged operations; organization-wide user/team administration and audit access are separately scoped |
 | `operator` | Read, Secret-value access and safe operational actions such as scaling, restarting and rolling back workloads |
 | `user` | Read-only access; no Secret values, write operations, terminals or port-forward |
 
