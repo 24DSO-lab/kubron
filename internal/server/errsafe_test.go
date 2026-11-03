@@ -16,6 +16,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strings"
+	"sync"
 	"syscall"
 	"testing"
 
@@ -67,13 +68,30 @@ func callErr(h http.Handler, method string) (*httptest.ResponseRecorder, rpcErro
 	return rec, *rep.Error
 }
 
-func captureLog(t *testing.T) *bytes.Buffer {
+type synchronizedBuffer struct {
+	mu sync.Mutex
+	bytes.Buffer
+}
+
+func (b *synchronizedBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.Buffer.Write(p)
+}
+
+func (b *synchronizedBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.Buffer.String()
+}
+
+func captureLog(t *testing.T) *synchronizedBuffer {
 	t.Helper()
-	var buf bytes.Buffer
+	buf := &synchronizedBuffer{}
 	prev := slog.Default()
-	slog.SetDefault(logging.New(logging.Options{Writer: &buf, Level: slog.LevelDebug}))
+	slog.SetDefault(logging.New(logging.Options{Writer: buf, Level: slog.LevelDebug}))
 	t.Cleanup(func() { slog.SetDefault(prev) })
-	return &buf
+	return buf
 }
 
 func TestInternalErrorsAreHiddenWithRequestID(t *testing.T) {
