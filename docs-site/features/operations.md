@@ -53,7 +53,8 @@ Installing or removing the stack changes cluster resources and requires the appr
 
 | Capability | Desktop | Web |
 |---|---|---|
-| Pod logs and terminal | Yes | Yes, subject to server policy |
+| Pod logs | Yes | Yes |
+| Pod terminal (exec/attach) | Yes | Yes, subject to server policy |
 | Node shell | Yes, subject to permissions | Yes, subject to server policy and permissions |
 | Port-forward | Local port | Local single-user mode, or proxy mode configured by the server operator |
 | Optional metrics stack | Yes | Yes |
