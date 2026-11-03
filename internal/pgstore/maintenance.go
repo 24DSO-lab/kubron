@@ -15,6 +15,9 @@ type RekeyReport struct {
 	Tokens   int // токены Argo CD
 	Secrets  int // секреты подключения кластеров (пароль oidc-password)
 	Helm     int // пароли репозиториев и OCI-реестров Helm
+
+	Credentials       int // записи входа в кластеры (cluster_credentials), перешифрованные или переведённые в envelope-v1
+	LegacyCredentials int // записей legacy-v1, оставшихся после перешифрования (должно быть 0)
 }
 
 // Rekey перешифровывает текущим ключом все секреты, зашифрованные другим ключом (ротация, задача 3.1c).
@@ -109,6 +112,12 @@ func (s *Store) Rekey(ctx context.Context) (RekeyReport, error) {
 	}
 
 	if rep.Helm, err = s.rekeyHelm(ctx, cur); err != nil {
+		return rep, err
+	}
+
+	cr, err := s.Credentials().RekeyCredentials(ctx)
+	rep.Credentials, rep.LegacyCredentials = cr.Changed, cr.LegacyRemaining
+	if err != nil {
 		return rep, err
 	}
 	return rep, nil

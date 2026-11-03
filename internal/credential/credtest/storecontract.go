@@ -294,7 +294,7 @@ func StoreContract(t *testing.T, newHarness func(t *testing.T) StoreHarness) {
 		if got.Secret != nil || strings.Contains(err.Error(), Canary) {
 			t.Fatal("secret returned or leaked together with an error")
 		}
-		h.SetRawBlob(t, k, nil, keyID)
+		h.SetRawBlob(t, k, []byte{}, keyID)
 		if _, err := h.Store.Get(ctx, k); err == nil || errors.Is(err, credential.ErrNotFound) {
 			t.Fatalf("an empty ciphertext must be an error, got %v", err)
 		}
