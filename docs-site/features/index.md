@@ -1,6 +1,6 @@
 # Features overview
 
-Kubron covers the day-to-day work of a Kubernetes operator in a single desktop (or web) window.
+Kubron is a Kubernetes Operations Workspace that brings day-to-day cluster visibility, troubleshooting and operations together across desktop and web.
 
 ## Clusters & dashboard
 
