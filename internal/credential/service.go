@@ -43,6 +43,9 @@ type Config struct {
 	// Env is passed to providers; Env.Now defaults to Now.
 	Env Env
 	Now func() time.Time
+	// RefreshRecheck are the pauses before re-reading the saved data when a refresh token was rejected: the
+	// rejection may be caused by another replica that has just rotated it. Default 50 ms, 150 ms, 400 ms.
+	RefreshRecheck []time.Duration
 	// Logger receives ids, kinds and outcomes only, never secrets. Defaults to slog.Default().
 	Logger *slog.Logger
 }
@@ -50,15 +53,16 @@ type Config struct {
 // Service implements Broker: it orchestrates providers, pending requests and token refresh.
 // A Service is safe for concurrent use; several Services (replicas) may share the same stores.
 type Service struct {
-	reg    *Registry
-	store  CredentialStore
-	chal   ChallengeStore
-	envp   *secrets.Envelope
-	penv   Env
-	now    func() time.Time
-	log    *slog.Logger
-	cache  tokenCache
-	flight flightGroup
+	reg     *Registry
+	store   CredentialStore
+	chal    ChallengeStore
+	envp    *secrets.Envelope
+	penv    Env
+	now     func() time.Time
+	log     *slog.Logger
+	recheck []time.Duration
+	cache   tokenCache
+	flight  flightGroup
 }
 
 // NewService validates the configuration and returns a Service.
@@ -78,8 +82,12 @@ func NewService(cfg Config) (*Service, error) {
 	if log == nil {
 		log = slog.Default()
 	}
+	recheck := cfg.RefreshRecheck
+	if recheck == nil {
+		recheck = []time.Duration{50 * time.Millisecond, 150 * time.Millisecond, 400 * time.Millisecond}
+	}
 	return &Service{reg: cfg.Registry, store: cfg.Store, chal: cfg.Challenges, envp: cfg.Envelope, penv: env, now: now, log: log,
-		cache: tokenCache{m: map[string]Token{}}}, nil
+		recheck: recheck, cache: tokenCache{m: map[string]Token{}}}, nil
 }
 
 // Describe implements Broker.

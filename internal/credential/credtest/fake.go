@@ -37,6 +37,7 @@ type FakeIdP struct {
 	users    map[string]string
 	refresh  map[string]*refreshState
 	devices  map[string]string // device code -> approved user ("" while pending)
+	latest   map[string]string // user -> newest refresh token issued
 	seq      int
 	logins   int
 	refreshs int
@@ -48,7 +49,7 @@ func NewFakeIdP(now func() time.Time) *FakeIdP {
 		now = time.Now
 	}
 	return &FakeIdP{Now: now, AccessTTL: 5 * time.Minute, StrictRotation: true,
-		users: map[string]string{}, refresh: map[string]*refreshState{}, devices: map[string]string{}}
+		users: map[string]string{}, refresh: map[string]*refreshState{}, devices: map[string]string{}, latest: map[string]string{}}
 }
 
 // AddUser registers a user.
@@ -63,6 +64,7 @@ func (i *FakeIdP) grant(user string) Grant {
 	n := strconv.Itoa(i.seq)
 	rt := "rt-" + n
 	i.refresh[rt] = &refreshState{user: user}
+	i.latest[user] = rt
 	return Grant{Access: "at-" + n, Expiry: i.Now().Add(i.AccessTTL), Refresh: rt, User: user}
 }
 
@@ -89,6 +91,13 @@ func (i *FakeIdP) Refresh(rt string) (Grant, error) {
 	}
 	st.used = true
 	return i.grant(st.user), nil
+}
+
+// LatestRefresh returns the newest refresh token issued to a user.
+func (i *FakeIdP) LatestRefresh(user string) string {
+	i.mu.Lock()
+	defer i.mu.Unlock()
+	return i.latest[user]
 }
 
 // RevokeRefresh invalidates a refresh token.
