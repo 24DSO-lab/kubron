@@ -4,6 +4,7 @@
 package auth
 
 import (
+	"crypto/pbkdf2"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/subtle"
@@ -15,7 +16,6 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"crypto/pbkdf2"
 	"golang.org/x/crypto/argon2"
 )
 
