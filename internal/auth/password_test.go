@@ -4,12 +4,12 @@
 package auth
 
 import (
+	"crypto/pbkdf2"
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
 	"testing"
-
-	"crypto/pbkdf2"
+	"strings"
 )
 
 func TestArgon2idEncodingAndVerification(t *testing.T) {
@@ -54,5 +54,29 @@ func TestArgon2idRejectsUntrustedParameters(t *testing.T) {
 		if ok, _ := verifyPassword("password", encoded); ok {
 			t.Errorf("malformed or excessive hash parameters accepted: %s", encoded)
 		}
+	}
+}
+
+func TestLoginUpgradesLegacyPBKDF2Hash(t *testing.T) {
+	s, _ := newTestService(t)
+	if _, err := s.Setup("admin", goodPass); err != nil { t.Fatal(err) }
+
+	salt := []byte("0123456789abcdef")
+	key, err := pbkdf2.Key(sha256.New, goodPass, salt, 1000, keyLength)
+	if err != nil { t.Fatal(err) }
+	legacy := fmt.Sprintf("%s$1000$%s$%s", legacyHashScheme,
+		base64.RawStdEncoding.EncodeToString(salt),
+		base64.RawStdEncoding.EncodeToString(key))
+
+	s.mu.Lock()
+	s.st.findByName("admin").PasswordHash = legacy
+	s.mu.Unlock()
+
+	if _, err := s.Login("admin", goodPass); err != nil { t.Fatalf("legacy login failed: %v", err) }
+	s.mu.Lock()
+	stored := s.st.findByName("admin").PasswordHash
+	s.mu.Unlock()
+	if !strings.HasPrefix(stored, "argon2id$") {
+		t.Fatalf("successful login did not upgrade the stored hash: %q", stored)
 	}
 }
