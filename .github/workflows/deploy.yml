@@ -45,12 +45,38 @@ env:
   K8S_SCHEMA_VERSION: 1.31.0
 
 jobs:
+  # Содержимое уже проходило этот workflow целиком (тот же tree hash: merge-коммит PR, коммит после слияния,
+  # повышение ветки): сборка образа и проверки чарта дадут тот же результат, их не повторяем. Тег и ручной запуск
+  # пропуск не используют. Подробности: .github/actions/verified-tree.
+  tree:
+    name: Tree already verified?
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      tree: ${{ steps.verified.outputs.tree }}
+      verified: ${{ steps.verified.outputs.verified }}
+      record: ${{ steps.verified.outputs.record }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - id: verified
+        uses: ./.github/actions/verified-tree
+        with:
+          prefix: deploy
+          token: ${{ github.token }}
+
   hadolint:
     name: Dockerfile (hadolint)
+    needs: tree
+    if: ${{ !cancelled() && needs.tree.outputs.verified != 'true' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Install hadolint
@@ -63,10 +89,12 @@ jobs:
   # helm lint, helm template по всем наборам values из ci/, схемы Kubernetes и смысловые проверки
   chart:
     name: Helm chart (lint, template, kubeconform)
+    needs: tree
+    if: ${{ !cancelled() && needs.tree.outputs.verified != 'true' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Install kubeconform
@@ -87,7 +115,7 @@ jobs:
             helm template kubron deploy/helm/kubron --namespace kubron -f "$f" > "$RUNNER_TEMP/rendered/$(basename "$f" .yaml).yaml"
           done
       - name: Trivy (chart misconfiguration report)
-        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: config
           scan-ref: ${{ runner.temp }}/rendered
@@ -106,10 +134,12 @@ jobs:
   # с внешним PostgreSQL и существующим Secret.
   kind:
     name: Image build and kind install
+    needs: tree
+    if: ${{ !cancelled() && needs.tree.outputs.verified != 'true' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
@@ -135,7 +165,7 @@ jobs:
       # Отчёт об уязвимостях образа (HIGH/CRITICAL с исправлением). В PR только информирует; ворота перед push
       # образа — в publish.yml. Исключения: .trivyignore.
       - name: Trivy (image report)
-        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: image
           image-ref: kubron:ci
@@ -172,7 +202,7 @@ jobs:
           docker rm -f kubron-smoke
 
       - name: kind cluster
-        uses: helm/kind-action@ef37e7f390d99f746eb8b610417061a60e82a6cc # v1
+        uses: helm/kind-action@1544676c07bb3570fcb70166beaa07c4528fd4aa # v1.15.1
         with:
           cluster_name: kubron-deploy
 
@@ -228,3 +258,28 @@ jobs:
           kubectl describe pod -l app.kubernetes.io/name=kubron || true
           kubectl logs deploy/kubron --all-containers --tail=200 || true
           kubectl logs deploy/postgres --tail=50 || true
+
+  # Отметка «содержимое проверено»: после полностью зелёного прогона без пропусков (и только для push и PR из этого
+  # репозитория) следующий прогон с тем же содержимым пропустит job'ы выше.
+  record-verified:
+    name: Record verified tree
+    needs: [tree, hadolint, chart, kind]
+    if: >-
+      ${{ !cancelled() && needs.tree.outputs.verified != 'true' && needs.tree.outputs.record == 'true' &&
+      !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') && !contains(needs.*.result, 'skipped') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Write the marker
+        env:
+          TREE: ${{ needs.tree.outputs.tree }}
+        run: |
+          [[ $TREE =~ ^[0-9a-f]{40,64}$ ]] || { echo "unexpected tree hash: $TREE"; exit 1; }
+          printf '%s\n' "$TREE" >verified-tree.txt
+
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: deploy-verified-${{ needs.tree.outputs.tree }}
+          path: verified-tree.txt
+          retention-days: 14
+          if-no-files-found: error

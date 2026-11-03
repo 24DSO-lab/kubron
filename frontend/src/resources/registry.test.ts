@@ -6,7 +6,8 @@ import { describe, expect, it, vi } from 'vitest'
 // registry тянет все определения, включая секции с monaco-editor, который
 // не резолвится в node-окружении тестов. Мокаем — на уровне модуля он не вызывается.
 vi.mock('monaco-editor', () => ({ editor: {} }))
-vi.mock('monaco-editor/esm/vs/editor/editor.worker?worker', () => ({ default: class {} }))
+vi.mock('monaco-editor/editor/editor.api', () => ({ editor: {}, KeyMod: {}, KeyCode: {} }))
+vi.mock('monaco-editor/editor/editor.worker?worker', () => ({ default: class {} }))
 
 import { getResourceById, getResourceByView, resources } from './registry'
 

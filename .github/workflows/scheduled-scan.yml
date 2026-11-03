@@ -29,7 +29,7 @@ jobs:
     env:
       TITLE: "Weekly image scan: найдены уязвимости в опубликованном образе"
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
@@ -51,7 +51,7 @@ jobs:
 
       - name: Trivy
         if: steps.img.outputs.exists == 'true'
-        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: image
           image-ref: ${{ steps.img.outputs.image }}

@@ -1,0 +1,86 @@
+name: Verified tree
+description: >
+  Результат проверки по содержимому: если для точно такого же дерева файлов (git tree hash) полный прогон
+  этого workflow уже завершился успешно, повторять детерминированные job'ы незачем. Дерево, а не коммит:
+  merge-коммит PR, коммит после слияния и повышение ветки (refactor -> dev -> master) имеют разные SHA,
+  но одинаковое содержимое, и именно оно определяет результат тестов.
+
+  Отметка — артефакт `<prefix>-verified-<tree>`, который создаёт job «Record verified tree» только после
+  полностью зелёного прогона без пропусков (ни один job не пропущен по изменённым путям). Если отметку
+  найти не удалось (нет артефакта, срок истёк, ошибка API, нет прав), ответ всегда «не проверено»:
+  ошибка поиска может лишь добавить работы, но не убрать проверку.
+
+  Повторное использование выключено для тегов (релиз проверяется заново, см. release.yml) и для ручных
+  запусков. Отметку записывают только прогоны веток этого репозитория, не форков.
+
+  Требует выполненный actions/checkout (дерево берётся из HEAD) и право `actions: read`.
+
+inputs:
+  prefix:
+    description: "Имя линии отметок (ci, deploy): у каждого workflow свои, чтобы отметки не смешивались"
+    required: true
+  token:
+    description: Токен для чтения списка артефактов (github.token)
+    required: true
+
+outputs:
+  tree:
+    description: Хеш дерева файлов проверяемого состояния
+    value: ${{ steps.tree.outputs.tree }}
+  verified:
+    description: "true, если дерево уже проверено полным прогоном и его можно не гонять заново"
+    value: ${{ steps.tree.outputs.verified }}
+  record:
+    description: "true, если после полностью зелёного прогона нужно записать отметку"
+    value: ${{ steps.tree.outputs.record }}
+
+runs:
+  using: composite
+  steps:
+    - id: tree
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        PREFIX: ${{ inputs.prefix }}
+        EVENT: ${{ github.event_name }}
+        REF: ${{ github.ref }}
+        REPO: ${{ github.repository }}
+        HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+      run: |
+        set -uo pipefail
+        tree=$(git rev-parse 'HEAD^{tree}')
+        verified=false
+        record=false
+        run_id=
+
+        # Только ветки и PR; теги (релиз) и ручные запуски проверяются заново
+        if [[ ($EVENT == push || $EVENT == pull_request) && $REF != refs/tags/* ]]; then
+          # Сбой поиска оставляет verified=false: проверка выполнится
+          if run_id=$(gh api "repos/$REPO/actions/artifacts?name=$PREFIX-verified-$tree&per_page=10" \
+            --jq '[.artifacts[] | select(.expired | not)] | first | .workflow_run.id // empty' 2>/dev/null) &&
+            [[ $run_id =~ ^[0-9]+$ ]]; then
+            verified=true
+          else
+            run_id=
+          fi
+          # Отметку пишут push в этот репозиторий и PR из веток этого же репозитория (не из форков)
+          if [[ $EVENT == push || $HEAD_REPO == "$REPO" ]]; then
+            record=true
+          fi
+        fi
+
+        {
+          echo "tree=$tree"
+          echo "verified=$verified"
+          echo "record=$record"
+        } >>"$GITHUB_OUTPUT"
+
+        {
+          echo "### Tree \`${tree:0:12}\`"
+          if [[ $verified == true ]]; then
+            echo "Это содержимое уже прошло полную проверку ([прогон $run_id](https://github.com/$REPO/actions/runs/$run_id))."
+            echo "Детерминированные job'ы пропущены; проверки уязвимостей зависимостей выполняются заново."
+          else
+            echo "Для этого содержимого нет отметки о пройденной проверке: выполняется полный набор."
+          fi
+        } >>"$GITHUB_STEP_SUMMARY"

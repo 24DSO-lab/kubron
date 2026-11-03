@@ -90,7 +90,7 @@ SELECT secret_key_id, count(*) FROM clusters WHERE secret_enc IS NOT NULL GROUP 
 3. Перешифруйте записи новым ключом. Команда читает БД из окружения сервера, поэтому запускайте её там, где оно есть:
    ```bash
    kubectl exec deploy/kubron -- /kubron-server rekey
-   # re-encrypted with key "2026-11": 12 kubeconfigs, 3 cluster secrets, 2 Argo CD tokens, 4 Helm repository secrets
+   # re-encrypted with key "2026-11": 12 kubeconfigs, 3 cluster secrets, 2 Argo CD tokens, 4 Helm repository secrets, 5 sign-in credentials (0 still in legacy format)
    ```
    `rekey` повторяется безопасно: уже перешифрованные записи пропускаются, и повторный запуск ничего не меняет.
    В образе нет оболочки, поэтому команда запускается напрямую, либо одноразовым Job с теми же переменными окружения.
