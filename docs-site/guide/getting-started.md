@@ -38,4 +38,4 @@ Unzip / install and start the app. On first launch Kubron will ask you to import
 - [Installation details](/guide/installation) — system dependencies, build from source
 - [Add your first cluster](/guide/first-cluster)
 - [Features overview](/features/)
-- [Server mode](/server/) (experimental multi-user)
+- [Server mode](/server/) (multi-user)
