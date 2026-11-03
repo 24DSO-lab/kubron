@@ -16,6 +16,7 @@ import pathlib
 import re
 import sys
 import urllib.parse
+import uuid
 
 
 def main() -> int:
@@ -42,6 +43,7 @@ def main() -> int:
     image_ref = f"pkg:oci/{image_name}@{q(a.image_digest)}?repository_url={q(a.image)}&tag={q(a.version)}"
     bom = {
         "bomFormat": "CycloneDX",
+        "serialNumber": f"urn:uuid:{uuid.uuid4()}",
         "specVersion": "1.5",
         "version": 1,
         "metadata": {
