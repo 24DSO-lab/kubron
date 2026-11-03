@@ -67,7 +67,21 @@ Kubron brings everyday Kubernetes operations into one workspace. Choose a native
   </figure>
 </div>
 
-## Two editions. One Kubernetes workspace.\n\n### Desktop\n\nRun Kubron locally on Windows, Linux or macOS. No server deployment or mandatory account is required; your kubeconfig stays on your machine.\n\n[Get started with Desktop →](/guide/desktop)\n\n### Web\n\nDeploy Kubron in your own infrastructure and access it through a browser. Web adds multi-user accounts, roles, permissions and shared state backed by PostgreSQL. It is self-hosted, not a hosted SaaS service.\n\n[Get started with Web →](/guide/web)\n\n## Built for the way Kubernetes is operated
+## Two editions. One Kubernetes workspace.
+
+### Desktop
+
+Run Kubron locally on Windows, Linux or macOS. No server deployment or mandatory account is required; your kubeconfig stays on your machine.
+
+[Get started with Desktop →](/guide/desktop)
+
+### Web
+
+Deploy Kubron in your own infrastructure and access it through a browser. Web adds multi-user accounts, roles, permissions and shared state backed by PostgreSQL. It is self-hosted, not a hosted SaaS service.
+
+[Get started with Web →](/guide/web)
+
+## Built for the way Kubernetes is operated
 
 - **Multi-cluster workflows** — name and color-code clusters, tag environments, and choose one or several namespaces. Restricted RBAC is supported; partial access failures are surfaced.
 - **Live resource views** — shared informers keep lists and the dashboard current without aggressive polling.
@@ -77,15 +91,15 @@ Kubron brings everyday Kubernetes operations into one workspace. Choose a native
 - **Argo CD integration** — applications, ApplicationSets, projects, sync controls, live-vs-desired diff and resource graph.
 - **Optional metrics** — charts for pods, workloads, nodes, PVCs and ingresses when the metrics stack is installed.
 
-## Desktop first. Web when you need it.
+## Built with Go, Wails and Vue
 
-The desktop application is built with Go, Wails and Vue. An experimental server mode serves the same UI over HTTP for multi-user teams, with PostgreSQL-backed state, encrypted credentials and support for multiple replicas. It is designed to run behind a TLS-terminating reverse proxy.
+Both editions share the Kubron interface and core Kubernetes workflows. The Web edition adds centralized, multi-user operation on infrastructure you control.
 
-[Explore server mode →](/server/)
+[Explore the Web edition →](/server/)
 
-## Private by default
+## Privacy and access control
 
-Desktop mode does not require an account, does not send telemetry and keeps your kubeconfig on your machine. Server mode adds local users, fine-grained roles and permissions, session management and an audit log for shared environments.
+Desktop does not require an account, sends no telemetry and keeps your kubeconfig on your machine. Web adds local user accounts, fine-grained roles and permissions, session management and an audit log for shared environments.
 
 [Read about security →](/features/security)
 
