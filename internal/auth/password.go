@@ -30,18 +30,18 @@ const (
 	minPassRunes     = 8
 	maxPassBytes     = 256
 
-	maxPBKDF2Iter = 10_000_000
-	maxArgonMemory = 64 * 1024 // KiB; reject hostile parameters before allocating memory.
-	maxArgonTime = 10
+	maxPBKDF2Iter   = 10_000_000
+	maxArgonMemory  = 64 * 1024 // KiB; reject hostile parameters before allocating memory.
+	maxArgonTime    = 10
 	maxArgonThreads = 16
 )
 
 var (
 	// OWASP baseline: 19 MiB, 2 iterations, one lane.
-	argon2Memory = uint32(19 * 1024) // KiB; variable so tests can use cheaper parameters.
-	argon2Time = uint32(2)
+	argon2Memory  = uint32(19 * 1024) // KiB; variable so tests can use cheaper parameters.
+	argon2Time    = uint32(2)
 	argon2Threads = uint8(1)
-	usernameRe = regexp.MustCompile(`^[A-Za-z0-9._-]{3,32}$`)
+	usernameRe    = regexp.MustCompile(`^[A-Za-z0-9._-]{3,32}$`)
 )
 
 // ValidateUsername проверяет формат логина.
@@ -110,11 +110,15 @@ func verifyPassword(password, encoded string) (ok, needsRehash bool) {
 			memory = uint32(n)
 		case "t":
 			n, err := strconv.ParseUint(kv[1], 10, 32)
-			if err != nil { return false, false }
+			if err != nil {
+				return false, false
+			}
 			iterations = uint32(n)
 		case "p":
 			n, err := strconv.ParseUint(kv[1], 10, 8)
-			if err != nil { return false, false }
+			if err != nil {
+				return false, false
+			}
 			threads = uint8(n)
 		default:
 			return false, false
