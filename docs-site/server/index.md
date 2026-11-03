@@ -1,8 +1,8 @@
-# Server mode
+# Web version
 
-Kubron includes `kubron-server`, which serves the familiar Kubron UI over HTTP for shared, multi-user environments. The server mode is evolving quickly; review the deployment and security requirements before exposing it to users.
+The Web edition runs Kubron as a self-hosted application and serves the familiar Kubron interface over HTTP. Open it in a browser to work in shared, multi-user environments. You operate the server infrastructure; Kubron does not provide a hosted SaaS instance.
 
-## What it provides
+## What Web provides
 
 - PostgreSQL-backed users, clusters, web sessions, audit history and shared Helm state
 - Encrypted kubeconfigs and GitOps credentials at rest using `KUBRON_SECRET_KEY`
@@ -22,7 +22,7 @@ Kubron includes `kubron-server`, which serves the familiar Kubron UI over HTTP f
 
 The server does not terminate TLS itself. Do not expose its HTTP listener directly to an untrusted network. Port-forward in server mode also needs a wildcard DNS name and TLS configuration.
 
-## Deploy
+## Deploy the Web edition
 
 The image is published as `ghcr.io/24dso-labs/kubron`. The chart is available at `oci://ghcr.io/24dso-labs/charts/kubron`.
 
