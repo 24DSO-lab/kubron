@@ -1,0 +1,80 @@
+# Этапы 4–6: безопасность, эксплуатация, HA, port-forward и терминалы — статус
+
+Документ собран по плану (`docs/Kubron план разработки веб-версии и доработки десктопа.md`, разделы 5, 8, 9), `CHANGELOG.md`,
+ADR-0015…0017, `docs/threat-model.md`, `docs/security-review.md` и коду ветки `refactor` на 2026-11-03. Он продолжает
+`stage-0.md`…`stage-3.md`: для этапов 4–6 отдельных тикетов не вели, поэтому здесь только итоговые статусы и то, что осталось.
+
+Способ подтверждения: «код» — найдено чтением кода и конфигурации CI; «CI» — есть автоматическая проверка; «док» — описано,
+автоматически не проверяется. Стенд и ручные прогоны здесь не учитывались.
+
+## Этап 4. Безопасность, эксплуатация, HA
+
+| Пункт плана | Состояние | Подтверждение, где |
+|---|---|---|
+| Заголовки безопасности (CSP без `unsafe-inline` для скриптов, HSTS, `Permissions-Policy`, COOP/CORP) | сделано | CI (`web-csp.spec.ts`), `docs/http-security.md` |
+| Cookie `__Host-kubron_session` по HTTPS, allowlist Host (`KUBRON_ALLOWED_HOSTS`), общий ответ вместо сырых 500 | сделано | код, находки 4, 7–9 в `docs/security-review.md` |
+| Блокировка входа по логину — общая между репликами (PostgreSQL) | сделано | CI (`e2e-ha`), `docs/http-security.md` |
+| Счётчики по адресу клиента и token bucket анонимных вызовов | в памяти реплики; предел растёт с числом реплик | `docs/http-security.md`, решение принято и описано |
+| Шифрование секретов (kubeconfig, токены, пароли `oidc-password`, пароли реестров Helm), ротация `rekey` | сделано | код, CI (`migrations`), `docs/backup.md` |
+| Проверка ключа при старте: сервер не стартует, если `KUBRON_SECRET_KEY` не читает данные БД | сделано | `CHANGELOG.md`, `docs/backup.md` |
+| Резервное копирование и восстановление | сделано, проверяется автоматически | CI (`restore-check`, `scripts/restore-check.sh`), `docs/backup.md` |
+| Защита от SSRF: Helm HTTP/OCI, адрес API-сервера кластера, адрес IdP; политика `KUBRON_CLUSTER_ADDR_POLICY` по умолчанию `permissive` | сделано | ADR-0015, находки 2–3 |
+| `exec` и ссылки на файлы сервера в kubeconfig запрещены в вебе | сделано | тикет 3.7, `internal/k8s/connection.go` |
+| Первый администратор: токен первичной настройки или `kubron-server create-admin` | сделано (раньше `SetupAdmin` был открыт) | находка 1, `docs/deploy.md` |
+| Роль `user` без `secrets.read`; секреты kubeconfig маскируются при правке | сделано | находки 5–6 |
+| Dockerfile (distroless, non-root, read-only rootfs), Helm-чарт, NetworkPolicy, профили RBAC (`readonly`/`operator`/`custom`) | сделано | `Dockerfile`, `deploy/helm/kubron`, CI (`hadolint`, `chart`, `kind` в `deploy.yml`) |
+| Публикация образа и чарта в ghcr.io из `release.yml` после CI | сделано | `publish.yml`, `docs/releasing.md` |
+| Подпись cosign (keyless), аттестации происхождения и SBOM, Trivy как ворота публикации образа | сделано | `publish.yml`, `docs/deploy.md` («Проверка образа и чарта») |
+| `npm audit`, `osv-scanner` и еженедельный скан опубликованного образа | сделано | CI (`deps-audit`), `.trivyignore`/`osv-scanner.toml` с проверкой сроков |
+| `govulncheck` | есть, **не блокирует** сборку намеренно («чужой CVE не должен держать релиз») | CI (`vulncheck`) |
+| Метрики Prometheus, `/healthz`, `/readyz` с проверкой БД и draining | сделано | `docs/metrics.md`; 0.6.0 |
+| Структурированные логи `slog` с редактором секретов, `request_id`, аудит в stdout (`KUBRON_AUDIT_STDOUT=1`) | сделано | `docs/logging.md` |
+| HA: сессии и пользователи в PostgreSQL, `LISTEN/NOTIFY`, лидер проверок под `pg_advisory_lock`, graceful shutdown (`1012`), чарт на две реплики по умолчанию, PDB | сделано | `docs/ha.md`, ADR-0016, CI (`e2e-ha`: вход на одной реплике и запрос на другой, 50 сессий, `SIGKILL` реплики во время сессии) |
+| Версия контракта RPC (`X-Kubron-Build`): сервер отклоняет старый фронтенд | сделано | `internal/server/contract.go` |
+| Модель угроз STRIDE | написана, **статус «черновик для ревью вторым человеком»** | `docs/threat-model.md` |
+| Ревью безопасности | находки 1–9 закрыты, находка 10 открыта (принят риск); **сценарии стенда не прогонялись**, ревью выполнено чтением кода | `docs/security-review.md` |
+| Нагрузочный тест | частично: `e2e-ha` проверяет 50 сессий (p95 `AuthStatus` < 2 с) на двух репликах; бюджета одновременных LIST и замера нагрузки на kube-apiserver нет (остаток 2.8) | `docs/e2e.md`, `docs/tickets/stage-2.md` |
+| Алгоритм хэша паролей | PBKDF2-SHA256, 600 000 итераций; план предлагал argon2id или bcrypt «после проверки», отдельного решения нет | `docs/adr`, `docs-site/features/security.md` |
+
+## Этап 5. Port-forward, Argo UI, терминалы
+
+| Задача плана | Состояние | Где |
+|---|---|---|
+| 5.1 `portForward` по умолчанию включён, организация может отключить | сделано | `KUBRON_DISABLE_PORT_FORWARD`, `GetCapabilities` |
+| 5.2 HTTP-прокси port-forward: отдельный origin на поток, одноразовый ticket, cookie без `Domain`, лимиты простоя и длительности; при нескольких репликах владелец потока в id, чужая реплика отвечает `421`/`409 stream_elsewhere` | сделано | ADR-0017, CI (`pf-terminals.spec.ts`) |
+| 5.3 `OpenArgoUI` в вебе: адрес потока прокси или опубликованный адрес Argo CD (`argoUrl`) | сделано | `internal/server/methods.go`, CI (`pf-argocd.spec.ts`) |
+| 5.4 Право `nodeshell`, аудит начала и конца, лимиты времени и числа, флаги отключения, проверка владельца на каждом кадре | сделано | 0.6.0, CI (`pf-terminals.spec.ts`) |
+
+## Этап 6. SSO/OIDC для входа в приложение
+
+Не начат (по плану — фаза 2, платный модуль, ADR-0011 и ADR-0013). Заложено: интерфейсы `Authenticator`, `Platform`, `Store`
+и реестр в публичном `pkg/ext`; пример внешнего модуля `examples/ext-authenticator` собирается в CI; поля `external_id`,
+`provider` и пустая таблица `group_mappings` в схеме БД.
+
+Не сделано: маршруты `/auth/login`, `/auth/callback`, `/auth/logout`, OIDC (code + PKCE, `state`, `nonce`, discovery), роли из
+групп IdP, JIT-создание пользователей, режимы «только SSO» и «локальный + SSO», приватный репозиторий платного модуля,
+лицензионный ключ, образ `kubron-enterprise`, тесты на Keycloak.
+
+Не путать с входом **в кластеры** (ADR-0018, `docs/tickets/cluster-auth.md`): это отдельная работа, ADR пока «предложено».
+
+## Gate 3
+
+| Условие плана | Состояние |
+|---|---|
+| Раздел 8 выполнен | да, кроме независимого ревью (см. ниже) |
+| Внутренний security review (или pentest) | частично: ревью по коду выполнено, ждёт второго человека; сценарии на стенде не прогонялись |
+| Dockerfile, Helm | да |
+| Восстановление из бэкапа | да, проверяется в CI (`restore-check`) |
+| Терминал и HTTP port-forward проходят e2e в вебе | да |
+| Сервис на двух репликах переживает потерю одной | да, CI (`e2e-ha`) |
+
+## Что остаётся открытым
+
+1. Ревью `docs/threat-model.md` и `docs/security-review.md` вторым человеком и прогон сценариев на стенде (pentest).
+2. Находка 10: `argoUrl` показывается браузеру без проверки назначения; принят риск «до решения».
+3. Бюджет одновременных LIST и замер нагрузки на kube-apiserver при многих сессиях (остаток 2.8).
+4. Ручной прогон десктопа после рефакторинга (2.9) и терминалов/port-forward на `oidc-password`-кластерах с реальным IdP (3.7).
+5. Решение по алгоритму хэша паролей (оставить PBKDF2 или перейти) — записать в ADR или журнал решений.
+6. Статусы ADR-0001…0018 остаются «предложено (ждёт утверждения тимлидом)», хотя решения реализованы; перевод в «принято»
+   (задача 0.1) — за тимлидом.
+7. Этап 6 (SSO/OIDC).

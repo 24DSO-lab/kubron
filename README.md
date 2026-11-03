@@ -143,7 +143,9 @@ On Linux add `-tags webkit2_41` to `wails dev` / `wails build` (WebKitGTK 4.1, a
 ## Documentation
 
 - **User guides** (PDF): Helm — [English](docs/DOCS/EN/Kubron-Helm-User-Guide-EN.pdf), [Русский](docs/DOCS/RU/Kubron-Helm-User-Guide.pdf); GitOps — [English](docs/DOCS/EN/Kubron-ArgoCD-User-Guide-EN.pdf), [Русский](docs/DOCS/RU/Kubron-ArgoCD-User-Guide.pdf)
-- **Server deployment** — [docs/deploy.md](docs/deploy.md) (Russian)
+- **Server deployment** (Russian) — [docs/deploy.md](docs/deploy.md), [high availability](docs/ha.md), [backup and restore](docs/backup.md), [logging](docs/logging.md), [metrics](docs/metrics.md), [HTTP security](docs/http-security.md)
+- **Server security** (Russian) — [threat model](docs/threat-model.md), [security review](docs/security-review.md)
+- **Web version status** — what is done and what is still open: [docs/tickets](docs/tickets)
 - **Localization** — [docs/i18n.md](docs/i18n.md), [ADR-0014](docs/adr/0014-i18n.md)
 - **Architecture decisions** — [docs/adr](docs/adr)
 - **Releasing** — [docs/releasing.md](docs/releasing.md)
@@ -152,13 +154,13 @@ On Linux add `-tags webkit2_41` to `wails dev` / `wails build` (WebKitGTK 4.1, a
 
 Besides the desktop app, Kubron ships `kubron-server`: the same UI served over HTTP for teams. It stores users, clusters and the audit log in **PostgreSQL 14+**, encrypts kubeconfigs and GitOps integration tokens at rest (`KUBRON_SECRET_KEY`) and is meant to run behind a TLS-terminating reverse proxy.
 
-The container image and the Helm chart ([`deploy/helm/kubron`](deploy/helm/kubron)) are built from this repository; publishing them to a registry is still on the [roadmap](#roadmap), so build the image yourself:
+The container image (`ghcr.io/24dso-labs/kubron`) and the Helm chart (`oci://ghcr.io/24dso-labs/charts/kubron`) are published for every `vX.Y.Z` tag, signed with cosign and shipped with provenance and SBOM attestations. The chart source is in [`deploy/helm/kubron`](deploy/helm/kubron); it runs two replicas by default. To build the image yourself:
 
 ```sh
 docker build -t kubron:dev .
 ```
 
-Running it in Docker or Kubernetes, key management, backups and current limitations (single replica for now) are described in [docs/deploy.md](docs/deploy.md).
+On a fresh database the first administrator is created with a setup token (`KUBRON_SETUP_TOKEN`) or with `kubron-server create-admin`; the chart generates the token. Running it in Docker or Kubernetes, high availability, key management, backups, signature verification and current limitations are described in [docs/deploy.md](docs/deploy.md), [docs/ha.md](docs/ha.md) and [docs/backup.md](docs/backup.md).
 
 To try it locally from source (without a database it uses file storage in your home directory and listens on loopback only):
 
@@ -177,10 +179,12 @@ go run ./cmd/kubron-server --listen 127.0.0.1:8080
 - [x] Helm releases management
 - [x] GitOps applications management
 - [ ] Support for more GitOps tools
-- [ ] Web mode with multi-user support and session auth — *in progress, experimental (Docker image and Helm chart are available)*
-- [ ] High availability for the server (more than one replica)
-- [ ] Shared, persistent Helm catalog in server mode
-- [ ] Publish the container image and Helm chart to a registry
+- [x] Web mode with multi-user support, teams and session auth — *experimental*
+- [x] High availability for the server (more than one replica)
+- [x] Shared, persistent Helm catalog in server mode
+- [x] Publish the signed container image and Helm chart to a registry
+- [x] HTTP port-forward and terminals in web mode
+- [ ] Second-person review of the threat model and security review, and a pentest on a test stand ([status](docs/tickets/stage-4-5.md))
 - [ ] Code-signed Windows and macOS builds
 - [ ] SSO/OIDC login for organizations
 

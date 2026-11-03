@@ -7,7 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-
 ### Security
 
 - **Roles:** the `user` role no longer has `secrets.read`. It could read Secret values, Helm release values/manifests
@@ -31,8 +30,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   in loopback, link-local and cloud-metadata ranges are rejected. **Upgrade:** a cluster whose API server is on such
   an address (for example kind on `127.0.0.1`) needs `KUBRON_CLUSTER_ADDR_ALLOW_CIDRS` (chart:
   `kubron.clusterAddrAllowCidrs`) or `KUBRON_CLUSTER_ADDR_POLICY=off`.
-- **Roles:** the `user` role no longer sees the values of Secrets and the values of Helm releases (`secrets.read` is
-  now held by `operator` and `admin` only); reading them is audited as before.
 - **Cluster settings:** secrets inside a kubeconfig (tokens, client keys, passwords) are masked when a cluster is
   opened for editing; a secret is replaced only when a new value is entered.
 - **Chart:** the egress NetworkPolicy to cluster API servers and identity providers excludes link-local and
@@ -46,8 +43,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Web mode:** `OpenArgoUI` was still on the denied-method list, so Argo CD could not be opened from the browser; it is now
   allowed and returns the proxy stream address (or the published Argo CD address from the cluster settings).
-
-
 - **Helm with several replicas:** the repository index and OCI tag caches live in each replica's `emptyDir`; a
   repository added on one replica is now fetched on first use on the others (the list and update checks fill the cache
   in the background). Cache file names include a hash of the URL, so a repository re-added under the same name with
@@ -76,7 +71,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Decision log:** `docs/decisions/` records the decisions taken without a separate discussion, who took them and
   how to revert.
 - **Tests:** Helm through the PostgreSQL store end to end, and `kubron-server rekey` re-encrypting the Helm secrets.
-
 - **Operations:** structured JSON logging (`log/slog`) in `kubron-server` with a secret redactor (passwords,
   tokens, `Authorization` headers, URL credentials, encryption key, database passwords), a per-request
   `request_id` (`X-Request-Id` header), `KUBRON_LOG_LEVEL` and `KUBRON_LOG_FORMAT`. `KUBRON_AUDIT_STDOUT=1`
@@ -93,12 +87,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Docs:** README, the roadmap and `docs/tickets/stage-1.md` no longer describe the image as unpublished, the server as
+  single-replica or `SetupAdmin` as open; stale "PR n" and branch notes were removed from `docs/ha.md` and
+  `docs/ha-sessions.md`; `docs/tickets/stage-4-5.md` records the status of stages 4-6 and what is still open.
 - **Release:** `publish.yml` is called by `release.yml` after CI instead of reacting to the tag on its own, so SBOMs reach the
   immutable GitHub Release and the image is never published from an untested commit. A published image or chart version is
   never overwritten. `Chart.yaml` holds `0.0.0-dev` placeholders; the version comes from the tag.
 
 
 ## [0.6.0] - 2026-11-01
+
+### Added
 
 - **Argo CD:** published address in cluster settings (`argoUrl`, migration `0007`). If set, `OpenArgoUI` opens it
   (`mode=external`) and does not create a port-forward or a proxy stream; works even with
