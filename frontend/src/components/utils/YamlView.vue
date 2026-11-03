@@ -48,7 +48,8 @@
 
 <script lang="ts" setup>
 import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
-import * as monaco from 'monaco-editor'
+import 'monaco-editor'
+import * as monaco from 'monaco-editor/editor/editor.api'
 import { useI18n } from 'vue-i18n'
 import { errorText } from '../../composables/errorText'
 import { useNotifications } from '../../composables/useNotifications'
