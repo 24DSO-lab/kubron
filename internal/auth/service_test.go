@@ -14,7 +14,8 @@ import (
 )
 
 func init() {
-	pbkdf2Iterations = 1000 // тесты не должны ждать полноценного хеширования
+	argon2Memory = 64 // тесты не должны ждать полноценного хеширования
+	argon2Time = 1
 }
 
 const goodPass = "correct horse"
@@ -497,13 +498,16 @@ func TestPasswordHashing(t *testing.T) {
 }
 
 func TestRehashOnOutdatedParameters(t *testing.T) {
-	old := pbkdf2Iterations
-	pbkdf2Iterations = 500
-	h, _ := hashPassword(goodPass)
-	pbkdf2Iterations = old
+	oldMemory, oldTime := argon2Memory, argon2Time
+	argon2Memory, argon2Time = 32, 1
+	h, err := hashPassword(goodPass)
+	if err != nil {
+		t.Fatal(err)
+	}
+	argon2Memory, argon2Time = oldMemory, oldTime
 	ok, rehash := verifyPassword(goodPass, h)
 	if !ok || !rehash {
-		t.Fatalf("ok=%v rehash=%v: an outdated hash must be rehashed", ok, rehash)
+		t.Fatalf("ok=%v rehash=%v: an outdated Argon2id hash must be rehashed", ok, rehash)
 	}
 	if _, rehash := verifyPassword(goodPass, mustHash(t, goodPass)); rehash {
 		t.Error("a fresh hash must not be rehashed")

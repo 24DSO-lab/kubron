@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- **Password hashing:** new passwords use Argon2id (v=19, 19 MiB, 2 iterations, 1 lane). Existing PBKDF2-HMAC-SHA256 hashes remain verifiable and are upgraded after a successful login; no forced password reset is required.
 - **Roles:** the `user` role no longer has `secrets.read`. It could read Secret values, Helm release values/manifests
   and certificate expiry, which contradicts a read-only role. `operator` and `admin` keep the permission. The UI shows
   “no access” instead of hidden controls. **Behavior change:** grant the `operator` role to users who need these values.

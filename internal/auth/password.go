@@ -15,25 +15,34 @@ import (
 	"strconv"
 	"strings"
 	"unicode/utf8"
+
+	"golang.org/x/crypto/argon2"
 )
 
-// Хеш хранится строкой вида: pbkdf2-sha256$<итерации>$<соль base64>$<хеш base64>.
-// Число итераций лежит внутри строки, поэтому его можно увеличивать, не ломая старые пароли:
-// при успешном входе устаревший хеш пересчитывается (см. needsRehash).
+// New hashes use an explicit, versioned Argon2id encoding:
+// argon2id$v=19$m=<KiB>,t=<iterations>,p=<parallelism>$<salt>$<key>.
+// PBKDF2 hashes remain readable for a transparent migration on successful login.
 const (
-	hashScheme   = "pbkdf2-sha256"
-	saltLength   = 16
-	keyLength    = 32
-	maxIter      = 10_000_000 // защита от подменённого файла с абсурдным числом итераций
-	minPassRunes = 8
-	maxPassBytes = 256
+	hashScheme       = "argon2id"
+	legacyHashScheme = "pbkdf2-sha256"
+	saltLength       = 16
+	keyLength        = 32
+	minPassRunes     = 8
+	maxPassBytes     = 256
+
+	maxPBKDF2Iter   = 10_000_000
+	maxArgonMemory  = 64 * 1024 // KiB; reject hostile parameters before allocating memory.
+	maxArgonTime    = 10
+	maxArgonThreads = 16
 )
 
-// pbkdf2Iterations — актуальная стоимость хеширования (рекомендация OWASP для PBKDF2-HMAC-SHA256).
-// Переменная, а не константа, только чтобы тесты могли ускорять хеширование.
-var pbkdf2Iterations = 600_000
-
-var usernameRe = regexp.MustCompile(`^[A-Za-z0-9._-]{3,32}$`)
+var (
+	// OWASP baseline: 19 MiB, 2 iterations, one lane.
+	argon2Memory  = uint32(19 * 1024) // KiB; variable so tests can use cheaper parameters.
+	argon2Time    = uint32(2)
+	argon2Threads = uint8(1)
+	usernameRe    = regexp.MustCompile(`^[A-Za-z0-9._-]{3,32}$`)
+)
 
 // ValidateUsername проверяет формат логина.
 func ValidateUsername(username string) error {
@@ -59,43 +68,100 @@ func hashPassword(password string) (string, error) {
 	if _, err := rand.Read(salt); err != nil {
 		return "", fmt.Errorf("failed to get random data: %w", err)
 	}
-	key, err := pbkdf2.Key(sha256.New, password, salt, pbkdf2Iterations, keyLength)
-	if err != nil {
-		return "", err
-	}
-	return strings.Join([]string{
-		hashScheme,
-		strconv.Itoa(pbkdf2Iterations),
+	key := argon2.IDKey(passwordBytes(password), salt, argon2Time, argon2Memory, argon2Threads, keyLength)
+	return fmt.Sprintf("%s$v=19$m=%d,t=%d,p=%d$%s$%s",
+		hashScheme, argon2Memory, argon2Time, argon2Threads,
 		base64.RawStdEncoding.EncodeToString(salt),
-		base64.RawStdEncoding.EncodeToString(key),
-	}, "$"), nil
+		base64.RawStdEncoding.EncodeToString(key)), nil
 }
 
-// verifyPassword сравнивает пароль с сохранённым хешем за постоянное время.
-// needsRehash == true, если хеш посчитан с устаревшими параметрами.
+func passwordBytes(password string) []byte {
+	return []byte(password)
+}
+
+// verifyPassword uses constant-time comparison and reports whether a successful login
+// should upgrade the stored hash to the current Argon2id parameters.
 func verifyPassword(password, encoded string) (ok, needsRehash bool) {
 	parts := strings.Split(encoded, "$")
-	if len(parts) != 4 || parts[0] != hashScheme {
+	if len(parts) == 4 && parts[0] == legacyHashScheme {
+		return verifyPBKDF2(password, parts)
+	}
+	if len(parts) != 5 || parts[0] != hashScheme || parts[1] != "v=19" {
 		return false, false
 	}
-	iter, err := strconv.Atoi(parts[1])
-	if err != nil || iter < 1 || iter > maxIter {
+
+	var memory, iterations uint32
+	var threads uint8
+	params := strings.Split(parts[2], ",")
+	if len(params) != 3 {
 		return false, false
 	}
-	salt, err := base64.RawStdEncoding.DecodeString(parts[2])
-	if err != nil || len(salt) == 0 {
+	for _, param := range params {
+		kv := strings.SplitN(param, "=", 2)
+		if len(kv) != 2 {
+			return false, false
+		}
+		switch kv[0] {
+		case "m":
+			n, err := strconv.ParseUint(kv[1], 10, 32)
+			if err != nil {
+				return false, false
+			}
+			memory = uint32(n)
+		case "t":
+			n, err := strconv.ParseUint(kv[1], 10, 32)
+			if err != nil {
+				return false, false
+			}
+			iterations = uint32(n)
+		case "p":
+			n, err := strconv.ParseUint(kv[1], 10, 8)
+			if err != nil {
+				return false, false
+			}
+			threads = uint8(n)
+		default:
+			return false, false
+		}
+	}
+	if memory < 8*uint32(threads) || memory > maxArgonMemory ||
+		iterations < 1 || iterations > maxArgonTime ||
+		threads < 1 || threads > maxArgonThreads {
 		return false, false
 	}
-	want, err := base64.RawStdEncoding.DecodeString(parts[3])
-	if err != nil || len(want) == 0 {
+
+	salt, err := base64.RawStdEncoding.DecodeString(parts[3])
+	if err != nil || len(salt) < 8 || len(salt) > 64 {
 		return false, false
 	}
-	got, err := pbkdf2.Key(sha256.New, password, salt, iter, len(want))
-	if err != nil {
+	want, err := base64.RawStdEncoding.DecodeString(parts[4])
+	if err != nil || len(want) < 16 || len(want) > 64 {
 		return false, false
 	}
+	got := argon2.IDKey(passwordBytes(password), salt, iterations, memory, threads, uint32(len(want)))
 	if subtle.ConstantTimeCompare(got, want) != 1 {
 		return false, false
 	}
-	return true, iter < pbkdf2Iterations || len(want) != keyLength
+	return true, memory != argon2Memory || iterations != argon2Time ||
+		threads != argon2Threads || len(want) != keyLength
+}
+
+func verifyPBKDF2(password string, parts []string) (ok, needsRehash bool) {
+	iterations, err := strconv.Atoi(parts[1])
+	if err != nil || iterations < 1 || iterations > maxPBKDF2Iter {
+		return false, false
+	}
+	salt, err := base64.RawStdEncoding.DecodeString(parts[2])
+	if err != nil || len(salt) < 8 || len(salt) > 64 {
+		return false, false
+	}
+	want, err := base64.RawStdEncoding.DecodeString(parts[3])
+	if err != nil || len(want) < 16 || len(want) > 64 {
+		return false, false
+	}
+	got, err := pbkdf2.Key(sha256.New, password, salt, iterations, len(want))
+	if err != nil || subtle.ConstantTimeCompare(got, want) != 1 {
+		return false, false
+	}
+	return true, true
 }
