@@ -9,6 +9,7 @@ const releases = `${repo}/releases`
 export default defineConfig({
   title: 'Kubron',
   description: 'A Kubernetes Operations Workspace for desktop and self-hosted web. Multi-cluster operations, Helm and GitOps in one place.',
+
   lang: 'en-US',
   base: process.env.DOCS_BASE || '/',
   appearance: 'dark',

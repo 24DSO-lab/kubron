@@ -1,6 +1,8 @@
 # Features overview
 
+
 Kubron is a Kubernetes Operations Workspace available as a native Desktop application and a self-hosted Web application. Both editions share the same core workflows. Web can add shared access, team isolation and centralized administration when configured with PostgreSQL.
+
 
 ## At a glance
 

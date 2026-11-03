@@ -4,7 +4,9 @@ layout: home
 hero:
   name: Kubron
   text: Kubernetes, under control.
-  tagline: A Kubernetes Operations Workspace for Desktop and self-hosted Web. Manage clusters, workloads, Helm and GitOps from one focused workspace.
+
+  tagline: A private Kubernetes Operations Workspace for desktop and web. Manage clusters, workloads, Helm and GitOps from one focused workspace.
+
   actions:
     - theme: brand
       text: Download Kubron
@@ -46,7 +48,9 @@ features:
 
 ## Kubernetes operations, without the clutter
 
-Kubron brings everyday Kubernetes operations into one workspace. Choose a native Desktop application for individual work or a self-hosted Web edition for teams.
+
+Kubron brings everyday Kubernetes operations into one workspace across desktop and web: inspect cluster health, understand what changed, troubleshoot issues and take action without switching between a dozen tools.
+
 
 <div class="screenshot-grid">
   <figure>
@@ -93,7 +97,9 @@ Deploy Kubron in your own infrastructure and access it through a browser. Web ad
 
 ## Built with Go, Wails and Vue
 
-Both editions share the Kubron interface and core Kubernetes workflows. The Web edition adds centralized, multi-user operation on infrastructure you control.
+
+The desktop application is built with Go, Wails and Vue. Server mode serves the same UI over HTTP for multi-user teams, with PostgreSQL-backed state, encrypted credentials and support for multiple replicas. It is designed to run behind a TLS-terminating reverse proxy.
+
 
 [Explore the Web edition →](/server/)
 

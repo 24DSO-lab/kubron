@@ -21,7 +21,7 @@ body:
       label: Mode
       options:
         - Desktop app
-        - Web mode (experimental)
+        - Web server
     validations:
       required: true
   - type: input

@@ -4,7 +4,9 @@ layout: home
 hero:
   name: Kubron
   text: Kubernetes под контролем.
+
   tagline: "Kubernetes Operations Workspace в двух версиях: Desktop-приложение и самостоятельно разворачиваемая Web-версия. Кластеры, ресурсы, Helm и GitOps — в одном месте."
+
   actions:
     - theme: brand
       text: Скачать Kubron
@@ -46,7 +48,9 @@ features:
 
 ## Всё необходимое для ежедневной работы с Kubernetes
 
+
 Kubron объединяет повседневные операции с Kubernetes в одном рабочем пространстве. Выберите desktop-приложение для индивидуальной работы или собственную Web-версию для команды.
+
 
 <div class="screenshot-grid">
   <figure>
@@ -93,7 +97,9 @@ Kubron объединяет повседневные операции с Kuberne
 
 ## Go, Wails и Vue
 
+
 Обе версии используют общий интерфейс Kubron и основные сценарии работы с Kubernetes. Web-версия добавляет централизованную совместную работу на инфраструктуре, которую контролируете вы.
+
 
 [Подробнее о Web-версии →](/ru/server/)
 
