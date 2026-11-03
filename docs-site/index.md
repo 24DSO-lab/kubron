@@ -4,7 +4,7 @@ layout: home
 hero:
   name: Kubron
   text: Kubernetes, under control.
-  tagline: A fast, private Kubernetes desktop IDE. Manage clusters, workloads, Helm and GitOps from one focused workspace.
+  tagline: A Kubernetes Operations Workspace for Desktop and self-hosted Web. Manage clusters, workloads, Helm and GitOps from one focused workspace.
   actions:
     - theme: brand
       text: Download Kubron
@@ -46,7 +46,7 @@ features:
 
 ## Kubernetes operations, without the clutter
 
-Kubron brings the everyday Kubernetes workflow into one desktop application: inspect the state of your clusters, understand what changed, and take action without switching between a dozen tools.
+Kubron brings everyday Kubernetes operations into one workspace. Choose a native Desktop application for individual work or a self-hosted Web edition for teams.
 
 <div class="screenshot-grid">
   <figure>
@@ -67,7 +67,7 @@ Kubron brings the everyday Kubernetes workflow into one desktop application: ins
   </figure>
 </div>
 
-## Built for the way Kubernetes is operated
+## Two editions. One Kubernetes workspace.\n\n### Desktop\n\nRun Kubron locally on Windows, Linux or macOS. No server deployment or mandatory account is required; your kubeconfig stays on your machine.\n\n[Get started with Desktop →](/guide/desktop)\n\n### Web\n\nDeploy Kubron in your own infrastructure and access it through a browser. Web adds multi-user accounts, roles, permissions and shared state backed by PostgreSQL. It is self-hosted, not a hosted SaaS service.\n\n[Get started with Web →](/guide/web)\n\n## Built for the way Kubernetes is operated
 
 - **Multi-cluster workflows** — name and color-code clusters, tag environments, and choose one or several namespaces. Restricted RBAC is supported; partial access failures are surfaced.
 - **Live resource views** — shared informers keep lists and the dashboard current without aggressive polling.
