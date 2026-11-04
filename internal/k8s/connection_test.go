@@ -64,7 +64,7 @@ func TestClassifyAuth(t *testing.T) {
 func TestPolicyAllowsEverythingOnDesktop(t *testing.T) {
 	cfg := kubeconfigWith(&clientcmdapi.AuthInfo{Exec: &clientcmdapi.ExecConfig{Command: "aws"}, ClientKey: "/home/u/key"},
 		&clientcmdapi.Cluster{Server: "https://x", CertificateAuthority: "/home/u/ca.crt"})
-	if err := CheckKubeconfigPolicy(cfg, "ctx", false); err != nil {
+	if err := CheckKubeconfigPolicy(cfg, "ctx"); err != nil {
 		t.Fatalf("desktop must behave like kubectl: %v", err)
 	}
 }
@@ -75,28 +75,47 @@ func TestWebPolicy(t *testing.T) {
 	login := oidcExec("--oidc-issuer-url=https://idp", "--oidc-client-id=k8s", "--grant-type=password")
 	browser := oidcExec("--oidc-issuer-url=https://idp", "--oidc-client-id=k8s")
 
+	// Adding a kubeconfig: the sign-in method is the broker's business, so exec kinds are accepted (and stored);
+	// only the address and local files are checked.
 	for _, c := range []struct {
-		name  string
-		cfg   *clientcmdapi.Config
-		creds bool
-		want  error
+		name string
+		cfg  *clientcmdapi.Config
+		want error
 	}{
-		{"token is fine", kubeconfigWith(&clientcmdapi.AuthInfo{Token: "t"}, nil), false, nil},
+		{"token is fine", kubeconfigWith(&clientcmdapi.AuthInfo{Token: "t"}, nil), nil},
 		{"embedded certificates are fine", kubeconfigWith(&clientcmdapi.AuthInfo{ClientCertificateData: []byte("c"), ClientKeyData: []byte("k")},
-			&clientcmdapi.Cluster{Server: "https://x", CertificateAuthorityData: []byte("ca")}), false, nil},
-		{"exec is forbidden", kubeconfigWith(aws, nil), false, ErrExecForbidden},
-		{"exec stays forbidden even with oidc credentials", kubeconfigWith(aws, nil), true, ErrExecForbidden},
-		{"oidc login asks for credentials", kubeconfigWith(login, nil), false, ErrOIDCLoginRequired},
-		{"oidc login with credentials is accepted", kubeconfigWith(login, nil), true, nil},
-		{"browser sign-in is explained", kubeconfigWith(browser, nil), false, ErrOIDCAuthCode},
-		{"browser sign-in is not rescued by credentials", kubeconfigWith(browser, nil), true, ErrOIDCAuthCode},
-		{"ca file", kubeconfigWith(&clientcmdapi.AuthInfo{Token: "t"}, &clientcmdapi.Cluster{Server: "https://x", CertificateAuthority: "/etc/ssl/ca.pem"}), false, ErrLocalFilesForbidden},
-		{"client key file", kubeconfigWith(&clientcmdapi.AuthInfo{ClientCertificateData: []byte("c"), ClientKey: "/root/.ssh/id"}, nil), false, ErrLocalFilesForbidden},
-		{"token file", kubeconfigWith(&clientcmdapi.AuthInfo{TokenFile: "/var/run/secrets/token"}, nil), false, ErrLocalFilesForbidden},
+			&clientcmdapi.Cluster{Server: "https://x", CertificateAuthorityData: []byte("ca")}), nil},
+		{"cloud exec is accepted", kubeconfigWith(aws, nil), nil},
+		{"oidc password is accepted", kubeconfigWith(login, nil), nil},
+		{"oidc browser sign-in is accepted", kubeconfigWith(browser, nil), nil},
+		{"ca file", kubeconfigWith(&clientcmdapi.AuthInfo{Token: "t"}, &clientcmdapi.Cluster{Server: "https://x", CertificateAuthority: "/etc/ssl/ca.pem"}), ErrLocalFilesForbidden},
+		{"client key file", kubeconfigWith(&clientcmdapi.AuthInfo{ClientCertificateData: []byte("c"), ClientKey: "/root/.ssh/id"}, nil), ErrLocalFilesForbidden},
+		{"token file", kubeconfigWith(&clientcmdapi.AuthInfo{TokenFile: "/var/run/secrets/token"}, nil), ErrLocalFilesForbidden},
 	} {
-		if err := CheckKubeconfigPolicy(c.cfg, "ctx", c.creds); !errors.Is(err, c.want) {
+		if err := CheckKubeconfigPolicy(c.cfg, "ctx"); !errors.Is(err, c.want) {
 			t.Errorf("%s: got %v, want %v", c.name, err, c.want)
 		}
+	}
+}
+
+// Exec is never run on the server: every path that hands the kubeconfig to client-go as it is refuses it.
+func TestExecIsNeverRunWhereForbidden(t *testing.T) {
+	restrictive(t)
+	for name, ai := range map[string]*clientcmdapi.AuthInfo{
+		"cloud":   {Exec: &clientcmdapi.ExecConfig{Command: "aws", Args: []string{"eks", "get-token"}}},
+		"oidc":    oidcExec("--oidc-issuer-url=https://idp", "--oidc-client-id=k8s", "--grant-type=password"),
+		"browser": oidcExec("--oidc-issuer-url=https://idp", "--oidc-client-id=k8s"),
+	} {
+		if err := checkExecAllowed(kubeconfigWith(ai, nil), "ctx"); !errors.Is(err, ErrExecForbidden) {
+			t.Errorf("%s: got %v, want ErrExecForbidden", name, err)
+		}
+	}
+	if err := checkExecAllowed(kubeconfigWith(&clientcmdapi.AuthInfo{Token: "t"}, nil), "ctx"); err != nil {
+		t.Errorf("a token needs no plugin: %v", err)
+	}
+	SetConnectionPolicy(ConnectionPolicy{AllowExec: true, AllowLocalFiles: true})
+	if err := checkExecAllowed(kubeconfigWith(&clientcmdapi.AuthInfo{Exec: &clientcmdapi.ExecConfig{Command: "aws"}}, nil), "ctx"); err != nil {
+		t.Errorf("desktop runs plugins: %v", err)
 	}
 }
 

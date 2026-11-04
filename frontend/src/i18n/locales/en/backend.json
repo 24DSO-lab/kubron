@@ -482,8 +482,6 @@
   "unknownExportFormatUseCsvOrJson": "unknown export format: use csv or json",
   "kubronClusterCheckInterval": "KUBRON_CLUSTER_CHECK_INTERVAL {p0}: {p1}",
   "clusterCheckIntervalMustBe0": "cluster check interval must be 0 (off) or at least 5s",
-  "connOidcLoginRequired": "this kubeconfig uses oidc-login with a password grant: enter a login and password",
-  "connOidcBrowserSignIn": "oidc-login with a browser sign-in cannot run on the server: use a password grant, a token or a client certificate",
   "connExecForbidden": "credential plugins (exec) are not allowed in web mode: use a token or a client certificate",
   "connLocalFilesForbidden": "the kubeconfig refers to files on the server: embed certificates and tokens in it (the -data fields)",
   "connLoginPasswordRequired": "login and password are required",

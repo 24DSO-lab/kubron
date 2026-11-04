@@ -187,7 +187,7 @@ func addClusterFromData(data []byte, settings ClusterSettings, teamID string, oi
 		return nil, err
 	}
 
-	if err := CheckKubeconfigPolicy(cfg, contextName, oidc != nil); err != nil {
+	if err := CheckKubeconfigPolicy(cfg, contextName); err != nil {
 		return nil, err
 	}
 

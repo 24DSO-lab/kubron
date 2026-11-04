@@ -72,10 +72,6 @@ const (
 
 // Ошибки политики подключений; тексты сопоставлены переводам в backend.json.
 var (
-	// ErrOIDCLoginRequired — kubeconfig использует oidc-login с паролем: нужны логин и пароль.
-	ErrOIDCLoginRequired = errors.New("this kubeconfig uses oidc-login with a password grant: enter a login and password")
-	// ErrOIDCAuthCode — вход через браузер на сервере невозможен.
-	ErrOIDCAuthCode = errors.New("oidc-login with a browser sign-in cannot run on the server: use a password grant, a token or a client certificate")
 	// ErrExecForbidden — exec-плагины в веб-версии запрещены.
 	ErrExecForbidden = errors.New("credential plugins (exec) are not allowed in web mode: use a token or a client certificate")
 	// ErrLocalFilesForbidden — kubeconfig ссылается на файлы машины с сервером.
@@ -120,31 +116,34 @@ func checkLocalFiles(cfg *clientcmdapi.Config, ctxName string) error {
 	return nil
 }
 
-// CheckKubeconfigPolicy применяет политику к выбранному контексту. oidcCredentials — пользователь уже дал логин и
-// пароль для oidc-login: тогда exec-блок не запускается и не считается нарушением, но остальные правила действуют.
-func CheckKubeconfigPolicy(cfg *clientcmdapi.Config, ctxName string, oidcCredentials bool) error {
+// CheckKubeconfigPolicy применяет к выбранному контексту проверки, не зависящие от способа входа: адрес сервера
+// (политика адресов) и ссылки на файлы машины с сервером. Способ входа определяет credential.Broker.Describe
+// (ADR-0018): oidc-login и облачные плагины больше не отклоняются при добавлении кластера, их блок exec не
+// выполняется (см. checkExecAllowed и ConfigFor).
+func CheckKubeconfigPolicy(cfg *clientcmdapi.Config, ctxName string) error {
 	// Адрес API-сервера из kubeconfig пользователя проверяется политикой адресов (если она включена).
 	if err := checkClusterAddress(cfg, ctxName); err != nil {
 		return err
 	}
-	p := currentPolicy()
-	if !p.AllowLocalFiles {
+	if !currentPolicy().AllowLocalFiles {
 		if err := checkLocalFiles(cfg, ctxName); err != nil {
 			return err
 		}
 	}
-	if p.AllowExec {
+	return nil
+}
+
+// checkExecAllowed не даёт запустить блок exec там, где политика это запрещает (веб). Вызывается на каждом пути,
+// который отдаёт kubeconfig клиенту client-go как есть, то есть мог бы запустить плагин: прежнее подключение без
+// брокера и пробное подключение. Путь через брокер блок exec удаляет и сюда не попадает.
+func checkExecAllowed(cfg *clientcmdapi.Config, ctxName string) error {
+	if currentPolicy().AllowExec {
 		return nil
 	}
-	switch kind, _ := ClassifyAuth(cfg, ctxName); kind {
-	case AuthOIDCPassword:
-		if !oidcCredentials {
-			return ErrOIDCLoginRequired
+	if c := cfg.Contexts[ctxName]; c != nil {
+		if ai := cfg.AuthInfos[c.AuthInfo]; ai != nil && ai.Exec != nil {
+			return ErrExecForbidden
 		}
-	case AuthOIDCAuthCode:
-		return ErrOIDCAuthCode
-	case AuthExec:
-		return ErrExecForbidden
 	}
 	return nil
 }
@@ -342,7 +341,7 @@ func oidcRestConfig(clusterID string, meta *ClusterMeta) (*rest.Config, error) {
 			return nil, err
 		}
 	}
-	if err := CheckKubeconfigPolicy(kc, ctxName, true); err != nil {
+	if err := CheckKubeconfigPolicy(kc, ctxName); err != nil {
 		return nil, err
 	}
 	// Блок exec больше не нужен и не должен запускаться: токен выдаёт сам сервер.
@@ -396,5 +395,8 @@ func checkStoredPolicy(clusterID string, meta *ClusterMeta) error {
 			return err
 		}
 	}
-	return CheckKubeconfigPolicy(cfg, ctxName, false)
+	if err := CheckKubeconfigPolicy(cfg, ctxName); err != nil {
+		return err
+	}
+	return checkExecAllowed(cfg, ctxName)
 }

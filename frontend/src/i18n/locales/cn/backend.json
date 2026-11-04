@@ -482,8 +482,6 @@
   "unknownExportFormatUseCsvOrJson": "未知 export format: use csv or json",
   "kubronClusterCheckInterval": "KUBRON_CLUSTER_CHECK_INTERVAL {p0}: {p1}",
   "clusterCheckIntervalMustBe0": "cluster check interval 必须是 0 (off) or at least 5s",
-  "connOidcLoginRequired": "this kubeconfig uses oidc-login with a 密码 grant: enter a login and 密码",
-  "connOidcBrowserSignIn": "oidc-login with a browser sign-in 无法 run on the server: use a password grant, a token or a client certificate",
   "connExecForbidden": "Web 模式不允许凭证插件（exec）：请使用令牌或客户端证书",
   "connLocalFilesForbidden": "kubeconfig 引用了服务器上的文件：请将证书和令牌嵌入其中（-data 字段）",
   "connLoginPasswordRequired": "login and 密码 are required",

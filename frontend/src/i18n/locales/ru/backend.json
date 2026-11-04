@@ -482,8 +482,6 @@
   "unknownExportFormatUseCsvOrJson": "неизвестный формат выгрузки: используйте csv или json",
   "kubronClusterCheckInterval": "KUBRON_CLUSTER_CHECK_INTERVAL {p0}: {p1}",
   "clusterCheckIntervalMustBe0": "интервал проверки кластеров должен быть 0 (выключено) или не меньше 5 с",
-  "connOidcLoginRequired": "Этот kubeconfig использует oidc-login с паролем (grant password): введите логин и пароль",
-  "connOidcBrowserSignIn": "oidc-login со входом через браузер на сервере не работает: используйте grant password, токен или клиентский сертификат",
   "connExecForbidden": "Плагины учётных данных (exec) в веб-режиме запрещены: используйте токен или клиентский сертификат",
   "connLocalFilesForbidden": "kubeconfig ссылается на файлы сервера: встройте сертификаты и токены в него (поля -data)",
   "connLoginPasswordRequired": "Нужны логин и пароль",
