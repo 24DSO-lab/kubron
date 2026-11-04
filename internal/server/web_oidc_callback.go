@@ -8,6 +8,9 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+
+	"github.com/24DSO-labs/kubron/internal/auth"
+	"github.com/24DSO-labs/kubron/internal/credential"
 )
 
 const (
@@ -62,10 +65,25 @@ func webOIDCCallbackHandler(g *Guard, complete func(view any, state, redirectURL
 				fail(http.StatusTooManyRequests)
 				return
 			}
-			fail(http.StatusBadRequest)
+			if callbackRejected(err) {
+				fail(http.StatusBadRequest)
+				return
+			}
+			w.Header().Set("Retry-After", "5")
+			fail(http.StatusServiceUnavailable)
 			return
 		}
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(webOIDCCallbackOK))
 	})
+}
+
+func callbackRejected(err error) bool {
+	return errors.Is(err, credential.ErrChallengeExpired) ||
+		errors.Is(err, credential.ErrAnswerRejected) ||
+		errors.Is(err, credential.ErrInvalidAnswer) ||
+		errors.Is(err, credential.ErrInvalidGrant) ||
+		errors.Is(err, credential.ErrUnsupported) ||
+		errors.Is(err, auth.ErrNotAuthenticated) ||
+		errors.Is(err, auth.ErrForbidden)
 }
