@@ -28,6 +28,46 @@ func TestChallengeStoreContract(t *testing.T) {
 	})
 }
 
+func TestCredentialAttemptLimitsAreSharedAcrossPostgresStores(t *testing.T) {
+	ctx := context.Background()
+	s := newTestStore(t, keyString("k1"))
+	a := s.Challenges()
+	b := openSecond(t, s.keys).Challenges()
+	now := time.Date(2026, 11, 4, 12, 0, 0, 0, time.UTC)
+
+	for i := 0; i < 2; i++ {
+		if _, err := a.Fail(ctx, "opaque-user-hash", "opaque-idp-hash", now, 15*time.Minute, 2, 3, 5*time.Minute); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if wait, err := b.Check(ctx, "opaque-user-hash", "opaque-idp-hash", now); err != nil || wait != 5*time.Minute {
+		t.Fatalf("shared user lockout = %s, %v", wait, err)
+	}
+
+	if err := a.Reset(ctx, "opaque-user-hash", "opaque-idp-hash"); err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 3; i++ {
+		userKey := fmt.Sprintf("opaque-user-%d", i)
+		if _, err := a.Fail(ctx, userKey, "opaque-idp-hash", now, 15*time.Minute, 10, 3, 5*time.Minute); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if wait, err := b.Check(ctx, "another-user", "opaque-idp-hash", now); err != nil || wait != 5*time.Minute {
+		t.Fatalf("shared IdP lockout = %s, %v", wait, err)
+	}
+
+	var stored string
+	if err := s.pool.QueryRow(ctx, `SELECT string_agg(dimension || ':' || key_hash, ' ') FROM credential_attempt_limits`).Scan(&stored); err != nil {
+		t.Fatal(err)
+	}
+	for _, raw := range []string{"alice", "login.example.test", "another-user"} {
+		if strings.Contains(stored, raw) {
+			t.Errorf("limiter stored raw identity %q: %s", raw, stored)
+		}
+	}
+}
+
 func TestChallengesDieWithTheCluster(t *testing.T) {
 	ctx := context.Background()
 	s := newTestStore(t, keyString("k1"))
