@@ -327,7 +327,7 @@ func CompleteWebOIDCCallback(a *App, state, redirectURL string) error {
 	if _, err := a.auth.Current(); err != nil {
 		return err
 	}
-	sub, err := cb.CallbackSubject(context.Background(), a.sessionID, state)
+	sub, desc, err := cb.CallbackSubject(context.Background(), a.sessionID, state)
 	if err != nil {
 		if errors.Is(err, credential.ErrChallengeExpired) {
 			return credential.ErrChallengeExpired
@@ -339,6 +339,9 @@ func CompleteWebOIDCCallback(a *App, state, redirectURL string) error {
 		need = auth.PermClusterManage
 	}
 	if err := a.authzCluster(need, sub.ClusterID); err != nil {
+		return err
+	}
+	if err := a.limitCallback(idpKey(desc, sub.ClusterID)); err != nil {
 		return err
 	}
 	res, err := cb.AnswerCallback(context.Background(), sub, state, redirectURL)
