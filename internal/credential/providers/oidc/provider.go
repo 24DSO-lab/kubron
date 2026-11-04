@@ -56,7 +56,7 @@ func (*Provider) Kind() credential.Kind { return credential.KindOIDC }
 func (p *Provider) Begin(ctx context.Context, env credential.Env, req credential.Request) (credential.Result, error) {
 	sv, svErr := parseSaved(req.Saved)
 	stale := len(req.Saved) > 0 && svErr != nil
-	cfg, err := newConfig(req.Descriptor, sv)
+	cfg, err := newConfig(req.Descriptor, sv, env.Desktop)
 	if err != nil {
 		return credential.Result{}, err
 	}
@@ -91,7 +91,7 @@ func (p *Provider) Begin(ctx context.Context, env credential.Env, req credential
 // challenges with Poll (device code, loopback) an empty Answer is a poll.
 func (p *Provider) Continue(ctx context.Context, env credential.Env, req credential.Request) (credential.Result, error) {
 	sv, _ := parseSaved(req.Saved)
-	cfg, err := newConfig(req.Descriptor, sv)
+	cfg, err := newConfig(req.Descriptor, sv, env.Desktop)
 	if err != nil {
 		return credential.Result{}, err
 	}

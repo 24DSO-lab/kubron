@@ -647,6 +647,7 @@
   "credOIDCIDTokenInvalid": "无法验证 ID 令牌",
   "credOIDCNonceMismatch": "ID 令牌中的 nonce 不匹配",
   "credOIDCSignInStateInvalid": "登录状态无效",
-  "credOIDCAddressNotAllowed": "不允许使用该地址"
+  "credOIDCAddressNotAllowed": "不允许使用该地址",
+  "credOIDCIssuerMixup": "登录响应来自意外的颁发者"
 
 }

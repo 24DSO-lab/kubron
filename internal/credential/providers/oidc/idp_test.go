@@ -14,6 +14,7 @@ import (
 	"math/big"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"net/url"
 	"strings"
 	"sync"
@@ -86,7 +87,11 @@ type fakeIdP struct {
 	lastIDToken   string
 	lastAccess    string
 	lastRefresh   string
-	endpointHost  string // overrides the host of endpoints in discovery (policy tests)
+	badEndpoint   string // name of a discovery endpoint (auth, token, jwks, device) that points at a forbidden address
+	noSub         bool
+	noIDToken     bool
+	tokenIssuer   string        // issuer inside ID tokens only
+	ttl           time.Duration // lifetime of ID tokens (default 5 minutes)
 	counter       int
 }
 
@@ -144,21 +149,23 @@ func (f *fakeIdP) serve(w http.ResponseWriter, r *http.Request) {
 }
 
 func (f *fakeIdP) discovery(w http.ResponseWriter) {
-	base := f.issuer()
-	if f.endpointHost != "" {
-		base = f.endpointHost
+	ep := func(name, path string) string {
+		if f.badEndpoint == name {
+			return "https://169.254.169.254" + path
+		}
+		return f.issuer() + path
 	}
 	doc := map[string]any{
 		"issuer":                 f.issuer(),
-		"authorization_endpoint": base + "/auth",
-		"token_endpoint":         base + "/token",
-		"jwks_uri":               base + "/jwks",
+		"authorization_endpoint": ep("auth", "/auth"),
+		"token_endpoint":         ep("token", "/token"),
+		"jwks_uri":               ep("jwks", "/jwks"),
 	}
 	if f.issOverride != "" {
 		doc["issuer"] = f.issOverride
 	}
 	if f.deviceEnabled {
-		doc["device_authorization_endpoint"] = base + "/device"
+		doc["device_authorization_endpoint"] = ep("device", "/device")
 	}
 	if f.issParam {
 		doc["authorization_response_iss_parameter_supported"] = true
@@ -272,22 +279,32 @@ func (f *fakeIdP) device(w http.ResponseWriter, r *http.Request) {
 // issue answers with a full token set; the caller holds f.mu.
 func (f *fakeIdP) issue(w http.ResponseWriter, user, nonce string) {
 	iss := f.issuer()
-	if f.issOverride != "" {
-		iss = f.issOverride
+	if f.tokenIssuer != "" {
+		iss = f.tokenIssuer
 	}
 	aud := testClient
 	if f.audOverride != "" {
 		aud = f.audOverride
 	}
 	now := f.clock.Now()
-	claims := map[string]any{"iss": iss, "sub": "sub-" + user, "aud": aud, "iat": now.Unix(), "exp": now.Add(5 * time.Minute).Unix(),
+	ttl := f.ttl
+	if ttl == 0 {
+		ttl = 5 * time.Minute
+	}
+	claims := map[string]any{"iss": iss, "sub": "sub-" + user, "aud": aud, "iat": now.Unix(), "exp": now.Add(ttl).Unix(),
 		"preferred_username": user}
+	if f.noSub {
+		delete(claims, "sub")
+	}
 	if nonce != "" {
 		claims["nonce"] = nonce
 	}
 	idt := f.sign(claims)
 	if f.badSignature {
 		idt = idt[:len(idt)-6] + "AAAAAA"
+	}
+	if f.noIDToken {
+		idt = ""
 	}
 	resp := map[string]any{"access_token": f.next("access"), "id_token": idt, "token_type": "Bearer", "expires_in": 300}
 	if !f.noRefresh {
@@ -409,4 +426,8 @@ func mustChallenge(t *testing.T, res credential.Result, err error, kind credenti
 		t.Fatalf("expected a %s challenge, got %+v", kind, res)
 	}
 	return *res.Challenge
+}
+
+func loopbackPrefixes() []netip.Prefix {
+	return []netip.Prefix{netip.MustParsePrefix("127.0.0.0/8")}
 }

@@ -647,6 +647,7 @@
   "credOIDCIDTokenInvalid": "не удалось проверить ID-токен",
   "credOIDCNonceMismatch": "nonce в ID-токене не совпадает",
   "credOIDCSignInStateInvalid": "состояние входа повреждено",
-  "credOIDCAddressNotAllowed": "адрес не разрешён"
+  "credOIDCAddressNotAllowed": "адрес не разрешён",
+  "credOIDCIssuerMixup": "ответ входа получен от неожиданного издателя"
 
 }

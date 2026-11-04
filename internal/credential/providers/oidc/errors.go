@@ -23,6 +23,7 @@ var (
 	errTokenRequest   = errors.New("the identity provider rejected the token request")
 	errTokenResponse  = errors.New("the identity provider returned an invalid token response")
 	errIDToken        = errors.New("the ID token could not be verified")
+	errMixup          = errors.New("the sign-in response came from an unexpected issuer")
 	errNonce          = errors.New("the ID token nonce does not match")
 	errPending        = errors.New("the sign-in state is invalid")
 )

@@ -6,6 +6,7 @@ package oidc
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"slices"
 	"strings"
@@ -49,6 +50,13 @@ func (p *Provider) newSession(env credential.Env, cfg config) (*session, error) 
 		if hc, err = idpnet.NewClient(opts); err != nil {
 			return nil, err
 		}
+	}
+	hc, err := idpnet.WithTLS(hc, env.Desktop, cfg.caPEM, cfg.insecure)
+	if err != nil {
+		if errors.Is(err, idpnet.ErrInsecureTLS) {
+			return nil, credential.ErrUnsupported
+		}
+		return nil, err
 	}
 	now := env.Now
 	if now == nil {

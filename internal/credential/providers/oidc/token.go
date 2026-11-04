@@ -14,6 +14,7 @@ import (
 	"net/url"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/24DSO-labs/kubron/internal/credential"
 	"github.com/24DSO-labs/kubron/internal/idpnet"
@@ -142,7 +143,33 @@ func (s *session) token(ctx context.Context, d *discovery, tr *tokenResponse, no
 	if principal == "" {
 		principal = login
 	}
-	return credential.Token{Value: tr.IDToken, Expiry: idt.Expiry, Principal: principal}, nil
+	tok := credential.Token{Value: tr.IDToken, Expiry: idt.Expiry, Principal: principal}
+	if s.cfg.useAccessToken {
+		// kubelogin --oidc-use-access-token: the API server is configured to accept the access token. The ID
+		// token was still verified above, so the sign-in itself is trusted.
+		if tr.AccessToken == "" {
+			return credential.Token{}, errTokenResponse
+		}
+		tok.Value = tr.AccessToken
+		if n, err := tr.ExpiresIn.Int64(); err == nil && n > 0 {
+			tok.Expiry = s.now().Add(time.Duration(n) * time.Second)
+		}
+	}
+	return tok, nil
+}
+
+// checkIssuerParam applies RFC 9207 to the parameters of an authorization response: when the response names
+// its issuer it must be the one that was asked (a client that talks to several providers is otherwise open to
+// a mix-up attack), and when the provider announced that it always sends iss, it must be there.
+func (d *discovery) checkIssuerParam(q url.Values) error {
+	iss := q.Get("iss")
+	switch {
+	case iss != "" && trimSlash(iss) != trimSlash(d.Issuer):
+		return errMixup
+	case iss == "" && d.IssParameter:
+		return errMixup
+	}
+	return nil
 }
 
 // randString returns n random bytes as unpadded base64url.
