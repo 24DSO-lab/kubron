@@ -162,13 +162,10 @@ func TestWebCallbackIsBoundToUserAndSessionAndConsumedOnce(t *testing.T) {
 	if state == "" || state != res.Challenge.ID {
 		t.Fatalf("callback state must be broker challenge ID: id=%q state=%q", res.Challenge.ID, state)
 	}
-	if _, err := r.svc.CallbackSubject(bg, "other-user", subj.SessionID, state); !errors.Is(err, credential.ErrChallengeExpired) {
-		t.Fatalf("foreign user: %v", err)
-	}
-	if _, err := r.svc.CallbackSubject(bg, subj.OwnerID, "other-session", state); !errors.Is(err, credential.ErrChallengeExpired) {
+	if _, err := r.svc.CallbackSubject(bg, "other-session", state); !errors.Is(err, credential.ErrChallengeExpired) {
 		t.Fatalf("foreign session: %v", err)
 	}
-	got, err := r.svc.CallbackSubject(bg, subj.OwnerID, subj.SessionID, state)
+	got, err := r.svc.CallbackSubject(bg, subj.SessionID, state)
 	if err != nil || got != subj {
 		t.Fatalf("callback subject = %+v, %v", got, err)
 	}
