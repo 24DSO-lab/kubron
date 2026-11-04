@@ -27,18 +27,49 @@ jobs:
   # считается успешным, поэтому required checks остаются зелёными (в отличие от
   # paths-ignore на уровне workflow, где проверка не отчитывается и PR не вливается).
   # !cancelled() нужен, чтобы сбой этого job запускал остальные, а не «проходил» их пропуском.
+  #
+  # Документация здесь: docs/, docs-site/, *.md, шаблоны issue и CODEOWNERS. Если изменены только такие файлы,
+  # code=false и пропускаются все проверки кода. Исключение: манифесты зависимостей сайта документации
+  # (docs-site/package.json и package-lock.json). Их проверяют deps-audit и osv-scanner, и именно их обновляет
+  # Dependabot, поэтому при их правке запускается только deps-audit (deps=true), остальное пропускается.
+  # DCO и «License headers» (в том числе проверка формата CHANGELOG.md) идут всегда.
+  #
+  # Помимо этого job решает, что можно не гонять заново без потери качества:
+  #  - verified: для точно такого же содержимого (tree hash) полный прогон уже был зелёным. Merge-коммит PR,
+  #    коммит после слияния и повышение refactor -> dev -> master различаются SHA, но не содержимым, поэтому
+  #    результат тестов тот же. Тег, ручной запуск и проверки уязвимостей зависимостей (deps-audit,
+  #    vulncheck: база уязвимостей меняется со временем) заново выполняются всегда. См. .github/actions/verified-tree;
+  #  - go: PR, который меняет только frontend/ и docs-site/ (без *.go), не влияет на Go-проверки: Go-тесты
+  #    не читают файлы фронтенда, а main.go и frontend/embed.go встраивают заглушку dist. Только для
+  #    pull_request: push, тег и ручной запуск всегда идут полным набором.
   changes:
     name: Changes
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    permissions:
+      contents: read
+      # поиск отметки «дерево проверено» среди артефактов (verified-tree)
+      actions: read
     outputs:
       code: ${{ steps.diff.outputs.code }}
+      go: ${{ steps.diff.outputs.go }}
+      deps: ${{ steps.diff.outputs.deps }}
+      tree: ${{ steps.verified.outputs.tree }}
+      verified: ${{ steps.verified.outputs.verified }}
+      record: ${{ steps.verified.outputs.record }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           # pull_request проверяется на merge-коммите: HEAD^1..HEAD — весь PR целиком
           fetch-depth: 2
+
+      - name: Tree already verified?
+        id: verified
+        uses: ./.github/actions/verified-tree
+        with:
+          prefix: ci
+          token: ${{ github.token }}
 
       - name: Diff against the base
         id: diff
@@ -47,7 +78,12 @@ jobs:
           REF: ${{ github.ref }}
           BEFORE: ${{ github.event.before }}
         run: |
-          docs_only='^(docs/|\.github/ISSUE_TEMPLATE/)|\.md$'
+          # Файлы, не влияющие на работу кода: документация, сайт документации, шаблоны и владельцы репозитория
+          docs_only='^(docs|docs-site)/|^\.github/(ISSUE_TEMPLATE/|CODEOWNERS$)|\.md$'
+          # Манифесты зависимостей сайта документации остаются на аудите зависимостей (deps-audit)
+          docs_deps='^docs-site/package(-lock)?\.json$'
+          # Каталоги, чьи файлы (кроме *.go) не влияют на Go-проверки
+          no_go='^(frontend|docs-site)/'
           base=
           if [[ $EVENT == pull_request ]]; then
             base=HEAD^1
@@ -57,13 +93,26 @@ jobs:
           fi
           # Теги, вызов из release.yml, ручной запуск и всё, что нельзя сравнить, гоняют всё
           code=true
+          go=true
+          deps=true
           changed=
-          if [[ -n $base ]] && changed=$(git diff --no-renames --name-only "$base" HEAD) &&
-            [[ -n $changed ]] && ! grep -qvE "$docs_only" <<<"$changed"; then
-            code=false
+          # quotepath=off: иначе git берёт в кавычки и экранирует имена с не-ASCII символами
+          # (docs/Kubron план…md), и они не совпадают с шаблонами выше
+          if [[ -n $base ]] && changed=$(git -c core.quotepath=off diff --no-renames --name-only "$base" HEAD) &&
+            [[ -n $changed ]]; then
+            if ! grep -qvE "$docs_only" <<<"$changed"; then
+              code=false
+              # Аудит зависимостей нужен, только если среди правок есть манифест docs-site
+              grep -qE "$docs_deps" <<<"$changed" || deps=false
+            elif [[ $EVENT == pull_request ]] &&
+              ! grep -qvE "$docs_only|$no_go" <<<"$changed" && ! grep -qE '\.go$' <<<"$changed"; then
+              go=false
+            fi
           fi
           printf '%s\n' "$changed"
           echo "code=$code" | tee -a "$GITHUB_OUTPUT"
+          echo "go=$go" | tee -a "$GITHUB_OUTPUT"
+          echo "deps=$deps" | tee -a "$GITHUB_OUTPUT"
 
   dco:
     name: DCO (Signed-off-by)
@@ -91,7 +140,7 @@ jobs:
   licenses:
     name: Dependency licenses
     needs: changes
-    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && needs.changes.outputs.verified != 'true' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -138,7 +187,7 @@ jobs:
   go:
     name: Go (build, vet, test)
     needs: changes
-    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && needs.changes.outputs.verified != 'true' && needs.changes.outputs.go != 'false' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -181,7 +230,7 @@ jobs:
   go-race:
     name: Go (race)
     needs: changes
-    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && needs.changes.outputs.verified != 'true' && needs.changes.outputs.go != 'false' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -211,7 +260,7 @@ jobs:
   migrations:
     name: SQL migrations (PostgreSQL 16)
     needs: changes
-    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && needs.changes.outputs.verified != 'true' && needs.changes.outputs.go != 'false' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     services:
@@ -255,7 +304,7 @@ jobs:
   restore-check:
     name: Restore check (pg_dump, restore, key)
     needs: changes
-    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && needs.changes.outputs.verified != 'true' && needs.changes.outputs.go != 'false' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     services:
@@ -303,7 +352,7 @@ jobs:
   windows:
     name: Go (Windows)
     needs: changes
-    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && needs.changes.outputs.verified != 'true' && needs.changes.outputs.go != 'false' }}
     runs-on: windows-latest
     timeout-minutes: 20
     steps:
@@ -350,7 +399,7 @@ jobs:
   deps-audit:
     name: Dependencies (npm audit, osv-scanner)
     needs: changes
-    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
+    if: ${{ !cancelled() && needs.changes.outputs.deps != 'false' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
@@ -387,7 +436,7 @@ jobs:
   lint:
     name: Go (golangci-lint)
     needs: changes
-    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && needs.changes.outputs.verified != 'true' && needs.changes.outputs.go != 'false' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -412,7 +461,7 @@ jobs:
   frontend:
     name: Frontend (test, type-check, build)
     needs: changes
-    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && needs.changes.outputs.verified != 'true' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -466,7 +515,7 @@ jobs:
   build-web:
     name: Build (web frontend + server)
     needs: changes
-    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && needs.changes.outputs.verified != 'true' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -522,7 +571,7 @@ jobs:
   e2e:
     name: E2E (web, Playwright + kind)
     needs: [changes, build-web]
-    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && needs.build-web.result == 'success' }}
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && needs.changes.outputs.verified != 'true' && needs.build-web.result == 'success' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -653,7 +702,7 @@ jobs:
   e2e-pg:
     name: E2E (web on PostgreSQL, teams)
     needs: [changes, build-web]
-    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && needs.build-web.result == 'success' }}
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && needs.changes.outputs.verified != 'true' && needs.build-web.result == 'success' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
@@ -740,7 +789,7 @@ jobs:
   e2e-ha:
     name: E2E (HA, two replicas on one PostgreSQL)
     needs: [changes, build-web]
-    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && needs.build-web.result == 'success' }}
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && needs.changes.outputs.verified != 'true' && needs.build-web.result == 'success' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
@@ -839,3 +888,31 @@ jobs:
           path: |
             frontend/playwright-report-ha
             frontend/test-results
+
+  # Отметка «содержимое проверено» (см. verified-tree): артефакт ci-verified-<tree>. Пишется только после
+  # полностью зелёного прогона без единого пропуска (поэтому PR, пропустивший Go-job'ы по путям, или
+  # docs-only прогон отметки не оставляют), и только для push и PR из этого же репозитория. Тег, ручной
+  # запуск и форки отметок не пишут. Следующий прогон с тем же содержимым пропустит эти job'ы.
+  # Проверки уязвимостей (deps-audit, vulncheck) и DCO сюда не входят: они выполняются всегда.
+  record-verified:
+    name: Record verified tree
+    needs: [changes, headers, licenses, go, go-race, migrations, restore-check, windows, lint, frontend, build-web, e2e, e2e-pg, e2e-ha]
+    if: >-
+      ${{ !cancelled() && needs.changes.outputs.verified != 'true' && needs.changes.outputs.record == 'true' &&
+      !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') && !contains(needs.*.result, 'skipped') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Write the marker
+        env:
+          TREE: ${{ needs.changes.outputs.tree }}
+        run: |
+          [[ $TREE =~ ^[0-9a-f]{40,64}$ ]] || { echo "unexpected tree hash: $TREE"; exit 1; }
+          printf '%s\n' "$TREE" >verified-tree.txt
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ci-verified-${{ needs.changes.outputs.tree }}
+          path: verified-tree.txt
+          retention-days: 14
+          if-no-files-found: error

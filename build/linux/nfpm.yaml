@@ -10,8 +10,8 @@ section: devel
 priority: optional
 maintainer: Vadim
 description: |
-  Kubron: desktop Kubernetes manager.
-  Wails + Go + Vue application for working with clusters.
+  Kubron: Kubernetes Operations Workspace for desktop and web.
+  Go + Wails + Vue application for cluster visibility and operations.
 homepage: https://github.com/24DSO-labs/kubron
 license: Apache-2.0
 depends:

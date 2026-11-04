@@ -26,7 +26,7 @@ import (
 	"github.com/24DSO-labs/kubron/internal/pgstore"
 	webplatform "github.com/24DSO-labs/kubron/internal/platform/web"
 	"github.com/24DSO-labs/kubron/internal/replicaevents"
-	"github.com/24DSO-labs/kubron/internal/secretbox"
+	"github.com/24DSO-labs/kubron/internal/secrets"
 	"github.com/24DSO-labs/kubron/internal/server"
 	"github.com/24DSO-labs/kubron/internal/store"
 	"github.com/24DSO-labs/kubron/internal/websession"
@@ -118,6 +118,7 @@ func main() {
 		if err := checkSecretKey(ctx, pg); err != nil {
 			fatal("database", err)
 		}
+		migrateLegacyCredentials(ctx, pg, slog.Default())
 		pgStore = pg
 		// События между репликами (LISTEN/NOTIFY, ADR-0016): прямой адрес БД, не pgbouncer в режиме transaction.
 		listenURL := cfg.DBListenURL
@@ -234,11 +235,18 @@ func main() {
 
 // openPostgres подключается к БД, применяет миграции и готовит организацию по умолчанию.
 func openPostgres(ctx context.Context, cfg server.Config) (*pgstore.Store, error) {
-	keys, err := secretbox.ParseKeyring(cfg.SecretKey, cfg.PreviousSecretKeys...)
+	// С PostgreSQL мастер-ключ обязателен и приходит только из KUBRON_SECRET_KEY (источники-предупреждения
+	// key-file-* относятся к режимам без БД).
+	sel, err := secrets.Resolve(ctx, secrets.Options{
+		Mode: secrets.ModeServerPG, EnvKey: cfg.SecretKey, EnvPrevious: cfg.PreviousSecretKeys, DataDir: cfg.DataDir,
+	})
 	if err != nil {
 		return nil, err
 	}
-	pg, err := pgstore.Open(ctx, cfg.DatabaseURL, keys)
+	for _, w := range sel.Warnings {
+		slog.Warn("secrets: master key warning", "code", w)
+	}
+	pg, err := pgstore.Open(ctx, cfg.DatabaseURL, sel.Keyring)
 	if err != nil {
 		return nil, err
 	}

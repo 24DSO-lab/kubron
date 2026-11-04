@@ -108,8 +108,11 @@
 
     <NotificationToast :notifications="notifications.notifications.value" @dismiss="notifications.dismiss" />
 
-    <!-- Connecting overlay -->
-    <div v-if="clusterConn.connecting.value" class="overlay">
+    <!-- Диалог входа в кластер (вызовы ConnectCluster) -->
+    <ClusterAuthHost @required="onAuthRequired" />
+
+    <!-- Connecting overlay: пока открыт диалог входа, не показываем -->
+    <div v-if="clusterConn.connecting.value && !clusterAuth.challenge.value" class="overlay">
       <div class="spinner">⏳ {{ $t('app.connecting') }}</div>
     </div>
     </template>
@@ -152,6 +155,8 @@ import ClusterAvatar from './components/cluster/ClusterAvatar.vue'
 import { findEnvironment } from './components/cluster/clusterStyle'
 import Sidebar from './components/Sidebar.vue'
 import NotificationToast from './components/NotificationToast.vue'
+import ClusterAuthHost from './components/credential/ClusterAuthHost.vue'
+import { AuthCancelledError, useClusterAuth } from './composables/useClusterAuth'
 import ResourceList from './components/resource/ResourceList.vue'
 import ResourceHost from './components/resource/ResourceHost.vue'
 import TabbedPanel from './components/utils/TabbedPanel.vue'
@@ -167,6 +172,7 @@ const auth = useAuth()
 const k8s = useK8s()
 const clustersApi = useClusters()
 const notifications = useNotifications()
+const clusterAuth = useClusterAuth()
 
 const {
   namespaces, selectedNamespaces, selectNamespaces, restoreNamespaces, currentView, loading,
@@ -370,6 +376,17 @@ watch(navigationRequest, view => {
 })
 
 onMounted(() => auth.init())
+
+// Бэкенд просит войти заново (истёк сохранённый вход): показываем диалог и обновляем данные
+async function onAuthRequired(clusterId: string) {
+  if (clusterId !== activeClusterId.value) return
+  try {
+    await clusterAuth.connect(clusterId)
+    await refreshData()
+  } catch (e) {
+    if (!(e instanceof AuthCancelledError)) notifications.notifyError(t('cluster.connectionError', { message: errorText(e) }))
+  }
+}
 
 // Бэкенд сообщает, если часть namespace набора прочитать не удалось (RBAC и т.п.)
 const stopListFailures = listenListFailures()

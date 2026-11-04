@@ -7,6 +7,7 @@ import { ref, computed, type Ref } from 'vue'
 import { useArgo } from './useArgo'
 import { useNotifications } from './useNotifications'
 import { errorText } from './errorText'
+import { AuthCancelledError } from './useClusterAuth'
 import { t } from '../i18n'
 import { loadCustomResources, resetCustomResources } from '../resources/customResources'
 import type {
@@ -80,7 +81,7 @@ export function useClusterConnection(deps: {
       void refreshArgo()
       await refreshData()
     } catch (e: any) {
-      notifications.notifyError(t('cluster.connectionError', { message: errorText(e) }))
+      if (!(e instanceof AuthCancelledError)) notifications.notifyError(t('cluster.connectionError', { message: errorText(e) }))
     } finally {
       connecting.value = false
     }

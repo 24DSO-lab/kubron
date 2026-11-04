@@ -36,6 +36,10 @@ func maintenanceJobs(pg *pgstore.Store, sessions websession.Backend, auditRetent
 	}, {
 		Name: "login failures", Every: maintenanceEvery, Lock: lock, Logf: log.Printf,
 		Run: func(ctx context.Context) (int, error) { return pg.LoginFailures().Cleanup(ctx, loginFailureWindow) },
+	}, {
+		// Запросы входа в кластер, которые никто не завершил: хранят зашифрованное состояние, живут 10 минут.
+		Name: "expired sign-in requests", Every: maintenanceEvery, Lock: lock, Logf: log.Printf,
+		Run: func(ctx context.Context) (int, error) { return pg.Challenges().DeleteExpired(ctx, time.Now()) },
 	}}
 	if auditRetention > 0 { // по умолчанию журнал хранится бессрочно
 		list = append(list, &jobs.Job{
