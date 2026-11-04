@@ -13,6 +13,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+
+	"github.com/24DSO-labs/kubron/internal/credential"
 )
 
 // This is an API-server contract test for the boundary that matters to informer isolation:
