@@ -14,13 +14,13 @@
 
 ## Решение
 
-Выбран вариант 2 для `devicecode`, `spn` (client secret) и `ropc`. Все сетевые вызовы используют только `Env.HTTP`; URL должны быть HTTPS. Device code и refresh token сохраняются только в непрозрачном `Pending`/`Save`, шифруемых Broker. Refresh token rotation сохраняется. Scope — `<server-id>/.default`; legacy scope — `sp:<server-id>/.default`. Для devicecode/ropc используется `offline_access`, чтобы получить refresh token. Tenant по умолчанию — `organizations`, если kubeconfig не задал tenant. Идентификаторы Azure kubelogin: server ID `6dae42f8-4368-4678-94ff-3960e28e3630`, public client ID `80faf920-1908-4b52-b5ef-a8e7bedfc67a`.
+Выбран вариант 2 для `devicecode`, `spn` (client secret) и `ropc`. Все сетевые вызовы используют только `Env.HTTP`; URL должны быть HTTPS. Device code и refresh token сохраняются только в непрозрачном `Pending`/`Save`, шифруемых Broker. Refresh token rotation сохраняется. Scope — `<server-id>/.default`; legacy scope — `sp:<server-id>/.default`. Для devicecode/ropc используется `offline_access`, чтобы получить refresh token. Если tenant отсутствует в kubeconfig, Broker запрашивает `tenantId` у пользователя; не подставляет tenant по умолчанию. Идентификаторы Azure kubelogin: server ID `6dae42f8-4368-4678-94ff-3960e28e3630`, public client ID `80faf920-1908-4b52-b5ef-a8e7bedfc67a`.
 
-Режимы `msi`, `azurecli`, `azd`, `workloadidentity` не поддерживаются и возвращают `ErrUnsupported`; provider не читает token file или environment. Сертификатные credentials и пути к файлам также не поддерживаются. JWT claims используются только как audit label, не как доказательство личности. Interactive PKCE отложен.
+Режимы `msi`, `azurecli`, `azd`, `workloadidentity` не поддерживаются и возвращают `ErrUnsupported`; provider не читает token file или environment. Сертификатные credentials и пути к файлам также не поддерживаются. JWT claims используются только как audit label, не как доказательство личности. Interactive PKCE отложен. Если native provider возвращает `ErrUnsupported` и kubeconfig содержит `exec`, Broker повторяет начало входа через `KindExec`: `manual-token` в web и подтверждаемый exec plugin на desktop. Дескриптор fallback сохраняется внутри зашифрованного состояния challenge, чтобы продолжение не маршрутизировалось обратно в native provider.
 
 ## Последствия
 
-Серверный credential chain не может быть случайно использован. Пользователь должен явно предоставить tenant/credentials либо завершить device flow. ROPC может быть заблокирован MFA/Conditional Access; в этом случае пользователь должен выбрать другой поддерживаемый способ. Для HTTP-тестов нужен TLS test server или проверяемый HTTPS transport, поэтому локальные HTTP httptest endpoints не разрешены production policy.
+Серверный credential chain не может быть случайно использован. `idpnet.NewClient` дополнительно применяет SSRF policy к реальному адресу соединения и каждому redirect; provider не заменяет этот клиент и не обходит его policy. Пользователь должен явно предоставить tenant/credentials либо завершить device flow. ROPC может быть заблокирован MFA/Conditional Access; в этом случае пользователь должен выбрать другой поддерживаемый способ. Для HTTP-тестов нужен TLS test server или проверяемый HTTPS transport, поэтому локальные HTTP httptest endpoints не разрешены production policy.
 
 ## Отмена
 
