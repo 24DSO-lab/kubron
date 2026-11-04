@@ -11,7 +11,6 @@ import (
 )
 
 const (
-	webOIDCCallbackPath = "/auth/cluster/callback"
 	webOIDCCallbackOK   = "<!doctype html><html lang=\"en\"><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width\"><title>Authentication complete</title><main><h1>Authentication complete</h1><p>You can return to Kubron.</p></main></html>"
 	webOIDCCallbackFail = "<!doctype html><html lang=\"en\"><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width\"><title>Authentication not completed</title><main><h1>Authentication not completed</h1><p>Return to Kubron and try signing in again.</p></main></html>"
 )
