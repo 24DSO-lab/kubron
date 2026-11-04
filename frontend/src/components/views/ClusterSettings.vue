@@ -25,6 +25,8 @@
       </div>
     </div>
 
+    <MyConnections />
+
     <!-- App Settings -->
     <div class="settings-card">
       <div class="settings-card-header">
@@ -279,6 +281,7 @@ import { useMetricsStatus } from '../../composables/useMetrics'
 import { useAppSettings } from '../../composables/useAppSettings'
 import { can } from '../../composables/useAuth'
 import { Perm } from '../../types/auth'
+import MyConnections from '../credential/MyConnections.vue'
 
 const props = defineProps<{
   clusterName: string

@@ -8,6 +8,8 @@ import type {
 import { askConfirm } from '../resources/confirm'
 import { errorText } from './errorText'
 import { callApp } from '../platform/api'
+import { isMethodMissing } from '../platform/credential'
+import { AuthCancelledError, useClusterAuth } from './useClusterAuth'
 import { t } from '../i18n'
 
 const clusters = ref<ClusterStatus[]>([])
@@ -23,14 +25,28 @@ async function loadClusters() {
   }
 }
 
+/**
+ * Подключение через ConnectCluster: если нужен вход, показывается диалог вызова и ожидается его
+ * завершение. Бэкенд без нового метода (ещё не обновлён) обслуживается прежним ConnectToCluster.
+ */
+async function openConnection(id: string) {
+  try {
+    await useClusterAuth().connect(id)
+  } catch (e) {
+    if (!isMethodMissing(e)) throw e
+    await callApp('ConnectToCluster', id)
+  }
+}
+
 async function connectToCluster(id: string) {
   try {
     clusterError.value = ''
-    await callApp('ConnectToCluster', id)
+    await openConnection(id)
     activeClusterId.value = id
     await loadClusters()
   } catch (e: any) {
-    clusterError.value = t('cluster.errorPrefix', { message: errorText(e) })
+    // Отмена входа пользователем — не ошибка
+    if (!(e instanceof AuthCancelledError)) clusterError.value = t('cluster.errorPrefix', { message: errorText(e) })
     throw e
   }
 }

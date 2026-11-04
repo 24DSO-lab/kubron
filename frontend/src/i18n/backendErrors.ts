@@ -20,6 +20,15 @@ export const NOT_AUTHENTICATED_MESSAGE = 'authentication required'
 /** k8s.ErrArgoTokenNotSet */
 export const ARGO_TOKEN_NOT_SET_MESSAGE = 'Argo CD API token is not set'
 
+/** credential.ErrAnswerRejected, ErrChallengeExpired, ErrInvalidGrant (internal/credential/contract.go) */
+export const ANSWER_REJECTED_MESSAGE = 'the credentials were rejected'
+export const CHALLENGE_EXPIRED_MESSAGE = 'the sign-in request has expired'
+export const INVALID_GRANT_MESSAGE = 'the saved sign-in is no longer valid'
+
+export const isAnswerRejected = (message: string) => message.includes(ANSWER_REJECTED_MESSAGE)
+export const isChallengeExpired = (message: string) => message.includes(CHALLENGE_EXPIRED_MESSAGE)
+export const isInvalidGrant = (message: string) => message.includes(INVALID_GRANT_MESSAGE)
+
 export const isNotAuthenticated = (message: string) => message.includes(NOT_AUTHENTICATED_MESSAGE)
 export const isArgoTokenMissing = (message: string) => message.includes(ARGO_TOKEN_NOT_SET_MESSAGE)
 
