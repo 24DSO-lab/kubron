@@ -74,6 +74,12 @@ func webOIDCCallbackHandler(g *Guard, complete func(context.Context, any, string
 			fail(http.StatusServiceUnavailable)
 			return
 		}
+		g.Sessions.Activity(sess.ID)
+		if g.ActiveCluster != nil {
+			if clusterID := g.ActiveCluster(sess.View); clusterID != sess.ActiveCluster {
+				g.Sessions.SetActiveCluster(sess.ID, clusterID)
+			}
+		}
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(webOIDCCallbackOK))
 	})
