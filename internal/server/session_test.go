@@ -82,7 +82,6 @@ func login(t *testing.T, h http.Handler, name string) (*http.Cookie, string) {
 	return c, rec.Header().Get(csrfHeader)
 }
 
-
 func TestWebOIDCCallbackUsesAuthenticatedSessionAndDoesNotReflectInput(t *testing.T) {
 	d, err := NewDispatcher(httpTarget{}, []string{"Add"}, nil)
 	if err != nil {
