@@ -403,7 +403,7 @@ func (b *invalidatingBroker) Invalidate(k credential.Key) {
 
 func unauthorizedPlan(b credential.Broker, asked *[]string) ConnPlan {
 	return ConnPlan{ClusterID: "c", Subject: credential.Subject{ClusterID: "c", Scope: credential.ScopeUser, OwnerID: "alice"},
-		Desc: credential.Descriptor{Kind: credential.KindExec},
+		Desc:    credential.Descriptor{Kind: credential.KindExec},
 		session: AuthSession{Broker: b, OnAuthRequired: func(id string) { *asked = append(*asked, id) }}}
 }
 

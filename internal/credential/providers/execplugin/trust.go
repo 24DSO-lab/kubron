@@ -68,6 +68,9 @@ type trustEntry struct {
 type trustStore struct {
 	mu  sync.Mutex
 	now func() time.Time
+	// once holds the "once" decisions: they are remembered in the memory of the process only (until the
+	// application is closed) and never written anywhere. Allocated on first use.
+	once map[string]struct{}
 }
 
 func (s *trustStore) path(dir string) string { return filepath.Join(dir, TrustFileName) }
@@ -92,8 +95,21 @@ func (s *trustStore) load(dir string) trustFile {
 func (s *trustStore) isTrusted(dir, key string) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if _, ok := s.once[key]; ok {
+		return true
+	}
 	_, ok := s.load(dir).Trusted[key]
 	return ok
+}
+
+// addOnce remembers a "once" decision for the lifetime of the process.
+func (s *trustStore) addOnce(key string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.once == nil {
+		s.once = map[string]struct{}{}
+	}
+	s.once[key] = struct{}{}
 }
 
 // add records the key atomically (temp file in the same directory, then rename).
