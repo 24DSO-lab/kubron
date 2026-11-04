@@ -127,6 +127,31 @@ func TestWebOIDCCallbackUsesAuthenticatedSessionAndDoesNotReflectInput(t *testin
 	}
 }
 
+func TestWebOIDCCallbackRejectsMissingOrDuplicateState(t *testing.T) {
+	d, err := NewDispatcher(httpTarget{}, []string{"Add"}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sessions := NewSessions(time.Hour, false)
+	token, _ := sessions.Create("user-1", &struct{}{})
+	called := false
+	h := NewHandler(d, nil, &Guard{Sessions: sessions}, WithWebOIDCCallback(
+		func(any, string, string) error { called = true; return nil },
+	))
+	for _, target := range []string{
+		"https://kubron.example.test/auth/cluster/callback?code=CANARY-code",
+		"https://kubron.example.test/auth/cluster/callback?code=CANARY-code&state=one&state=two",
+	} {
+		req := httptest.NewRequest(http.MethodGet, target, nil)
+		req.AddCookie(&http.Cookie{Name: secureCookieName, Value: token})
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		if rec.Code != http.StatusBadRequest || called || strings.Contains(rec.Body.String(), "CANARY-code") {
+			t.Fatalf("invalid callback %q: status=%d called=%v body=%s", target, rec.Code, called, rec.Body.String())
+		}
+	}
+}
+
 func TestLoginSetsHardenedCookieAndCSRF(t *testing.T) {
 	h, _, _ := newGuarded(t)
 	c, csrf := login(t, h, "ann")
