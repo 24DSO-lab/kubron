@@ -137,6 +137,13 @@ type Provider interface {
 	Continue(ctx context.Context, env Env, req Request) (Result, error)
 }
 
+// WebCallbackBroker completes an OIDC browser redirect using the challenge ID carried in OAuth state.
+// Both methods bind the operation to the authenticated application user and web session.
+type WebCallbackBroker interface {
+	CallbackSubject(ctx context.Context, ownerID, sessionID, challengeID string) (Subject, error)
+	AnswerCallback(ctx context.Context, sub Subject, challengeID, redirectURL string) (Result, error)
+}
+
 type RevokeFilter struct {
 	ClusterID string
 	OwnerID   string
