@@ -1,0 +1,34 @@
+name: Temporary security dependency update
+
+on:
+  push:
+    branches: [feat/credential-attempt-limits]
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Update vulnerable Go modules
+        run: |
+          go get golang.org/x/crypto@v0.58.1-0.20261009181718-2f1f834330b2 golang.org/x/net@v0.62.0
+          go mod tidy
+      - name: Commit dependency updates
+        run: |
+          if git diff --quiet; then
+            echo "No dependency changes"
+            exit 0
+          fi
+          git diff -- go.mod go.sum
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add go.mod go.sum
+          git commit -m "build(deps): fix x/crypto and x/net advisories"
+          git push
