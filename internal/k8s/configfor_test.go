@@ -397,7 +397,7 @@ type invalidatingBroker struct {
 func (b *invalidatingBroker) Invalidate(k credential.Key) {
 	b.invalidated = append(b.invalidated, k)
 	if b.afterErr != nil {
-		b.scriptBroker.err = b.afterErr
+		b.err = b.afterErr
 	}
 }
 
