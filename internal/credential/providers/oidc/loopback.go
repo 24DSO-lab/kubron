@@ -37,6 +37,7 @@ type loopback struct {
 	state string
 	hosts []string // accepted Host header names
 	srv   *http.Server
+	ln    net.Listener // closed by release itself: Server.Close alone leaves a listener that Serve has not tracked yet open
 	timer *time.Timer
 
 	mu  sync.Mutex
@@ -66,6 +67,10 @@ func (r *loopbackRegistry) release(id string) {
 	r.mu.Unlock()
 	if l != nil {
 		l.timer.Stop()
+		// The socket is closed here, synchronously: http.Server.Close only closes listeners that Serve has already
+		// registered, and the goroutine that calls Serve may not have run yet. The port must refuse connections as soon as
+		// the request is cancelled.
+		_ = l.ln.Close()
 		_ = l.srv.Close()
 	}
 }
@@ -155,7 +160,7 @@ func (s *session) startLoopback(ctx context.Context) (credential.Result, error) 
 		return credential.Result{}, err
 	}
 	reg := &s.p.loops
-	l := &loopback{reg: reg, id: p.LoopID, state: p.State, hosts: []string{s.cfg.redirectHost, "localhost", "127.0.0.1", "::1"}}
+	l := &loopback{reg: reg, id: p.LoopID, state: p.State, ln: ln, hosts: []string{s.cfg.redirectHost, "localhost", "127.0.0.1", "::1"}}
 	l.srv = &http.Server{Handler: l, ReadHeaderTimeout: 10 * time.Second, MaxHeaderBytes: 16 << 10}
 	l.timer = time.AfterFunc(loopbackTTL, func() { reg.release(l.id) })
 	reg.add(l)
