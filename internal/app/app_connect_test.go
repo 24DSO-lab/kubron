@@ -128,6 +128,31 @@ func connectFixture(t *testing.T, b *fakeBroker) (*App, *recPlatform, string, *[
 	return a, pl, c.ID, &connected
 }
 
+
+func TestWebOIDCClientIDIsAdminOnly(t *testing.T) {
+	a, _, _, _ := connectFixture(t, &fakeBroker{})
+	if err := a.SetWebOIDCClientID("public-client"); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := a.GetWebOIDCClientID(); err != nil || got != "public-client" {
+		t.Fatalf("admin read: %q %v", got, err)
+	}
+	bob, err := a.auth.CreateUser("bob", testPass, auth.RoleUser)
+	if err != nil {
+		t.Fatal(err)
+	}
+	a.auth.Logout()
+	if _, err := a.auth.Login(bob.Username, testPass); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := a.GetWebOIDCClientID(); !errors.Is(err, auth.ErrForbidden) {
+		t.Fatalf("non-admin read: %v", err)
+	}
+	if err := a.SetWebOIDCClientID("attacker-client"); !errors.Is(err, auth.ErrForbidden) {
+		t.Fatalf("non-admin write: %v", err)
+	}
+}
+
 func TestConnectClusterConnectedWithoutChallenge(t *testing.T) {
 	b := &fakeBroker{desc: credential.Descriptor{Kind: credential.KindStatic}}
 	a, _, id, connected := connectFixture(t, b)

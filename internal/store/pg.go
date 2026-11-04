@@ -27,6 +27,8 @@ func (p pgBackend) Users() auth.Backend {
 }
 func (p pgBackend) Audit() audit.Backend       { return p.s.Audit() }
 func (p pgBackend) ArgoTokens() k8s.TokenStore { return p.s.ArgoTokens() }
+func (p pgBackend) WebOIDCClientID() (string, error) { return p.s.WebOIDCClientID() }
+func (p pgBackend) SetWebOIDCClientID(v string) error { return p.s.SetWebOIDCClientID(v) }
 
 // Access — права по членству в командах (задача 3.2); app подключает их к сервису аутентификации.
 func (p pgBackend) Access() auth.Access { return p.s.Access() }

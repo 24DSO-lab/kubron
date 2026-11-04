@@ -850,3 +850,24 @@ func TestCheckKey(t *testing.T) {
 		t.Errorf("the error leaks key material: %v", err)
 	}
 }
+
+
+// TestWebOIDCClientIDRoundTrip exercises the shared PostgreSQL settings row.
+func TestWebOIDCClientIDRoundTrip(t *testing.T) {
+	s := newTestStore(t, keyString("k1"))
+	if got, err := s.WebOIDCClientID(); err != nil || got != "" {
+		t.Fatalf("empty client id: %q %v", got, err)
+	}
+	if err := s.SetWebOIDCClientID("kubron-public-client"); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := s.WebOIDCClientID(); err != nil || got != "kubron-public-client" {
+		t.Fatalf("client id: %q %v", got, err)
+	}
+	if err := s.SetWebOIDCClientID(""); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := s.WebOIDCClientID(); err != nil || got != "" {
+		t.Fatalf("cleared client id: %q %v", got, err)
+	}
+}

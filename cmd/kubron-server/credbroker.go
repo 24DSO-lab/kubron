@@ -29,6 +29,7 @@ const (
 // setupBroker builds the sign-in broker and gives it to the core. With PostgreSQL the saved sign-ins and the
 // pending requests are shared by the replicas; without it they live in the data directory and in memory.
 func setupBroker(ctx context.Context, cfg server.Config, pg *pgstore.Store, core *app.App) error {
+	app.SetWebOIDCRedirectURL(core, cfg.PublicURL)
 	mode := secrets.ModeServerLocal
 	if pg != nil {
 		mode = secrets.ModeServerPG

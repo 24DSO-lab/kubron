@@ -25,6 +25,7 @@ func (a *App) initAuth(dir string) {
 
 // initAuthWith подключает хранилища: пользователи, журнал аудита, токены Argo CD.
 func (a *App) initAuthWith(st store.Store) {
+	a.store = st
 	k8s.SetTokenStore(st.ArgoTokens())
 	k8s.SetClusterStore(st.Clusters())
 	// Состояние Helm в сервисе — в БД по командам (ADR-0015); без этого метода Helm остаётся на файлах.
@@ -462,6 +463,32 @@ func (a *App) DeleteUser(id string) error {
 		err = a.revokePersonal(id, "", "user-deleted")
 	}
 	return err
+}
+
+// GetWebOIDCClientID returns the configured public OIDC client id. Only organization administrators may read it.
+func (a *App) GetWebOIDCClientID() (string, error) {
+	if err := a.authz(auth.PermUsersManage); err != nil {
+		return "", err
+	}
+	if a.store == nil {
+		return "", nil
+	}
+	return a.store.WebOIDCClientID()
+}
+
+// SetWebOIDCClientID configures the public OIDC client id used by web sign-in. Empty clears the override.
+func (a *App) SetWebOIDCClientID(clientID string) error {
+	if err := a.authz(auth.PermUsersManage); err != nil {
+		return err
+	}
+	clientID = strings.TrimSpace(clientID)
+	if len(clientID) > 256 || strings.IndexFunc(clientID, func(r rune) bool { return r < 0x20 || r == 0x7f }) >= 0 {
+		return errors.New("web OIDC client id must be at most 256 bytes and contain no control characters")
+	}
+	if a.store == nil {
+		return errors.New("application settings store is unavailable")
+	}
+	return a.store.SetWebOIDCClientID(clientID)
 }
 
 // ─── Журнал аудита (audit.read) ────────────────────────────

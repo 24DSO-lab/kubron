@@ -31,7 +31,8 @@ type App struct {
 	auth     *auth.Service // nil, если хранилище пользователей не открылось (см. authErr)
 	authErr  error
 	dir      auth.Directory // команды и участники; nil вне сервисного режима
-	store    store.Store    // nil — файловое хранилище десктопа (SetStore подменяет, например, на PostgreSQL)
+	store    store.Store    // общее хранилище настроек и данных
+	webOIDCRedirectURL string // публичный callback URL; задаётся серверной оболочкой до запуска
 	// sessionID — веб-сессия владельца вида (пусто у корневого экземпляра и в десктопе).
 	sessionID string
 	// Port-forward в вебе (ADR-0017): режим и прокси; задаются до создания видов (SetPortForwardMode/Proxy).
