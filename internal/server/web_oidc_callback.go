@@ -4,6 +4,7 @@
 package server
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -39,16 +40,12 @@ func webOIDCCallbackHandler(g *Guard, complete func(view any, state, redirectURL
 			fail(http.StatusBadRequest)
 			return
 		}
-		if _, err := g.Sessions.Lookup(g.token(r)); err != nil {
-			if err == ErrSessionStoreUnavailable {
-				w.Header().Set("Retry-After", "5")
-				fail(http.StatusServiceUnavailable)
-				return
-			}
-			fail(http.StatusBadRequest)
+		sess, err := g.Sessions.Lookup(g.token(r))
+		if errors.Is(err, ErrSessionStoreUnavailable) {
+			w.Header().Set("Retry-After", "5")
+			fail(http.StatusServiceUnavailable)
 			return
 		}
-		sess, err := g.Sessions.Lookup(g.token(r))
 		if err != nil || sess.View == nil {
 			fail(http.StatusBadRequest)
 			return
