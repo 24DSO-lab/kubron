@@ -99,9 +99,6 @@ func parseConfig(d credential.Descriptor) (config, error) {
 		return config{}, credential.ErrUnsupported
 	}
 	
-	if c.login == "ropc" && (c.username == "" || c.password == "") {
-		// The credentials are requested through a Challenge, never read from the server environment.
-	}
 	return c, nil
 }
 
@@ -156,7 +153,12 @@ func (p *Provider) beginConfigured(ctx context.Context, env credential.Env, req 
 		tok, err := clientCredentials(ctx, env.HTTP, c, now(env)); if err != nil { return credential.Result{}, err }
 		return credential.Result{Token: &tok, Save: encodeSaved(c, "")}, nil
 	case "ropc":
-		return credential.Result{Challenge: &credential.Challenge{Kind: credential.ChallengeCredentials, Fields: []credential.Field{{Name: "username"}, {Name: "password", Secret: true}}}, Pending: encodePending(pending{Tenant: c.tenant})}, nil
+		if c.username == "" || c.password == "" {
+			return credential.Result{Challenge: &credential.Challenge{Kind: credential.ChallengeCredentials, Fields: []credential.Field{{Name: "username"}, {Name: "password", Secret: true}}}, Pending: encodePending(pending{Tenant: c.tenant})}, nil
+		}
+		tok, rt, err := passwordGrant(ctx, env.HTTP, c, c.username, c.password, now(env))
+		if err != nil { return credential.Result{}, err }
+		return credential.Result{Token: &tok, Save: encodeSaved(c, rt)}, nil
 	default:
 		return credential.Result{}, credential.ErrUnsupported
 	}
@@ -274,10 +276,10 @@ func post(ctx context.Context,hc *http.Client, endpoint string, form url.Values)
 }
 func parseToken(b []byte,n time.Time)(credential.Token,string,error){
 	var v struct{Access string `json:"access_token"`;Refresh string `json:"refresh_token"`;Expires int64 `json:"expires_in"`}
-	if json.Unmarshal(b,&v)!=nil||v.Access==""||v.Expires<=0||v.Expires>86400{return credential.Token{},"",errResponse}
+	if json.Unmarshal(b,&v)!=nil||v.Access==""||len(v.Access)>65536||len(v.Refresh)>65536||v.Expires<=0||v.Expires>86400{return credential.Token{},"",errResponse}
 	principal:=""
 	parts:=strings.Split(v.Access,".");if len(parts)==3{raw,e:=base64.RawURLEncoding.DecodeString(parts[1]);if e==nil{var claims struct{OID string `json:"oid"`;UPN string `json:"upn"`;Preferred string `json:"preferred_username"`};if json.Unmarshal(raw,&claims)==nil{principal=claims.OID;if principal==""{principal=claims.UPN};if principal==""{principal=claims.Preferred}}}}
-	if len(principal)>256 {principal=""}
+	if !safeLabel(principal) { principal = "" }
 	return credential.Token{Value:v.Access,Expiry:n.Add(time.Duration(v.Expires)*time.Second),Principal:principal},v.Refresh,nil
 }
 func encodePending(p pending) []byte { b, _ := json.Marshal(p); return b }
@@ -285,6 +287,11 @@ func encodeSaved(c config,rt string) []byte { if rt=="" && c.secret=="" { return
 func decodeSaved(b []byte)*saved{if len(b)==0{return nil};var s saved;if json.Unmarshal(b,&s)!=nil||(s.RefreshToken==""&&s.ClientSecret==""){return nil};return &s}
 func now(e credential.Env)time.Time{if e.Now!=nil{return e.Now()};return time.Now()}
 func safeHTTPS(raw string)bool{u,e:=url.Parse(raw);return e==nil&&u.Scheme=="https"&&u.Host!=""&&u.User==nil&&u.Fragment==""}
+func safeLabel(s string) bool {
+	if len(s) == 0 || len(s) > 256 { return false }
+	for _, r := range s { if r < 0x20 || r == 0x7f { return false } }
+	return true
+}
 func validTenant(s string) bool {
 	if len(s) == 0 || len(s) > 256 { return false }
 	for _, r := range s {
