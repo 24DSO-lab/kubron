@@ -142,7 +142,7 @@ func (c *Challenges) Fail(ctx context.Context, userKey, idpKey string, now time.
 	if err != nil {
 		return 0, err
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	increment := func(dimension, key string, limit int) (time.Duration, error) {
 		if key == "" || limit <= 0 {
