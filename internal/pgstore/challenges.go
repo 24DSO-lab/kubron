@@ -151,26 +151,26 @@ func (c *Challenges) Fail(ctx context.Context, userKey, idpKey string, now time.
 		var locked *time.Time
 		err := tx.QueryRow(ctx, `INSERT INTO credential_attempt_limits AS existing
 			(dimension, key_hash, failures, window_started, locked_until, updated_at)
-			VALUES ($1,$2,1,$3,CASE WHEN $4 <= 1 THEN $3 + ($6 * interval '1 second') ELSE NULL END,$3)
+			VALUES ($1,$2,1,$3::timestamptz,CASE WHEN $4 <= 1 THEN $3::timestamptz + ($6 * interval '1 second') ELSE NULL END,$3::timestamptz)
 			ON CONFLICT (dimension, key_hash) DO UPDATE SET
 				failures = CASE
-					WHEN existing.locked_until > $3 THEN existing.failures
-					WHEN (existing.locked_until IS NOT NULL AND existing.locked_until <= $3)
-					  OR existing.window_started <= $3 - ($5 * interval '1 second') THEN 1
+					WHEN existing.locked_until > $3::timestamptz THEN existing.failures
+					WHEN (existing.locked_until IS NOT NULL AND existing.locked_until <= $3::timestamptz)
+					  OR existing.window_started <= $3::timestamptz - ($5 * interval '1 second') THEN 1
 					ELSE existing.failures + 1 END,
 				window_started = CASE
-					WHEN existing.locked_until > $3 THEN existing.window_started
-					WHEN (existing.locked_until IS NOT NULL AND existing.locked_until <= $3)
-					  OR existing.window_started <= $3 - ($5 * interval '1 second') THEN $3
+					WHEN existing.locked_until > $3::timestamptz THEN existing.window_started
+					WHEN (existing.locked_until IS NOT NULL AND existing.locked_until <= $3::timestamptz)
+					  OR existing.window_started <= $3::timestamptz - ($5 * interval '1 second') THEN $3::timestamptz
 					ELSE existing.window_started END,
 				locked_until = CASE
-					WHEN existing.locked_until > $3 THEN existing.locked_until
+					WHEN existing.locked_until > $3::timestamptz THEN existing.locked_until
 					WHEN (CASE
-						WHEN (existing.locked_until IS NOT NULL AND existing.locked_until <= $3)
-						  OR existing.window_started <= $3 - ($5 * interval '1 second') THEN 1
-						ELSE existing.failures + 1 END) >= $4 THEN $3 + ($6 * interval '1 second')
+						WHEN (existing.locked_until IS NOT NULL AND existing.locked_until <= $3::timestamptz)
+						  OR existing.window_started <= $3::timestamptz - ($5 * interval '1 second') THEN 1
+						ELSE existing.failures + 1 END) >= $4 THEN $3::timestamptz + ($6 * interval '1 second')
 					ELSE NULL END,
-				updated_at=$3
+				updated_at=$3::timestamptz
 			RETURNING locked_until`, dimension, key, now.UTC(), limit, window.Seconds(), lockout.Seconds()).Scan(&locked)
 		if err != nil {
 			return 0, err
