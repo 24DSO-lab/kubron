@@ -5,8 +5,10 @@ package app
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"sync"
 	"testing"
@@ -517,5 +519,73 @@ func TestIdPLimitAppliesAcrossUsers(t *testing.T) {
 	}
 	if len(b.answers) != 0 {
 		t.Fatal("the broker must not be reached")
+	}
+}
+
+// capturedLogs sends the default slog logger to a buffer for the duration of the test.
+func capturedLogs(t *testing.T) *strings.Builder {
+	t.Helper()
+	var buf strings.Builder
+	prev := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})))
+	t.Cleanup(func() { slog.SetDefault(prev) })
+	return &buf
+}
+
+// The control strings of a password, a token and a refresh token never appear in what this layer returns or
+// writes: the results sent to the client (API), events, the audit journal and the logs. (Metrics are checked in
+// the server package, errors in the broker's own tests.)
+func TestSignInSecretsNeverLeaveTheApp(t *testing.T) {
+	const pw, tok, refresh, secret = "CANARY-PASSWORD-a1", "CANARY-TOKEN-b2", "CANARY-REFRESH-c3", "CANARY-CLIENTSECRET-d4"
+	logs := capturedLogs(t)
+	b := &fakeBroker{
+		desc: credential.Descriptor{Kind: credential.KindOIDC, Params: map[string]string{
+			"issuer-url": "https://idp.example", "client-secret": secret}},
+		acquire: []credential.Result{challenge("c1", credential.ChallengeCredentials)},
+		answer: []credential.Result{{Token: &credential.Token{Value: tok, Principal: "alice@idp"},
+			Save: []byte(refresh)}},
+	}
+	a, pl, id, _ := connectFixture(t, b)
+
+	var api []string // everything returned to the client
+	res, err := a.ConnectCluster(id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	j, _ := json.Marshal(res)
+	api = append(api, string(j))
+	b.answerEr = credential.ErrAnswerRejected
+	_, err = a.AnswerChallenge("c1", map[string]string{"username": "u", "password": pw})
+	api = append(api, fmt.Sprint(err))
+	b.answerEr = nil
+	res, err = a.AnswerChallenge("c1", map[string]string{"username": "u", "password": pw})
+	if err != nil {
+		t.Fatal(err)
+	}
+	j, _ = json.Marshal(res)
+	api = append(api, string(j))
+	list, _ := a.ListMyConnections()
+	j, _ = json.Marshal(list)
+	api = append(api, string(j))
+	if err := a.DisconnectCluster(id); err != nil {
+		t.Fatal(err)
+	}
+
+	var journal string
+	for _, e := range events(t, a) {
+		journal += fmt.Sprintf("%+v\n", e)
+	}
+	pl.mu.Lock()
+	emitted := fmt.Sprintf("%v %+v", pl.events, pl.data)
+	pl.mu.Unlock()
+
+	for place, text := range map[string]string{
+		"API": strings.Join(api, "\n"), "events": emitted, "audit journal": journal, "logs": logs.String(),
+	} {
+		for _, s := range []string{pw, tok, refresh, secret} {
+			if strings.Contains(text, s) {
+				t.Errorf("%s contains the control string %q", place, s)
+			}
+		}
 	}
 }
