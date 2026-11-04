@@ -515,11 +515,15 @@ func TestUnsupportedNativeProviderFallsBackToExecAndKeepsRoute(t *testing.T) {
 		}}
 	reg := credential.NewRegistry(false)
 	for _, p := range []credential.Provider{native, execProvider} {
-		if err := reg.Register(p); err != nil { t.Fatal(err) }
+		if err := reg.Register(p); err != nil {
+			t.Fatal(err)
+		}
 	}
 	svc, err := credential.NewService(credential.Config{Registry: reg, Store: r.store, Challenges: r.chal,
 		Envelope: r.env, Now: r.clk.Now})
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	d := credential.Descriptor{Kind: credential.KindAKS, Exec: &credential.ExecSpec{Command: "kubelogin"}}
 	res, err := svc.Acquire(bg, subj, d)
@@ -539,11 +543,17 @@ func TestUnsupportedNativeProviderWithoutExecDoesNotFallback(t *testing.T) {
 			return credential.Result{}, credential.ErrUnsupported
 		}}
 	reg := credential.NewRegistry(false)
-	if err := reg.Register(native); err != nil { t.Fatal(err) }
+	if err := reg.Register(native); err != nil {
+		t.Fatal(err)
+	}
 	svc, err := credential.NewService(credential.Config{Registry: reg, Store: r.store, Challenges: r.chal, Envelope: r.env})
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	_, err = svc.Acquire(bg, subj, credential.Descriptor{Kind: credential.KindAKS})
-	if !errors.Is(err, credential.ErrUnsupported) { t.Fatalf("Acquire error = %v", err) }
+	if !errors.Is(err, credential.ErrUnsupported) {
+		t.Fatalf("Acquire error = %v", err)
+	}
 }
 
 func TestRegistryRouting(t *testing.T) {
