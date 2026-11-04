@@ -96,6 +96,7 @@ Kubron is an open-source **Kubernetes Operations Workspace** for desktop and web
 - **Project access** — roles and access of projects
 
 ### Security & access control
+- **Security-sensitive implementation decisions** — [OIDC browser callback](docs/decisions/2026-11-04-oidc-browser-callback.md) (ждёт ревью человеком), [all decisions](docs/decisions/README.md)
 - **Local users & roles** — `admin`, `operator` and `user` roles built on fine-grained permissions (read, secrets, operate, write, exec, port-forward, cluster and user management, audit)
 - **Safe defaults** — PBKDF2-SHA256 password hashing (600k iterations), lockout after failed attempts, auto-logout on inactivity that closes terminals and port forwards
 - **Audit log** — track who did what, with log rotation
