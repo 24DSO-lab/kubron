@@ -637,6 +637,16 @@
   "credOIDCInsecureTLSForbidden": "skipping TLS verification is not allowed here",
   "credOIDCResponseTooLarge": "the identity provider response is too large",
   "credOIDCBadCA": "the identity provider CA certificate is not valid",
-  "credOIDCTooManyRedirects": "stopped after too many redirects"
+  "credOIDCTooManyRedirects": "stopped after too many redirects",
+  "credOIDCConfigRequired": "the OIDC issuer URL and client ID are required",
+  "credOIDCDiscoveryFailed": "the identity provider discovery failed",
+  "credOIDCIssuerMismatch": "the identity provider issuer does not match the configured issuer",
+  "credOIDCUnreachable": "the identity provider is unreachable",
+  "credOIDCTokenRequestRejected": "the identity provider rejected the token request",
+  "credOIDCTokenResponseInvalid": "the identity provider returned an invalid token response",
+  "credOIDCIDTokenInvalid": "the ID token could not be verified",
+  "credOIDCNonceMismatch": "the ID token nonce does not match",
+  "credOIDCSignInStateInvalid": "the sign-in state is invalid",
+  "credOIDCAddressNotAllowed": "the address is not allowed"
 
 }

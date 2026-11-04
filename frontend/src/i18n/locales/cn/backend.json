@@ -637,6 +637,16 @@
   "credOIDCInsecureTLSForbidden": "此处不允许跳过 TLS 验证",
   "credOIDCResponseTooLarge": "身份提供商的响应过大",
   "credOIDCBadCA": "身份提供商的 CA 证书无效",
-  "credOIDCTooManyRedirects": "重定向次数过多，已停止"
+  "credOIDCTooManyRedirects": "重定向次数过多，已停止",
+  "credOIDCConfigRequired": "需要 OIDC 颁发者地址和客户端 ID",
+  "credOIDCDiscoveryFailed": "获取身份提供商配置失败",
+  "credOIDCIssuerMismatch": "身份提供商的颁发者与配置的颁发者不一致",
+  "credOIDCUnreachable": "无法连接到身份提供商",
+  "credOIDCTokenRequestRejected": "身份提供商拒绝了令牌请求",
+  "credOIDCTokenResponseInvalid": "身份提供商返回了无效的令牌响应",
+  "credOIDCIDTokenInvalid": "无法验证 ID 令牌",
+  "credOIDCNonceMismatch": "ID 令牌中的 nonce 不匹配",
+  "credOIDCSignInStateInvalid": "登录状态无效",
+  "credOIDCAddressNotAllowed": "不允许使用该地址"
 
 }
