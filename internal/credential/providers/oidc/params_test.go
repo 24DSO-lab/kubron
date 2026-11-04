@@ -42,6 +42,20 @@ func TestWebPublicClientOverridesClientSecret(t *testing.T) {
 	}
 }
 
+func TestWebRedirectWithoutPublicClientIsIgnored(t *testing.T) {
+	d := credential.Descriptor{Kind: credential.KindOIDC, Params: map[string]string{
+		"issuer-url": "https://idp.example.test", "client-id": "kubeconfig-client",
+		"client-secret": "kubeconfig-secret", "web.redirect-url": "https://kubron.example.test/auth/cluster/callback",
+	}}
+	cfg, err := newConfig(d, nil, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.webRedirectURL != "" || cfg.clientID != "kubeconfig-client" || cfg.clientSecret != "kubeconfig-secret" {
+		t.Fatalf("callback was enabled without public client: %+v", cfg)
+	}
+}
+
 func TestWebRedirectURLValidation(t *testing.T) {
 	for _, tc := range []struct {
 		url  string
