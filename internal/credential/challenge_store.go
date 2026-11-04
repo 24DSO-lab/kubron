@@ -61,15 +61,16 @@ type ChallengeStore interface {
 
 // MemoryChallengeStore is an in-process ChallengeStore (desktop, single-instance web without PostgreSQL, tests).
 type MemoryChallengeStore struct {
-	mu   sync.Mutex
-	recs map[string]ChallengeRecord
+	mu       sync.Mutex
+	recs     map[string]ChallengeRecord
+	attempts map[string]attemptBucket
 }
 
 var _ ChallengeStore = (*MemoryChallengeStore)(nil)
 
 // NewMemoryChallengeStore returns an empty store.
 func NewMemoryChallengeStore() *MemoryChallengeStore {
-	return &MemoryChallengeStore{recs: map[string]ChallengeRecord{}}
+	return &MemoryChallengeStore{recs: map[string]ChallengeRecord{}, attempts: map[string]attemptBucket{}}
 }
 
 func cloneRec(r ChallengeRecord) ChallengeRecord {
@@ -168,4 +169,90 @@ func (m *MemoryChallengeStore) Dump() []byte {
 		out = append(out, r.State...)
 	}
 	return out
+}
+
+
+// attemptBucket is one opaque user/IdP failure counter.
+type attemptBucket struct {
+	failures     int
+	windowStart  time.Time
+	lockedUntil  time.Time
+	updatedAt    time.Time
+}
+
+func attemptBucketKey(dimension, key string) string { return dimension + ":" + key }
+
+// Check implements AttemptLimiter.
+func (m *MemoryChallengeStore) Check(_ context.Context, userKey, idpKey string, now time.Time) (time.Duration, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	var wait time.Duration
+	for _, key := range []string{attemptBucketKey("user", userKey), attemptBucketKey("idp", idpKey)} {
+		if key == "idp:" {
+			continue
+		}
+		if b, ok := m.attempts[key]; ok && now.Before(b.lockedUntil) {
+			wait = max(wait, b.lockedUntil.Sub(now))
+		}
+	}
+	return wait, nil
+}
+
+// Fail implements AttemptLimiter. Both dimensions are updated under one lock.
+func (m *MemoryChallengeStore) Fail(_ context.Context, userKey, idpKey string, now time.Time, window time.Duration, userLimit, idpLimit int, lockout time.Duration) (time.Duration, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	increment := func(key string, limit int) time.Duration {
+		if key == "" || limit <= 0 {
+			return 0
+		}
+		bucketKey := key
+		b := m.attempts[bucketKey]
+		if now.Before(b.lockedUntil) {
+			return b.lockedUntil.Sub(now)
+		}
+		if b.windowStart.IsZero() || !now.Before(b.windowStart.Add(window)) || !b.lockedUntil.IsZero() {
+			b = attemptBucket{windowStart: now}
+		}
+		b.failures++
+		b.updatedAt = now
+		if b.failures >= limit {
+			b.lockedUntil = now.Add(lockout)
+		}
+		m.attempts[bucketKey] = b
+		if now.Before(b.lockedUntil) {
+			return b.lockedUntil.Sub(now)
+		}
+		return 0
+	}
+	wait := increment(attemptBucketKey("user", userKey), userLimit)
+	if idpKey != "" {
+		wait = max(wait, increment(attemptBucketKey("idp", idpKey), idpLimit))
+	}
+	return wait, nil
+}
+
+// Reset implements AttemptLimiter.
+func (m *MemoryChallengeStore) Reset(_ context.Context, userKey, idpKey string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	delete(m.attempts, attemptBucketKey("user", userKey))
+	if idpKey != "" {
+		delete(m.attempts, attemptBucketKey("idp", idpKey))
+	}
+	return nil
+}
+
+// Sweep implements AttemptLimiter and removes counters that are no longer useful.
+func (m *MemoryChallengeStore) Sweep(_ context.Context, before time.Time) (int, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	n := 0
+	for key, b := range m.attempts {
+		if b.updatedAt.Before(before) && !before.Before(b.lockedUntil) {
+			delete(m.attempts, key)
+			n++
+		}
+	}
+	return n, nil
 }
