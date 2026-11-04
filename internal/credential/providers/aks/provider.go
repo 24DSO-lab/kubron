@@ -69,6 +69,9 @@ func parseConfig(d credential.Descriptor) (config, error) {
 		legacy: strings.EqualFold(strings.TrimSpace(p["is-legacy"]), "true"),
 	}
 	if c.login == "" { c.login = "devicecode" }
+	for _, key := range []string{"identity-resource-id", "federated-token-file", "client-certificate", "client-certificate-path", "client-key", "client-key-path"} {
+		if strings.TrimSpace(p[key]) != "" { return config{}, credential.ErrUnsupported }
+	}
 	if c.tenant != "" && !validTenant(c.tenant) { return config{}, credential.ErrUnsupported }
 	if c.clientID == "" { c.clientID = defaultClientID }
 	if c.serverID == "" { c.serverID = defaultServerID }
@@ -106,6 +109,7 @@ func (p *Provider) Begin(ctx context.Context, env credential.Env, req credential
 	c, err := parseConfig(req.Descriptor)
 	if err != nil { return credential.Result{}, err }
 	sv := decodeSaved(req.Saved)
+	staleSaved := false
 	if sv != nil && c.secret == "" { c.secret = sv.ClientSecret }
 	if c.tenant == "" { return credential.Result{Challenge: &credential.Challenge{Kind: credential.ChallengeCredentials, Fields: []credential.Field{{Name: "tenantId"}}}}, nil }
 	if sv != nil && sv.ClientID == c.clientID && sv.Tenant == c.tenant && sv.RefreshToken != "" {
@@ -113,13 +117,15 @@ func (p *Provider) Begin(ctx context.Context, env credential.Env, req credential
 			return credential.Result{Token: &tok, Save: encodeSaved(c, rotated)}, nil
 		} else if !errors.Is(e, credential.ErrInvalidGrant) {
 			return credential.Result{}, e
+		} else {
+			staleSaved = true
 		}
 	}
 	switch c.login {
 	case "devicecode":
-		return startDevice(ctx, env, c)
+		res, e := startDevice(ctx, env, c); if staleSaved && res.Save == nil { res.Save = []byte{} }; return res, e
 	case "spn":
-		if c.secret == "" { return credential.Result{Challenge: &credential.Challenge{Kind: credential.ChallengeCredentials, Fields: []credential.Field{{Name: "clientSecret", Secret: true}}}}, Pending: encodePending(pending{Tenant: c.tenant}), nil }
+		if c.secret == "" { res := credential.Result{Challenge: &credential.Challenge{Kind: credential.ChallengeCredentials, Fields: []credential.Field{{Name: "clientSecret", Secret: true}}}}, Pending: encodePending(pending{Tenant: c.tenant})}; if staleSaved { res.Save = []byte{} }; return res, nil }
 		tok, e := clientCredentials(ctx, env.HTTP, c, now(env))
 		if e != nil { return credential.Result{}, e }
 		return credential.Result{Token: &tok, Save: encodeSaved(c, "")}, nil
@@ -249,7 +255,7 @@ func refresh(ctx context.Context,hc *http.Client,c config,rt string,n time.Time)
 	form:=url.Values{"grant_type":{"refresh_token"},"client_id":{c.clientID},"refresh_token":{rt},"scope":{scope(c)+" offline_access"}}
 	body,status,err:=post(ctx,hc,c.authority+"/"+url.PathEscape(c.tenant)+"/oauth2/v2.0/token",form)
 	if err!=nil{return credential.Token{},"",errHTTP}
-	if status<200||status>=300{return credential.Token{},"",credential.ErrInvalidGrant}
+	if status<200||status>=300{var oe oauthError; _=json.Unmarshal(body,&oe); if oe.Error=="invalid_grant"||oe.Error=="invalid_grant"||oe.Error=="invalid_token" { return credential.Token{},"",credential.ErrInvalidGrant }; return credential.Token{},"",errResponse}
 	return parseToken(body,n)
 }
 func scope(c config) string { s:=c.serverID+"/.default"; if c.legacy { s="sp:"+s }; return s }
