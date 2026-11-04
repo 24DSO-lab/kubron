@@ -172,13 +172,12 @@ func (m *MemoryChallengeStore) Dump() []byte {
 	return out
 }
 
-
 // attemptBucket is one opaque user/IdP failure counter.
 type attemptBucket struct {
-	failures     int
-	windowStart  time.Time
-	lockedUntil  time.Time
-	updatedAt    time.Time
+	failures    int
+	windowStart time.Time
+	lockedUntil time.Time
+	updatedAt   time.Time
 }
 
 func attemptBucketKey(dimension, key string) string { return dimension + ":" + key }

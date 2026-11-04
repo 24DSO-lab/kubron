@@ -121,7 +121,6 @@ func (c *Challenges) DeleteExpired(ctx context.Context, before time.Time) (int, 
 	return int(tag.RowsAffected()), err
 }
 
-
 // Check implements credential.AttemptLimiter. Only active lockouts are returned.
 func (c *Challenges) Check(ctx context.Context, userKey, idpKey string, now time.Time) (time.Duration, error) {
 	var locked *time.Time

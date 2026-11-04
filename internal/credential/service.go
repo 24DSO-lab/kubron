@@ -53,18 +53,18 @@ type Config struct {
 // Service implements Broker: it orchestrates providers, pending requests and token refresh.
 // A Service is safe for concurrent use; several Services (replicas) may share the same stores.
 type Service struct {
-	reg     *Registry
-	store   CredentialStore
-	chal    ChallengeStore
+	reg      *Registry
+	store    CredentialStore
+	chal     ChallengeStore
 	attempts AttemptLimiter
-	envp    *secrets.Envelope
-	penv    Env
-	now     func() time.Time
-	log     *slog.Logger
-	recheck []time.Duration
-	cache   tokenCache
-	flight  flightGroup
-	live    liveSet // pending requests of providers that implement Canceller (this process only)
+	envp     *secrets.Envelope
+	penv     Env
+	now      func() time.Time
+	log      *slog.Logger
+	recheck  []time.Duration
+	cache    tokenCache
+	flight   flightGroup
+	live     liveSet // pending requests of providers that implement Canceller (this process only)
 }
 
 // NewService validates the configuration and returns a Service.
