@@ -4,6 +4,7 @@
 package server
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -21,7 +22,7 @@ const (
 // webOIDCCallbackHandler receives the IdP's top-level GET redirect. SameSite=Lax session cookies are sent
 // for this navigation; unlike RPC it intentionally does not require a CSRF header. The OAuth state is the
 // broker-generated challenge ID and is checked against both the authenticated user and this session.
-func webOIDCCallbackHandler(g *Guard, complete func(view any, state, redirectURL string) error) http.Handler {
+func webOIDCCallbackHandler(g *Guard, complete func(context.Context, any, string, string) error) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
 		w.Header().Set("Referrer-Policy", "no-referrer")
@@ -58,7 +59,7 @@ func webOIDCCallbackHandler(g *Guard, complete func(view any, state, redirectURL
 			scheme = "https"
 		}
 		redirectURL := fmt.Sprintf("%s://%s%s", scheme, r.Host, r.URL.RequestURI())
-		if err := complete(sess.View, states[0], redirectURL); err != nil {
+		if err := complete(r.Context(), sess.View, states[0], redirectURL); err != nil {
 			var limited retryAfterError
 			if errors.As(err, &limited) {
 				w.Header().Set("Retry-After", fmt.Sprint(limited.RetryAfterSeconds()))
