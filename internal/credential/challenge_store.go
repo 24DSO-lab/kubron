@@ -232,14 +232,11 @@ func (m *MemoryChallengeStore) Fail(_ context.Context, userKey, idpKey string, n
 	return wait, nil
 }
 
-// Reset implements AttemptLimiter.
-func (m *MemoryChallengeStore) Reset(_ context.Context, userKey, idpKey string) error {
+// Reset implements AttemptLimiter. A successful user sign-in clears that user's counter; the aggregate IdP counter expires by window and is not cleared by another user's success.
+func (m *MemoryChallengeStore) Reset(_ context.Context, userKey, _ string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	delete(m.attempts, attemptBucketKey("user", userKey))
-	if idpKey != "" {
-		delete(m.attempts, attemptBucketKey("idp", idpKey))
-	}
 	return nil
 }
 
