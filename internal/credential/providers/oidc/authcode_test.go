@@ -319,6 +319,39 @@ func TestPasteRedirect(t *testing.T) {
 	}
 }
 
+func TestPasteRedirectRejectsStateReplayAcrossChallenges(t *testing.T) {
+	idp := newFakeIdP(t, false)
+	idp.issParam = true
+	env, ctx := idp.env(true), context.Background()
+	p := New()
+	d := idp.descriptor("authcode-keyboard", nil)
+	first, err := p.Begin(ctx, env, credential.Request{Descriptor: d, Subject: subjectUser()})
+	firstChallenge := mustChallenge(t, first, err, credential.ChallengePasteRedirect)
+	second, err := p.Begin(ctx, env, credential.Request{Descriptor: d, Subject: subjectUser()})
+	secondChallenge := mustChallenge(t, second, err, credential.ChallengePasteRedirect)
+
+	firstURL, err := url.Parse(firstChallenge.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	secondURL, err := url.Parse(secondChallenge.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if firstURL.Query().Get("state") == secondURL.Query().Get("state") {
+		t.Fatal("authorization challenges must use independent state values")
+	}
+
+	replayed := idp.authorize(firstChallenge.URL, "alice")
+	_, err = p.Continue(ctx, env, credential.Request{
+		Descriptor: d, Subject: subjectUser(), Challenge: secondChallenge, Pending: second.Pending,
+		Answer: credential.Answer{"redirectUrl": replayed},
+	})
+	if !errors.Is(err, credential.ErrAnswerRejected) {
+		t.Fatalf("a callback from another challenge must be rejected: %v", err)
+	}
+}
+
 func TestPasteRedirectPortAndHostFromKubeconfig(t *testing.T) {
 	idp := newFakeIdP(t, false)
 	d := idp.descriptor("authcode-keyboard", map[string]string{"listen-address": "127.0.0.1:9100", "redirect-url-hostname": "dev.local"})
