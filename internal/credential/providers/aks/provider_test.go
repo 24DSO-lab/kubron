@@ -59,6 +59,20 @@ func TestDeviceCodeFlowAndSlowDown(t *testing.T) {
 	if done.Token.Principal != "audit-id" || string(done.Save) == "" || !strings.Contains(string(done.Save), "rotated") { t.Fatalf("token/save=%+v %s", done.Token, done.Save) }
 }
 
+func TestRefreshTokenRotationIsPersisted(t *testing.T) {
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"access_token":"access-token","refresh_token":"rotated-refresh","expires_in":3600}`))
+	}))
+	defer srv.Close()
+	c := config{tenant:"tenant", clientID:defaultClientID}
+	old := encodeSaved(c, "old-refresh")
+	d := credential.Descriptor{Kind:credential.KindAKS, Params:map[string]string{"tenant-id":"tenant", "authority-host":srv.URL}}
+	res, err := New().Begin(context.Background(), credential.Env{HTTP:srv.Client()}, credential.Request{Descriptor:d, Saved:old})
+	if err != nil || res.Token == nil { t.Fatalf("res=%+v err=%v", res, err) }
+	got := decodeSaved(res.Save)
+	if got == nil || got.RefreshToken != "rotated-refresh" { t.Fatalf("saved state did not rotate: %+v", got) }
+}
+
 func TestTenantIsRequestedRatherThanDefaulted(t *testing.T) {
 	res, err := New().Begin(context.Background(), credential.Env{}, credential.Request{Descriptor: credential.Descriptor{Kind: credential.KindAKS}})
 	if err != nil || res.Challenge == nil || len(res.Challenge.Fields) != 1 || res.Challenge.Fields[0].Name != "tenantId" {
