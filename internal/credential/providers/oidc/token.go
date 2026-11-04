@@ -31,10 +31,18 @@ type tokenResponse struct {
 
 // oauthError is an OAuth error answer (RFC 6749 5.2). Only the code is kept, and only for decisions: the
 // description of the provider is dropped because it may repeat what was sent (a user name, for example).
-type oauthError struct{ code string }
+type oauthError struct {
+	code   string
+	status int // HTTP status of the answer
+}
 
-func (e *oauthError) Error() string        { return errTokenRequest.Error() }
-func (e *oauthError) Is(target error) bool { return target == errTokenRequest }
+func (e *oauthError) Error() string { return errTokenRequest.Error() }
+
+// Is: every failed token request is errTokenRequest; a server error or throttling (5xx, 429) is in addition "the
+// service is unavailable": it says nothing about the user's credentials.
+func (e *oauthError) Is(target error) bool {
+	return target == errTokenRequest || (target == credential.ErrServiceUnavailable && (e.status >= 500 || e.status == http.StatusTooManyRequests))
+}
 
 // oauthCode returns the OAuth error code of err, "" when err is not an OAuth error answer.
 func oauthCode(err error) string {
@@ -92,7 +100,7 @@ func (s *session) postRaw(ctx context.Context, d *discovery, endpoint string, fo
 			Error string `json:"error"`
 		}
 		_ = json.Unmarshal(body, &e)
-		return nil, &oauthError{code: e.Error}
+		return nil, &oauthError{code: e.Error, status: resp.StatusCode}
 	}
 	return body, nil
 }

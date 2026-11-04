@@ -273,17 +273,20 @@ func TestPasteRedirect(t *testing.T) {
 			t.Fatalf("the default redirect is http://localhost:8000, got %q", good)
 		}
 
-		for name, bad := range map[string]string{
-			"another host": strings.Replace(good, "localhost:8000", "evil.example.com", 1),
-			"another path": strings.Replace(good, "8000/", "8000/other", 1),
-			"wrong state":  redirectWith(good, "state", "forged"),
-			"no code":      redirectWith(good, "code", ""),
-			"not a url":    "%%%",
-			"empty":        "",
-			"too long":     good + strings.Repeat("a", maxPastedURL),
+		for name, tc := range map[string]struct {
+			bad  string
+			want error
+		}{
+			"another host": {strings.Replace(good, "localhost:8000", "evil.example.com", 1), credential.ErrInvalidAnswer},
+			"another path": {strings.Replace(good, "8000/", "8000/other", 1), credential.ErrInvalidAnswer},
+			"wrong state":  {redirectWith(good, "state", "forged"), credential.ErrAnswerRejected},
+			"no code":      {redirectWith(good, "code", ""), credential.ErrInvalidAnswer},
+			"not a url":    {"%%%", credential.ErrInvalidAnswer},
+			"empty":        {"", credential.ErrInvalidAnswer},
+			"too long":     {good + strings.Repeat("a", maxPastedURL), credential.ErrInvalidAnswer},
 		} {
-			if _, err := answer(res, ch, bad); !errors.Is(err, credential.ErrAnswerRejected) {
-				t.Errorf("%s: got %v", name, err)
+			if _, err := answer(res, ch, tc.bad); !errors.Is(err, tc.want) {
+				t.Errorf("%s: got %v, want %v", name, err, tc.want)
 			}
 		}
 		if n := idp.hit("/token"); n != 0 {

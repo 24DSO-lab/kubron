@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -593,5 +594,101 @@ func TestSecretsNeverLeak(t *testing.T) {
 	}
 	if r.logs.Len() == 0 {
 		t.Fatal("no logs were produced: the check proves nothing")
+	}
+}
+
+// A value that cannot be used at all (ErrInvalidAnswer) is not a wrong guess: it uses up no attempt, the request
+// stays open, and the caller gets the same sentinel (not a reworded text, not ErrAnswerRejected).
+func TestInvalidAnswerKeepsTheRequestOpenAndUsesNoAttempt(t *testing.T) {
+	r := newRig(t)
+	bad := &credtest.FakeProvider{KindValue: credential.KindOIDC,
+		OnBegin: func(context.Context, credential.Env, credential.Request) (credential.Result, error) {
+			return credential.Result{Challenge: &credential.Challenge{Kind: credential.ChallengeManualToken, Fields: []credential.Field{{Name: "token", Secret: true}}}}, nil
+		},
+		OnContinue: func(_ context.Context, _ credential.Env, req credential.Request) (credential.Result, error) {
+			if req.Answer["token"] == "" {
+				return credential.Result{}, credential.ErrInvalidAnswer
+			}
+			return credential.Result{Token: &credential.Token{Value: "t", Expiry: r.clk.Now().Add(time.Hour)}}, nil
+		}}
+	svc := r.newService(bad)
+	res, err := svc.Acquire(bg, subj, desc)
+	if err != nil || res.Challenge == nil {
+		t.Fatalf("Acquire = %+v, %v", res, err)
+	}
+	// Far more empty answers than MaxAnswerAttempts: the request must survive all of them.
+	for i := 0; i < credential.MaxAnswerAttempts*3; i++ {
+		_, err := svc.Answer(bg, subj, res.Challenge.ID, answer("", ""))
+		if !errors.Is(err, credential.ErrInvalidAnswer) || errors.Is(err, credential.ErrAnswerRejected) {
+			t.Fatalf("answer %d: err = %v, want ErrInvalidAnswer", i, err)
+		}
+		if err.Error() != "the value could not be used" {
+			t.Fatalf("the text of the sentinel was changed: %q", err.Error())
+		}
+	}
+	done, err := svc.Answer(bg, subj, res.Challenge.ID, credential.Answer{"token": "abc"})
+	if err != nil || done.Token == nil {
+		t.Fatalf("the request was destroyed by invalid answers: %+v, %v", done, err)
+	}
+}
+
+// Wrong credentials still use up attempts: the new sentinel does not weaken the limit.
+func TestRejectedAnswersStillUseUpAttempts(t *testing.T) {
+	r := newRig(t)
+	svc := r.newService(credtest.NewPasswordProvider(credential.KindOIDC, r.idp))
+	res, _ := svc.Acquire(bg, subj, desc)
+	for i := 0; i < credential.MaxAnswerAttempts; i++ {
+		if _, err := svc.Answer(bg, subj, res.Challenge.ID, answer("alice", "wrong-password")); !errors.Is(err, credential.ErrAnswerRejected) {
+			t.Fatalf("answer %d: %v", i, err)
+		}
+	}
+	if _, err := svc.Answer(bg, subj, res.Challenge.ID, answer("alice", pwCanary)); !errors.Is(err, credential.ErrChallengeExpired) {
+		t.Fatalf("the request must be destroyed after %d wrong answers: %v", credential.MaxAnswerAttempts, err)
+	}
+}
+
+// An unreachable identity provider is "the service is unavailable", never "wrong credentials": the request stays open
+// and no attempt is used up.
+func TestServiceUnavailableIsNotARejection(t *testing.T) {
+	r := newRig(t)
+	down := &credtest.FakeProvider{KindValue: credential.KindOIDC,
+		OnBegin: func(context.Context, credential.Env, credential.Request) (credential.Result, error) {
+			return credential.Result{Challenge: &credential.Challenge{Kind: credential.ChallengeCredentials}}, nil
+		},
+		OnContinue: func(_ context.Context, _ credential.Env, req credential.Request) (credential.Result, error) {
+			// the provider wraps the sentinel into its own error with a detail that must not survive
+			return credential.Result{}, fmt.Errorf("dial tcp 10.1.2.3:443 (%s): %w", req.Answer["password"], credential.ErrServiceUnavailable)
+		}}
+	svc := r.newService(down)
+	res, _ := svc.Acquire(bg, subj, desc)
+	for i := 0; i < credential.MaxAnswerAttempts*2; i++ {
+		_, err := svc.Answer(bg, subj, res.Challenge.ID, answer("alice", pwCanary))
+		if !errors.Is(err, credential.ErrServiceUnavailable) || errors.Is(err, credential.ErrAnswerRejected) {
+			t.Fatalf("answer %d: err = %v", i, err)
+		}
+		if strings.Contains(err.Error(), pwCanary) || strings.Contains(err.Error(), "10.1.2.3") {
+			t.Fatalf("a detail leaked: %v", err)
+		}
+	}
+	// The identity provider is back: the same request completes.
+	down.OnContinue = func(context.Context, credential.Env, credential.Request) (credential.Result, error) {
+		return credential.Result{Token: &credential.Token{Value: "t", Expiry: r.clk.Now().Add(time.Hour)}}, nil
+	}
+	if done, err := svc.Answer(bg, subj, res.Challenge.ID, answer("alice", pwCanary)); err != nil || done.Token == nil {
+		t.Fatalf("the request did not survive the outage: %+v, %v", done, err)
+	}
+}
+
+// During token refresh an outage is not a reason to ask the user to sign in again.
+func TestServiceUnavailableDuringRefreshIsNotASignInRequest(t *testing.T) {
+	r := newRig(t)
+	down := &credtest.FakeProvider{KindValue: credential.KindOIDC,
+		OnBegin: func(context.Context, credential.Env, credential.Request) (credential.Result, error) {
+			return credential.Result{}, fmt.Errorf("lookup idp.example: %w", credential.ErrServiceUnavailable)
+		}}
+	svc := r.newService(down)
+	_, err := svc.Token(bg, subj, desc)
+	if !errors.Is(err, credential.ErrServiceUnavailable) || errors.Is(err, credential.ErrChallengeRequired) {
+		t.Fatalf("err = %v", err)
 	}
 }

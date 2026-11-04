@@ -182,7 +182,7 @@ func TestNoProcessWithoutConfirmation(t *testing.T) {
 	}
 }
 
-func TestContinueOnceRunsAndDoesNotRemember(t *testing.T) {
+func TestContinueOnceRunsAndIsRememberedOnlyInMemory(t *testing.T) {
 	dir := t.TempDir()
 	r := &fakeRunner{out: okOutput(v1)}
 	p := newProvider(r)
@@ -197,10 +197,39 @@ func TestContinueOnceRunsAndDoesNotRemember(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(dir, TrustFileName)); err == nil {
 		t.Fatal("\"once\" was stored")
 	}
-	// The next Begin asks again.
+	// The next token request in the same process does not ask again.
 	r.calls = nil
-	if res := begin(t, p, dir, req); res.Challenge == nil || len(r.calls) != 0 {
-		t.Fatal("the second Begin must ask again after \"once\"")
+	res, err = p.Begin(context.Background(), env(dir), req)
+	if err != nil || res.Token == nil || len(r.calls) != 1 {
+		t.Fatalf("after \"once\" the second token must not need a question: res=%+v err=%v calls=%d", res, err, len(r.calls))
+	}
+	// A new process (a new Provider, the same data directory) asks again: "once" was never stored.
+	r2 := &fakeRunner{out: okOutput(v1)}
+	restarted := newProvider(r2)
+	if res := begin(t, restarted, dir, req); res.Challenge == nil || len(r2.calls) != 0 {
+		t.Fatal("after a restart \"once\" must be forgotten and the question asked again")
+	}
+}
+
+// "Once" is bound to the block like "always": another cluster or a changed command asks again.
+func TestOnceDoesNotCoverAChangedBlock(t *testing.T) {
+	dir := t.TempDir()
+	r := &fakeRunner{out: okOutput(v1)}
+	p := newProvider(r)
+	req := request(spec())
+	if _, err := p.Continue(context.Background(), env(dir), answer(req, begin(t, p, dir, req), DecisionOnce)); err != nil {
+		t.Fatal(err)
+	}
+	other := request(spec())
+	other.Subject.ClusterID = "c2"
+	r.calls = nil
+	if res := begin(t, p, dir, other); res.Challenge == nil || len(r.calls) != 0 {
+		t.Fatal("\"once\" for one cluster must not cover another")
+	}
+	changed := spec()
+	changed.Args = append(changed.Args, "--extra")
+	if res := begin(t, p, dir, request(changed)); res.Challenge == nil || len(r.calls) != 0 {
+		t.Fatal("\"once\" must not cover a changed block")
 	}
 }
 
@@ -504,10 +533,11 @@ func TestProtocolOutput(t *testing.T) {
 	}
 }
 
-func TestDefaultExpiry(t *testing.T) {
+// Without expirationTimestamp the token has no expiry (client-go semantics: valid until a 401).
+func TestTokenWithoutExpirationTimestampHasNoExpiry(t *testing.T) {
 	r := &fakeRunner{out: Output{Stdout: []byte(`{"kind":"ExecCredential","apiVersion":"` + v1 + `","status":{"token":"t"}}`)}}
 	res, err := runOnce(t, newProvider(r), request(spec()))
-	if err != nil || !res.Token.Expiry.Equal(fixedNow.Add(DefaultTTL)) {
+	if err != nil || res.Token == nil || !res.Token.Expiry.IsZero() {
 		t.Fatalf("res=%+v err=%v", res, err)
 	}
 }

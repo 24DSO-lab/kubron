@@ -194,21 +194,6 @@ func (p *connPool) release(id string, holder *Manager) {
 	}
 }
 
-// remove закрывает и забывает подключение. Виды, державшие его активным, при следующем
-// GetActiveConnection получат ошибку «нет активного подключения».
-func (p *connPool) remove(id string) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	if e, ok := p.entries[id]; ok {
-		if e.idleTimer != nil {
-			e.idleTimer.Stop()
-			e.idleTimer = nil
-		}
-		p.closeFn(e.conn)
-		delete(p.entries, id)
-	}
-}
-
 // removeCluster закрывает и забывает подключения кластера для всех субъектов (общее и личные).
 func (p *connPool) removeCluster(clusterID string) {
 	p.mu.Lock()

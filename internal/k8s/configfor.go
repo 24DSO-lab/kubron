@@ -193,7 +193,26 @@ func (t *brokerRoundTripper) RoundTrip(req *http.Request) (*http.Response, error
 	}
 	r := req.Clone(req.Context())
 	r.Header.Set("Authorization", "Bearer "+tok.Value)
-	return t.next.RoundTrip(r)
+	resp, err := t.next.RoundTrip(r)
+	if err == nil && resp.StatusCode == http.StatusUnauthorized {
+		t.rejected(req)
+	}
+	return resp, err
+}
+
+// rejected handles a 401 from the API server: the token the broker handed out is no longer accepted. The cached
+// token is dropped (a token without expiry lives until exactly this moment, as in client-go) and the request is NOT
+// repeated: the caller sees the 401, and the next request gets a fresh token. If a new token cannot be had without the
+// user, the interface is told to ask for a sign-in.
+func (t *brokerRoundTripper) rejected(req *http.Request) {
+	inv, ok := t.p.session.Broker.(credential.Invalidator)
+	if !ok {
+		return
+	}
+	inv.Invalidate(credential.Key{ClusterID: t.p.Subject.ClusterID, Scope: t.p.Subject.Scope, OwnerID: t.p.Subject.OwnerID})
+	if _, err := t.p.session.Broker.Token(req.Context(), t.p.Subject, t.p.Desc); errors.Is(err, credential.ErrChallengeRequired) && t.p.session.OnAuthRequired != nil {
+		t.p.session.OnAuthRequired(t.p.ClusterID)
+	}
 }
 
 // legacyRestConfig is the configuration of a stored cluster without the broker: in-cluster and oidc-password

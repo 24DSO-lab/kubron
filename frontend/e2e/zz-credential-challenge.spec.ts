@@ -83,6 +83,9 @@ test('credentials: показать и скрыть пароль, отмена �
   await expect(page.getByTestId('field-password')).toHaveAttribute('type', 'text')
   await page.keyboard.press('Escape')
   await expect(dialog(page)).toHaveCount(0)
+  // cancel() closes the dialog synchronously, then sends the RPC asynchronously.
+  // Wait for the route handler instead of racing it with the UI assertion.
+  await expect.poll(() => mock.calls.CancelChallenge?.length ?? 0).toBe(1)
   expect(mock.calls.CancelChallenge?.[0]).toEqual(['c2'])
 })
 

@@ -192,6 +192,37 @@ func TestAnswerRejectedKeepsChallengeForRetry(t *testing.T) {
 	}
 }
 
+// Bad input and an outage keep the challenge too, and the errors reach the caller as the contract sentinels (the
+// interface translates them): an outage is never reported as wrong credentials.
+func TestInvalidAnswerAndOutageKeepTheChallenge(t *testing.T) {
+	for _, tc := range []struct {
+		err    error
+		reason string
+	}{
+		{credential.ErrInvalidAnswer, "invalid-answer"},
+		{credential.ErrServiceUnavailable, "unavailable"},
+		{credential.ErrAnswerRejected, "rejected"},
+	} {
+		b := &fakeBroker{desc: credential.Descriptor{Kind: credential.KindOIDC},
+			acquire: []credential.Result{challenge("c1", credential.ChallengeCredentials)}}
+		a, _, id, connected := connectFixture(t, b)
+		if _, err := a.ConnectCluster(id); err != nil {
+			t.Fatal(err)
+		}
+		b.answerEr = tc.err
+		if _, err := a.AnswerChallenge("c1", map[string]string{"password": "x"}); !errors.Is(err, tc.err) {
+			t.Fatalf("%v: got %v", tc.err, err)
+		}
+		if got := authFailureReason(tc.err); got != tc.reason {
+			t.Errorf("authFailureReason(%v) = %q, want %q", tc.err, got, tc.reason)
+		}
+		b.answerEr = nil
+		if res, err := a.AnswerChallenge("c1", map[string]string{"password": "good"}); err != nil || res.Status != "connected" || len(*connected) != 1 {
+			t.Fatalf("%v: the challenge was lost: res=%+v err=%v", tc.err, res, err)
+		}
+	}
+}
+
 func TestPollChallengePendingThenCompleted(t *testing.T) {
 	b := &fakeBroker{desc: credential.Descriptor{Kind: credential.KindOIDC},
 		acquire: []credential.Result{challenge("d1", credential.ChallengeDeviceCode)},
@@ -335,7 +366,7 @@ func TestSignInIsAudited(t *testing.T) {
 		all += fmt.Sprintf("%+v", e)
 	}
 	want := []string{
-		"cluster.auth.revoked|ok|cluster=" + id + " reason=disconnect|admin",
+		"cluster.auth.revoked|ok|cluster=" + id + " reason=disconnect owner=" + a.currentUserID() + "|admin",
 		"cluster.auth.success|ok|cluster=" + id + " principal=alice@idp|admin",
 		"cluster.auth.failure|failed|cluster=" + id + " reason=rejected|admin",
 		"cluster.auth.challenge|ok|cluster=" + id + " kind=credentials|admin",
@@ -610,6 +641,10 @@ func TestTeamChallengeIsOnlyForClusterAdministrators(t *testing.T) {
 	}
 	a.auth.Logout()
 	if _, err := a.auth.Login("bob", testPass); err != nil {
+		t.Fatal(err)
+	}
+	// bob входит по временному паролю: пока он не сменён, доступ закрыт с ErrPasswordChangeRequired
+	if err := a.auth.ChangePassword(testPass, "another-pass-2"); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := a.ConnectCluster(id); !errors.Is(err, credential.ErrChallengeRequired) {

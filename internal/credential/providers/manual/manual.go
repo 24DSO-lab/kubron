@@ -59,8 +59,10 @@ func (e *providerError) Error() string        { return e.detail.Error() }
 func (e *providerError) Unwrap() error        { return e.detail }
 func (e *providerError) Is(target error) bool { return target == e.kind }
 
+// rejected marks a pasted value that cannot be used. It is credential.ErrInvalidAnswer, not ErrAnswerRejected: pasting
+// something of the wrong shape is not a wrong guess and must not use up an attempt.
 func rejected(detail error) error {
-	return &providerError{kind: credential.ErrAnswerRejected, detail: detail}
+	return &providerError{kind: credential.ErrInvalidAnswer, detail: detail}
 }
 func unsupported(detail error) error {
 	return &providerError{kind: credential.ErrUnsupported, detail: detail}

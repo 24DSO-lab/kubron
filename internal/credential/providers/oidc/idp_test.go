@@ -98,6 +98,7 @@ type fakeIdP struct {
 	tokenIssuer   string        // issuer inside ID tokens only
 	ttl           time.Duration // lifetime of ID tokens (default 5 minutes)
 	counter       int
+	tokenStatus   int // when not 0, the token endpoint answers with this HTTP status and no OAuth error
 }
 
 func newFakeIdP(t *testing.T, tls bool) *fakeIdP {
@@ -145,6 +146,10 @@ func (f *fakeIdP) serve(w http.ResponseWriter, r *http.Request) {
 	case "/jwks":
 		f.jwks(w)
 	case "/token":
+		if f.tokenStatus != 0 {
+			w.WriteHeader(f.tokenStatus)
+			return
+		}
 		f.token(w, r)
 	case "/device":
 		f.device(w, r)

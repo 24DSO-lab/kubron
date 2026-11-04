@@ -24,8 +24,14 @@ export const ARGO_TOKEN_NOT_SET_MESSAGE = 'Argo CD API token is not set'
 export const ANSWER_REJECTED_MESSAGE = 'the credentials were rejected'
 export const CHALLENGE_EXPIRED_MESSAGE = 'the sign-in request has expired'
 export const INVALID_GRANT_MESSAGE = 'the saved sign-in is no longer valid'
+/** credential.ErrInvalidAnswer: плохой ввод (пустое поле, не токен). Не неверный пароль: поля остаются заполненными */
+export const INVALID_ANSWER_MESSAGE = 'the value could not be used'
+/** credential.ErrServiceUnavailable: сервис входа (IdP, сеть) недоступен. Не неверный пароль */
+export const SERVICE_UNAVAILABLE_MESSAGE = 'the sign-in service is unavailable'
 
 export const isAnswerRejected = (message: string) => message.includes(ANSWER_REJECTED_MESSAGE)
+export const isInvalidAnswer = (message: string) => message.includes(INVALID_ANSWER_MESSAGE)
+export const isServiceUnavailable = (message: string) => message.includes(SERVICE_UNAVAILABLE_MESSAGE)
 export const isChallengeExpired = (message: string) => message.includes(CHALLENGE_EXPIRED_MESSAGE)
 export const isInvalidGrant = (message: string) => message.includes(INVALID_GRANT_MESSAGE)
 

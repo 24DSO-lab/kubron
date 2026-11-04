@@ -195,11 +195,58 @@ func TestPasswordBadAnswers(t *testing.T) {
 	ch := credential.Challenge{Kind: credential.ChallengeCredentials}
 	for _, a := range []credential.Answer{{}, {"username": "alice"}, {"password": "x"}, {"username": "alice", "password": strings.Repeat("x", 5000)}} {
 		_, err := p.Continue(ctx, env, credential.Request{Descriptor: d, Subject: subjectUser(), Challenge: ch, Answer: a})
-		if !errors.Is(err, credential.ErrAnswerRejected) {
-			t.Errorf("%v: got %v", a, err)
+		if !errors.Is(err, credential.ErrInvalidAnswer) || errors.Is(err, credential.ErrAnswerRejected) {
+			t.Errorf("%v: got %v, want ErrInvalidAnswer", a, err)
 		}
 	}
 	if n := idp.hit("/token"); n != 0 {
 		t.Errorf("incomplete answers must not reach the provider (%d requests)", n)
+	}
+}
+
+// An identity provider that is down (a server error, throttling, no connection) is "the service is unavailable",
+// never "wrong password": the user is not told to change a correct password.
+func TestPasswordOutageIsNotAWrongPassword(t *testing.T) {
+	for name, status := range map[string]int{"server error": 500, "bad gateway": 502, "unavailable": 503, "throttled": 429} {
+		idp := newFakeIdP(t, false)
+		p, ctx, env := New(), context.Background(), idp.env(true)
+		d := idp.descriptor("password", nil)
+		res, err := p.Begin(ctx, env, credential.Request{Descriptor: d, Subject: subjectUser()})
+		ch := mustChallenge(t, res, err, credential.ChallengeCredentials)
+		idp.mu.Lock()
+		idp.tokenStatus = status
+		idp.mu.Unlock()
+		_, err = p.Continue(ctx, env, credential.Request{Descriptor: d, Subject: subjectUser(), Challenge: ch,
+			Answer: credential.Answer{"username": "alice", "password": idp.users["alice"]}})
+		if !errors.Is(err, credential.ErrServiceUnavailable) || errors.Is(err, credential.ErrAnswerRejected) {
+			t.Errorf("%s (%d): got %v, want ErrServiceUnavailable", name, status, err)
+		}
+	}
+}
+
+func TestPasswordClientErrorsStayRejections(t *testing.T) {
+	idp := newFakeIdP(t, false)
+	p, ctx, env := New(), context.Background(), idp.env(true)
+	d := idp.descriptor("password", nil)
+	res, err := p.Begin(ctx, env, credential.Request{Descriptor: d, Subject: subjectUser()})
+	ch := mustChallenge(t, res, err, credential.ChallengeCredentials)
+	_, err = p.Continue(ctx, env, credential.Request{Descriptor: d, Subject: subjectUser(), Challenge: ch,
+		Answer: credential.Answer{"username": "alice", "password": "wrong"}})
+	if !errors.Is(err, credential.ErrAnswerRejected) || errors.Is(err, credential.ErrServiceUnavailable) {
+		t.Fatalf("a wrong password: %v", err)
+	}
+}
+
+func TestPasswordUnreachableProviderIsUnavailable(t *testing.T) {
+	idp := newFakeIdP(t, false)
+	p, ctx, env := New(), context.Background(), idp.env(true)
+	d := idp.descriptor("password", nil)
+	res, err := p.Begin(ctx, env, credential.Request{Descriptor: d, Subject: subjectUser()})
+	ch := mustChallenge(t, res, err, credential.ChallengeCredentials)
+	idp.srv.Close() // nothing listens any more
+	_, err = p.Continue(ctx, env, credential.Request{Descriptor: d, Subject: subjectUser(), Challenge: ch,
+		Answer: credential.Answer{"username": "alice", "password": idp.users["alice"]}})
+	if !errors.Is(err, credential.ErrServiceUnavailable) || errors.Is(err, credential.ErrAnswerRejected) {
+		t.Fatalf("got %v, want ErrServiceUnavailable", err)
 	}
 }

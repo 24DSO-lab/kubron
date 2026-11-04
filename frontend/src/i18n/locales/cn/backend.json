@@ -571,6 +571,8 @@
   "credCoreCredentialsRejected": "凭据被拒绝",
   "credCoreSavedSignInInvalid": "已保存的登录已失效",
   "credCoreSignInMethodUnsupported": "不支持此登录方式",
+  "credCoreValueUnusable": "无法使用该值",
+  "credCoreSignInServiceUnavailable": "登录服务不可用",
   "credCoreMasterKeyNotConfigured": "未配置主加密密钥",
   "credCoreSecretKeyRequiredWithPostgres": "使用 PostgreSQL 时必须设置 KUBRON_SECRET_KEY",
   "credCoreMasterKeyStorageUnavailable": "主密钥存储不可用",

@@ -19,9 +19,6 @@ import (
 )
 
 const (
-	// DefaultTTL is the lifetime of a token without expirationTimestamp.
-	DefaultTTL = 5 * time.Minute
-
 	// Answer field and values of the confirm-exec challenge.
 	FieldDecision  = "decision"
 	DecisionOnce   = "once"
@@ -83,6 +80,9 @@ func (e *providerError) Is(target error) bool { return target == e.kind }
 func rejected(detail error) error {
 	return &providerError{kind: credential.ErrAnswerRejected, detail: detail}
 }
+func invalid(detail error) error {
+	return &providerError{kind: credential.ErrInvalidAnswer, detail: detail}
+}
 func unsupported(detail error) error {
 	return &providerError{kind: credential.ErrUnsupported, detail: detail}
 }
@@ -138,12 +138,15 @@ func (p *Provider) Continue(ctx context.Context, env credential.Env, req credent
 	}
 	switch req.Answer[FieldDecision] {
 	case DecisionOnce:
+		// "Once" lasts until the application is closed: a repeated token request (after a 401, for example)
+		// must not ask again, but nothing is written to disk.
+		p.trust.addOnce(key)
 	case DecisionAlways:
 		if err := p.trust.add(env.DataDir, key); err != nil {
 			return credential.Result{}, rejected(err)
 		}
 	default:
-		return credential.Result{}, rejected(errBadDecision)
+		return credential.Result{}, invalid(errBadDecision)
 	}
 	return p.run(ctx, env, req, x, key)
 }
@@ -330,16 +333,18 @@ func parseOutput(stdout []byte, apiVersion string, now func() time.Time) (creden
 	if !validToken(o.Status.Token) {
 		return credential.Token{}, errBadToken
 	}
-	expiry := now().Add(DefaultTTL)
+	// Without expirationTimestamp the Expiry stays zero: as in client-go, the token lives in memory until the
+	// API server answers 401 (the Broker's transport invalidates it then).
+	var expiry time.Time
 	if o.Status.ExpirationTimestamp != "" {
 		t, err := time.Parse(time.RFC3339, o.Status.ExpirationTimestamp)
 		if err != nil {
 			return credential.Token{}, errBadExpiry
 		}
+		if !t.After(now()) {
+			return credential.Token{}, errExpired
+		}
 		expiry = t
-	}
-	if !expiry.After(now()) {
-		return credential.Token{}, errExpired
 	}
 	return credential.Token{Value: o.Status.Token, Expiry: expiry}, nil
 }

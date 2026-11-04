@@ -40,7 +40,7 @@ func (s *session) continueCredentials(ctx context.Context, req credential.Reques
 	username := strings.TrimSpace(req.Answer["username"])
 	password := req.Answer["password"]
 	if username == "" || password == "" || len(username) > maxCredentialLen || len(password) > maxCredentialLen {
-		return credential.Result{}, credential.ErrAnswerRejected
+		return credential.Result{}, credential.ErrInvalidAnswer // an empty or oversized field is not a wrong password
 	}
 	d, err := s.discover(ctx)
 	if err != nil {

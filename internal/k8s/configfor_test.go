@@ -386,3 +386,88 @@ func TestScopeFor(t *testing.T) {
 		}
 	}
 }
+
+// invalidatingBroker is a scriptBroker that also implements credential.Invalidator.
+type invalidatingBroker struct {
+	*scriptBroker
+	invalidated []credential.Key
+	afterErr    error // Token error once the token was invalidated
+}
+
+func (b *invalidatingBroker) Invalidate(k credential.Key) {
+	b.invalidated = append(b.invalidated, k)
+	if b.afterErr != nil {
+		b.err = b.afterErr
+	}
+}
+
+func unauthorizedPlan(b credential.Broker, asked *[]string) ConnPlan {
+	return ConnPlan{ClusterID: "c", Subject: credential.Subject{ClusterID: "c", Scope: credential.ScopeUser, OwnerID: "alice"},
+		Desc:    credential.Descriptor{Kind: credential.KindExec},
+		session: AuthSession{Broker: b, OnAuthRequired: func(id string) { *asked = append(*asked, id) }}}
+}
+
+func TestBrokerTransportInvalidatesTheTokenOn401WithoutRetry(t *testing.T) {
+	b := &invalidatingBroker{scriptBroker: &scriptBroker{kind: credential.KindExec}}
+	var asked []string
+	sent := 0
+	rt := brokerTransport(unauthorizedPlan(b, &asked))(rtFunc(func(*http.Request) (*http.Response, error) {
+		sent++
+		return &http.Response{StatusCode: http.StatusUnauthorized, Body: http.NoBody}, nil
+	}))
+	req, _ := http.NewRequest("GET", "https://203.0.113.10/api", nil)
+	resp, err := rt.RoundTrip(req)
+	if err != nil || resp.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("the 401 must reach the caller: %v, %v", resp, err)
+	}
+	if sent != 1 {
+		t.Fatalf("the request was sent %d times, want 1 (no retry)", sent)
+	}
+	want := credential.Key{ClusterID: "c", Scope: credential.ScopeUser, OwnerID: "alice"}
+	if len(b.invalidated) != 1 || b.invalidated[0] != want {
+		t.Fatalf("invalidated = %v", b.invalidated)
+	}
+	if len(asked) != 0 {
+		t.Fatalf("a new token was available, but the interface was asked to sign in: %v", asked)
+	}
+}
+
+func TestBrokerTransportAsksForSignInWhenNothingIsLeftAfter401(t *testing.T) {
+	b := &invalidatingBroker{scriptBroker: &scriptBroker{kind: credential.KindExec}, afterErr: credential.ErrChallengeRequired}
+	var asked []string
+	rt := brokerTransport(unauthorizedPlan(b, &asked))(rtFunc(func(*http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: http.StatusUnauthorized, Body: http.NoBody}, nil
+	}))
+	req, _ := http.NewRequest("GET", "https://203.0.113.10/api", nil)
+	if _, err := rt.RoundTrip(req); err != nil {
+		t.Fatal(err)
+	}
+	if len(asked) != 1 || asked[0] != "c" {
+		t.Fatalf("OnAuthRequired = %v", asked)
+	}
+}
+
+func TestBrokerTransportLeavesOtherStatusesAlone(t *testing.T) {
+	b := &invalidatingBroker{scriptBroker: &scriptBroker{kind: credential.KindExec}}
+	var asked []string
+	rt := brokerTransport(unauthorizedPlan(b, &asked))(rtFunc(func(*http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: http.StatusForbidden, Body: http.NoBody}, nil
+	}))
+	req, _ := http.NewRequest("GET", "https://203.0.113.10/api", nil)
+	if _, err := rt.RoundTrip(req); err != nil || len(b.invalidated) != 0 {
+		t.Fatalf("403 must not invalidate: %v, %v", err, b.invalidated)
+	}
+}
+
+// A broker without Invalidate (the older contract) keeps working: a 401 is passed through.
+func TestBrokerTransport401WithoutInvalidatorIsPassedThrough(t *testing.T) {
+	b := &scriptBroker{kind: credential.KindExec}
+	var asked []string
+	rt := brokerTransport(unauthorizedPlan(b, &asked))(rtFunc(func(*http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: http.StatusUnauthorized, Body: http.NoBody}, nil
+	}))
+	req, _ := http.NewRequest("GET", "https://203.0.113.10/api", nil)
+	if resp, err := rt.RoundTrip(req); err != nil || resp.StatusCode != 401 || b.tokens.Load() != 1 {
+		t.Fatalf("%v, %v, tokens=%d", resp, err, b.tokens.Load())
+	}
+}
