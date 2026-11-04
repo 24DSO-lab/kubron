@@ -160,6 +160,7 @@ func (c *Challenges) Fail(ctx context.Context, userKey, idpKey string, now time.
 					  OR existing.window_started <= $3 - ($5 * interval '1 second') THEN 1
 					ELSE existing.failures + 1 END,
 				window_started = CASE
+					WHEN existing.locked_until > $3 THEN existing.window_started
 					WHEN (existing.locked_until IS NOT NULL AND existing.locked_until <= $3)
 					  OR existing.window_started <= $3 - ($5 * interval '1 second') THEN $3
 					ELSE existing.window_started END,
