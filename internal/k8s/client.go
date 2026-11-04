@@ -427,6 +427,17 @@ func buildClusterConnection(clusterID string) (*ClusterConnection, error) {
 	return buildPlanConnection(p)
 }
 
+// DropPersonal закрывает личное подключение пользователя (informers) к кластеру; пустой clusterID — ко всем кластерам.
+// Вызывается при отзыве входа. Виды, державшие подключение, при следующем обращении получат «нет активного подключения».
+func (m *Manager) DropPersonal(clusterID, owner string) {
+	if owner == "" {
+		return
+	}
+	m.pool.removeIf(func(c *ClusterConnection) bool {
+		return (clusterID == "" || c.Name == clusterID) && c.key == userPoolKey(c.Name, owner)
+	})
+}
+
 // lookupConn — подключение кластера для этого вида: личное, затем общее.
 func (m *Manager) lookupConn(clusterID string) (*ClusterConnection, bool) {
 	if owner := m.AuthSessionOf().UserID; owner != "" {

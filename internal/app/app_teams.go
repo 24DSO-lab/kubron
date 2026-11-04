@@ -148,6 +148,9 @@ func (a *App) RemoveTeamMember(teamID, userID string) error {
 	}
 	err := a.dir.RemoveMember(teamID, userID)
 	a.recordTeam("RemoveTeamMember", resultOf(err), teamID, "user="+userID)
+	if err == nil { // личные входы пользователя в кластеры этой команды больше не нужны
+		err = a.revokeTeamClusters(userID, teamID, "removed-from-team")
+	}
 	return err
 }
 

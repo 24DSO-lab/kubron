@@ -49,6 +49,7 @@ type App struct {
 	// broker — вход в кластеры (ADR-0018); nil — старый путь без вызовов. conn — состояние входов этого вида.
 	broker credential.Broker
 	conn   *connectState
+	rev    *revocations // отозванные личные входы реплики; общий для всех видов
 	// finish подменяется в тестах: подключение и проверка кластера после успешного входа.
 	finish func(clusterID string) error
 }
@@ -69,6 +70,7 @@ func NewApp(p Platform) *App {
 		k8sMgr:   mgr,
 		pfMgr:    k8s.NewPortForwardManager(mgr),
 		conn:     newConnectState(),
+		rev:      &revocations{},
 	}
 	a.pfMgr.SetObserver(a.portForwardObserver())
 	a.configureTerminals()

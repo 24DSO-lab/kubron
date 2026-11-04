@@ -225,3 +225,20 @@ func (p *connPool) removeCluster(clusterID string) {
 		delete(p.entries, key)
 	}
 }
+
+// removeIf закрывает и забывает подключения, для которых match возвращает true.
+func (p *connPool) removeIf(match func(*ClusterConnection) bool) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	for key, e := range p.entries {
+		if !match(e.conn) {
+			continue
+		}
+		if e.idleTimer != nil {
+			e.idleTimer.Stop()
+			e.idleTimer = nil
+		}
+		p.closeFn(e.conn)
+		delete(p.entries, key)
+	}
+}

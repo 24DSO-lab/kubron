@@ -11,6 +11,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/24DSO-labs/kubron/internal/auth"
 	"github.com/24DSO-labs/kubron/internal/credential"
 	"github.com/24DSO-labs/kubron/internal/k8s"
 	"github.com/24DSO-labs/kubron/pkg/ext"
@@ -341,5 +342,114 @@ func TestSignInIsAudited(t *testing.T) {
 	}
 	if strings.Contains(all, pw) || strings.Contains(all, tok) {
 		t.Fatal("a secret reached the audit journal")
+	}
+}
+
+// openView returns another view of the same signed-in user with its own manager, connected to the cluster.
+func openView(t *testing.T, a *App, clusterID string) *App {
+	t.Helper()
+	v := *a
+	v.k8sMgr = a.k8sMgr.ForSession()
+	v.pfMgr = k8s.NewSessionPortForwardManager(v.k8sMgr)
+	v.conn = newConnectState()
+	if err := v.k8sMgr.ConnectToCluster(clusterID); err != nil {
+		t.Fatal(err)
+	}
+	return &v
+}
+
+func lifecycleFixture(t *testing.T) (*App, *fakeBroker, string, *recPlatform) {
+	t.Helper()
+	b := &fakeBroker{desc: credential.Descriptor{Kind: credential.KindOIDC}}
+	a, pl, id, _ := connectFixture(t, b)
+	a.pfMgr = k8s.NewPortForwardManager(a.k8sMgr)
+	a.rev = &revocations{}
+	if err := a.k8sMgr.ConnectToCluster(id); err != nil { // builds a client offline; nothing is dialled
+		t.Fatal(err)
+	}
+	return a, b, id, pl
+}
+
+// Disconnect revokes the personal sign-in, closes the user's active cluster at once and tells the client.
+func TestDisconnectClusterClosesTheViewAtOnce(t *testing.T) {
+	a, b, id, pl := lifecycleFixture(t)
+	if err := a.DisconnectCluster(id); err != nil {
+		t.Fatal(err)
+	}
+	if len(b.revoked) != 1 || b.revoked[0].ClusterID != id {
+		t.Fatalf("revoked: %+v", b.revoked)
+	}
+	if a.k8sMgr.GetActiveContext() != "" {
+		t.Fatal("the active cluster must be closed")
+	}
+	if len(pl.events) == 0 || pl.events[len(pl.events)-1] != EventAuthRequired {
+		t.Fatalf("events: %v", pl.events)
+	}
+}
+
+// A revoke made in one session is applied to the other views of the same user by EnforceAccess.
+func TestRevokeIsAppliedToOtherViewsOfTheUser(t *testing.T) {
+	a, _, id, _ := lifecycleFixture(t)
+	other := openView(t, a, id)
+	if other.k8sMgr.GetActiveContext() != id {
+		t.Fatal("the second view must be connected")
+	}
+	if EnforceAccess(other) {
+		t.Fatal("nothing was revoked yet")
+	}
+	if err := a.revokePersonal(a.currentUserID(), id, "test"); err != nil {
+		t.Fatal(err)
+	}
+	if !EnforceAccess(other) || other.k8sMgr.GetActiveContext() != "" {
+		t.Fatal("the other view of the user must be closed")
+	}
+	if EnforceAccess(other) {
+		t.Fatal("a revoke is applied once")
+	}
+}
+
+// The other user is not affected by a revoke for someone else.
+func TestRevokeOfAnotherUserDoesNotCloseThisView(t *testing.T) {
+	a, _, id, _ := lifecycleFixture(t)
+	if err := a.revokePersonal("someone-else", id, "test"); err != nil {
+		t.Fatal(err)
+	}
+	if EnforceAccess(a) || a.k8sMgr.GetActiveContext() != id {
+		t.Fatal("the view of another user must stay open")
+	}
+}
+
+func TestPasswordChangeLogoutAndUserDeletionRevoke(t *testing.T) {
+	a, b, _, _ := lifecycleFixture(t)
+	uid := a.currentUserID()
+	if err := a.ChangePassword(testPass, "another-pass-2"); err != nil {
+		t.Fatal(err)
+	}
+	a.Logout()
+	last := b.revoked
+	if len(last) != 2 || last[0].OwnerID != uid || last[1].OwnerID != uid || last[0].ClusterID != "" {
+		t.Fatalf("revokes: %+v", last)
+	}
+	for _, r := range last {
+		if r.Scope != credential.ScopeUser {
+			t.Fatalf("only personal sign-ins are revoked: %+v", r)
+		}
+	}
+}
+
+func TestResetPasswordAndUserDeletionRevokeTheirSignIns(t *testing.T) {
+	a, b, _, _ := lifecycleFixture(t)
+	bob, err := a.auth.CreateUser("bob", testPass, auth.RoleUser)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := a.ResetUserPassword(bob.ID, "fresh-password-3"); err != nil {
+		t.Fatal(err)
+	}
+	if err := a.DeleteUser(bob.ID); err != nil {
+		t.Fatal(err)
+	}
+	if len(b.revoked) != 2 || b.revoked[0].OwnerID != bob.ID || b.revoked[1].OwnerID != bob.ID {
+		t.Fatalf("revokes: %+v", b.revoked)
 	}
 }

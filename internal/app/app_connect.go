@@ -44,6 +44,21 @@ type connectState struct {
 	mu       sync.Mutex
 	pending  map[string]string    // challenge id -> cluster id, only for challenges this session started
 	notified map[string]time.Time // cluster id -> when cluster:auth-required was last sent
+	seenSeq  uint64               // how far of the replica's revocations this view has applied
+}
+
+func (s *connectState) seen() uint64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.seenSeq
+}
+
+func (s *connectState) markSeen(n uint64) {
+	s.mu.Lock()
+	if n > s.seenSeq {
+		s.seenSeq = n
+	}
+	s.mu.Unlock()
 }
 
 func newConnectState() *connectState {
@@ -337,10 +352,10 @@ func (a *App) DisconnectCluster(clusterID string) error {
 	if err != nil {
 		return err
 	}
-	if err := a.broker.Revoke(context.Background(), credential.RevokeFilter{ClusterID: clusterID, OwnerID: u.ID, Scope: credential.ScopeUser}); err != nil {
+	if err := a.revokePersonal(u.ID, clusterID, "disconnect"); err != nil {
 		return err
 	}
-	a.recordAuthEvent(auditAuthRevoked, audit.ResultOK, clusterID, "", "reason", "disconnect")
+	a.applyRevocations() // close this user's terminals, logs and port-forwards at once, not at the next check
 	return nil
 }
 

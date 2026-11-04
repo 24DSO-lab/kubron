@@ -58,8 +58,10 @@ func (a *App) recordAuthEvent(action, result, clusterID, principal string, kv ..
 		return
 	}
 	actor := a.auth.Actor()
-	if full, err := a.auth.CheckCluster(auth.PermRead, clusterID); err == nil {
-		actor = full
+	if clusterID != "" {
+		if full, err := a.auth.CheckCluster(auth.PermRead, clusterID); err == nil {
+			actor = full
+		}
 	}
 	a.recordAuthEventFor(actor, action, result, clusterID, principal, kv...)
 }
