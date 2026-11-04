@@ -95,10 +95,10 @@ func newConfig(d credential.Descriptor, sv *saved, desktop bool) (config, error)
 		if webClientID := strings.TrimSpace(p["web.client-id"]); webClientID != "" {
 			c.clientID = webClientID
 			c.clientSecret = "" // a web public client must never inherit a kubeconfig client secret
-		}
-		c.webRedirectURL = strings.TrimSpace(p["web.redirect-url"])
-		if c.webRedirectURL != "" && !validWebRedirectURL(c.webRedirectURL) {
-			return config{}, credential.ErrUnsupported
+			c.webRedirectURL = strings.TrimSpace(p["web.redirect-url"])
+			if c.webRedirectURL != "" && !validWebRedirectURL(c.webRedirectURL) {
+				return config{}, credential.ErrUnsupported
+			}
 		}
 	}
 	if c.issuer == "" || c.clientID == "" {
