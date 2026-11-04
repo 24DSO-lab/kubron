@@ -27,6 +27,21 @@ func signInWithPassword(t *testing.T, idp *fakeIdP, env credential.Env, extra ma
 	return New().Begin(context.Background(), env, credential.Request{Descriptor: idp.descriptor("password", args), Subject: subjectUser()})
 }
 
+func TestWebPublicClientOverridesClientSecret(t *testing.T) {
+	d := credential.Descriptor{Kind: credential.KindOIDC, Params: map[string]string{
+		"issuer-url": "https://idp.example.test", "client-id": "kubeconfig-client",
+		"client-secret": "must-not-be-used", "web.client-id": "web-public-client",
+		"web.redirect-url": "https://kubron.example.test/auth/cluster/callback",
+	}}
+	cfg, err := newConfig(d, nil, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.clientID != "web-public-client" || cfg.clientSecret != "" {
+		t.Fatalf("web public client config: clientID=%q secret=%q", cfg.clientID, cfg.clientSecret)
+	}
+}
+
 func TestScopes(t *testing.T) {
 	idp := newFakeIdP(t, false)
 	res, err := signInWithPassword(t, idp, idp.env(true), map[string]string{"scope": "groups email openid groups"})
