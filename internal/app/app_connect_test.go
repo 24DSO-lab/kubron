@@ -366,7 +366,7 @@ func TestSignInIsAudited(t *testing.T) {
 		all += fmt.Sprintf("%+v", e)
 	}
 	want := []string{
-		"cluster.auth.revoked|ok|cluster=" + id + " reason=disconnect|admin",
+		"cluster.auth.revoked|ok|cluster=" + id + " reason=disconnect owner=" + a.currentUserID() + "|admin",
 		"cluster.auth.success|ok|cluster=" + id + " principal=alice@idp|admin",
 		"cluster.auth.failure|failed|cluster=" + id + " reason=rejected|admin",
 		"cluster.auth.challenge|ok|cluster=" + id + " kind=credentials|admin",
@@ -641,6 +641,10 @@ func TestTeamChallengeIsOnlyForClusterAdministrators(t *testing.T) {
 	}
 	a.auth.Logout()
 	if _, err := a.auth.Login("bob", testPass); err != nil {
+		t.Fatal(err)
+	}
+	// bob входит по временному паролю: пока он не сменён, доступ закрыт с ErrPasswordChangeRequired
+	if err := a.auth.ChangePassword(testPass, "another-pass-2"); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := a.ConnectCluster(id); !errors.Is(err, credential.ErrChallengeRequired) {

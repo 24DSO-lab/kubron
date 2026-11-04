@@ -15,7 +15,7 @@ import (
 	"github.com/24DSO-labs/kubron/internal/credential"
 )
 
-func kubeconfigFor(server string, insecure bool) string {
+func signinKubeconfig(server string, insecure bool) string {
 	return fmt.Sprintf(`apiVersion: v1
 kind: Config
 current-context: ctx
@@ -42,7 +42,7 @@ func clusterAt(t *testing.T, server string, insecure bool) string {
 	t.Helper()
 	SetKubronDir(t.TempDir())
 	t.Cleanup(func() { SetKubronDir("") })
-	meta, err := AddClusterFromText(kubeconfigFor(server, insecure), ClusterSettings{DisplayName: "c", ContextName: "ctx"})
+	meta, err := AddClusterFromText(signinKubeconfig(server, insecure), ClusterSettings{DisplayName: "c", ContextName: "ctx"})
 	if err != nil {
 		t.Fatal(err)
 	}
