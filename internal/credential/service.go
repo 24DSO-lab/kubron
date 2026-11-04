@@ -242,6 +242,10 @@ func (s *Service) complete(ctx context.Context, sub Subject, d Descriptor, base 
 	switch {
 	case res.Token != nil:
 		s.cache.put(sub.key(), *res.Token)
+		userKey, idpKey := attemptKeys(sub, d)
+		if err := s.attempts.Reset(ctx, userKey, idpKey); err != nil {
+			s.log.Warn("sign-in attempt counters could not be reset", "kind", d.Kind)
+		}
 		if old != nil {
 			_ = s.chal.Delete(ctx, old.ID)
 			s.dropLive(old.ID)
@@ -394,6 +398,18 @@ func (s *Service) advance(ctx context.Context, sub Subject, id string, a Answer,
 	if !isAnswer && !st.Challenge.Poll {
 		c := publicChallenge(st.Challenge, rec.ID, rec.ExpiresAt)
 		return Result{Challenge: &c}, nil
+	}
+
+	if isAnswer {
+		subject := Subject{Scope: rec.Scope, OwnerID: rec.OwnerID}
+		userKey, idpKey := attemptKeys(subject, st.Descriptor)
+		wait, err := s.attempts.Check(ctx, userKey, idpKey, now)
+		if err != nil {
+			return Result{}, err
+		}
+		if wait > 0 {
+			return Result{}, &RateLimitedError{RetryAfter: wait}
+		}
 	}
 
 	// Claim the request: only one caller (on any replica) can move it from active to busy.
