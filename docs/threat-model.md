@@ -111,40 +111,39 @@
 Модель обновляется при изменении границ (новый тип аутентификации, новый вид прокси), при каждом найденном инциденте и перед мажорным релизом.
 
 
-## 7. Credential broker and identity-provider sign-in (ADR-0018)
+## 7. Брокер учётных данных и вход через IdP (ADR-0018)
 
-### Assets and trust boundaries
+### Активы и границы доверия
 
-- User passwords, client secrets, pasted access tokens, authorization codes, device-flow state and refresh tokens are credentials. They may cross the authenticated RPC boundary only in the request that needs them; they must never be echoed in API responses, application events, the audit journal, logs or metrics.
-- `Descriptor.Params` is untrusted kubeconfig-derived input and may contain secrets. Treat the whole descriptor and every answer map as sensitive; do not log them or include them in error text.
-- `Pending` and `Saved` are opaque provider state. The Broker seals them before persistence; PostgreSQL and the desktop credential file must contain ciphertext, not provider payloads.
-- Challenge records are bound to the cluster, owner, scope and session. They are short-lived, single-use and claimed atomically so two replicas cannot complete the same challenge twice.
-- The server talks to identity providers only through the injected `Env.HTTP` client and the IdP network policy. It must not use ambient server credentials, local kubeconfig files, home directories, cloud metadata or IMDS.
-- A kubeconfig `exec` command is never run by the web server. Desktop execution requires explicit user confirmation; web mode offers a manual-token challenge instead.
+- Пароли пользователя, client secret, вставленные access token, authorization code, состояние device flow и refresh token — секреты. Они могут пересекать аутентифицированную RPC-границу только в запросе, которому нужны; их нельзя возвращать в API-ответах, событиях приложения, журнале аудита, логах или метриках.
+- `Descriptor.Params` — недоверенные данные из kubeconfig, которые могут содержать секреты. Весь descriptor и каждая карта ответов считаются чувствительными данными; их нельзя логировать или включать в текст ошибок.
+- `Pending` и `Saved` — непрозрачное состояние провайдера. Broker шифрует его перед сохранением; PostgreSQL и файл credentials на десктопе должны содержать ciphertext, а не payload провайдера.
+- Записи challenge привязаны к кластеру, владельцу, scope и сессии. Они имеют короткий TTL, используются один раз и атомарно захватываются, поэтому две реплики не могут завершить один challenge одновременно.
+- Сервер обращается к IdP только через переданный `Env.HTTP` и сетевую политику IdP. Нельзя использовать ambient credentials сервера, локальные kubeconfig-файлы, домашние каталоги, cloud metadata или IMDS.
+- Команда `exec` из kubeconfig никогда не выполняется веб-сервером. На десктопе запуск требует явного подтверждения; в веб-режиме предлагается challenge для ручной вставки токена.
 
-### STRIDE threats and controls
+### Угрозы STRIDE и меры
 
-| Threat | Control |
+| Угроза | Контроль |
 |---|---|
-| Password/token disclosure through RPC, events, audit, logs or metrics | Responses and events expose challenge/status metadata only. Audit details use fixed reason codes and identifiers. Errors are scrubbed. Metrics expose only allowlisted RPC method and status labels. Canary tests cover password, access token, refresh token and client secret. |
-| OIDC authorization-code interception, CSRF and mix-up | PKCE S256, cryptographically random `state` and `nonce`, issuer (`iss`) and token issuer/audience validation, exact redirect host/path/port checks, and rejection of mismatched state or issuer. |
-| Challenge replay or use from another user/session | Challenge ID is bound to owner, session, scope and cluster; challenge claim is atomic and one-time; expired challenges are rejected. |
-| Brute-force answers | Web `AnswerChallenge` uses token buckets per application user (burst 5, then 0.2 answers/s) and per IdP (burst 30, then 1 answer/s). Rejected requests return 429 with `Retry-After`. Metrics do not include user or cluster labels. The challenge itself also has a bounded rejected-answer count. |
-| SSRF through kubeconfig issuer or token endpoint | IdP HTTP uses the shared network policy: HTTPS in web mode, resolved-address checks, redirect revalidation, and response/time limits. |
-| RCE through kubeconfig `exec` | Web never executes plugins. Desktop displays the command, arguments and environment variable names (not values) and requires explicit confirmation before local execution. |
-| Credential theft from persistent storage | Broker encrypts opaque `Pending` and `Saved` state with the configured envelope/keyring. Refresh-token rotation is persisted atomically. |
+| Утечка пароля/токена через RPC, события, аудит, логи или метрики | Ответы и события содержат только метаданные challenge/status. Аудит использует фиксированные коды причин и идентификаторы. Ошибки очищаются от секретов. Метрики используют только allowlist RPC-методов и HTTP status. Canary-тесты проверяют пароль, access token, refresh token и client secret. |
+| Перехват authorization code, CSRF и OIDC mix-up | PKCE S256, криптографически случайные `state` и `nonce`, проверка issuer (`iss`) и issuer/audience токена, точная проверка host/path/port redirect URI и отказ при несовпадении state или issuer. |
+| Повтор challenge или использование из другой сессии | Challenge ID привязан к owner, session, scope и cluster; захват challenge атомарный и одноразовый; истёкшие challenge отклоняются. |
+| Подбор credentials через AnswerChallenge | В вебе действуют token bucket на пользователя (burst 5, затем 0.2 ответа/с) и на IdP (burst 30, затем 1 ответ/с). Ограниченные запросы получают 429 с `Retry-After`. Метрики не содержат меток пользователя или кластера. Сам challenge также имеет ограничение числа неверных ответов. |
+| SSRF через issuer или token endpoint из kubeconfig | HTTP к IdP проходит общую сетевую политику: в вебе только HTTPS, проверка разрешённых адресов после DNS, повторная проверка redirect и лимиты времени/размера ответа. |
+| RCE через kubeconfig `exec` | Веб не запускает плагины. Десктоп показывает команду, аргументы и имена переменных окружения (не значения) и требует явного подтверждения перед локальным запуском. |
+| Кража credentials из постоянного хранилища | Broker шифрует непрозрачные `Pending` и `Saved` настроенным envelope/keyring. Ротация refresh token сохраняется атомарно. |
 
-### Residual risks and assumptions
+### Остаточные риски и допущения
 
-- Web token buckets are process-local. Each replica enforces the configured limits independently; they are not a globally coordinated distributed counter. A deployment that needs a strict cross-replica budget must use a shared limiter.
-- For OIDC, the IdP bucket is keyed by the lower-cased issuer host. Providers without an issuer URL currently fall back to provider kind plus cluster ID.
-- ROPC may be unavailable when MFA or Conditional Access is required. It is not a way to bypass tenant policy.
-- Device-code flows can be abused for phishing. The user must verify the displayed verification URL and code before authorizing.
-- A confirmed desktop exec plugin runs with the desktop user's OS privileges. The confirmation step reduces accidental execution but is not a sandbox.
+- Веб-token-bucket хранится в памяти процесса. Каждая реплика применяет лимиты независимо; это не единый глобальный счётчик между репликами. Для строгого общего бюджета потребуется shared limiter.
+- Для OIDC bucket IdP определяется по lower-case host issuer; для cloud providers без issuer URL используется пара provider kind + cluster ID.
+- Подтверждённый exec plugin на десктопе запускается с правами локального пользователя. Подтверждение снижает риск случайного запуска, но не является песочницей.
+- ROPC может быть недоступен при включённых MFA или Conditional Access. Device-code flow подвержен фишингу: пользователь должен проверить verification URL и код перед авторизацией.
 
-### Verification
+### Проверка
 
-- `FuzzDescribe` exercises untrusted kubeconfig parsing; `FuzzParseExecCredential` exercises the ExecCredential JSON/token parser.
-- OIDC tests reject wrong state, wrong issuer, redirect-host/path substitution and malformed callbacks.
-- Broker tests cover challenge replay and foreign-session use.
-- App tests assert that password, access-token, refresh-token and client-secret canaries do not appear in API results, events, audit records or logs; server metrics tests assert that password, challenge, user and cluster canaries do not appear in metrics.
+- `FuzzDescribe` проверяет разбор недоверенного kubeconfig; `FuzzParseExecCredential` — JSON/token parser для ExecCredential.
+- OIDC-тесты отклоняют неверный state, неверный issuer, подмену host/path redirect и некорректный callback.
+- Тесты Broker проверяют replay challenge и использование из чужой сессии.
+- App-тесты проверяют, что canary-строки пароля, access token, refresh token и client secret не попадают в API-ответы, события, audit journal и логи; server-тесты метрик проверяют отсутствие canary-строк в метриках.
