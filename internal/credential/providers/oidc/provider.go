@@ -204,6 +204,8 @@ func (s *session) interactive(ctx context.Context, req credential.Request, sv *s
 		return s.startRemote(ctx)
 	case grantDeviceCode:
 		return s.startRemote(ctx)
+	case grantLegacyRefresh:
+		return s.startLegacy(ctx, req)
 	default:
 		return credential.Result{}, credential.ErrUnsupported
 	}

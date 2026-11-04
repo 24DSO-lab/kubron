@@ -33,6 +33,9 @@ type config struct {
 	// username and password from the kubeconfig (grant password); empty when the user is asked.
 	username, password string
 
+	// idToken and refreshToken of a legacy auth-provider: oidc block (grant legacy-refresh).
+	idToken, refreshToken string
+
 	useAccessToken bool       // the credential is the access token instead of the ID token
 	extraAuth      url.Values // extra parameters of the authorization request
 	caPEM          []byte     // certificate-authority-data of the provider (replaces the system roots)
@@ -66,6 +69,8 @@ func newConfig(d credential.Descriptor, sv *saved, desktop bool) (config, error)
 		clientSecret: p["client-secret"],
 		username:     p["username"],
 		password:     p["password"],
+		idToken:      p["id-token"],
+		refreshToken: p["refresh-token"],
 	}
 	var extra []string
 	if p["scope"] != "" {
