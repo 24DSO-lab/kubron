@@ -238,6 +238,37 @@ func TestFourWrongThenRightStillWorks(t *testing.T) {
 	}
 }
 
+type declinedPollProvider struct{}
+
+func (*declinedPollProvider) Kind() credential.Kind { return credential.KindOIDC }
+func (*declinedPollProvider) Begin(context.Context, credential.Env, credential.Request) (credential.Result, error) {
+	return credential.Result{Challenge: &credential.Challenge{Kind: credential.ChallengeDeviceCode, Poll: true}}, nil
+}
+func (*declinedPollProvider) Continue(context.Context, credential.Env, credential.Request) (credential.Result, error) {
+	return credential.Result{}, credential.ErrAnswerRejected
+}
+
+func TestDeclinedDevicePollsDoNotConsumeAnswerAttempts(t *testing.T) {
+	r := newRig(t)
+	svc := r.newService(&declinedPollProvider{})
+	for i := 0; i < credential.MaxUserAnswerFailures; i++ {
+		res, err := svc.Acquire(bg, subj, desc)
+		if err != nil || res.Challenge == nil {
+			t.Fatalf("Acquire %d = %+v, %v", i, res, err)
+		}
+		if _, err := svc.Poll(bg, subj, res.Challenge.ID); !errors.Is(err, credential.ErrAnswerRejected) {
+			t.Fatalf("Poll %d = %v", i, err)
+		}
+	}
+	res, err := svc.Acquire(bg, subj, desc)
+	if err != nil || res.Challenge == nil {
+		t.Fatalf("Acquire after declined polls = %+v, %v", res, err)
+	}
+	if _, err := svc.Answer(bg, subj, res.Challenge.ID, answer("alice", "wrong")); !errors.Is(err, credential.ErrAnswerRejected) {
+		t.Fatalf("the polls consumed answer attempts: %v", err)
+	}
+}
+
 func TestWrongAnswersAreLimitedAcrossChallengesForOneUser(t *testing.T) {
 	r := newRig(t)
 	for challenge := 0; challenge < 2; challenge++ {
