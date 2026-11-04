@@ -233,3 +233,34 @@ func TestSecretNeverLeaks(t *testing.T) {
 		t.Fatalf("logs contain the secret: %q", logs.String())
 	}
 }
+
+
+func FuzzParseExecCredential(f *testing.F) {
+	f.Add("")
+	f.Add("opaque-token")
+	f.Add(execCred("client.authentication.k8s.io/v1", `{"token":"opaque","expirationTimestamp":"2026-11-04T13:00:00Z"}`))
+	f.Add(execCred("client.authentication.k8s.io/v1beta1", `{"token":"abc.def"}`))
+	f.Add(`{"kind":"ExecCredential","apiVersion":"client.authentication.k8s.io/v1","status":{"token":"t"}} trailing`)
+	f.Add(execCred("client.authentication.k8s.io/v1", `{"clientCertificateData":"cert","clientKeyData":"key"}`))
+	f.Add(strings.Repeat("x", MaxAnswerBytes+1))
+	f.Add("\x00")
+
+	f.Fuzz(func(t *testing.T, input string) {
+		token, err := Parse(input, now)
+		if err != nil {
+			if !errors.Is(err, credential.ErrInvalidAnswer) && !errors.Is(err, credential.ErrUnsupported) {
+				t.Fatalf("unexpected parser error class: %T %v", err, err)
+			}
+			if input != "" && strings.Contains(err.Error(), input) {
+				t.Fatal("parser error echoed untrusted input")
+			}
+			return
+		}
+		if token.Value == "" {
+			t.Fatal("parser accepted an empty token")
+		}
+		if !token.Expiry.After(now) {
+			t.Fatalf("parser accepted a token with non-future expiry: %v", token.Expiry)
+		}
+	})
+}
