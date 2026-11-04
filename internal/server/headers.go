@@ -4,6 +4,7 @@
 package server
 
 import (
+	"context"
 	"net"
 	"net/http"
 	"regexp"
@@ -14,7 +15,7 @@ import (
 type HandlerOption func(*handlerOptions)
 
 type handlerOptions struct {
-	webOIDCCallback func(view any, state, redirectURL string) error
+	webOIDCCallback func(context.Context, any, string, string) error
 
 	cspReportOnly bool
 	readyz        ReadyzConfig
@@ -22,7 +23,7 @@ type handlerOptions struct {
 }
 
 // WithWebOIDCCallback registers the session-bound OIDC browser callback route.
-func WithWebOIDCCallback(fn func(view any, state, redirectURL string) error) HandlerOption {
+func WithWebOIDCCallback(fn func(context.Context, any, string, string) error) HandlerOption {
 	return func(o *handlerOptions) { o.webOIDCCallback = fn }
 }
 
