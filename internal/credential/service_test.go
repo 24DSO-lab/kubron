@@ -302,6 +302,30 @@ func TestWrongAnswersAreLimitedAcrossChallengesForOneUser(t *testing.T) {
 	}
 }
 
+func TestUserFailureCounterSpansIdentityProviders(t *testing.T) {
+	r := newRig(t)
+	for i, issuer := range []string{"https://idp-one.example.test", "https://idp-two.example.test"} {
+		d := credential.Descriptor{Kind: credential.KindOIDC, Params: map[string]string{
+			"grant": "password", "issuer-url": issuer,
+		}}
+		res, err := r.svc.Acquire(bg, subj, d)
+		if err != nil || res.Challenge == nil {
+			t.Fatalf("Acquire %d = %+v, %v", i, res, err)
+		}
+		for attempt := 0; attempt < credential.MaxAnswerAttempts; attempt++ {
+			_, err := r.svc.Answer(bg, subj, res.Challenge.ID, answer("alice", "wrong"))
+			if i == 1 && attempt == credential.MaxAnswerAttempts-1 {
+				var limited *credential.RateLimitedError
+				if !errors.As(err, &limited) {
+					t.Fatalf("last answer across IdPs: %v, want rate limit", err)
+				}
+			} else if !errors.Is(err, credential.ErrAnswerRejected) {
+				t.Fatalf("IdP %d attempt %d: %v", i, attempt, err)
+			}
+		}
+	}
+}
+
 func TestWrongAnswersAreLimitedAcrossUsersForOneIDP(t *testing.T) {
 	r := newRig(t)
 	d := credential.Descriptor{Kind: credential.KindOIDC, Params: map[string]string{
