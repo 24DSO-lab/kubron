@@ -213,12 +213,12 @@ func main() {
 
 	handler := server.NewHandler(dispatcher, dist, guard,
 		server.WithCSPReportOnly(cfg.CSPReportOnly), server.WithContractBuild(version), readyzOption(pgStore, lifecycle),
-		server.WithWebOIDCCallback(func(view any, state, redirectURL string) error {
+		server.WithWebOIDCCallback(func(ctx context.Context, view any, state, redirectURL string) error {
 			v, ok := view.(*app.App)
 			if !ok {
 				return errors.New("sign-in session is unavailable")
 			}
-			return app.CompleteWebOIDCCallback(v, state, redirectURL)
+			return app.CompleteWebOIDCCallback(ctx, v, state, redirectURL)
 		}))
 	handler = setupMetrics(ctx, cfg, metricsDeps{Core: core, Sessions: sessions, Hub: hub, Terminals: terminals,
 		PG: pgStore, Lifecycle: lifecycle}, handler, dispatcher)
