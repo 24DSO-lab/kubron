@@ -602,6 +602,7 @@
   "credCoreSignInRequestNotFound": "未找到登录请求",
   "credCoreSignInServiceNotConfigured": "登录服务配置不完整",
   "credAppSignInUnavailable": "登录不可用",
+  "credAppBrokerNotConfigured": "登录代理配置不完整",
   "credAppTooManySignInAttempts": "登录尝试次数过多，请在 {p0} 秒后重试",
   "credUIManualNoCommand": "kubeconfig 中没有可显示的插件命令",
   "credUIManualTokenEmpty": "令牌为空",

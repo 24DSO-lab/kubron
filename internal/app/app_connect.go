@@ -79,7 +79,10 @@ func (s *connectState) authRequiredDue(clusterID string, now time.Time) bool {
 
 // pendingChallenge is what a session remembers about an open challenge: its cluster and the key of the identity
 // provider it talks to (for the attempt limiter).
-type pendingChallenge struct{ cluster, idp string }
+type pendingChallenge struct {
+	cluster, idp string
+	sub          credential.Subject // the subject the challenge was issued for: team or user
+}
 
 func (s *connectState) remember(challengeID string, p pendingChallenge) {
 	s.mu.Lock()
@@ -121,34 +124,6 @@ func (a *App) emit(event string, data any) {
 type authEventData struct {
 	ClusterID   string `json:"clusterId"`
 	ChallengeID string `json:"challengeId,omitempty"`
-}
-
-// subjectFor builds the subject of a sign-in for the current user. Static credentials belong to the team, every
-// interactive kind to the user (ADR-0018, section 3).
-func (a *App) subjectFor(clusterID string, d credential.Descriptor, src k8s.ClusterAuthSource) (credential.Subject, error) {
-	u, err := a.auth.Current()
-	if err != nil {
-		return credential.Subject{}, err
-	}
-	sub := credential.Subject{ClusterID: clusterID, SessionID: a.sessionID}
-	if d.Kind == credential.KindStatic {
-		sub.Scope, sub.OwnerID = credential.ScopeTeam, src.TeamID
-		if sub.OwnerID == "" {
-			sub.OwnerID = "default"
-		}
-		return sub, nil
-	}
-	sub.Scope, sub.OwnerID = credential.ScopeUser, u.ID
-	return sub, nil
-}
-
-// userSubject is the subject for calls that carry only a challenge id: the broker binds the challenge to it.
-func (a *App) userSubject(clusterID string) (credential.Subject, error) {
-	u, err := a.auth.Current()
-	if err != nil {
-		return credential.Subject{}, err
-	}
-	return credential.Subject{ClusterID: clusterID, Scope: credential.ScopeUser, OwnerID: u.ID, SessionID: a.sessionID}, nil
 }
 
 // finishConnect makes the cluster the active one of this view and checks that it answers.
@@ -193,37 +168,36 @@ func (a *App) connect(ctx context.Context, clusterID string) (credential.Connect
 	if a.broker == nil {
 		return credential.ConnectResult{Status: "connected"}, a.finishConnect(clusterID)
 	}
-	src, err := k8s.LoadClusterAuthSource(clusterID)
+	a.bindAuthSession()
+	plan, err := k8s.PlanFor(a.k8sMgr.AuthSessionOf(), clusterID)
 	if err != nil {
 		return credential.ConnectResult{}, err
 	}
-	if src.Mode != "" { // in-cluster and oidc-password build their own connection
+	if plan.Legacy() { // in-cluster: no sign-in
 		return credential.ConnectResult{Status: "connected"}, a.finishConnect(clusterID)
 	}
-	d, err := a.broker.Describe(src.Kubeconfig, src.ContextName)
+	res, err := a.broker.Acquire(ctx, plan.Subject, plan.Desc)
 	if err != nil {
 		return credential.ConnectResult{}, err
 	}
-	sub, err := a.subjectFor(clusterID, d, src)
-	if err != nil {
-		return credential.ConnectResult{}, err
+	if res.Challenge != nil && plan.Subject.Scope == credential.ScopeTeam && !a.canManageCluster(clusterID) {
+		// The shared account of a team is entered by a cluster administrator only: anybody else would connect with
+		// credentials of their own choice as the team.
+		_ = a.broker.Cancel(ctx, plan.Subject, res.Challenge.ID)
+		return credential.ConnectResult{}, credential.ErrChallengeRequired
 	}
-	res, err := a.broker.Acquire(ctx, sub, d)
-	if err != nil {
-		return credential.ConnectResult{}, err
-	}
-	return a.connectResultOf(clusterID, d, res)
+	return a.connectResultOf(clusterID, plan, res)
 }
 
 // connectResultOf turns a broker result into the wire result: a challenge is remembered for this session, a token (or
 // nothing, for static credentials) connects the cluster.
-func (a *App) connectResultOf(clusterID string, d credential.Descriptor, res credential.Result) (credential.ConnectResult, error) {
+func (a *App) connectResultOf(clusterID string, plan k8s.ConnPlan, res credential.Result) (credential.ConnectResult, error) {
 	if res.Challenge != nil {
-		a.conn.remember(res.Challenge.ID, pendingChallenge{cluster: clusterID, idp: idpKey(d, clusterID)})
+		a.conn.remember(res.Challenge.ID, pendingChallenge{cluster: clusterID, idp: idpKey(plan.Desc, clusterID), sub: plan.Subject})
 		a.recordAuthEvent(auditAuthChallenge, audit.ResultOK, clusterID, "", "kind", string(res.Challenge.Kind))
 		return credential.ConnectResult{Status: "challenge", Challenge: res.Challenge}, nil
 	}
-	if d.Kind != credential.KindStatic { // static credentials involve no sign-in
+	if plan.Desc.Kind != credential.KindStatic { // static credentials involve no sign-in
 		a.recordAuthEvent(auditAuthSuccess, audit.ResultOK, clusterID, principalOf(res))
 	}
 	if err := a.finishConnect(clusterID); err != nil {
@@ -248,14 +222,14 @@ func (a *App) advance(challengeID string, run func(credential.Subject) (credenti
 		return credential.ConnectResult{}, credential.ErrChallengeExpired
 	}
 	clusterID := pc.cluster
-	if err := a.authzCluster(auth.PermRead, clusterID); err != nil {
+	need := auth.PermRead
+	if pc.sub.Scope == credential.ScopeTeam {
+		need = auth.PermClusterManage // the shared account of a team
+	}
+	if err := a.authzCluster(need, clusterID); err != nil {
 		return credential.ConnectResult{}, err
 	}
-	sub, err := a.userSubject(clusterID)
-	if err != nil {
-		return credential.ConnectResult{}, err
-	}
-	res, err := run(sub)
+	res, err := run(pc.sub)
 	if err != nil {
 		if errors.Is(err, credential.ErrChallengeExpired) {
 			a.conn.forget(challengeID)
@@ -321,12 +295,8 @@ func (a *App) CancelChallenge(challengeID string) error {
 	if !ok {
 		return credential.ErrChallengeExpired
 	}
-	sub, err := a.userSubject(pc.cluster)
-	if err != nil {
-		return err
-	}
 	a.conn.forget(challengeID)
-	return a.broker.Cancel(context.Background(), sub, challengeID)
+	return a.broker.Cancel(context.Background(), pc.sub, challengeID)
 }
 
 // ListMyConnections lists the sign-ins the current user has saved (no secrets).
@@ -373,4 +343,10 @@ func principalOf(res credential.Result) string {
 		return res.Token.Principal
 	}
 	return ""
+}
+
+// canManageCluster tells whether the user of this view administers the cluster (its team).
+func (a *App) canManageCluster(clusterID string) bool {
+	_, err := a.auth.CheckCluster(auth.PermClusterManage, clusterID)
+	return err == nil
 }

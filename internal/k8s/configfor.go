@@ -58,6 +58,22 @@ func poolKey(clusterID string, sub credential.Subject) string {
 // userPoolKey cannot clash with a cluster id: ids never contain a NUL byte.
 func userPoolKey(clusterID, owner string) string { return clusterID + "\x00u\x00" + owner }
 
+// Legacy reports that the cluster is connected without the broker (in-cluster, or no broker is configured).
+func (p ConnPlan) Legacy() bool { return p.legacy }
+
+// scopeFor says whose credentials a cluster has. Static credentials and the shared technical account of
+// oidc-password (the choice of the team admin, migrated from task 3.7) belong to the team; every other interactive
+// kind is personal. The owner of a team is its id ("default" where there are no teams).
+func scopeFor(d credential.Descriptor, src ClusterAuthSource, userID string) (credential.Scope, string) {
+	if d.Kind == credential.KindStatic || src.Mode == ModeOIDCPassword {
+		if src.TeamID == "" {
+			return credential.ScopeTeam, "default"
+		}
+		return credential.ScopeTeam, src.TeamID
+	}
+	return credential.ScopeUser, userID
+}
+
 // PlanFor decides how the session connects to the cluster. It reads no secrets and makes no network calls.
 func PlanFor(s AuthSession, clusterID string) (ConnPlan, error) {
 	p := ConnPlan{ClusterID: clusterID, Key: clusterID, session: s}
@@ -70,7 +86,7 @@ func PlanFor(s AuthSession, clusterID string) (ConnPlan, error) {
 		return ConnPlan{}, err
 	}
 	p.src = src
-	if src.Mode != "" { // in-cluster and oidc-password are team-owned and build their own configuration
+	if src.Mode != "" && src.Mode != ModeOIDCPassword { // in-cluster builds its own configuration
 		p.legacy = true
 		return p, nil
 	}
@@ -80,14 +96,7 @@ func PlanFor(s AuthSession, clusterID string) (ConnPlan, error) {
 	}
 	p.Desc = d
 	p.Subject = credential.Subject{ClusterID: clusterID, SessionID: s.SessionID}
-	if d.Kind == credential.KindStatic {
-		p.Subject.Scope, p.Subject.OwnerID = credential.ScopeTeam, src.TeamID
-		if p.Subject.OwnerID == "" {
-			p.Subject.OwnerID = "default"
-		}
-	} else {
-		p.Subject.Scope, p.Subject.OwnerID = credential.ScopeUser, s.UserID
-	}
+	p.Subject.Scope, p.Subject.OwnerID = scopeFor(d, src, s.UserID)
 	p.Key = poolKey(clusterID, p.Subject)
 	return p, nil
 }

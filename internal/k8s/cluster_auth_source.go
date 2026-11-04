@@ -23,7 +23,9 @@ func LoadClusterAuthSource(clusterID string) (ClusterAuthSource, error) {
 		return ClusterAuthSource{}, fmt.Errorf("cluster metadata not found: %w", err)
 	}
 	src := ClusterAuthSource{ContextName: meta.ContextName, Mode: meta.Mode, TeamID: meta.TeamID}
-	if meta.Mode != "" {
+	// in-cluster has no kubeconfig and no sign-in. oidc-password keeps its kubeconfig (the exec block says how to
+	// reach the IdP) and, with a broker, signs in as the team (see PlanFor).
+	if meta.Mode != "" && meta.Mode != ModeOIDCPassword {
 		return src, nil
 	}
 	data, err := clusterStore.Kubeconfig(clusterID)

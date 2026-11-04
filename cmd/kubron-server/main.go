@@ -132,6 +132,9 @@ func main() {
 			sessionBackend = p.Sessions()
 		}
 	}
+	if err := setupBroker(ctx, cfg, pgStore, core); err != nil {
+		fatal("sign-in", err)
+	}
 	app.OnStartup(core)(ctx)
 	app.StartUserRefresh(ctx, core, userRefreshEvery) // другие реплики меняют пользователей и роли
 	defer app.OnShutdown(core)(context.Background())

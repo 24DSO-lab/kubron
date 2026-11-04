@@ -363,3 +363,26 @@ func identName(e ast.Expr) string {
 	}
 	return ""
 }
+
+// Whose credentials a cluster has: static and the shared account of oidc-password belong to the team, everything
+// else to the user.
+func TestScopeFor(t *testing.T) {
+	for _, c := range []struct {
+		name  string
+		d     credential.Descriptor
+		src   ClusterAuthSource
+		scope credential.Scope
+		owner string
+	}{
+		{"static", credential.Descriptor{Kind: credential.KindStatic}, ClusterAuthSource{TeamID: "t1"}, credential.ScopeTeam, "t1"},
+		{"static without teams", credential.Descriptor{Kind: credential.KindStatic}, ClusterAuthSource{}, credential.ScopeTeam, "default"},
+		{"oidc", credential.Descriptor{Kind: credential.KindOIDC}, ClusterAuthSource{TeamID: "t1"}, credential.ScopeUser, "u1"},
+		{"oidc-password mode is the team's account", credential.Descriptor{Kind: credential.KindOIDC},
+			ClusterAuthSource{Mode: ModeOIDCPassword, TeamID: "t1"}, credential.ScopeTeam, "t1"},
+		{"cloud", credential.Descriptor{Kind: credential.KindEKS}, ClusterAuthSource{TeamID: "t1"}, credential.ScopeUser, "u1"},
+	} {
+		if sc, owner := scopeFor(c.d, c.src, "u1"); sc != c.scope || owner != c.owner {
+			t.Errorf("%s: got %s/%s, want %s/%s", c.name, sc, owner, c.scope, c.owner)
+		}
+	}
+}

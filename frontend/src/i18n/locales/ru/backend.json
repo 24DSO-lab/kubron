@@ -602,6 +602,7 @@
   "credCoreSignInRequestNotFound": "запрос на вход не найден",
   "credCoreSignInServiceNotConfigured": "служба входа настроена не полностью",
   "credAppSignInUnavailable": "вход недоступен",
+  "credAppBrokerNotConfigured": "брокер входа настроен не полностью",
   "credAppTooManySignInAttempts": "слишком много попыток входа, повторите через {p0} с",
   "credUIManualNoCommand": "в kubeconfig нет команды плагина для показа",
   "credUIManualTokenEmpty": "токен пуст",

@@ -266,8 +266,8 @@ func (a *App) ConnectToCluster(clusterID string) error {
 	}
 	if res.Status == "challenge" && res.Challenge != nil {
 		if a.broker != nil { // an old client will never answer: do not leave the request pending
-			if sub, serr := a.userSubject(clusterID); serr == nil {
-				_ = a.broker.Cancel(context.Background(), sub, res.Challenge.ID)
+			if pc, ok := a.conn.cluster(res.Challenge.ID); ok {
+				_ = a.broker.Cancel(context.Background(), pc.sub, res.Challenge.ID)
 			}
 			a.conn.forget(res.Challenge.ID)
 		}

@@ -133,3 +133,13 @@ func (a *App) applyRevocations() bool {
 	}
 	return false
 }
+
+// dropTeamSignIn forgets the saved shared sign-in of a cluster in the broker. The administrator has just set
+// credentials through the old methods (which write the old store); the broker's record must not outlive them as a
+// stale password, so the next connection asks the administrator once through a challenge.
+func (a *App) dropTeamSignIn(clusterID string) error {
+	if a.broker == nil || clusterID == "" {
+		return nil
+	}
+	return a.broker.Revoke(context.Background(), credential.RevokeFilter{ClusterID: clusterID, Scope: credential.ScopeTeam})
+}

@@ -589,3 +589,33 @@ func TestSignInSecretsNeverLeaveTheApp(t *testing.T) {
 		}
 	}
 }
+
+// The shared account of a team is entered by a cluster administrator only: another user is refused instead of
+// being offered a form, and the pending request is cancelled.
+func TestTeamChallengeIsOnlyForClusterAdministrators(t *testing.T) {
+	b := &fakeBroker{desc: credential.Descriptor{Kind: credential.KindStatic},
+		acquire: []credential.Result{challenge("t1", credential.ChallengeCredentials), challenge("t2", credential.ChallengeCredentials)}}
+	a, _, id, _ := connectFixture(t, b)
+	// the administrator gets the challenge and may answer it
+	res, err := a.ConnectCluster(id)
+	if err != nil || res.Status != "challenge" {
+		t.Fatalf("admin: res=%+v err=%v", res, err)
+	}
+	if _, err := a.AnswerChallenge("t1", map[string]string{"username": "svc", "password": "p"}); err != nil {
+		t.Fatalf("admin answer: %v", err)
+	}
+	// an ordinary user does not
+	if _, err := a.auth.CreateUser("bob", testPass, auth.RoleUser); err != nil {
+		t.Fatal(err)
+	}
+	a.auth.Logout()
+	if _, err := a.auth.Login("bob", testPass); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := a.ConnectCluster(id); !errors.Is(err, credential.ErrChallengeRequired) {
+		t.Fatalf("bob must be refused, got %v", err)
+	}
+	if len(b.cancels) != 1 || b.cancels[0] != "t2" {
+		t.Fatalf("the pending request must be cancelled: %v", b.cancels)
+	}
+}

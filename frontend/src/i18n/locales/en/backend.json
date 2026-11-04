@@ -602,6 +602,7 @@
   "credCoreSignInRequestNotFound": "the sign-in request was not found",
   "credCoreSignInServiceNotConfigured": "the sign-in service is not configured completely",
   "credAppSignInUnavailable": "sign-in is not available",
+  "credAppBrokerNotConfigured": "the sign-in broker is not configured completely",
   "credAppTooManySignInAttempts": "too many sign-in attempts, try again in {p0} s",
   "credUIManualNoCommand": "the kubeconfig has no plugin command to show",
   "credUIManualTokenEmpty": "the token is empty",
