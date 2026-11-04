@@ -173,8 +173,11 @@ func TestWebCallbackIsBoundToUserAndSessionAndConsumedOnce(t *testing.T) {
 	if err != nil || done.Token == nil {
 		t.Fatalf("callback answer = %+v, %v", done, err)
 	}
-	if _, err := r.svc.AnswerCallback(bg, got, state, "https://kubron.example/auth/cluster/callback?code=one&state="+state); !errors.Is(err, credential.ErrChallengeExpired) {
+	if _, err := r.svc.AnswerCallback(bg, got, state, "https://kubron.example/auth/cluster/callback?code=CANARY-code&state="+state); !errors.Is(err, credential.ErrChallengeExpired) {
 		t.Fatalf("replay: %v", err)
+	}
+	if strings.Contains(r.logs.String(), state) || strings.Contains(r.logs.String(), "CANARY-code") {
+		t.Fatalf("OAuth state or code leaked into logs: %s", r.logs.String())
 	}
 }
 
