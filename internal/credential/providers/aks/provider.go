@@ -110,7 +110,10 @@ func (p *Provider) Begin(ctx context.Context, env credential.Env, req credential
 	if err != nil { return credential.Result{}, err }
 	sv := decodeSaved(req.Saved)
 	staleSaved := false
-	if sv != nil && c.secret == "" { c.secret = sv.ClientSecret }
+	if sv != nil && sv.ClientID == c.clientID {
+		if c.tenant == "" { c.tenant = sv.Tenant }
+		if c.tenant == sv.Tenant && c.secret == "" { c.secret = sv.ClientSecret }
+	}
 	if c.tenant == "" { return credential.Result{Challenge: &credential.Challenge{Kind: credential.ChallengeCredentials, Fields: []credential.Field{{Name: "tenantId"}}}}, nil }
 	if sv != nil && sv.ClientID == c.clientID && sv.Tenant == c.tenant && sv.RefreshToken != "" {
 		if tok, rotated, e := refresh(ctx, env.HTTP, c, sv.RefreshToken, now(env)); e == nil {
