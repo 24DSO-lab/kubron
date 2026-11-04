@@ -4,7 +4,7 @@
   <div class="ch-overlay" data-testid="challenge-overlay" @keydown.esc.stop.prevent="emit('cancel')">
     <div ref="dialogEl" class="ch-dialog" role="dialog" aria-modal="true" tabindex="-1" data-testid="challenge-dialog"
       :data-kind="challenge.kind" :aria-labelledby="titleId" :aria-describedby="descId" :aria-busy="busy"
-      @keydown.tab="trapTab">
+      >
       <h3 :id="titleId" class="ch-title">{{ $t(`credential.${challenge.kind}.title`) }}</h3>
       <p :id="descId" class="ch-desc">{{ $t(`credential.${challenge.kind}.description`) }}</p>
 
@@ -130,7 +130,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { Challenge, ChallengeValues } from '../../types/credential'
 import {
@@ -218,18 +218,29 @@ function focusFirst() {
 function trapTab(ev: KeyboardEvent) {
   const root = dialogEl.value
   if (!root) return
-  const items = Array.from(root.querySelectorAll<HTMLElement>('button, [href], input, textarea, pre[tabindex]')).filter((e) => !(e as HTMLButtonElement).disabled)
-  if (items.length === 0) return
+  const items = Array.from(root.querySelectorAll<HTMLElement>('button:not(:disabled), a[href], input:not(:disabled), textarea:not(:disabled), pre[tabindex]'))
+    .filter((e) => e.getClientRects().length > 0 && e.getAttribute('aria-hidden') !== 'true')
+  if (items.length === 0) { ev.preventDefault(); root.focus(); return }
   const first = items[0]
   const last = items[items.length - 1]
   const active = document.activeElement
-  if (ev.shiftKey && (active === first || active === root)) { ev.preventDefault(); last.focus() }
+  if (!root.contains(active)) { ev.preventDefault(); (ev.shiftKey ? last : first).focus() }
+  else if (ev.shiftKey && (active === first || active === root)) { ev.preventDefault(); last.focus() }
   else if (!ev.shiftKey && active === last) { ev.preventDefault(); first.focus() }
+}
+
+function onDocumentKeydown(ev: KeyboardEvent) {
+  if (ev.key === 'Tab') trapTab(ev)
 }
 
 watch(() => props.challenge.id, () => { resetValues(false); void nextTick(focusFirst) })
 watch(() => props.attempt, () => { resetValues(true); void nextTick(focusFirst) })
-onMounted(() => { resetValues(false); focusFirst() })
+onMounted(() => {
+  resetValues(false)
+  focusFirst()
+  document.addEventListener('keydown', onDocumentKeydown, true)
+})
+onBeforeUnmount(() => document.removeEventListener('keydown', onDocumentKeydown, true))
 </script>
 
 <style scoped>
