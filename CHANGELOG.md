@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Cluster authentication docs:** updated the English and Russian user guides to describe the implemented credential broker, OIDC and AKS sign-in modes, Desktop exec confirmation, Web manual-token fallback and unsupported Azure modes.
+
 ## [1.0.0] - 2026-11-03
 
 ### Security
