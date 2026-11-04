@@ -152,11 +152,11 @@ func (c *Challenges) Fail(ctx context.Context, userKey, idpKey string, now time.
 		var locked *time.Time
 		err := tx.QueryRow(ctx, `INSERT INTO credential_attempt_limits AS current
 			(dimension, key_hash, failures, window_started, locked_until, updated_at)
-			VALUES ($1,$2,1,$3,CASE WHEN $4 <= 1 THEN $3 + $6::interval ELSE NULL END,$3)
+			VALUES ($1,$2,1,$3,CASE WHEN $4 <= 1 THEN $3 + ($6 * interval '1 second') ELSE NULL END,$3)
 			ON CONFLICT (dimension, key_hash) DO UPDATE SET
 				failures = CASE
 					WHEN (current.locked_until IS NOT NULL AND current.locked_until <= $3)
-					  OR current.window_started <= $3 - $5::interval THEN 1
+					  OR current.window_started <= $3 - ($5 * interval '1 second') THEN 1
 					ELSE current.failures + 1 END,
 				window_started = CASE
 					WHEN (current.locked_until IS NOT NULL AND current.locked_until <= $3)
@@ -167,10 +167,10 @@ func (c *Challenges) Fail(ctx context.Context, userKey, idpKey string, now time.
 					WHEN (CASE
 						WHEN (current.locked_until IS NOT NULL AND current.locked_until <= $3)
 						  OR current.window_started <= $3 - $5::interval THEN 1
-						ELSE current.failures + 1 END) >= $4 THEN $3 + $6::interval
+						ELSE current.failures + 1 END) >= $4 THEN $3 + ($6 * interval '1 second')
 					ELSE NULL END,
 				updated_at=$3
-			RETURNING locked_until`, dimension, key, now.UTC(), limit, window.String(), lockout.String()).Scan(&locked)
+			RETURNING locked_until`, dimension, key, now.UTC(), limit, window.Seconds(), lockout.Seconds()).Scan(&locked)
 		if err != nil {
 			return 0, err
 		}
