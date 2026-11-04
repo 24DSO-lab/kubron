@@ -260,10 +260,8 @@ func TestWrongAnswersAreLimitedAcrossChallengesForOneUser(t *testing.T) {
 	if res, err := r.svc.Poll(bg, subj, ch.ID); err != nil || res.Challenge == nil {
 		t.Fatalf("Poll while locked = %+v, %v", res, err)
 	}
-	if _, err := r.svc.Answer(bg, subj, ch.ID, answer("alice", pwCanary)); func() bool {
-		var limited *credential.RateLimitedError
-		return errors.As(err, &limited)
-	}() == false {
+	var limited *credential.RateLimitedError
+	if _, err := r.svc.Answer(bg, subj, ch.ID, answer("alice", pwCanary)); !errors.As(err, &limited) {
 		t.Fatalf("answer while locked: %v", err)
 	}
 
