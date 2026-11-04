@@ -67,6 +67,7 @@ type MemoryChallengeStore struct {
 }
 
 var _ ChallengeStore = (*MemoryChallengeStore)(nil)
+var _ AttemptLimiter = (*MemoryChallengeStore)(nil)
 
 // NewMemoryChallengeStore returns an empty store.
 func NewMemoryChallengeStore() *MemoryChallengeStore {
