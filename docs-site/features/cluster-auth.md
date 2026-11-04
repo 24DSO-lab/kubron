@@ -17,7 +17,7 @@ Desktop connects to the Kubernetes API from your computer.
 
 - Import a kubeconfig file or paste its contents, then select a context if there are several.
 - When a native provider supports the configured flow, Kubron asks for the required credentials or opens the browser/device sign-in.
-- Kubernetes `exec` credential plugins can run locally when the executable is installed in `PATH`. Before running a plugin, Kubron shows the command, arguments and environment for your confirmation. A changed command requires confirmation again.
+- Kubernetes `exec` credential plugins can run locally when the executable is installed in `PATH`. Before running a plugin, Kubron shows the command, arguments and environment variable names (not their values) for your confirmation. A changed command requires confirmation again.
 - If a native provider cannot handle an `exec` mode, Kubron can use the confirmed local plugin when one is configured.
 
 An `exec` plugin is executable code. Import kubeconfigs only from sources you trust, and review the command before approving it.
