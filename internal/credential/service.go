@@ -243,7 +243,7 @@ func (s *Service) complete(ctx context.Context, sub Subject, d Descriptor, base 
 	case res.Token != nil:
 		s.cache.put(sub.key(), *res.Token)
 		userKey, idpKey := attemptKeys(sub, d)
-		if err := s.attempts.Reset(ctx, userKey, idpKey); err != nil {
+		if err := s.attempts.Reset(ctx, userKey); err != nil {
 			s.log.Warn("sign-in attempt counters could not be reset", "kind", d.Kind)
 		}
 		if old != nil {
