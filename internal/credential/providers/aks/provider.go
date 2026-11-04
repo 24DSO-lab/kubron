@@ -152,7 +152,7 @@ func (p *Provider) beginConfigured(ctx context.Context, env credential.Env, req 
 	case "devicecode":
 		return startDevice(ctx, env, c)
 	case "spn":
-		if c.secret == "" { return credential.Result{Challenge: &credential.Challenge{Kind: credential.ChallengeCredentials, Fields: []credential.Field{{Name: "clientSecret", Secret: true}}}}, nil }
+		if c.secret == "" { return credential.Result{Challenge: &credential.Challenge{Kind: credential.ChallengeCredentials, Fields: []credential.Field{{Name: "clientSecret", Secret: true}}}, Pending: encodePending(pending{Tenant: c.tenant})}, nil }
 		tok, err := clientCredentials(ctx, env.HTTP, c, now(env)); if err != nil { return credential.Result{}, err }
 		return credential.Result{Token: &tok, Save: encodeSaved(c, "")}, nil
 	case "ropc":
