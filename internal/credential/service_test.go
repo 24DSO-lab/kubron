@@ -131,7 +131,6 @@ func answer(user, pw string) credential.Answer {
 	return credential.Answer{"username": user, "password": pw}
 }
 
-
 type browserCallbackProvider struct{}
 
 func (browserCallbackProvider) Kind() credential.Kind { return credential.KindOIDC }
