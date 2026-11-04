@@ -210,7 +210,6 @@ func (s *Service) begin(ctx context.Context, sub Subject, d Descriptor, saved []
 	}
 	return fallback, res, nil
 }
-}
 
 // loadSaved reads the stored sign-in data of a subject. A missing or unreadable record means "nothing saved":
 // the provider then starts a fresh sign-in, which is the safe outcome.
