@@ -281,7 +281,7 @@ func refresh(ctx context.Context,hc *http.Client,c config,rt string,n time.Time)
 }
 func scope(c config) string { s:=c.serverID+"/.default"; if c.legacy { s="sp:"+s }; return s }
 func post(ctx context.Context,hc *http.Client, endpoint string, form url.Values)([]byte,int,error){
-	if hc==nil||!safeHTTPS(endpoint){return nil,0,errors.New("blocked")}
+	if hc==nil||!safeHTTPS(endpoint){return nil, 0, credential.ErrUnsupported}
 	req,err:=http.NewRequestWithContext(ctx,http.MethodPost,endpoint,strings.NewReader(form.Encode()));if err!=nil{return nil,0,err}
 	req.Header.Set("Content-Type","application/x-www-form-urlencoded")
 	resp,err:=hc.Do(req);if err!=nil{return nil,0,err};defer resp.Body.Close()
