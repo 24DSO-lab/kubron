@@ -177,16 +177,39 @@ func (s *Service) Acquire(ctx context.Context, sub Subject, d Descriptor) (Resul
 	if d.Kind == KindStatic {
 		return Result{}, nil
 	}
+	rec, saved := s.loadSaved(ctx, sub.key())
+	resolved, res, err := s.begin(ctx, sub, d, saved)
+	if err != nil {
+		return Result{}, scrub(err, resolved, nil, saved)
+	}
+	return s.complete(ctx, sub, resolved, rec, res, true, nil)
+}
+
+// begin tries the native provider first. If it explicitly declines a mode and the kubeconfig has an exec
+// block, route the same descriptor through KindExec: manual-token on the web, or the confirmed desktop
+// exec plugin. Store KindExec in the encrypted challenge descriptor so Answer/Poll continue with the same
+// provider rather than resolving back to the native provider.
+func (s *Service) begin(ctx context.Context, sub Subject, d Descriptor, saved []byte) (Descriptor, Result, error) {
 	p, err := s.reg.Resolve(d)
 	if err != nil {
-		return Result{}, err
+		return d, Result{}, err
 	}
-	rec, saved := s.loadSaved(ctx, sub.key())
-	res, perr := p.Begin(ctx, s.penv, Request{Descriptor: d, Subject: sub, Saved: saved})
-	if perr != nil {
-		return Result{}, scrub(perr, d, nil, saved)
+	res, err := p.Begin(ctx, s.penv, Request{Descriptor: d, Subject: sub, Saved: saved})
+	if err == nil || !errors.Is(err, ErrUnsupported) || d.Kind == KindExec || d.Exec == nil {
+		return d, res, err
 	}
-	return s.complete(ctx, sub, d, rec, res, true, nil)
+
+	fallback := d
+	fallback.Kind = KindExec
+	fp, resolveErr := s.reg.Resolve(fallback)
+	if resolveErr != nil {
+		return d, Result{}, err
+	}
+	res, fallbackErr := fp.Begin(ctx, s.penv, Request{Descriptor: fallback, Subject: sub})
+	if fallbackErr != nil {
+		return fallback, Result{}, fallbackErr
+	}
+	return fallback, res, nil
 }
 
 // loadSaved reads the stored sign-in data of a subject. A missing or unreadable record means "nothing saved":

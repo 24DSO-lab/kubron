@@ -147,7 +147,7 @@ On Linux add `-tags webkit2_41` to `wails dev` / `wails build` (WebKitGTK 4.1, a
 - **Server security** (Russian) — [threat model](docs/threat-model.md), [security review](docs/security-review.md)
 - **Web version status** — what is done and what is still open: [docs/tickets](docs/tickets)
 - **Localization** — [docs/i18n.md](docs/i18n.md), [ADR-0014](docs/adr/0014-i18n.md)
-- **Architecture decisions** — [docs/adr](docs/adr)
+- **Architecture decisions** — [docs/adr](docs/adr); security implementation decisions: [docs/decisions](docs/decisions)
 - **Releasing** — [docs/releasing.md](docs/releasing.md)
 
 ## Server mode

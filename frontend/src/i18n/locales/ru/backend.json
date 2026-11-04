@@ -656,6 +656,9 @@
   "credOIDCAuthorizationDenied": "поставщик удостоверений отклонил запрос на вход",
   "credOIDCRedirectInvalid": "вставленный адрес не является корректным ответом входа",
   "credOIDCListenFailed": "не удалось запустить локальный приём ответа входа",
-  "credOIDCDeviceUnavailable": "поставщик удостоверений не поддерживает вход с другого устройства"
-
+  "credOIDCDeviceUnavailable": "поставщик удостоверений не поддерживает вход с другого устройства",
+  "credAKSHTTPError": "не удалось выполнить запрос входа в Azure",
+  "credAKSResponseInvalid": "Azure вернула некорректный ответ при входе",
+  "credAKSClientSecretInvalid": "секрет клиента недействителен",
+  "credAKSMFARequired": "Azure требует способ аутентификации, не поддерживаемый входом по паролю"
 }
