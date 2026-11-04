@@ -603,6 +603,15 @@
   "credCoreKubeconfigContextNotFound": "the kubeconfig context was not found",
   "credCoreProviderAlreadyRegistered": "a provider for this sign-in kind is already registered",
   "credCoreSignInRequestNotFound": "the sign-in request was not found",
-  "credCoreSignInServiceNotConfigured": "the sign-in service is not configured completely"
-
+  "credCoreSignInServiceNotConfigured": "the sign-in service is not configured completely",
+  "credUIManualNoCommand": "the kubeconfig has no plugin command to show",
+  "credUIManualTokenEmpty": "the token is empty",
+  "credUIManualTooLarge": "the pasted text is too large",
+  "credUIManualBadJSON": "the pasted text is not a valid ExecCredential",
+  "credUIManualBadKind": "the pasted ExecCredential has an unexpected kind or apiVersion",
+  "credUIManualNoToken": "the pasted ExecCredential has no token",
+  "credUIManualCertUnsupported": "client certificates returned by a plugin are not supported",
+  "credUIManualBadExpiry": "the token expiration time is invalid",
+  "credUIManualExpired": "the token has already expired",
+  "credUIManualBadToken": "the token must be a single line without spaces"
 }

@@ -603,6 +603,15 @@
   "credCoreKubeconfigContextNotFound": "контекст kubeconfig не найден",
   "credCoreProviderAlreadyRegistered": "провайдер для этого вида входа уже зарегистрирован",
   "credCoreSignInRequestNotFound": "запрос на вход не найден",
-  "credCoreSignInServiceNotConfigured": "служба входа настроена не полностью"
-
+  "credCoreSignInServiceNotConfigured": "служба входа настроена не полностью",
+  "credUIManualNoCommand": "в kubeconfig нет команды плагина для показа",
+  "credUIManualTokenEmpty": "токен пуст",
+  "credUIManualTooLarge": "вставленный текст слишком большой",
+  "credUIManualBadJSON": "вставленный текст не является корректным ExecCredential",
+  "credUIManualBadKind": "у вставленного ExecCredential неожиданные kind или apiVersion",
+  "credUIManualNoToken": "во вставленном ExecCredential нет токена",
+  "credUIManualCertUnsupported": "клиентские сертификаты от плагина не поддерживаются",
+  "credUIManualBadExpiry": "срок действия токена указан неверно",
+  "credUIManualExpired": "срок действия токена уже истёк",
+  "credUIManualBadToken": "токен должен быть одной строкой без пробелов"
 }

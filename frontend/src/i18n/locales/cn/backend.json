@@ -603,6 +603,15 @@
   "credCoreKubeconfigContextNotFound": "未找到 kubeconfig 上下文",
   "credCoreProviderAlreadyRegistered": "此登录方式的提供程序已注册",
   "credCoreSignInRequestNotFound": "未找到登录请求",
-  "credCoreSignInServiceNotConfigured": "登录服务配置不完整"
-
+  "credCoreSignInServiceNotConfigured": "登录服务配置不完整",
+  "credUIManualNoCommand": "kubeconfig 中没有可显示的插件命令",
+  "credUIManualTokenEmpty": "令牌为空",
+  "credUIManualTooLarge": "粘贴的文本过大",
+  "credUIManualBadJSON": "粘贴的文本不是有效的 ExecCredential",
+  "credUIManualBadKind": "粘贴的 ExecCredential 的 kind 或 apiVersion 不符合预期",
+  "credUIManualNoToken": "粘贴的 ExecCredential 中没有令牌",
+  "credUIManualCertUnsupported": "不支持插件返回的客户端证书",
+  "credUIManualBadExpiry": "令牌过期时间无效",
+  "credUIManualExpired": "令牌已过期",
+  "credUIManualBadToken": "令牌必须是不含空格的单行文本"
 }
