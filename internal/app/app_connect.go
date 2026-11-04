@@ -321,11 +321,13 @@ func CompleteWebOIDCCallback(a *App, state, redirectURL string) error {
 	if !ok {
 		return ErrSignInUnavailable
 	}
-	user, err := a.auth.Current()
-	if err != nil {
+	if a.auth == nil {
+		return auth.ErrNotAuthenticated
+	}
+	if _, err := a.auth.Current(); err != nil {
 		return err
 	}
-	sub, err := cb.CallbackSubject(context.Background(), user.ID, a.sessionID, state)
+	sub, err := cb.CallbackSubject(context.Background(), a.sessionID, state)
 	if err != nil {
 		return credential.ErrChallengeExpired
 	}
