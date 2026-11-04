@@ -467,6 +467,13 @@ func (s *Service) advance(ctx context.Context, sub Subject, id string, a Answer,
 		return Result{Challenge: &c}, nil
 	}
 
+	// A browser callback is completed by a separate top-level HTTP request. Polling it must be read-only:
+	// claiming the challenge here could race with the callback and make the one-time redirect lose.
+	if !isAnswer && st.Challenge.Kind == ChallengeBrowserCallback {
+		c := publicChallenge(st.Challenge, rec.ID, rec.ExpiresAt)
+		return Result{Challenge: &c}, nil
+	}
+
 	if isAnswer {
 		subject := Subject{Scope: rec.Scope, OwnerID: rec.OwnerID}
 		userKey, idpKey := attemptKeys(subject, st.Descriptor)
