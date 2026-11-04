@@ -656,6 +656,13 @@
   "credOIDCAuthorizationDenied": "the identity provider denied the sign-in request",
   "credOIDCRedirectInvalid": "the pasted address is not a valid sign-in response",
   "credOIDCListenFailed": "the local sign-in listener could not be started",
-  "credOIDCDeviceUnavailable": "the identity provider does not offer the device sign-in"
-
+  "credOIDCDeviceUnavailable": "the identity provider does not offer the device sign-in",
+  "kubronPublicURL": "KUBRON_PUBLIC_URL: {p0}",
+  "mustBeAbsoluteURL": "must be an absolute URL",
+  "mustBeAbsoluteURLWithHost": "must be an absolute URL with a host",
+  "mustNotContainUserInfoQueryOrFragment": "must not contain user information, query, or fragment",
+  "mustBeOriginWithoutPath": "must be an origin without a path",
+  "portMustBeBetween1And65535": "port must be between 1 and 65535",
+  "schemeMustBeHTTPS": "scheme must be https (http is allowed only for localhost)",
+  "httpAllowedOnlyLocalhostLoopback": "http is allowed only for localhost or a loopback IP address"
 }
