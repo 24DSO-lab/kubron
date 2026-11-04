@@ -671,6 +671,7 @@
   "credAKSResponseInvalid": "Azure returned an invalid sign-in response",
   "credAKSClientSecretInvalid": "the client secret is invalid",
   "credAKSMFARequired": "Azure requires an authentication method unsupported by password sign-in",
-  "webOIDCClientIDInvalid": "web OIDC client id must be at most 256 bytes and contain no control characters"
+  "webOIDCClientIDInvalid": "web OIDC client id must be at most 256 bytes and contain no control characters",
+  "applicationSettingsStoreUnavailable": "application settings store is unavailable"
 
 }
