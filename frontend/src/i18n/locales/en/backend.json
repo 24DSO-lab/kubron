@@ -655,6 +655,9 @@
   "credOIDCAuthorizationDenied": "the identity provider denied the sign-in request",
   "credOIDCRedirectInvalid": "the pasted address is not a valid sign-in response",
   "credOIDCListenFailed": "the local sign-in listener could not be started",
-  "credOIDCDeviceUnavailable": "the identity provider does not offer the device sign-in"
-
+  "credOIDCDeviceUnavailable": "the identity provider does not offer the device sign-in",
+  "credAKSHTTPError": "Azure sign-in request failed",
+  "credAKSResponseInvalid": "Azure returned an invalid sign-in response",
+  "credAKSClientSecretInvalid": "the client secret is invalid",
+  "credAKSMFARequired": "Azure requires an authentication method unsupported by password sign-in"
 }

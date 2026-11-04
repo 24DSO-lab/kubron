@@ -26,10 +26,8 @@ const (
 )
 
 var (
-	errConfig       = errors.New("AKS sign-in configuration is incomplete")
 	errHTTP         = errors.New("Azure sign-in request failed")
 	errResponse     = errors.New("Azure returned an invalid sign-in response")
-	errDeviceDenied = errors.New("Azure device sign-in was declined")
 	errMFA          = errors.New("Azure requires an authentication method unsupported by password sign-in")
 	errSecret       = errors.New("the client secret is invalid")
 )
@@ -71,6 +69,7 @@ func parseConfig(d credential.Descriptor) (config, error) {
 		legacy: strings.EqualFold(strings.TrimSpace(p["is-legacy"]), "true"),
 	}
 	if c.login == "" { c.login = "devicecode" }
+	if c.tenant != "" && !validTenant(c.tenant) { return config{}, credential.ErrUnsupported }
 	if c.clientID == "" { c.clientID = defaultClientID }
 	if c.serverID == "" { c.serverID = defaultServerID }
 	
@@ -193,7 +192,7 @@ func startDevice(ctx context.Context, env credential.Env, c config) (credential.
 	var d struct { DeviceCode string `json:"device_code"`; UserCode string `json:"user_code"`; URI string `json:"verification_uri"`; Expires int `json:"expires_in"`; Interval int `json:"interval"` }
 	if json.Unmarshal(body, &d) != nil || d.DeviceCode == "" || d.UserCode == "" || !safeHTTPS(d.URI) { return credential.Result{}, errResponse }
 	interval := d.Interval; if interval < 1 { interval = 5 }; if interval > 60 { interval = 60 }
-	exp := now(env).Add(time.Duration(d.Expires)*time.Second); if d.Expires <= 0 { exp = now(env).Add(15*time.Minute) }
+	ttl := d.Expires; if ttl <= 0 { ttl = 900 }; if ttl > 1800 { ttl = 1800 }; exp := now(env).Add(time.Duration(ttl)*time.Second)
 	st := pending{Tenant:c.tenant, DeviceCode:d.DeviceCode, TokenURL:c.authority+"/"+url.PathEscape(c.tenant)+"/oauth2/v2.0/token", Interval:interval, Expires:exp, Next:now(env).Add(time.Duration(interval)*time.Second)}
 	raw,_ := json.Marshal(st)
 	return credential.Result{Challenge:&credential.Challenge{Kind:credential.ChallengeDeviceCode, URL:d.URI, UserCode:d.UserCode, Poll:true, IntervalSec:interval, ExpiresAt:exp}, Pending:raw}, nil
@@ -231,7 +230,7 @@ func clientCredentials(ctx context.Context, hc *http.Client, c config, n time.Ti
 	form := url.Values{"grant_type":{"client_credentials"}, "client_id":{c.clientID}, "client_secret":{c.secret}, "scope":{scope(c)}}
 	body, status, err := post(ctx,hc,c.authority+"/"+url.PathEscape(c.tenant)+"/oauth2/v2.0/token",form)
 	if err != nil { return credential.Token{},errHTTP }
-	if status < 200 || status >= 300 { return credential.Token{},errSecret }
+	if status < 200 || status >= 300 { var oe oauthError; _ = json.Unmarshal(body, &oe); if oe.Error == "invalid_client" { return credential.Token{}, errSecret }; return credential.Token{}, errResponse }
 	t,_,err:=parseToken(body,n); return t,err
 }
 func passwordGrant(ctx context.Context, hc *http.Client, c config, user, pass string, n time.Time) (credential.Token,string,error) {
@@ -264,7 +263,7 @@ func post(ctx context.Context,hc *http.Client, endpoint string, form url.Values)
 }
 func parseToken(b []byte,n time.Time)(credential.Token,string,error){
 	var v struct{Access string `json:"access_token"`;Refresh string `json:"refresh_token"`;Expires int64 `json:"expires_in"`}
-	if json.Unmarshal(b,&v)!=nil||v.Access==""||v.Expires<=0{return credential.Token{},"",errResponse}
+	if json.Unmarshal(b,&v)!=nil||v.Access==""||v.Expires<=0||v.Expires>86400{return credential.Token{},"",errResponse}
 	principal:=""
 	parts:=strings.Split(v.Access,".");if len(parts)==3{raw,e:=base64.RawURLEncoding.DecodeString(parts[1]);if e==nil{var claims struct{OID string `json:"oid"`;UPN string `json:"upn"`;Preferred string `json:"preferred_username"`};if json.Unmarshal(raw,&claims)==nil{principal=claims.OID;if principal==""{principal=claims.UPN};if principal==""{principal=claims.Preferred}}}}
 	if len(principal)>256 {principal=""}
@@ -275,3 +274,11 @@ func encodeSaved(c config,rt string) []byte { if rt=="" && c.secret=="" { return
 func decodeSaved(b []byte)*saved{if len(b)==0{return nil};var s saved;if json.Unmarshal(b,&s)!=nil||(s.RefreshToken==""&&s.ClientSecret==""){return nil};return &s}
 func now(e credential.Env)time.Time{if e.Now!=nil{return e.Now()};return time.Now()}
 func safeHTTPS(raw string)bool{u,e:=url.Parse(raw);return e==nil&&u.Scheme=="https"&&u.Host!=""&&u.User==nil&&u.Fragment==""}
+func validTenant(s string) bool {
+	if len(s) == 0 || len(s) > 256 { return false }
+	for _, r := range s {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '.' || r == '-' { continue }
+		return false
+	}
+	return true
+}

@@ -73,6 +73,32 @@ func TestAuthorityHostMustBeHTTPSAndRootOnly(t *testing.T) {
 	}
 }
 
+func TestSovereignCloudAuthorities(t *testing.T) {
+	cases := map[string]string{
+		"AzurePublicCloud": "https://login.microsoftonline.com",
+		"AzureUSGovernmentCloud": "https://login.microsoftonline.us",
+		"AzureChinaCloud": "https://login.chinacloudapi.cn",
+	}
+	for env, want := range cases {
+		got, err := parseConfig(credential.Descriptor{Params: map[string]string{"environment": env}})
+		if err != nil || got.authority != want { t.Fatalf("%s: %q %v", env, got.authority, err) }
+	}
+}
+
+func TestSPNSecretIsNeverReturnedInErrors(t *testing.T) {
+	const canary = "aks-client-secret-canary"
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+		_, _ = w.Write([]byte(`{"error":"invalid_client","error_description":"`+canary+`"}`))
+	}))
+	defer srv.Close()
+	d := credential.Descriptor{Kind: credential.KindAKS, Params: map[string]string{
+		"login":"spn", "tenant-id":"tenant", "authority-host":srv.URL, "client-secret":canary,
+	}}
+	_, err := New().Begin(context.Background(), credential.Env{HTTP:srv.Client()}, credential.Request{Descriptor:d})
+	if err == nil || strings.Contains(err.Error(), canary) { t.Fatalf("secret leaked: %v", err) }
+}
+
 func TestLegacyScope(t *testing.T) {
 	c := config{serverID: defaultServerID, legacy: true}
 	if got := scope(c); got != "sp:"+defaultServerID+"/.default" { t.Fatal(got) }

@@ -655,6 +655,9 @@
   "credOIDCAuthorizationDenied": "身份提供商拒绝了登录请求",
   "credOIDCRedirectInvalid": "粘贴的地址不是有效的登录响应",
   "credOIDCListenFailed": "无法启动本地登录监听器",
-  "credOIDCDeviceUnavailable": "身份提供商不支持设备登录"
-
+  "credOIDCDeviceUnavailable": "身份提供商不支持设备登录",
+  "credAKSHTTPError": "Azure 登录请求失败",
+  "credAKSResponseInvalid": "Azure 返回了无效的登录响应",
+  "credAKSClientSecretInvalid": "客户端密钥无效",
+  "credAKSMFARequired": "Azure 要求使用密码登录不支持的身份验证方式"
 }
