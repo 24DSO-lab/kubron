@@ -4,6 +4,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -92,7 +93,7 @@ func TestWebOIDCCallbackUsesAuthenticatedSessionAndDoesNotReflectInput(t *testin
 	token, _ := sessions.Create("user-1", view)
 	called := false
 	h := NewHandler(d, nil, &Guard{Sessions: sessions}, WithWebOIDCCallback(
-		func(got any, state, redirectURL string) error {
+		func(_ context.Context, got any, state, redirectURL string) error {
 			called = true
 			if got != view || state != "challenge-123" {
 				t.Fatalf("callback received view=%p state=%q", got, state)
@@ -136,7 +137,7 @@ func TestWebOIDCCallbackRejectsMissingOrDuplicateState(t *testing.T) {
 	token, _ := sessions.Create("user-1", &struct{}{})
 	called := false
 	h := NewHandler(d, nil, &Guard{Sessions: sessions}, WithWebOIDCCallback(
-		func(any, string, string) error { called = true; return nil },
+		func(context.Context, any, string, string) error { called = true; return nil },
 	))
 	for _, target := range []string{
 		"https://kubron.example.test/auth/cluster/callback?code=CANARY-code",
