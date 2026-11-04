@@ -85,5 +85,6 @@ func callbackRejected(err error) bool {
 		errors.Is(err, credential.ErrInvalidGrant) ||
 		errors.Is(err, credential.ErrUnsupported) ||
 		errors.Is(err, auth.ErrNotAuthenticated) ||
-		errors.Is(err, auth.ErrForbidden)
+		errors.Is(err, auth.ErrForbidden) ||
+		errors.Is(err, auth.ErrClusterNotFound)
 }
