@@ -601,5 +601,6 @@
   "credCoreProviderAlreadyRegistered": "此登录方式的提供程序已注册",
   "credCoreSignInRequestNotFound": "未找到登录请求",
   "credCoreSignInServiceNotConfigured": "登录服务配置不完整",
-  "credAppSignInUnavailable": "登录不可用"
+  "credAppSignInUnavailable": "登录不可用",
+  "credAppTooManySignInAttempts": "登录尝试次数过多，请在 {p0} 秒后重试"
 }

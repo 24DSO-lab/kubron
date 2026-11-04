@@ -601,5 +601,6 @@
   "credCoreProviderAlreadyRegistered": "a provider for this sign-in kind is already registered",
   "credCoreSignInRequestNotFound": "the sign-in request was not found",
   "credCoreSignInServiceNotConfigured": "the sign-in service is not configured completely",
-  "credAppSignInUnavailable": "sign-in is not available"
+  "credAppSignInUnavailable": "sign-in is not available",
+  "credAppTooManySignInAttempts": "too many sign-in attempts, try again in {p0} s"
 }

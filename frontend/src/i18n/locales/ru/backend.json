@@ -601,5 +601,6 @@
   "credCoreProviderAlreadyRegistered": "провайдер для этого вида входа уже зарегистрирован",
   "credCoreSignInRequestNotFound": "запрос на вход не найден",
   "credCoreSignInServiceNotConfigured": "служба входа настроена не полностью",
-  "credAppSignInUnavailable": "вход недоступен"
+  "credAppSignInUnavailable": "вход недоступен",
+  "credAppTooManySignInAttempts": "слишком много попыток входа, повторите через {p0} с"
 }

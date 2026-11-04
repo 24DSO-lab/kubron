@@ -50,6 +50,8 @@ type App struct {
 	broker credential.Broker
 	conn   *connectState
 	rev    *revocations // отозванные личные входы реплики; общий для всех видов
+	// limitUser и limitIDP ограничивают попытки AnswerChallenge на пользователя и на провайдера входа; nil — без лимита.
+	limitUser, limitIDP AttemptLimiter
 	// finish подменяется в тестах: подключение и проверка кластера после успешного входа.
 	finish func(clusterID string) error
 }

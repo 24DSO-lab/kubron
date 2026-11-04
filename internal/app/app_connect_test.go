@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/24DSO-labs/kubron/internal/auth"
 	"github.com/24DSO-labs/kubron/internal/credential"
@@ -451,5 +452,70 @@ func TestResetPasswordAndUserDeletionRevokeTheirSignIns(t *testing.T) {
 	}
 	if len(b.revoked) != 2 || b.revoked[0].OwnerID != bob.ID || b.revoked[1].OwnerID != bob.ID {
 		t.Fatalf("revokes: %+v", b.revoked)
+	}
+}
+
+// scriptLimiter allows the first n attempts and then refuses with a fixed wait.
+type scriptLimiter struct {
+	left int
+	keys []string
+}
+
+func (l *scriptLimiter) Allow(key string) (bool, time.Duration) {
+	l.keys = append(l.keys, key)
+	if l.left > 0 {
+		l.left--
+		return true, 0
+	}
+	return false, 1500 * time.Millisecond
+}
+
+// Answers are limited per user and per identity provider; a refused answer never reaches the broker, and the
+// challenge stays open for a later attempt.
+func TestAnswerChallengeIsRateLimited(t *testing.T) {
+	b := &fakeBroker{desc: credential.Descriptor{Kind: credential.KindOIDC, Params: map[string]string{"issuer-url": "https://IdP.example/realms/x"}},
+		acquire: []credential.Result{challenge("c1", credential.ChallengeCredentials)}}
+	a, _, id, connected := connectFixture(t, b)
+	user, idp := &scriptLimiter{left: 1}, &scriptLimiter{left: 100}
+	SetAnswerLimiters(a, user, idp)
+	if _, err := a.ConnectCluster(id); err != nil {
+		t.Fatal(err)
+	}
+	b.answerEr = credential.ErrAnswerRejected
+	if _, err := a.AnswerChallenge("c1", map[string]string{"password": "p1"}); !errors.Is(err, credential.ErrAnswerRejected) {
+		t.Fatalf("the first attempt reaches the broker: %v", err)
+	}
+	n := len(b.answers)
+	_, err := a.AnswerChallenge("c1", map[string]string{"password": "p2"})
+	var rl *RateLimitedError
+	if !errors.As(err, &rl) || rl.RetryAfterSeconds() != 2 {
+		t.Fatalf("expected a rate-limit error with a 2 s wait, got %v", err)
+	}
+	if len(b.answers) != n {
+		t.Fatal("a limited answer must not reach the broker")
+	}
+	if !strings.Contains(strings.Join(idp.keys, ","), "answer:idp:idp.example") {
+		t.Fatalf("the IdP key is the lower-cased host of the issuer: %v", idp.keys)
+	}
+	user.left, b.answerEr = 1, nil // the allowance is back: the same challenge can still be answered
+	if res, err := a.AnswerChallenge("c1", map[string]string{"password": "p3"}); err != nil || res.Status != "connected" || len(*connected) != 1 {
+		t.Fatalf("res=%+v err=%v", res, err)
+	}
+}
+
+func TestIdPLimitAppliesAcrossUsers(t *testing.T) {
+	b := &fakeBroker{desc: credential.Descriptor{Kind: credential.KindOIDC, Params: map[string]string{"issuer-url": "https://idp.example"}},
+		acquire: []credential.Result{challenge("c1", credential.ChallengeCredentials)}}
+	a, _, id, _ := connectFixture(t, b)
+	SetAnswerLimiters(a, &scriptLimiter{left: 100}, &scriptLimiter{left: 0})
+	if _, err := a.ConnectCluster(id); err != nil {
+		t.Fatal(err)
+	}
+	var rl *RateLimitedError
+	if _, err := a.AnswerChallenge("c1", nil); !errors.As(err, &rl) {
+		t.Fatalf("an exhausted IdP allowance limits every user: %v", err)
+	}
+	if len(b.answers) != 0 {
+		t.Fatal("the broker must not be reached")
 	}
 }

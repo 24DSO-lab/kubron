@@ -42,9 +42,9 @@ func (e *ChallengeRequiredError) Unwrap() error { return credential.ErrChallenge
 // (which copy App) do not copy the mutex and do not share state.
 type connectState struct {
 	mu       sync.Mutex
-	pending  map[string]string    // challenge id -> cluster id, only for challenges this session started
-	notified map[string]time.Time // cluster id -> when cluster:auth-required was last sent
-	seenSeq  uint64               // how far of the replica's revocations this view has applied
+	pending  map[string]pendingChallenge // challenge id -> where it belongs, only for challenges this session started
+	notified map[string]time.Time        // cluster id -> when cluster:auth-required was last sent
+	seenSeq  uint64                      // how far of the replica's revocations this view has applied
 }
 
 func (s *connectState) seen() uint64 {
@@ -62,7 +62,7 @@ func (s *connectState) markSeen(n uint64) {
 }
 
 func newConnectState() *connectState {
-	return &connectState{pending: map[string]string{}, notified: map[string]time.Time{}}
+	return &connectState{pending: map[string]pendingChallenge{}, notified: map[string]time.Time{}}
 }
 
 // authRequiredDue reports whether cluster:auth-required may be sent now: a dead sign-in fails every request of
@@ -77,17 +77,21 @@ func (s *connectState) authRequiredDue(clusterID string, now time.Time) bool {
 	return true
 }
 
-func (s *connectState) remember(challengeID, clusterID string) {
+// pendingChallenge is what a session remembers about an open challenge: its cluster and the key of the identity
+// provider it talks to (for the attempt limiter).
+type pendingChallenge struct{ cluster, idp string }
+
+func (s *connectState) remember(challengeID string, p pendingChallenge) {
 	s.mu.Lock()
-	s.pending[challengeID] = clusterID
+	s.pending[challengeID] = p
 	s.mu.Unlock()
 }
 
-func (s *connectState) cluster(challengeID string) (string, bool) {
+func (s *connectState) cluster(challengeID string) (pendingChallenge, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	id, ok := s.pending[challengeID]
-	return id, ok
+	p, ok := s.pending[challengeID]
+	return p, ok
 }
 
 func (s *connectState) forget(challengeID string) {
@@ -208,18 +212,18 @@ func (a *App) connect(ctx context.Context, clusterID string) (credential.Connect
 	if err != nil {
 		return credential.ConnectResult{}, err
 	}
-	return a.connectResultOf(clusterID, d.Kind, res)
+	return a.connectResultOf(clusterID, d, res)
 }
 
 // connectResultOf turns a broker result into the wire result: a challenge is remembered for this session, a token (or
 // nothing, for static credentials) connects the cluster.
-func (a *App) connectResultOf(clusterID string, kind credential.Kind, res credential.Result) (credential.ConnectResult, error) {
+func (a *App) connectResultOf(clusterID string, d credential.Descriptor, res credential.Result) (credential.ConnectResult, error) {
 	if res.Challenge != nil {
-		a.conn.remember(res.Challenge.ID, clusterID)
+		a.conn.remember(res.Challenge.ID, pendingChallenge{cluster: clusterID, idp: idpKey(d, clusterID)})
 		a.recordAuthEvent(auditAuthChallenge, audit.ResultOK, clusterID, "", "kind", string(res.Challenge.Kind))
 		return credential.ConnectResult{Status: "challenge", Challenge: res.Challenge}, nil
 	}
-	if kind != credential.KindStatic { // static credentials involve no sign-in
+	if d.Kind != credential.KindStatic { // static credentials involve no sign-in
 		a.recordAuthEvent(auditAuthSuccess, audit.ResultOK, clusterID, principalOf(res))
 	}
 	if err := a.finishConnect(clusterID); err != nil {
@@ -239,10 +243,11 @@ func (a *App) ConnectCluster(clusterID string) (credential.ConnectResult, error)
 // advance runs Answer or Poll for a challenge that belongs to this session and finishes the connection when the
 // sign-in completes.
 func (a *App) advance(challengeID string, run func(credential.Subject) (credential.Result, error)) (credential.ConnectResult, error) {
-	clusterID, ok := a.conn.cluster(challengeID)
+	pc, ok := a.conn.cluster(challengeID)
 	if !ok {
 		return credential.ConnectResult{}, credential.ErrChallengeExpired
 	}
+	clusterID := pc.cluster
 	if err := a.authzCluster(auth.PermRead, clusterID); err != nil {
 		return credential.ConnectResult{}, err
 	}
@@ -263,7 +268,7 @@ func (a *App) advance(challengeID string, run func(credential.Subject) (credenti
 			a.conn.forget(challengeID)
 			a.recordAuthEvent(auditAuthChallenge, audit.ResultOK, clusterID, "", "kind", string(res.Challenge.Kind))
 		}
-		a.conn.remember(res.Challenge.ID, clusterID)
+		a.conn.remember(res.Challenge.ID, pc)
 		return credential.ConnectResult{Status: "challenge", Challenge: res.Challenge}, nil
 	}
 	a.conn.forget(challengeID)
@@ -282,6 +287,9 @@ func (a *App) AnswerChallenge(challengeID string, values map[string]string) (cre
 	}
 	if a.broker == nil {
 		return credential.ConnectResult{}, ErrSignInUnavailable
+	}
+	if err := a.limitAnswer(challengeID); err != nil {
+		return credential.ConnectResult{}, err
 	}
 	return a.advance(challengeID, func(sub credential.Subject) (credential.Result, error) {
 		return a.broker.Answer(context.Background(), sub, challengeID, credential.Answer(values))
@@ -309,11 +317,11 @@ func (a *App) CancelChallenge(challengeID string) error {
 	if a.broker == nil {
 		return ErrSignInUnavailable
 	}
-	clusterID, ok := a.conn.cluster(challengeID)
+	pc, ok := a.conn.cluster(challengeID)
 	if !ok {
 		return credential.ErrChallengeExpired
 	}
-	sub, err := a.userSubject(clusterID)
+	sub, err := a.userSubject(pc.cluster)
 	if err != nil {
 		return err
 	}
