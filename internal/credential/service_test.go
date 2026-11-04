@@ -165,8 +165,8 @@ func TestWebCallbackIsBoundToUserAndSessionAndConsumedOnce(t *testing.T) {
 	if _, err := r.svc.CallbackSubject(bg, "other-session", state); !errors.Is(err, credential.ErrChallengeExpired) {
 		t.Fatalf("foreign session: %v", err)
 	}
-	got, err := r.svc.CallbackSubject(bg, subj.SessionID, state)
-	if err != nil || got != subj {
+	got, desc, err := r.svc.CallbackSubject(bg, subj.SessionID, state)
+	if err != nil || got != subj || desc.Kind != credential.KindOIDC {
 		t.Fatalf("callback subject = %+v, %v", got, err)
 	}
 	done, err := r.svc.AnswerCallback(bg, got, state, "https://kubron.example/auth/cluster/callback?code=CANARY-code&state="+state)
