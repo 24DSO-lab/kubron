@@ -790,7 +790,10 @@ func TestAcquireFallsBackToExecWhenNativeBeginIsUnsupported(t *testing.T) {
 	if begins, _ := execProvider.Calls(); begins != 1 {
 		t.Fatalf("exec Begin calls = %d", begins)
 	}
-	if got := execProvider.LastRequest().Descriptor; got.Kind != d.Kind || got.Exec == nil || got.Exec.Command != d.Exec.Command {
+	if got := execProvider.LastRequest().Descriptor; got.Kind != credential.KindExec ||
+		got.Exec == nil || got.Exec.Command != d.Exec.Command ||
+		got.Params["grant"] != d.Params["grant"] ||
+		got.Params["client-secret"] != d.Params["client-secret"] {
 		t.Fatalf("fallback request descriptor = %+v", got)
 	}
 }
