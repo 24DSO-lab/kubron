@@ -692,3 +692,152 @@ func TestServiceUnavailableDuringRefreshIsNotASignInRequest(t *testing.T) {
 		t.Fatalf("err = %v", err)
 	}
 }
+
+func TestAcquireFallsBackToExecWhenNativeBeginIsUnsupported(t *testing.T) {
+	r := newRig(t)
+	native := &credtest.FakeProvider{KindValue: credential.KindOIDC,
+		OnBegin: func(context.Context, credential.Env, credential.Request) (credential.Result, error) {
+			return credential.Result{}, credential.ErrUnsupported
+		}}
+	execProvider := &credtest.FakeProvider{KindValue: credential.KindExec,
+		OnBegin: func(context.Context, credential.Env, credential.Request) (credential.Result, error) {
+			return credential.Result{Challenge: &credential.Challenge{Kind: credential.ChallengeManualToken}}, nil
+		}}
+	reg := credential.NewRegistry(false)
+	if err := reg.Register(native); err != nil {
+		t.Fatal(err)
+	}
+	if err := reg.Register(execProvider); err != nil {
+		t.Fatal(err)
+	}
+	svc, err := credential.NewService(credential.Config{Registry: reg, Store: r.store, Challenges: r.chal, Envelope: r.env, Now: r.clk.Now})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	d := desc
+	d.Exec = &credential.ExecSpec{Command: "kubectl-something"}
+	res, err := svc.Acquire(bg, subj, d)
+	if err != nil || res.Challenge == nil || res.Challenge.Kind != credential.ChallengeManualToken {
+		t.Fatalf("Acquire = %+v, %v", res, err)
+	}
+	if begins, _ := native.Calls(); begins != 1 {
+		t.Fatalf("native Begin calls = %d", begins)
+	}
+	if begins, _ := execProvider.Calls(); begins != 1 {
+		t.Fatalf("exec Begin calls = %d", begins)
+	}
+	if got := execProvider.LastRequest().Descriptor; got.Kind != d.Kind || got.Exec == nil || got.Exec.Command != d.Exec.Command {
+		t.Fatalf("fallback request descriptor = %+v", got)
+	}
+}
+
+func TestAcquireDoesNotFallbackForOtherNativeErrors(t *testing.T) {
+	r := newRig(t)
+	native := &credtest.FakeProvider{KindValue: credential.KindOIDC,
+		OnBegin: func(context.Context, credential.Env, credential.Request) (credential.Result, error) {
+			return credential.Result{}, context.Canceled
+		}}
+	execProvider := &credtest.FakeProvider{KindValue: credential.KindExec}
+	reg := credential.NewRegistry(false)
+	if err := reg.Register(native); err != nil {
+		t.Fatal(err)
+	}
+	if err := reg.Register(execProvider); err != nil {
+		t.Fatal(err)
+	}
+	svc, err := credential.NewService(credential.Config{Registry: reg, Store: r.store, Challenges: r.chal, Envelope: r.env})
+	if err != nil {
+		t.Fatal(err)
+	}
+	d := desc
+	d.Exec = &credential.ExecSpec{Command: "kubectl-something"}
+	if _, err := svc.Acquire(bg, subj, d); !errors.Is(err, context.Canceled) {
+		t.Fatalf("Acquire error = %v", err)
+	}
+	if begins, _ := execProvider.Calls(); begins != 0 {
+		t.Fatalf("exec Begin calls = %d", begins)
+	}
+}
+
+func TestExecProviderUnsupportedDoesNotRecurse(t *testing.T) {
+	r := newRig(t)
+	execProvider := &credtest.FakeProvider{KindValue: credential.KindExec,
+		OnBegin: func(context.Context, credential.Env, credential.Request) (credential.Result, error) {
+			return credential.Result{}, credential.ErrUnsupported
+		}}
+	reg := credential.NewRegistry(false)
+	if err := reg.Register(execProvider); err != nil {
+		t.Fatal(err)
+	}
+	svc, err := credential.NewService(credential.Config{Registry: reg, Store: r.store, Challenges: r.chal, Envelope: r.env})
+	if err != nil {
+		t.Fatal(err)
+	}
+	d := credential.Descriptor{Kind: credential.KindExec, Exec: &credential.ExecSpec{Command: "kubectl-something"}}
+	if _, err := svc.Acquire(bg, subj, d); !errors.Is(err, credential.ErrUnsupported) {
+		t.Fatalf("Acquire error = %v", err)
+	}
+	if begins, _ := execProvider.Calls(); begins != 1 {
+		t.Fatalf("exec Begin calls = %d", begins)
+	}
+}
+
+func TestContinueUnsupportedDoesNotFallback(t *testing.T) {
+	r := newRig(t)
+	native := &credtest.FakeProvider{KindValue: credential.KindOIDC,
+		OnBegin: func(context.Context, credential.Env, credential.Request) (credential.Result, error) {
+			return credential.Result{Challenge: &credential.Challenge{Kind: credential.ChallengeCredentials}}, nil
+		},
+		OnContinue: func(context.Context, credential.Env, credential.Request) (credential.Result, error) {
+			return credential.Result{}, credential.ErrUnsupported
+		}}
+	execProvider := &credtest.FakeProvider{KindValue: credential.KindExec}
+	reg := credential.NewRegistry(false)
+	if err := reg.Register(native); err != nil {
+		t.Fatal(err)
+	}
+	if err := reg.Register(execProvider); err != nil {
+		t.Fatal(err)
+	}
+	svc, err := credential.NewService(credential.Config{Registry: reg, Store: r.store, Challenges: r.chal, Envelope: r.env})
+	if err != nil {
+		t.Fatal(err)
+	}
+	d := desc
+	d.Exec = &credential.ExecSpec{Command: "kubectl-something"}
+	res, err := svc.Acquire(bg, subj, d)
+	if err != nil || res.Challenge == nil {
+		t.Fatalf("Acquire = %+v, %v", res, err)
+	}
+	if _, err := svc.Answer(bg, subj, res.Challenge.ID, credential.Answer{"username": "alice"}); !errors.Is(err, credential.ErrUnsupported) {
+		t.Fatalf("Answer error = %v", err)
+	}
+	if _, calls := execProvider.Calls(); calls != 0 {
+		t.Fatalf("exec Continue calls = %d", calls)
+	}
+}
+
+func TestAcquireKeepsUnsupportedWhenExecFallbackIsUnavailable(t *testing.T) {
+	r := newRig(t)
+	native := &credtest.FakeProvider{KindValue: credential.KindOIDC,
+		OnBegin: func(context.Context, credential.Env, credential.Request) (credential.Result, error) {
+			return credential.Result{}, credential.ErrUnsupported
+		}}
+	reg := credential.NewRegistry(false)
+	if err := reg.Register(native); err != nil {
+		t.Fatal(err)
+	}
+	svc, err := credential.NewService(credential.Config{Registry: reg, Store: r.store, Challenges: r.chal, Envelope: r.env})
+	if err != nil {
+		t.Fatal(err)
+	}
+	d := desc
+	d.Exec = &credential.ExecSpec{Command: "kubectl-something"}
+	if _, err := svc.Acquire(bg, subj, d); !errors.Is(err, credential.ErrUnsupported) {
+		t.Fatalf("Acquire error = %v", err)
+	}
+	if begins, _ := native.Calls(); begins != 1 {
+		t.Fatalf("native Begin calls = %d", begins)
+	}
+}

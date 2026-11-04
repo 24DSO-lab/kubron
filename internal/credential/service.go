@@ -182,7 +182,13 @@ func (s *Service) Acquire(ctx context.Context, sub Subject, d Descriptor) (Resul
 		return Result{}, err
 	}
 	rec, saved := s.loadSaved(ctx, sub.key())
-	res, perr := p.Begin(ctx, s.penv, Request{Descriptor: d, Subject: sub, Saved: saved})
+	req := Request{Descriptor: d, Subject: sub, Saved: saved}
+	res, perr := p.Begin(ctx, s.penv, req)
+	if errors.Is(perr, ErrUnsupported) && p.Kind() != KindExec && d.Exec != nil {
+		if fallback, resolveErr := s.reg.Resolve(Descriptor{Kind: KindExec, Exec: d.Exec}); resolveErr == nil && fallback.Kind() == KindExec {
+			res, perr = fallback.Begin(ctx, s.penv, req)
+		}
+	}
 	if perr != nil {
 		return Result{}, scrub(perr, d, nil, saved)
 	}
