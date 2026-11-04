@@ -1,39 +1,49 @@
 # Connecting to Kubernetes
 
-Kubron reads kubeconfig contexts and uses the credentials associated with the selected context. You do not need to choose a connection mode manually.
+Kubron detects the credential type from the selected kubeconfig context. You do not need to choose a connection mode manually. When interactive sign-in is required, Kubron opens a challenge dialog and guides you through the next step.
+
+## Credentials supported by the current build
+
+- **Static credentials:** bearer tokens, basic credentials and client certificates embedded in kubeconfig data.
+- **OIDC:** supported `oidc-login` flows (password, authorization code and device code) and the legacy `auth-provider: oidc` refresh flow, subject to the identity provider configuration.
+- **Azure AKS:** Azure `kubelogin` device-code, service-principal client-secret and username/password (ROPC) modes.
+- **Other exec plugins:** handled according to the platform-specific rules below.
+
+The exact sign-in options depend on the kubeconfig and the identity provider. Unsupported modes are rejected rather than silently replaced with credentials from the server environment.
 
 ## Desktop
 
-Desktop runs on your computer and connects to the Kubernetes API from that computer.
+Desktop connects to the Kubernetes API from your computer.
 
-- Import a kubeconfig file or paste its contents.
-- Select the context to use when a kubeconfig contains several contexts.
-- Static credentials such as tokens and client certificates are supported.
-- Kubernetes exec credential plugins can run locally, using the plugin installed on your computer.
+- Import a kubeconfig file or paste its contents, then select a context if there are several.
+- When a native provider supports the configured flow, Kubron asks for the required credentials or opens the browser/device sign-in.
+- Kubernetes `exec` credential plugins can run locally when the executable is installed in `PATH`. Before running a plugin, Kubron shows the command, arguments and environment for your confirmation. A changed command requires confirmation again.
+- If a native provider cannot handle an `exec` mode, Kubron can use the confirmed local plugin when one is configured.
 
-Because an exec plugin is executable code, only import kubeconfigs from sources you trust.
+An `exec` plugin is executable code. Import kubeconfigs only from sources you trust, and review the command before approving it.
 
 ## Web
 
-The Web server connects to clusters from the server's network environment. It cannot read files from your workstation and does not execute arbitrary commands supplied in an uploaded kubeconfig.
+The Web server connects to clusters from the server's network environment. It cannot read files from your workstation and **never executes arbitrary commands** from an uploaded kubeconfig.
 
-Current Web connection paths are:
+- Static credentials must be embedded in kubeconfig data. Local file paths are not available to the server.
+- Supported OIDC flows use the challenge dialog. Depending on the IdP and its configuration, this can involve entering credentials, device-code sign-in, or completing a browser redirect.
+- Azure AKS supports the configured `kubelogin` device-code, service-principal client-secret and ROPC modes. ROPC may be unavailable when the tenant requires MFA or Conditional Access.
+- For an `exec` plugin without a native provider, Kubron displays the exact command for you to run on your own computer and accepts the resulting token or `ExecCredential` JSON. The server does not run that command.
 
-- static credentials embedded in kubeconfig data, such as a token or client certificate;
-- the supported `oidc-login` password-grant flow, where the user supplies the required credentials;
-- the server's own in-cluster ServiceAccount, when Kubron is deployed inside Kubernetes and the service-mode team setup is available.
+The server does not use your workstation's Azure CLI, cloud credentials, environment variables, home directory or metadata service. AKS managed identity, Azure CLI, `azd` and workload-identity modes are not supported by this provider.
 
-Web rejects kubeconfigs that depend on local file paths, arbitrary `exec` commands or browser-based `oidc-login` flows that the current Web connection flow cannot complete. Do not upload a kubeconfig that relies on a plugin installed only on your laptop and expect the server to run it.
+## Whose Kubernetes identity is used?
 
-> **Scope note:** the credential-provider architecture describes broader OIDC and cloud-provider flows, but that work is not yet wired into the current application connection RPC and UI. The list above describes the implemented connection paths, not the full future provider design.
+Static credentials remain shared cluster credentials. Interactive credentials are stored in the signing-in user's scope, so each user can authenticate with their own Kubernetes identity. The effective access is constrained by both Kubron's application permissions and Kubernetes RBAC.
 
-## Two layers of permissions
+Passwords for personal interactive sign-in are not stored. Where a provider supports refresh tokens, Kubron stores the provider's opaque refresh state encrypted.
 
-In Web team mode, access is the intersection of:
+## Troubleshooting
 
-1. Kubron's application permissions, assigned through the user's role in the team that owns the cluster;
-2. Kubernetes RBAC for the credentials used to connect.
+- **The sign-in dialog says the mode is unsupported:** check the `users[].user` authentication settings in the selected kubeconfig context. Some cloud modes are intentionally unsupported.
+- **Device sign-in does not complete:** make sure the device code is entered in the correct tenant and has not expired.
+- **AKS username/password sign-in fails:** ROPC is commonly blocked by MFA or Conditional Access. Use device-code sign-in or another mode enabled by your administrator.
+- **An exec plugin is unavailable in Web:** this is expected. Run the displayed command on your workstation and paste its token or `ExecCredential` result.
 
-For interactive per-user authentication, the planned provider model is intended to preserve each user's Kubernetes identity. Until that flow is integrated, do not assume every Web connection uses an individual Kubernetes identity.
-
-[Learn about teams and shared access](/features/teams) · [Security and access control](/features/security)
+[Teams and shared access](/features/teams) · [Security and access control](/features/security)
