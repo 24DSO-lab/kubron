@@ -73,7 +73,7 @@ func (m *Manager) GetOverviewRisks() (*OverviewRisks, error) {
 	)
 	run := func(f func()) { wg.Add(1); go func() { defer wg.Done(); f() }() }
 
-	oc := conn.overviewCache(func() { m.emitCluster(EventClusterChanged, conn.Name) })
+	oc := conn.overviewCache(func() { m.emitCluster(EventClusterChanged, conn) })
 	run(func() {
 		if l, ok := oc.nodeList(); ok {
 			nodes = l

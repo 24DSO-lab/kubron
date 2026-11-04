@@ -208,3 +208,20 @@ func (p *connPool) remove(id string) {
 		delete(p.entries, id)
 	}
 }
+
+// removeCluster закрывает и забывает подключения кластера для всех субъектов (общее и личные).
+func (p *connPool) removeCluster(clusterID string) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	for key, e := range p.entries {
+		if e.conn.Name != clusterID {
+			continue
+		}
+		if e.idleTimer != nil {
+			e.idleTimer.Stop()
+			e.idleTimer = nil
+		}
+		p.closeFn(e.conn)
+		delete(p.entries, key)
+	}
+}

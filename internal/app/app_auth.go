@@ -151,6 +151,7 @@ func RestoreActiveCluster(v *App, clusterID string) error {
 	if err := v.authzCluster(auth.PermRead, clusterID); err != nil {
 		return err
 	}
+	v.bindAuthSession()
 	return v.k8sMgr.ConnectToCluster(clusterID)
 }
 

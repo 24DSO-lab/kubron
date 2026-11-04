@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"time"
 
 	"github.com/24DSO-labs/kubron/internal/auth"
 	"github.com/24DSO-labs/kubron/internal/credential"
@@ -18,6 +19,8 @@ const (
 	EventAuthCompleted = "cluster:auth-completed"
 	EventAuthRequired  = "cluster:auth-required"
 )
+
+const authRequiredEvery = 5 * time.Second
 
 // ErrSignInUnavailable is returned by the new sign-in methods when no broker is configured.
 var ErrSignInUnavailable = errors.New("sign-in is not available")
@@ -37,11 +40,26 @@ func (e *ChallengeRequiredError) Unwrap() error { return credential.ErrChallenge
 // connectState is the per-session bookkeeping of the sign-in flow. It is a pointer in App so that session views
 // (which copy App) do not copy the mutex and do not share state.
 type connectState struct {
-	mu      sync.Mutex
-	pending map[string]string // challenge id -> cluster id, only for challenges this session started
+	mu       sync.Mutex
+	pending  map[string]string    // challenge id -> cluster id, only for challenges this session started
+	notified map[string]time.Time // cluster id -> when cluster:auth-required was last sent
 }
 
-func newConnectState() *connectState { return &connectState{pending: map[string]string{}} }
+func newConnectState() *connectState {
+	return &connectState{pending: map[string]string{}, notified: map[string]time.Time{}}
+}
+
+// authRequiredDue reports whether cluster:auth-required may be sent now: a dead sign-in fails every request of
+// the cluster, and the client needs the event once, not once per request.
+func (s *connectState) authRequiredDue(clusterID string, now time.Time) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if last, ok := s.notified[clusterID]; ok && now.Sub(last) < authRequiredEvery {
+		return false
+	}
+	s.notified[clusterID] = now
+	return true
+}
 
 func (s *connectState) remember(challengeID, clusterID string) {
 	s.mu.Lock()
@@ -111,10 +129,27 @@ func (a *App) userSubject(clusterID string) (credential.Subject, error) {
 }
 
 // finishConnect makes the cluster the active one of this view and checks that it answers.
+// bindAuthSession tells the connection manager who connects: it builds the plan (and the pool key) from it.
+func (a *App) bindAuthSession() {
+	s := k8s.AuthSession{Broker: a.broker, SessionID: a.sessionID}
+	if a.broker != nil {
+		if u, err := a.auth.Current(); err == nil {
+			s.UserID = u.ID
+		}
+		s.OnAuthRequired = func(clusterID string) {
+			if a.conn != nil && a.conn.authRequiredDue(clusterID, time.Now()) {
+				a.emit(EventAuthRequired, authEventData{ClusterID: clusterID})
+			}
+		}
+	}
+	a.k8sMgr.SetAuthSession(s)
+}
+
 func (a *App) finishConnect(clusterID string) error {
 	if a.finish != nil {
 		return a.finish(clusterID)
 	}
+	a.bindAuthSession()
 	if err := a.k8sMgr.ConnectToCluster(clusterID); err != nil {
 		return err
 	}
