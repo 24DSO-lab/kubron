@@ -125,9 +125,23 @@ func (p *Provider) Begin(ctx context.Context, env credential.Env, req credential
 	case "devicecode":
 		res, e := startDevice(ctx, env, c); if staleSaved && res.Save == nil { res.Save = []byte{} }; return res, e
 	case "spn":
-		if c.secret == "" { res := credential.Result{Challenge: &credential.Challenge{Kind: credential.ChallengeCredentials, Fields: []credential.Field{{Name: "clientSecret", Secret: true}}}}, Pending: encodePending(pending{Tenant: c.tenant})}; if staleSaved { res.Save = []byte{} }; return res, nil }
+		if c.secret == "" {
+			res := credential.Result{
+				Challenge: &credential.Challenge{
+					Kind: credential.ChallengeCredentials,
+					Fields: []credential.Field{{Name: "clientSecret", Secret: true}},
+				},
+				Pending: encodePending(pending{Tenant: c.tenant}),
+			}
+			if staleSaved {
+				res.Save = []byte{}
+			}
+			return res, nil
+		}
 		tok, e := clientCredentials(ctx, env.HTTP, c, now(env))
-		if e != nil { return credential.Result{}, e }
+		if e != nil {
+			return credential.Result{}, e
+		}
 		return credential.Result{Token: &tok, Save: encodeSaved(c, "")}, nil
 	case "ropc":
 		if c.username == "" || c.password == "" {
