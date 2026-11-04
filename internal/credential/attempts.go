@@ -16,7 +16,7 @@ import (
 const (
 	// AttemptWindow bounds the rolling failure counters for interactive sign-in.
 	AttemptWindow = 15 * time.Minute
-	// MaxUserAnswerFailures limits failures by one user and identity provider.
+	// MaxUserAnswerFailures limits failed answers by one user across identity providers.
 	MaxUserAnswerFailures = 10
 	// MaxIDPAnswerFailures limits failures against one identity provider across users.
 	MaxIDPAnswerFailures = 50
@@ -59,7 +59,7 @@ func attemptKeys(sub Subject, d Descriptor) (userKey, idpKey string) {
 	if identity != "" {
 		idpKey = digest("idp:" + identity)
 	}
-	userKey = digest("user:" + string(sub.Scope) + ":" + sub.OwnerID + ":" + string(d.Kind) + ":" + idpKey)
+	userKey = digest("user:" + string(sub.Scope) + ":" + sub.OwnerID)
 	return userKey, idpKey
 }
 
@@ -68,6 +68,10 @@ func attemptIdentity(d Descriptor) string {
 	switch d.Kind {
 	case KindOIDC:
 		raw = strings.TrimSpace(d.Params["issuer-url"])
+	case KindEKS:
+		raw = "aws-sts:" + strings.ToLower(strings.TrimSpace(d.Params["region"]))
+	case KindGKE:
+		raw = "https://accounts.google.com"
 	case KindAKS:
 		authority := strings.TrimRight(strings.TrimSpace(d.Params["authority-host"]), "/")
 		if authority == "" {
