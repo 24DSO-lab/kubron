@@ -54,6 +54,34 @@ describe('connect', () => {
     expect(auth.challenge.value).toBeNull()
   })
 
+  it('плохой ввод: диалог открыт, ошибка у поля, поля не очищаются', async () => {
+    const { auth } = setup({
+      connectCluster: vi.fn(async () => asChallenge(challenge({ kind: 'manual-token' }))),
+      answerChallenge: vi.fn(async () => { throw new Error('the value could not be used') }),
+    })
+    void auth.connect('k1').catch(() => {})
+    await vi.advanceTimersByTimeAsync(0)
+    await auth.submit({ token: '' })
+    expect(auth.challenge.value?.id).toBe('c1')
+    expect(auth.error.value).toBe('the value could not be used')
+    expect(auth.attempt.value).toBe(0) // счётчик очистки секретных полей не растёт
+    expect(auth.busy.value).toBe(false)
+  })
+
+  it('сервис входа недоступен: не «неверный пароль», диалог открыт', async () => {
+    const { auth } = setup({
+      connectCluster: vi.fn(async () => asChallenge(challenge())),
+      answerChallenge: vi.fn(async () => { throw new Error('the sign-in service is unavailable') }),
+    })
+    void auth.connect('k1').catch(() => {})
+    await vi.advanceTimersByTimeAsync(0)
+    await auth.submit({ username: 'u', password: 'p' })
+    expect(auth.challenge.value?.id).toBe('c1')
+    expect(auth.error.value).toBe('the sign-in service is unavailable')
+    expect(auth.error.value).not.toContain('rejected')
+    expect(auth.attempt.value).toBe(0)
+  })
+
   it('отклонённый ответ: тот же вызов, ошибка и счётчик повторов', async () => {
     const { auth } = setup({
       connectCluster: vi.fn(async () => asChallenge(challenge())),

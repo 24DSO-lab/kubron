@@ -571,6 +571,8 @@
   "credCoreCredentialsRejected": "учётные данные отклонены",
   "credCoreSavedSignInInvalid": "сохранённый вход больше не действителен",
   "credCoreSignInMethodUnsupported": "этот способ входа не поддерживается",
+  "credCoreValueUnusable": "введённое значение нельзя использовать",
+  "credCoreSignInServiceUnavailable": "сервис входа недоступен",
   "credCoreMasterKeyNotConfigured": "главный ключ шифрования не настроен",
   "credCoreSecretKeyRequiredWithPostgres": "при использовании PostgreSQL необходимо задать KUBRON_SECRET_KEY",
   "credCoreMasterKeyStorageUnavailable": "хранилище главного ключа недоступно",

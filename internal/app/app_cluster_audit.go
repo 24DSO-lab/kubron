@@ -85,6 +85,10 @@ func authFailureReason(err error) string {
 	switch {
 	case errors.Is(err, credential.ErrAnswerRejected):
 		return "rejected"
+	case errors.Is(err, credential.ErrInvalidAnswer):
+		return "invalid-answer"
+	case errors.Is(err, credential.ErrServiceUnavailable):
+		return "unavailable" // the identity provider or the network, not the user's credentials
 	case errors.Is(err, credential.ErrChallengeExpired):
 		return "expired"
 	case errors.Is(err, credential.ErrInvalidGrant):

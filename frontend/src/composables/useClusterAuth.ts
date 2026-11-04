@@ -162,6 +162,8 @@ export function createClusterAuth(deps: ClusterAuthDeps) {
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e)
       error.value = errorText(e)
+      // Неверный пароль: поля очищаются. Плохой ввод (isInvalidAnswer) и недоступность сервиса входа
+      // (isServiceUnavailable) не очищают введённое: диалог остаётся открытым с понятным текстом ошибки.
       if (isAnswerRejected(message)) attempt.value++ // повтор на том же вызове
       else if (isChallengeExpired(message) || isInvalidGrant(message)) stopTimersKeepDialog()
     } finally {

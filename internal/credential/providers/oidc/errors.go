@@ -8,6 +8,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/24DSO-labs/kubron/internal/credential"
 	"github.com/24DSO-labs/kubron/internal/idpnet"
 	"github.com/24DSO-labs/kubron/internal/netpolicy"
 )
@@ -19,7 +20,7 @@ var (
 	errConfig            = errors.New("the OIDC issuer URL and client ID are required")
 	errDiscovery         = errors.New("the identity provider discovery failed")
 	errIssuerMismatch    = errors.New("the identity provider issuer does not match the configured issuer")
-	errUnreachable       = errors.New("the identity provider is unreachable")
+	errUnreachable       = &unavailable{"the identity provider is unreachable"}
 	errTokenRequest      = errors.New("the identity provider rejected the token request")
 	errTokenResponse     = errors.New("the identity provider returned an invalid token response")
 	errIDToken           = errors.New("the ID token could not be verified")
@@ -32,6 +33,13 @@ var (
 	errNonce             = errors.New("the ID token nonce does not match")
 	errPending           = errors.New("the sign-in state is invalid")
 )
+
+// unavailable is an error that means "the sign-in service cannot be used right now": it matches
+// credential.ErrServiceUnavailable, so that the application does not show it as wrong credentials.
+type unavailable struct{ text string }
+
+func (e *unavailable) Error() string        { return e.text }
+func (e *unavailable) Is(target error) bool { return target == credential.ErrServiceUnavailable }
 
 // wrapped is an error with a fixed message and a typed cause for errors.Is / errors.As.
 type wrapped struct{ msg, cause error }

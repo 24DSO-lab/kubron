@@ -429,6 +429,11 @@ func (s *Service) failed(ctx context.Context, claimed ChallengeRecord, d Descrip
 		claimed.Status, claimed.LockedUntil = ChallengeActive, time.Time{}
 		_, _ = s.chal.Swap(ctx, claimed, claimed.Version)
 		return Result{}, ErrAnswerRejected
+	case errors.Is(perr, ErrInvalidAnswer):
+		// Not a wrong guess (an empty field, a value of the wrong shape): no attempt is used up, the request stays
+		// open and the caller tells the user what could not be used.
+		s.release(ctx, claimed)
+		return Result{}, ErrInvalidAnswer
 	case errors.Is(perr, ErrChallengeExpired), errors.Is(perr, ErrInvalidGrant), errors.Is(perr, ErrUnsupported):
 		_ = s.chal.Delete(ctx, claimed.ID)
 		return Result{}, scrub(perr, d, a, saved)
@@ -470,8 +475,8 @@ func (e *scrubbedError) Error() string { return e.msg }
 // parameters, plugin environment, saved data) replaced. Providers must not put secrets in errors; this is the
 // second line of defense.
 func scrub(err error, d Descriptor, a Answer, saved []byte) error {
-	for _, sentinel := range []error{ErrChallengeRequired, ErrChallengeExpired, ErrAnswerRejected, ErrInvalidGrant, ErrUnsupported,
-		ErrNotFound, ErrVersionConflict, context.Canceled, context.DeadlineExceeded} {
+	for _, sentinel := range []error{ErrChallengeRequired, ErrChallengeExpired, ErrAnswerRejected, ErrInvalidAnswer, ErrInvalidGrant, ErrUnsupported,
+		ErrServiceUnavailable, ErrNotFound, ErrVersionConflict, context.Canceled, context.DeadlineExceeded} {
 		if errors.Is(err, sentinel) {
 			return sentinel
 		}

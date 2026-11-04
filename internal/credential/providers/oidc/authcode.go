@@ -120,7 +120,7 @@ func (s *session) checkResponse(d *discovery, q url.Values, p pending) (string, 
 	}
 	code := q.Get("code")
 	if code == "" {
-		return "", wrap(errRedirect, credential.ErrAnswerRejected)
+		return "", wrap(errRedirect, credential.ErrInvalidAnswer)
 	}
 	return code, nil
 }
@@ -179,12 +179,12 @@ func (s *session) continuePaste(ctx context.Context, req credential.Request, sv 
 	}
 	raw := strings.TrimSpace(req.Answer["redirectUrl"])
 	if raw == "" || len(raw) > maxPastedURL {
-		return credential.Result{}, credential.ErrAnswerRejected
+		return credential.Result{}, credential.ErrInvalidAnswer
 	}
 	u, err := url.Parse(raw)
 	want, werr := url.Parse(p.RedirectURI)
 	if err != nil || werr != nil || !sameRedirect(u, want) {
-		return credential.Result{}, wrap(errRedirect, credential.ErrAnswerRejected)
+		return credential.Result{}, wrap(errRedirect, credential.ErrInvalidAnswer)
 	}
 	d, err := s.discover(ctx)
 	if err != nil {

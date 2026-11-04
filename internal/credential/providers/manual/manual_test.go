@@ -137,7 +137,7 @@ func TestExpiredIsRejected(t *testing.T) {
 		"jwt":       jwt(fmt.Sprintf(`{"exp":%d}`, past.Unix())),
 		"timestamp": execCred("client.authentication.k8s.io/v1", `{"token":"t","expirationTimestamp":"`+past.Format(time.RFC3339)+`"}`),
 	} {
-		if _, err := run(t, in); !errors.Is(err, credential.ErrAnswerRejected) {
+		if _, err := run(t, in); !errors.Is(err, credential.ErrInvalidAnswer) {
 			t.Fatalf("%s: err = %v", name, err)
 		}
 	}
@@ -163,8 +163,8 @@ func TestRejectedInputs(t *testing.T) {
 	}
 	for name, in := range cases {
 		res, err := run(t, in)
-		if !errors.Is(err, credential.ErrAnswerRejected) {
-			t.Errorf("%s: err = %v, want ErrAnswerRejected", name, err)
+		if !errors.Is(err, credential.ErrInvalidAnswer) || errors.Is(err, credential.ErrAnswerRejected) {
+			t.Errorf("%s: err = %v, want ErrInvalidAnswer", name, err)
 		}
 		if res.Token != nil {
 			t.Errorf("%s: a token was returned with an error", name)
@@ -181,7 +181,7 @@ func TestClientCertificateIsUnsupported(t *testing.T) {
 }
 
 func TestSizeLimit(t *testing.T) {
-	if _, err := run(t, strings.Repeat("a", MaxAnswerBytes+1)); !errors.Is(err, credential.ErrAnswerRejected) {
+	if _, err := run(t, strings.Repeat("a", MaxAnswerBytes+1)); !errors.Is(err, credential.ErrInvalidAnswer) {
 		t.Fatalf("oversized answer: err = %v", err)
 	}
 	if _, err := run(t, strings.Repeat("a", MaxAnswerBytes)); err != nil {

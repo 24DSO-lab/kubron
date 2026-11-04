@@ -80,6 +80,9 @@ func (e *providerError) Is(target error) bool { return target == e.kind }
 func rejected(detail error) error {
 	return &providerError{kind: credential.ErrAnswerRejected, detail: detail}
 }
+func invalid(detail error) error {
+	return &providerError{kind: credential.ErrInvalidAnswer, detail: detail}
+}
 func unsupported(detail error) error {
 	return &providerError{kind: credential.ErrUnsupported, detail: detail}
 }
@@ -143,7 +146,7 @@ func (p *Provider) Continue(ctx context.Context, env credential.Env, req credent
 			return credential.Result{}, rejected(err)
 		}
 	default:
-		return credential.Result{}, rejected(errBadDecision)
+		return credential.Result{}, invalid(errBadDecision)
 	}
 	return p.run(ctx, env, req, x, key)
 }
