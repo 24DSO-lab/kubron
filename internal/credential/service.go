@@ -413,7 +413,7 @@ func (s *Service) CallbackSubject(ctx context.Context, sessionID, challengeID st
 	}
 	rec, err := s.chal.Get(ctx, challengeID)
 	if errors.Is(err, ErrChallengeNotFound) || (err == nil && rec.SessionID != sessionID) {
-		return Subject{}, ErrChallengeExpired
+		return Subject{}, Descriptor{}, ErrChallengeExpired
 	}
 	if err != nil {
 		return Subject{}, Descriptor{}, err
@@ -421,15 +421,14 @@ func (s *Service) CallbackSubject(ctx context.Context, sessionID, challengeID st
 	sub := Subject{OwnerID: rec.OwnerID, SessionID: sessionID}
 	rec, err = s.load(ctx, sub, challengeID)
 	if err != nil {
-		return Subject{}, err
+		return Subject{}, Descriptor{}, err
 	}
 	st, err := s.open(rec)
 	if err != nil || st.Challenge.Kind != ChallengeBrowserCallback {
-		return Subject{}, ErrChallengeExpired
+		return Subject{}, Descriptor{}, ErrChallengeExpired
 	}
 	return Subject{ClusterID: rec.ClusterID, Scope: rec.Scope, OwnerID: rec.OwnerID, SessionID: rec.SessionID}, st.Descriptor, nil
 }
-
 // AnswerCallback submits the complete redirect URL. The challenge is claimed and consumed by the same
 // compare-and-swap path as ordinary answers, so replay and concurrent callbacks cannot complete twice.
 func (s *Service) AnswerCallback(ctx context.Context, sub Subject, challengeID, redirectURL string) (Result, error) {
