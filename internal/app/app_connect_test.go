@@ -145,6 +145,9 @@ func TestWebOIDCClientIDIsAdminOnly(t *testing.T) {
 	if _, err := a.auth.Login(bob.Username, testPass); err != nil {
 		t.Fatal(err)
 	}
+	if err := a.auth.ChangePassword(testPass, "another-pass-2"); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := a.GetWebOIDCClientID(); !errors.Is(err, auth.ErrForbidden) {
 		t.Fatalf("non-admin read: %v", err)
 	}

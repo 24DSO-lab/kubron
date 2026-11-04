@@ -670,6 +670,7 @@
   "credAKSHTTPError": "Azure 登录请求失败",
   "credAKSResponseInvalid": "Azure 返回了无效的登录响应",
   "credAKSClientSecretInvalid": "客户端密钥无效",
-  "credAKSMFARequired": "Azure 要求使用密码登录不支持的身份验证方式"
+  "credAKSMFARequired": "Azure 要求使用密码登录不支持的身份验证方式",
+  "webOIDCClientIDInvalid": "Web OIDC 客户端 ID 不得超过 256 字节且不能包含控制字符"
 
 }
