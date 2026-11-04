@@ -28,6 +28,7 @@ const (
 type AttemptLimiter interface {
 	Check(ctx context.Context, userKey, idpKey string, now time.Time) (time.Duration, error)
 	Fail(ctx context.Context, userKey, idpKey string, now time.Time, window time.Duration, userLimit, idpLimit int, lockout time.Duration) (time.Duration, error)
+	// Reset clears only the user's counter; the aggregate IdP counter expires by its failure window.
 	Reset(ctx context.Context, userKey, idpKey string) error
 	Sweep(ctx context.Context, before time.Time) (int, error)
 }
