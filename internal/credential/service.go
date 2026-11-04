@@ -407,16 +407,16 @@ func (s *Service) Answer(ctx context.Context, sub Subject, challengeID string, a
 
 // CallbackSubject resolves a browser callback only when the challenge belongs to this user and web session.
 // Unknown, expired, foreign and non-callback challenges deliberately have the same error.
-func (s *Service) CallbackSubject(ctx context.Context, sessionID, challengeID string) (Subject, error) {
+func (s *Service) CallbackSubject(ctx context.Context, sessionID, challengeID string) (Subject, Descriptor, error) {
 	if sessionID == "" || challengeID == "" {
-		return Subject{}, ErrChallengeExpired
+		return Subject{}, Descriptor{}, ErrChallengeExpired
 	}
 	rec, err := s.chal.Get(ctx, challengeID)
 	if errors.Is(err, ErrChallengeNotFound) || (err == nil && rec.SessionID != sessionID) {
 		return Subject{}, ErrChallengeExpired
 	}
 	if err != nil {
-		return Subject{}, err
+		return Subject{}, Descriptor{}, err
 	}
 	sub := Subject{OwnerID: rec.OwnerID, SessionID: sessionID}
 	rec, err = s.load(ctx, sub, challengeID)
@@ -427,7 +427,7 @@ func (s *Service) CallbackSubject(ctx context.Context, sessionID, challengeID st
 	if err != nil || st.Challenge.Kind != ChallengeBrowserCallback {
 		return Subject{}, ErrChallengeExpired
 	}
-	return Subject{ClusterID: rec.ClusterID, Scope: rec.Scope, OwnerID: rec.OwnerID, SessionID: rec.SessionID}, nil
+	return Subject{ClusterID: rec.ClusterID, Scope: rec.Scope, OwnerID: rec.OwnerID, SessionID: rec.SessionID}, st.Descriptor, nil
 }
 
 // AnswerCallback submits the complete redirect URL. The challenge is claimed and consumed by the same
