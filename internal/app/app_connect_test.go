@@ -6,6 +6,8 @@ package app
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 	"sync"
 	"testing"
 
@@ -294,5 +296,50 @@ func TestDisconnectClusterRevokesOnlyThePersonalSignIn(t *testing.T) {
 	r := b.revoked[0]
 	if r.ClusterID != id || r.Scope != credential.ScopeUser || r.OwnerID == "" {
 		t.Fatalf("filter %+v", r)
+	}
+}
+
+// Sign-in is audited: challenge, failure and success, with the Kubernetes subject next to the application user,
+// and no secret reaches the journal.
+func TestSignInIsAudited(t *testing.T) {
+	const pw, tok = "CANARY-PASSWORD-1f9e", "CANARY-TOKEN-6c2d"
+	b := &fakeBroker{desc: credential.Descriptor{Kind: credential.KindOIDC},
+		acquire: []credential.Result{challenge("c1", credential.ChallengeCredentials)},
+		answer:  []credential.Result{{Token: &credential.Token{Value: tok, Principal: "alice@idp"}}}}
+	a, _, id, _ := connectFixture(t, b)
+	if _, err := a.ConnectCluster(id); err != nil {
+		t.Fatal(err)
+	}
+	b.answerEr = credential.ErrAnswerRejected
+	if _, err := a.AnswerChallenge("c1", map[string]string{"username": "u", "password": pw}); err == nil {
+		t.Fatal("expected the rejection")
+	}
+	b.answerEr = nil
+	if _, err := a.AnswerChallenge("c1", map[string]string{"username": "u", "password": pw}); err != nil {
+		t.Fatal(err)
+	}
+	if err := a.DisconnectCluster(id); err != nil {
+		t.Fatal(err)
+	}
+
+	var got []string // newest first
+	var all string
+	for _, e := range events(t, a) {
+		if strings.HasPrefix(e.Action, "cluster.auth.") {
+			got = append(got, e.Action+"|"+e.Result+"|"+e.Detail+"|"+e.User)
+		}
+		all += fmt.Sprintf("%+v", e)
+	}
+	want := []string{
+		"cluster.auth.revoked|ok|cluster=" + id + " reason=disconnect|admin",
+		"cluster.auth.success|ok|cluster=" + id + " principal=alice@idp|admin",
+		"cluster.auth.failure|failed|cluster=" + id + " reason=rejected|admin",
+		"cluster.auth.challenge|ok|cluster=" + id + " kind=credentials|admin",
+	}
+	if strings.Join(got, "\n") != strings.Join(want, "\n") {
+		t.Fatalf("journal:\n%s\nwant:\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
+	}
+	if strings.Contains(all, pw) || strings.Contains(all, tok) {
+		t.Fatal("a secret reached the audit journal")
 	}
 }

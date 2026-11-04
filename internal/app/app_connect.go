@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/24DSO-labs/kubron/internal/audit"
 	"github.com/24DSO-labs/kubron/internal/auth"
 	"github.com/24DSO-labs/kubron/internal/credential"
 	"github.com/24DSO-labs/kubron/internal/k8s"
@@ -192,15 +193,19 @@ func (a *App) connect(ctx context.Context, clusterID string) (credential.Connect
 	if err != nil {
 		return credential.ConnectResult{}, err
 	}
-	return a.resultOf(clusterID, res)
+	return a.connectResultOf(clusterID, d.Kind, res)
 }
 
-// resultOf turns a broker result into the wire result: a challenge is remembered for this session, a token (or
+// connectResultOf turns a broker result into the wire result: a challenge is remembered for this session, a token (or
 // nothing, for static credentials) connects the cluster.
-func (a *App) resultOf(clusterID string, res credential.Result) (credential.ConnectResult, error) {
+func (a *App) connectResultOf(clusterID string, kind credential.Kind, res credential.Result) (credential.ConnectResult, error) {
 	if res.Challenge != nil {
 		a.conn.remember(res.Challenge.ID, clusterID)
+		a.recordAuthEvent(auditAuthChallenge, audit.ResultOK, clusterID, "", "kind", string(res.Challenge.Kind))
 		return credential.ConnectResult{Status: "challenge", Challenge: res.Challenge}, nil
+	}
+	if kind != credential.KindStatic { // static credentials involve no sign-in
+		a.recordAuthEvent(auditAuthSuccess, audit.ResultOK, clusterID, principalOf(res))
 	}
 	if err := a.finishConnect(clusterID); err != nil {
 		return credential.ConnectResult{}, err
@@ -235,16 +240,19 @@ func (a *App) advance(challengeID string, run func(credential.Subject) (credenti
 		if errors.Is(err, credential.ErrChallengeExpired) {
 			a.conn.forget(challengeID)
 		}
+		a.recordAuthEvent(auditAuthFailure, audit.ResultFailed, clusterID, "", "reason", authFailureReason(err))
 		return credential.ConnectResult{}, err
 	}
 	if res.Challenge != nil {
-		if res.Challenge.ID != challengeID {
+		if res.Challenge.ID != challengeID { // a new challenge (a fallback), not the same one still waiting
 			a.conn.forget(challengeID)
+			a.recordAuthEvent(auditAuthChallenge, audit.ResultOK, clusterID, "", "kind", string(res.Challenge.Kind))
 		}
 		a.conn.remember(res.Challenge.ID, clusterID)
 		return credential.ConnectResult{Status: "challenge", Challenge: res.Challenge}, nil
 	}
 	a.conn.forget(challengeID)
+	a.recordAuthEvent(auditAuthSuccess, audit.ResultOK, clusterID, principalOf(res))
 	if err := a.finishConnect(clusterID); err != nil {
 		return credential.ConnectResult{}, err
 	}
@@ -329,5 +337,17 @@ func (a *App) DisconnectCluster(clusterID string) error {
 	if err != nil {
 		return err
 	}
-	return a.broker.Revoke(context.Background(), credential.RevokeFilter{ClusterID: clusterID, OwnerID: u.ID, Scope: credential.ScopeUser})
+	if err := a.broker.Revoke(context.Background(), credential.RevokeFilter{ClusterID: clusterID, OwnerID: u.ID, Scope: credential.ScopeUser}); err != nil {
+		return err
+	}
+	a.recordAuthEvent(auditAuthRevoked, audit.ResultOK, clusterID, "", "reason", "disconnect")
+	return nil
+}
+
+// principalOf is the Kubernetes subject of a completed sign-in; empty if the provider gave none.
+func principalOf(res credential.Result) string {
+	if res.Token != nil {
+		return res.Token.Principal
+	}
+	return ""
 }

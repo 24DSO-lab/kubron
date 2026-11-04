@@ -105,6 +105,12 @@
       "stop": "Port-forward 已停止"
     },
     "cluster": {
+      "auth": {
+        "challenge": "已请求登录集群",
+        "success": "集群登录完成",
+        "failure": "集群登录失败",
+        "revoked": "集群登录已撤销"
+      },
       "credentials": {
         "update": "集群凭据已替换"
       }
