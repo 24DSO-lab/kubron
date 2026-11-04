@@ -631,5 +631,27 @@
   "credUIExecBadToken": "плагин вернул токен с недопустимыми символами",
   "credUIExecBadExpiry": "плагин вернул неверный срок действия",
   "credUIExecNoTrustDir": "список доверенных плагинов нельзя сохранить в этой системе",
-  "credUIExecTrustSave": "не удалось сохранить список доверенных плагинов"
+  "credUIExecTrustSave": "не удалось сохранить список доверенных плагинов",
+  "credOIDCHTTPSRequired": "для поставщика удостоверений разрешены только адреса HTTPS",
+  "credOIDCInsecureTLSForbidden": "отключать проверку TLS здесь нельзя",
+  "credOIDCResponseTooLarge": "ответ поставщика удостоверений слишком большой",
+  "credOIDCBadCA": "сертификат центра сертификации поставщика удостоверений недействителен",
+  "credOIDCTooManyRedirects": "остановлено после слишком большого числа перенаправлений",
+  "credOIDCConfigRequired": "необходимы адрес издателя OIDC и идентификатор клиента",
+  "credOIDCDiscoveryFailed": "не удалось получить настройки поставщика удостоверений",
+  "credOIDCIssuerMismatch": "издатель поставщика удостоверений не совпадает с настроенным",
+  "credOIDCUnreachable": "поставщик удостоверений недоступен",
+  "credOIDCTokenRequestRejected": "поставщик удостоверений отклонил запрос токена",
+  "credOIDCTokenResponseInvalid": "поставщик удостоверений вернул некорректный ответ с токеном",
+  "credOIDCIDTokenInvalid": "не удалось проверить ID-токен",
+  "credOIDCNonceMismatch": "nonce в ID-токене не совпадает",
+  "credOIDCSignInStateInvalid": "состояние входа повреждено",
+  "credOIDCAddressNotAllowed": "адрес не разрешён",
+  "credOIDCIssuerMixup": "ответ входа получен от неожиданного издателя",
+  "credOIDCStateMismatch": "ответ входа не соответствует запросу",
+  "credOIDCAuthorizationDenied": "поставщик удостоверений отклонил запрос на вход",
+  "credOIDCRedirectInvalid": "вставленный адрес не является корректным ответом входа",
+  "credOIDCListenFailed": "не удалось запустить локальный приём ответа входа",
+  "credOIDCDeviceUnavailable": "поставщик удостоверений не поддерживает вход с другого устройства"
+
 }

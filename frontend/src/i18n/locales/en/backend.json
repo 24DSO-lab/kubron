@@ -631,5 +631,27 @@
   "credUIExecBadToken": "the plugin returned a token with invalid characters",
   "credUIExecBadExpiry": "the plugin returned an invalid expiration time",
   "credUIExecNoTrustDir": "the trust list cannot be saved on this system",
-  "credUIExecTrustSave": "the trust list could not be saved"
+  "credUIExecTrustSave": "the trust list could not be saved",
+  "credOIDCHTTPSRequired": "only HTTPS addresses are allowed for the identity provider",
+  "credOIDCInsecureTLSForbidden": "skipping TLS verification is not allowed here",
+  "credOIDCResponseTooLarge": "the identity provider response is too large",
+  "credOIDCBadCA": "the identity provider CA certificate is not valid",
+  "credOIDCTooManyRedirects": "stopped after too many redirects",
+  "credOIDCConfigRequired": "the OIDC issuer URL and client ID are required",
+  "credOIDCDiscoveryFailed": "the identity provider discovery failed",
+  "credOIDCIssuerMismatch": "the identity provider issuer does not match the configured issuer",
+  "credOIDCUnreachable": "the identity provider is unreachable",
+  "credOIDCTokenRequestRejected": "the identity provider rejected the token request",
+  "credOIDCTokenResponseInvalid": "the identity provider returned an invalid token response",
+  "credOIDCIDTokenInvalid": "the ID token could not be verified",
+  "credOIDCNonceMismatch": "the ID token nonce does not match",
+  "credOIDCSignInStateInvalid": "the sign-in state is invalid",
+  "credOIDCAddressNotAllowed": "the address is not allowed",
+  "credOIDCIssuerMixup": "the sign-in response came from an unexpected issuer",
+  "credOIDCStateMismatch": "the sign-in response does not match the request",
+  "credOIDCAuthorizationDenied": "the identity provider denied the sign-in request",
+  "credOIDCRedirectInvalid": "the pasted address is not a valid sign-in response",
+  "credOIDCListenFailed": "the local sign-in listener could not be started",
+  "credOIDCDeviceUnavailable": "the identity provider does not offer the device sign-in"
+
 }

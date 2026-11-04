@@ -5,6 +5,7 @@ go 1.27.3
 require (
 	github.com/24DSO-labs/kubron/pkg/ext v0.0.0
 	github.com/Masterminds/semver/v3 v3.5.0
+	github.com/coreos/go-oidc/v3 v3.14.1
 	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674
 	github.com/jackc/pgx/v5 v5.12.0
 	github.com/prometheus/client_golang v1.25.0
@@ -54,6 +55,7 @@ require (
 	github.com/fxamacker/cbor/v2 v2.9.1 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.16 // indirect
 	github.com/go-errors/errors v1.5.1 // indirect
+	github.com/go-jose/go-jose/v4 v4.1.4 // indirect
 	github.com/go-gorp/gorp/v3 v3.1.0 // indirect
 	github.com/go-logr/logr v1.4.4 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
