@@ -493,6 +493,59 @@ func TestConfirmExecChallengeHidesEnvValues(t *testing.T) {
 	}
 }
 
+func TestUnsupportedNativeProviderFallsBackToExecAndKeepsRoute(t *testing.T) {
+	r := newRig(t)
+	native := &credtest.FakeProvider{KindValue: credential.KindAKS,
+		OnBegin: func(context.Context, credential.Env, credential.Request) (credential.Result, error) {
+			return credential.Result{}, credential.ErrUnsupported
+		}}
+	execProvider := &credtest.FakeProvider{KindValue: credential.KindExec,
+		OnBegin: func(_ context.Context, _ credential.Env, req credential.Request) (credential.Result, error) {
+			if req.Descriptor.Kind != credential.KindExec {
+				t.Fatalf("fallback descriptor kind = %q", req.Descriptor.Kind)
+			}
+			return credential.Result{Challenge: &credential.Challenge{Kind: credential.ChallengeManualToken,
+				Fields: []credential.Field{{Name: "token", Secret: true}}}}, nil
+		},
+		OnContinue: func(_ context.Context, _ credential.Env, req credential.Request) (credential.Result, error) {
+			if req.Descriptor.Kind != credential.KindExec {
+				t.Fatalf("continued descriptor kind = %q", req.Descriptor.Kind)
+			}
+			return credential.Result{Token: &credential.Token{Value: req.Answer["token"]}}, nil
+		}}
+	reg := credential.NewRegistry(false)
+	for _, p := range []credential.Provider{native, execProvider} {
+		if err := reg.Register(p); err != nil { t.Fatal(err) }
+	}
+	svc, err := credential.NewService(credential.Config{Registry: reg, Store: r.store, Challenges: r.chal,
+		Envelope: r.env, Now: r.clk.Now})
+	if err != nil { t.Fatal(err) }
+
+	d := credential.Descriptor{Kind: credential.KindAKS, Exec: &credential.ExecSpec{Command: "kubelogin"}}
+	res, err := svc.Acquire(bg, subj, d)
+	if err != nil || res.Challenge == nil || res.Challenge.Kind != credential.ChallengeManualToken {
+		t.Fatalf("Acquire fallback = %+v, %v", res, err)
+	}
+	done, err := svc.Answer(bg, subj, res.Challenge.ID, credential.Answer{"token": "manual-token"})
+	if err != nil || done.Token == nil || done.Token.Value != "manual-token" {
+		t.Fatalf("Answer fallback = %+v, %v", done, err)
+	}
+}
+
+func TestUnsupportedNativeProviderWithoutExecDoesNotFallback(t *testing.T) {
+	r := newRig(t)
+	native := &credtest.FakeProvider{KindValue: credential.KindAKS,
+		OnBegin: func(context.Context, credential.Env, credential.Request) (credential.Result, error) {
+			return credential.Result{}, credential.ErrUnsupported
+		}}
+	reg := credential.NewRegistry(false)
+	if err := reg.Register(native); err != nil { t.Fatal(err) }
+	svc, err := credential.NewService(credential.Config{Registry: reg, Store: r.store, Challenges: r.chal, Envelope: r.env})
+	if err != nil { t.Fatal(err) }
+	_, err = svc.Acquire(bg, subj, credential.Descriptor{Kind: credential.KindAKS})
+	if !errors.Is(err, credential.ErrUnsupported) { t.Fatalf("Acquire error = %v", err) }
+}
+
 func TestRegistryRouting(t *testing.T) {
 	mk := func(k credential.Kind) *credtest.FakeProvider { return &credtest.FakeProvider{KindValue: k} }
 	native, execP := mk(credential.KindEKS), mk(credential.KindExec)
