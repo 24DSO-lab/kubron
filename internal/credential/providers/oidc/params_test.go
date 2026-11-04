@@ -205,6 +205,27 @@ func TestExtraAuthParams(t *testing.T) {
 	}
 }
 
+func TestWebClientIDOverridesKubeconfigOnlyInWeb(t *testing.T) {
+	d := credential.Descriptor{Kind: credential.KindOIDC, Params: map[string]string{
+		"issuer-url": "https://idp.example", "client-id": "kubeconfig-client",
+		"web.client-id": "admin-public-client", "web.redirect-url": "https://kubron.example/auth/cluster/callback",
+	}}
+	web, err := newConfig(d, nil, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if web.clientID != "admin-public-client" || web.webRedirectURL != "https://kubron.example/auth/cluster/callback" {
+		t.Fatalf("web overrides not applied: client=%q redirect=%q", web.clientID, web.webRedirectURL)
+	}
+	desktop, err := newConfig(d, nil, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if desktop.clientID != "kubeconfig-client" || desktop.webRedirectURL != "" {
+		t.Fatalf("web-only settings affected desktop: client=%q redirect=%q", desktop.clientID, desktop.webRedirectURL)
+	}
+}
+
 func TestIssuerParameter(t *testing.T) {
 	d := &discovery{Issuer: "https://idp.example.com/realms/a"}
 	for _, tc := range []struct {

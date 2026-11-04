@@ -25,11 +25,12 @@ const (
 
 // config is what a Descriptor says about the identity provider, after defaults and checks.
 type config struct {
-	grant        string
-	issuer       string
-	clientID     string
-	clientSecret string
-	scopes       []string // always starts with "openid"
+	grant          string
+	issuer         string
+	clientID       string
+	webRedirectURL string // server-controlled callback URL for the web authorization-code flow
+	clientSecret   string
+	scopes         []string // always starts with "openid"
 	// username and password from the kubeconfig (grant password); empty when the user is asked.
 	username, password string
 
@@ -89,6 +90,12 @@ func newConfig(d credential.Descriptor, sv *saved, desktop bool) (config, error)
 		if len(extra) == 0 {
 			extra = sv.Scopes
 		}
+	}
+	if !desktop {
+		if webClientID := strings.TrimSpace(p["web.client-id"]); webClientID != "" {
+			c.clientID = webClientID
+		}
+		c.webRedirectURL = strings.TrimSpace(p["web.redirect-url"])
 	}
 	if c.issuer == "" || c.clientID == "" {
 		return config{}, errConfig

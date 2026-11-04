@@ -32,6 +32,22 @@
       </select>
     </section>
 
+    <!-- Web OIDC public client configuration -->
+    <section class="sec-card web-oidc-card">
+      <div>
+        <h4>{{ $t('users.webOIDC.title') }}</h4>
+        <p>{{ $t('users.webOIDC.description') }}</p>
+      </div>
+      <form class="web-oidc-form" @submit.prevent="saveWebOIDCClientID">
+        <input v-model="webOIDCClientID" class="form-input" type="text" maxlength="256"
+          autocomplete="off" :aria-label="$t('users.webOIDC.clientID')" :placeholder="$t('users.webOIDC.clientID')" />
+        <button class="btn" type="submit"
+          :disabled="savingWebOIDC || webOIDCClientID.trim() === savedWebOIDCClientID">
+          {{ savingWebOIDC ? $t('users.webOIDC.saving') : $t('users.webOIDC.save') }}
+        </button>
+      </form>
+    </section>
+
     <p v-if="loadError" class="form-error">{{ loadError }}</p>
 
     <table v-if="users.length" class="users-table">
@@ -167,6 +183,9 @@ const firstInput = ref<HTMLInputElement | null>(null)
 
 const IDLE_PRESETS = [0, 5, 10, 15, 30, 60, 120]
 const savingIdle = ref(false)
+const webOIDCClientID = ref('')
+const savedWebOIDCClientID = ref('')
+const savingWebOIDC = ref(false)
 // Если на бэкенде задано нестандартное значение, оно тоже должно быть в списке
 const idleOptions = computed(() => {
   const cur = auth.idleTimeoutMinutes.value
@@ -205,14 +224,33 @@ function formatDate(iso: string): string {
 async function load() {
   loadError.value = ''
   try {
-    const [u, r] = await Promise.all([callApp('ListUsers'), callApp('ListRoles')])
+    const [u, r, clientID] = await Promise.all([
+      callApp('ListUsers'), callApp('ListRoles'), callApp('GetWebOIDCClientID'),
+    ])
     users.value = (u ?? []) as UserInfo[]
     roles.value = (r ?? []) as RoleInfo[]
+    webOIDCClientID.value = String(clientID ?? '')
+    savedWebOIDCClientID.value = webOIDCClientID.value
     if (!roles.value.some(x => x.id === form.role) && roles.value.length) form.role = roles.value[roles.value.length - 1].id
   } catch (e) {
     loadError.value = errorText(e)
   } finally {
     loading.value = false
+  }
+}
+
+async function saveWebOIDCClientID() {
+  savingWebOIDC.value = true
+  try {
+    const value = webOIDCClientID.value.trim()
+    await callApp('SetWebOIDCClientID', value)
+    webOIDCClientID.value = value
+    savedWebOIDCClientID.value = value
+    notifications.notifySuccess(t('users.webOIDC.saved'))
+  } catch (e) {
+    notifications.notifyError(errorText(e))
+  } finally {
+    savingWebOIDC.value = false
   }
 }
 
@@ -330,6 +368,8 @@ onMounted(load)
 .sec-card h4 { margin: 0 0 4px; color: #cdd6f4; font-size: 14px; }
 .sec-card p { margin: 0; color: #a6adc8; font-size: 12px; line-height: 1.5; max-width: 620px; }
 .idle-select { width: auto; min-width: 150px; padding: 6px 8px; flex-shrink: 0; }
+.web-oidc-form { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.web-oidc-form .form-input { width: min(320px, 32vw); }
 
 .users-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .users-table th { text-align: left; padding: 8px 12px; color: #a6adc8; font-weight: 600; border-bottom: 1px solid #313244; }

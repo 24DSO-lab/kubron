@@ -6,6 +6,7 @@ package app
 import (
 	"context"
 	"errors"
+	"strings"
 	"sync"
 	"time"
 
@@ -110,6 +111,33 @@ func SetBroker(a *App, b credential.Broker) {
 	a.k8sMgr.SetAuthSession(k8s.AuthSession{Broker: b}) // фоновая проверка кластеров знает, чьи у кластера данные
 }
 
+// SetWebOIDCRedirectURL configures the callback URL from the validated KUBRON_PUBLIC_URL.
+func SetWebOIDCRedirectURL(a *App, publicURL string) {
+	if a == nil || publicURL == "" {
+		return
+	}
+	a.webOIDCRedirectURL = strings.TrimRight(publicURL, "/") + "/auth/cluster/callback"
+}
+
+// withWebOIDCParams removes any web-only overrides that could have come from cluster input,
+// then injects the administrator-controlled values for this web request.
+func withWebOIDCParams(d credential.Descriptor, clientID, redirectURL string) credential.Descriptor {
+	p := make(map[string]string, len(d.Params)+2)
+	for k, v := range d.Params {
+		if k != "web.client-id" && k != "web.redirect-url" {
+			p[k] = v
+		}
+	}
+	if clientID != "" {
+		p["web.client-id"] = clientID
+	}
+	if redirectURL != "" {
+		p["web.redirect-url"] = redirectURL
+	}
+	d.Params = p
+	return d
+}
+
 // emit sends an event to the owner of this view: to the web session if there is one, otherwise to the shell.
 func (a *App) emit(event string, data any) {
 	if a.sessionID != "" {
@@ -175,6 +203,16 @@ func (a *App) connect(ctx context.Context, clusterID string) (credential.Connect
 	}
 	if plan.Legacy() { // in-cluster: no sign-in
 		return credential.ConnectResult{Status: "connected"}, a.finishConnect(clusterID)
+	}
+	if a.sessionID != "" && plan.Desc.Kind == credential.KindOIDC {
+		clientID := ""
+		if a.store != nil {
+			clientID, err = a.store.WebOIDCClientID()
+			if err != nil {
+				return credential.ConnectResult{}, err
+			}
+		}
+		plan.Desc = withWebOIDCParams(plan.Desc, clientID, a.webOIDCRedirectURL)
 	}
 	res, err := a.broker.Acquire(ctx, plan.Subject, plan.Desc)
 	if err != nil {

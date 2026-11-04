@@ -670,6 +670,8 @@
   "credAKSHTTPError": "не удалось выполнить запрос входа в Azure",
   "credAKSResponseInvalid": "Azure вернула некорректный ответ при входе",
   "credAKSClientSecretInvalid": "секрет клиента недействителен",
-  "credAKSMFARequired": "Azure требует способ аутентификации, не поддерживаемый входом по паролю"
+  "credAKSMFARequired": "Azure требует способ аутентификации, не поддерживаемый входом по паролю",
+  "webOIDCClientIDInvalid": "Client ID веб-версии должен быть не длиннее 256 байт и не содержать управляющих символов",
+  "applicationSettingsStoreUnavailable": "хранилище настроек приложения недоступно"
 
 }

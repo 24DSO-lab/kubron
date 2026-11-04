@@ -27,4 +27,7 @@ type Store interface {
 	ArgoTokens() k8s.TokenStore
 	// Clusters — кластеры: метаданные и kubeconfig (владение командой добавит этап 3).
 	Clusters() k8s.ClusterStore
+	// WebOIDCClientID — публичный client_id, используемый web OIDC flow вместо значения из kubeconfig.
+	WebOIDCClientID() (string, error)
+	SetWebOIDCClientID(string) error
 }
