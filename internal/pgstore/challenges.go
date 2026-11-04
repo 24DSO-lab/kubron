@@ -155,6 +155,7 @@ func (c *Challenges) Fail(ctx context.Context, userKey, idpKey string, now time.
 			VALUES ($1,$2,1,$3,CASE WHEN $4 <= 1 THEN $3 + ($6 * interval '1 second') ELSE NULL END,$3)
 			ON CONFLICT (dimension, key_hash) DO UPDATE SET
 				failures = CASE
+					WHEN existing.locked_until > $3 THEN existing.failures
 					WHEN (existing.locked_until IS NOT NULL AND existing.locked_until <= $3)
 					  OR existing.window_started <= $3 - ($5 * interval '1 second') THEN 1
 					ELSE existing.failures + 1 END,
