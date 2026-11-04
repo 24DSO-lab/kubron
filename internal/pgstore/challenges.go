@@ -150,24 +150,24 @@ func (c *Challenges) Fail(ctx context.Context, userKey, idpKey string, now time.
 			return 0, nil
 		}
 		var locked *time.Time
-		err := tx.QueryRow(ctx, `INSERT INTO credential_attempt_limits AS current
+		err := tx.QueryRow(ctx, `INSERT INTO credential_attempt_limits AS existing
 			(dimension, key_hash, failures, window_started, locked_until, updated_at)
 			VALUES ($1,$2,1,$3,CASE WHEN $4 <= 1 THEN $3 + ($6 * interval '1 second') ELSE NULL END,$3)
 			ON CONFLICT (dimension, key_hash) DO UPDATE SET
 				failures = CASE
-					WHEN (current.locked_until IS NOT NULL AND current.locked_until <= $3)
-					  OR current.window_started <= $3 - ($5 * interval '1 second') THEN 1
-					ELSE current.failures + 1 END,
+					WHEN (existing.locked_until IS NOT NULL AND existing.locked_until <= $3)
+					  OR existing.window_started <= $3 - ($5 * interval '1 second') THEN 1
+					ELSE existing.failures + 1 END,
 				window_started = CASE
-					WHEN (current.locked_until IS NOT NULL AND current.locked_until <= $3)
-					  OR current.window_started <= $3 - ($5 * interval '1 second') THEN $3
-					ELSE current.window_started END,
+					WHEN (existing.locked_until IS NOT NULL AND existing.locked_until <= $3)
+					  OR existing.window_started <= $3 - ($5 * interval '1 second') THEN $3
+					ELSE existing.window_started END,
 				locked_until = CASE
-					WHEN current.locked_until > $3 THEN current.locked_until
+					WHEN existing.locked_until > $3 THEN existing.locked_until
 					WHEN (CASE
-						WHEN (current.locked_until IS NOT NULL AND current.locked_until <= $3)
-						  OR current.window_started <= $3 - ($5 * interval '1 second') THEN 1
-						ELSE current.failures + 1 END) >= $4 THEN $3 + ($6 * interval '1 second')
+						WHEN (existing.locked_until IS NOT NULL AND existing.locked_until <= $3)
+						  OR existing.window_started <= $3 - ($5 * interval '1 second') THEN 1
+						ELSE existing.failures + 1 END) >= $4 THEN $3 + ($6 * interval '1 second')
 					ELSE NULL END,
 				updated_at=$3
 			RETURNING locked_until`, dimension, key, now.UTC(), limit, window.Seconds(), lockout.Seconds()).Scan(&locked)
