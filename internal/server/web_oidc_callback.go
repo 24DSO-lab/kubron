@@ -56,6 +56,12 @@ func webOIDCCallbackHandler(g *Guard, complete func(view any, state, redirectURL
 		}
 		redirectURL := fmt.Sprintf("%s://%s%s", scheme, r.Host, r.URL.RequestURI())
 		if err := complete(sess.View, states[0], redirectURL); err != nil {
+			var limited retryAfterError
+			if errors.As(err, &limited) {
+				w.Header().Set("Retry-After", fmt.Sprint(limited.RetryAfterSeconds()))
+				fail(http.StatusTooManyRequests)
+				return
+			}
 			fail(http.StatusBadRequest)
 			return
 		}
