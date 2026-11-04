@@ -314,6 +314,9 @@ func CompleteWebOIDCCallback(a *App, state, redirectURL string) error {
 	if a == nil || a.sessionID == "" || state == "" || redirectURL == "" {
 		return credential.ErrChallengeExpired
 	}
+	if a.auth == nil {
+		return auth.ErrNotAuthenticated
+	}
 	if a.broker == nil {
 		return ErrSignInUnavailable
 	}
