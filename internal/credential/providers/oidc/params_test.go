@@ -42,6 +42,25 @@ func TestWebPublicClientOverridesClientSecret(t *testing.T) {
 	}
 }
 
+func TestWebRedirectURLValidation(t *testing.T) {
+	for _, tc := range []struct {
+		url  string
+		want bool
+	}{
+		{"https://kubron.example.test/auth/cluster/callback", true},
+		{"http://localhost:8080/auth/cluster/callback", true},
+		{"http://127.0.0.1:8080/auth/cluster/callback", true},
+		{"http://kubron.example.test/auth/cluster/callback", false},
+		{"https://kubron.example.test/other", false},
+		{"https://user@kubron.example.test/auth/cluster/callback", false},
+		{"javascript:alert(1)", false},
+	} {
+		if got := validWebRedirectURL(tc.url); got != tc.want {
+			t.Errorf("validWebRedirectURL(%q) = %v, want %v", tc.url, got, tc.want)
+		}
+	}
+}
+
 func TestScopes(t *testing.T) {
 	idp := newFakeIdP(t, false)
 	res, err := signInWithPassword(t, idp, idp.env(true), map[string]string{"scope": "groups email openid groups"})
