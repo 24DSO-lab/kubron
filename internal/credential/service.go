@@ -514,10 +514,9 @@ type tokenCache struct {
 
 func cacheKey(k Key) string { return k.ClusterID + "\x00" + string(k.Scope) + "\x00" + k.OwnerID }
 
+// put stores a token. A token without expiry (an exec plugin that gives no expirationTimestamp) is kept as well,
+// with the semantics of client-go: it lives in memory until the API server answers 401 and the caller invalidates it.
 func (c *tokenCache) put(k Key, t Token) {
-	if t.Expiry.IsZero() {
-		return // a token without expiry is never cached: its lifetime is unknown
-	}
 	c.mu.Lock()
 	c.m[cacheKey(k)] = t
 	c.mu.Unlock()
@@ -527,10 +526,22 @@ func (c *tokenCache) get(k Key, now time.Time) (Token, bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	t, ok := c.m[cacheKey(k)]
-	if !ok || !t.Expiry.After(now.Add(tokenMargin)) {
+	if !ok {
+		return Token{}, false
+	}
+	if t.Expiry.IsZero() {
+		return t, true // no expiry: valid until Invalidate
+	}
+	if !t.Expiry.After(now.Add(tokenMargin)) {
 		return Token{}, false
 	}
 	return t, true
+}
+
+func (c *tokenCache) remove(k Key) {
+	c.mu.Lock()
+	delete(c.m, cacheKey(k))
+	c.mu.Unlock()
 }
 
 func (c *tokenCache) drop(match func(Key) bool, keys func(string) Key) {

@@ -9,7 +9,16 @@ import (
 	"time"
 )
 
-var _ Broker = (*Service)(nil)
+var (
+	_ Broker      = (*Service)(nil)
+	_ Invalidator = (*Service)(nil)
+)
+
+// Invalidator is an optional interface of a Broker implementation. The transport calls it when the API server
+// answers 401, so that a cached token (above all one without expiry) is dropped and obtained again.
+type Invalidator interface {
+	Invalidate(k Key)
+}
 
 // maxRefreshRounds bounds the retries of one refresh when other replicas keep rotating the saved data.
 const maxRefreshRounds = 4
@@ -116,6 +125,12 @@ func (s *Service) savedChanged(ctx context.Context, k Key, base int64) bool {
 		}
 	}
 	return false
+}
+
+// Invalidate implements Invalidator: the API server rejected the token (401), so the cached one is dropped and the
+// next Token call obtains a new one. Saved sign-in data is not touched.
+func (s *Service) Invalidate(k Key) {
+	s.cache.remove(k)
 }
 
 // Revoke implements Broker: it removes saved sign-in data and pending requests matching the filter and

@@ -408,3 +408,86 @@ func TestList(t *testing.T) {
 		t.Fatalf("List(u2) = %+v, %v", none, err)
 	}
 }
+
+// noExpiryProvider hands out a new token without expiry on every Begin, like an exec plugin that gives no
+// expirationTimestamp.
+func noExpiryProvider(counter *atomic.Int32) *credtest.FakeProvider {
+	return &credtest.FakeProvider{KindValue: credential.KindOIDC,
+		OnBegin: func(context.Context, credential.Env, credential.Request) (credential.Result, error) {
+			n := counter.Add(1)
+			return credential.Result{Token: &credential.Token{Value: "plugin-token-" + string(rune('0'+n))}}, nil
+		}}
+}
+
+func TestTokenWithoutExpiryIsKeptUntilInvalidated(t *testing.T) {
+	r := newRig(t)
+	var runs atomic.Int32
+	svc := r.newService(noExpiryProvider(&runs))
+
+	first, err := svc.Token(bg, subj, desc)
+	if err != nil || first.Value == "" {
+		t.Fatalf("Token = %+v, %v", first, err)
+	}
+	// Many requests, a lot of time: the plugin runs once.
+	for i := 0; i < 100; i++ {
+		if i%10 == 0 {
+			r.clk.Advance(24 * time.Hour)
+		}
+		got, err := svc.Token(bg, subj, desc)
+		if err != nil || got.Value != first.Value {
+			t.Fatalf("request %d: Token = %+v, %v", i, got, err)
+		}
+	}
+	if n := runs.Load(); n != 1 {
+		t.Fatalf("the plugin ran %d times for 101 requests, want 1", n)
+	}
+
+	// 401: the caller invalidates the token, the next request runs the plugin again.
+	var inv credential.Invalidator = svc
+	inv.Invalidate(r.savedKey())
+	second, err := svc.Token(bg, subj, desc)
+	if err != nil || second.Value == first.Value {
+		t.Fatalf("after Invalidate: Token = %+v, %v (first %q)", second, err, first.Value)
+	}
+	if n := runs.Load(); n != 2 {
+		t.Fatalf("the plugin ran %d times, want 2", n)
+	}
+	if got, _ := svc.Token(bg, subj, desc); got.Value != second.Value || runs.Load() != 2 {
+		t.Fatal("the new token without expiry was not kept")
+	}
+}
+
+func TestInvalidateOnlyAffectsItsOwnKey(t *testing.T) {
+	r := newRig(t)
+	var runs atomic.Int32
+	svc := r.newService(noExpiryProvider(&runs))
+	other := subj
+	other.OwnerID = "u-other"
+	if _, err := svc.Token(bg, subj, desc); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.Token(bg, other, desc); err != nil {
+		t.Fatal(err)
+	}
+	svc.Invalidate(r.savedKey())
+	if _, err := svc.Token(bg, other, desc); err != nil || runs.Load() != 2 {
+		t.Fatalf("the other subject's token was dropped: runs=%d, %v", runs.Load(), err)
+	}
+}
+
+func TestTokenWithExpiryIsUnchangedByInvalidatorSupport(t *testing.T) {
+	r := newRig(t)
+	first := r.signedIn()
+	begins, _ := r.prov.Calls()
+	if got, err := r.svc.Token(bg, subj, desc); err != nil || got.Value != first.Value {
+		t.Fatalf("Token = %+v, %v", got, err)
+	}
+	if b, _ := r.prov.Calls(); b != begins {
+		t.Fatal("a token with an expiry was not served from the cache")
+	}
+	r.clk.Advance(5*time.Minute - 29*time.Second) // inside the 30 s margin
+	got, err := r.svc.Token(bg, subj, desc)
+	if err != nil || got.Value == first.Value {
+		t.Fatalf("an expiring token was not refreshed: %+v, %v", got, err)
+	}
+}
