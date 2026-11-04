@@ -310,7 +310,7 @@ func (a *App) AnswerChallenge(challengeID string, values map[string]string) (cre
 
 // CompleteWebOIDCCallback completes a browser redirect for the authenticated web session.
 // It is a package function, not an App method, so it is not exposed through Wails or RPC.
-func CompleteWebOIDCCallback(a *App, state, redirectURL string) error {
+func CompleteWebOIDCCallback(ctx context.Context, a *App, state, redirectURL string) error {
 	if a == nil || a.sessionID == "" || state == "" || redirectURL == "" {
 		return credential.ErrChallengeExpired
 	}
@@ -327,7 +327,7 @@ func CompleteWebOIDCCallback(a *App, state, redirectURL string) error {
 	if _, err := a.auth.Current(); err != nil {
 		return err
 	}
-	sub, desc, err := cb.CallbackSubject(context.Background(), a.sessionID, state)
+	sub, desc, err := cb.CallbackSubject(ctx, a.sessionID, state)
 	if err != nil {
 		if errors.Is(err, credential.ErrChallengeExpired) {
 			return credential.ErrChallengeExpired
@@ -344,7 +344,7 @@ func CompleteWebOIDCCallback(a *App, state, redirectURL string) error {
 	if err := a.limitCallback(idpKey(desc, sub.ClusterID)); err != nil {
 		return err
 	}
-	res, err := cb.AnswerCallback(context.Background(), sub, state, redirectURL)
+	res, err := cb.AnswerCallback(ctx, sub, state, redirectURL)
 	if err != nil {
 		a.recordAuthEvent(auditAuthFailure, audit.ResultFailed, sub.ClusterID, "", "reason", authFailureReason(err))
 		return err
