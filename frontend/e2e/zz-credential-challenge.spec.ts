@@ -161,8 +161,17 @@ test('Tab не выходит из диалога', async ({ page }) => {
   await openClusterWithMocks(page, {
     ConnectCluster: { status: 'challenge', challenge: { id: 'c9', kind: 'credentials', expiresAt: future() } },
   })
+
+  // Ждём не только появления диалога, но и установки его начального фокуса.
+  await expect(dialog(page)).toBeVisible()
+  await expect.poll(() =>
+    page.evaluate(() => !!document.activeElement?.closest('[data-testid=challenge-dialog]')),
+  ).toBe(true)
+
   for (let i = 0; i < 8; i++) {
     await page.keyboard.press('Tab')
-    expect(await page.evaluate(() => !!document.activeElement?.closest('[data-testid=challenge-dialog]'))).toBe(true)
+    await expect.poll(() =>
+      page.evaluate(() => !!document.activeElement?.closest('[data-testid=challenge-dialog]')),
+    ).toBe(true)
   }
 })
