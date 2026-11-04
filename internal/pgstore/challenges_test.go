@@ -46,7 +46,7 @@ func TestCredentialAttemptLimitsAreSharedAcrossPostgresStores(t *testing.T) {
 		t.Fatalf("shared user lockout = %s, %v", wait, err)
 	}
 
-	if err := a.Reset(ctx, "opaque-user-hash", "opaque-idp-hash"); err != nil {
+	if err := a.Reset(ctx, "opaque-user-hash"); err != nil {
 		t.Fatal(err)
 	}
 	for i := 0; i < 3; i++ {
