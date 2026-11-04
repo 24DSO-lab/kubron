@@ -83,7 +83,8 @@ test('credentials: показать и скрыть пароль, отмена �
   await expect(page.getByTestId('field-password')).toHaveAttribute('type', 'text')
   await page.keyboard.press('Escape')
   await expect(dialog(page)).toHaveCount(0)
-  expect(mock.calls.CancelChallenge?.[0]).toEqual(['c2'])
+  // Диалог закрывается сразу, а CancelChallenge уходит следом: ждём, пока обработчик page.route его запишет
+  await expect.poll(() => mock.calls.CancelChallenge?.[0]).toEqual(['c2'])
 })
 
 test('device-code: код, опрос и закрытие по завершению', async ({ page }) => {
