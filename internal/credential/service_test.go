@@ -165,19 +165,21 @@ func TestWebCallbackIsBoundToUserAndSessionAndConsumedOnce(t *testing.T) {
 	if _, _, err := r.svc.CallbackSubject(bg, "other-session", state); !errors.Is(err, credential.ErrChallengeExpired) {
 		t.Fatalf("foreign session: %v", err)
 	}
-	poll, err := r.svc.Poll(bg, subj, state)
+	// A second Service instance shares only the challenge store and envelope, as another server replica would.
+	replica := r.newService(browserCallbackProvider{})
+	poll, err := replica.Poll(bg, subj, state)
 	if err != nil || poll.Challenge == nil || poll.Challenge.ID != state {
 		t.Fatalf("browser callback poll = %+v, %v", poll, err)
 	}
-	got, desc, err := r.svc.CallbackSubject(bg, subj.SessionID, state)
+	got, desc, err := replica.CallbackSubject(bg, subj.SessionID, state)
 	if err != nil || got != subj || desc.Kind != credential.KindOIDC {
 		t.Fatalf("callback subject = %+v, %v", got, err)
 	}
-	done, err := r.svc.AnswerCallback(bg, got, state, "https://kubron.example/auth/cluster/callback?code=CANARY-code&state="+state)
+	done, err := replica.AnswerCallback(bg, got, state, "https://kubron.example/auth/cluster/callback?code=CANARY-code&state="+state)
 	if err != nil || done.Token == nil {
 		t.Fatalf("callback answer = %+v, %v", done, err)
 	}
-	if _, err := r.svc.AnswerCallback(bg, got, state, "https://kubron.example/auth/cluster/callback?code=CANARY-code&state="+state); !errors.Is(err, credential.ErrChallengeExpired) {
+	if _, err := replica.AnswerCallback(bg, got, state, "https://kubron.example/auth/cluster/callback?code=CANARY-code&state="+state); !errors.Is(err, credential.ErrChallengeExpired) {
 		t.Fatalf("replay: %v", err)
 	}
 	if strings.Contains(r.logs.String(), state) || strings.Contains(r.logs.String(), "CANARY-code") {
