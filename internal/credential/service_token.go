@@ -136,6 +136,12 @@ func (s *Service) Invalidate(k Key) {
 // Revoke implements Broker: it removes saved sign-in data and pending requests matching the filter and
 // forgets the cached tokens. Empty fields of the filter match anything.
 func (s *Service) Revoke(ctx context.Context, f RevokeFilter) error {
+	for _, r := range s.live.takeIf(func(r liveRequest) bool {
+		return (f.ClusterID == "" || r.key.ClusterID == f.ClusterID) && (f.OwnerID == "" || r.key.OwnerID == f.OwnerID) &&
+			(f.Scope == "" || r.key.Scope == f.Scope)
+	}) {
+		r.cancel()
+	}
 	s.cache.drop(func(k Key) bool {
 		return (f.ClusterID == "" || k.ClusterID == f.ClusterID) && (f.OwnerID == "" || k.OwnerID == f.OwnerID) &&
 			(f.Scope == "" || k.Scope == f.Scope)

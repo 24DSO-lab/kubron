@@ -82,6 +82,10 @@ func NewApp(p Platform) *App {
 // shutdown вызывается Wails при закрытии приложения: гасим все port-forward туннели.
 func (a *App) shutdown(_ context.Context) {
 	a.pfMgr.StopAll()
+	// Release what the sign-in providers hold (the loopback listener of a browser sign-in on the desktop).
+	if c, ok := a.broker.(interface{ Close() error }); ok {
+		_ = c.Close()
+	}
 }
 
 func (a *App) startup(ctx context.Context) {

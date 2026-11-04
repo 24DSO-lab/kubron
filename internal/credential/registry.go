@@ -71,3 +71,14 @@ func (r *Registry) Resolve(d Descriptor) (Provider, error) {
 	}
 	return nil, ErrUnsupported
 }
+
+// all returns every registered provider once.
+func (r *Registry) all() []Provider {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	out := make([]Provider, 0, len(r.providers))
+	for _, p := range r.providers {
+		out = append(out, p)
+	}
+	return out
+}
