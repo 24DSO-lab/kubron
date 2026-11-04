@@ -187,6 +187,12 @@ func (s *session) continueBrowserCallback(ctx context.Context, req credential.Re
 	if err != nil || werr != nil || !sameRedirect(u, want) {
 		return credential.Result{}, wrap(errRedirect, credential.ErrInvalidAnswer)
 	}
+	q := u.Query()
+	for _, key := range []string{"state", "code", "error", "iss"} {
+		if len(q[key]) > 1 {
+			return credential.Result{}, wrap(errRedirect, credential.ErrInvalidAnswer)
+		}
+	}
 	d, err := s.discover(ctx)
 	if err != nil {
 		return credential.Result{}, err
