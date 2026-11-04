@@ -169,7 +169,7 @@ func TestWebCallbackIsBoundToUserAndSessionAndConsumedOnce(t *testing.T) {
 	if err != nil || got != subj {
 		t.Fatalf("callback subject = %+v, %v", got, err)
 	}
-	done, err := r.svc.AnswerCallback(bg, got, state, "https://kubron.example/auth/cluster/callback?code=one&state="+state)
+	done, err := r.svc.AnswerCallback(bg, got, state, "https://kubron.example/auth/cluster/callback?code=CANARY-code&state="+state)
 	if err != nil || done.Token == nil {
 		t.Fatalf("callback answer = %+v, %v", done, err)
 	}
