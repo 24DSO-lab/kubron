@@ -537,8 +537,8 @@ func (s *Service) Sweep(ctx context.Context) (int, error) {
 	if err != nil {
 		return n, err
 	}
-	removed, err := s.attempts.Sweep(ctx, now.Add(-2*AttemptWindow))
-	return n + removed, err
+	_, err = s.attempts.Sweep(ctx, now.Add(-2*AttemptWindow))
+	return n, err
 }
 
 // --- error scrubbing -------------------------------------------------------------------------------
