@@ -46,6 +46,12 @@ func TestWebBrowserCallback(t *testing.T) {
 	}
 
 	redirect := idp.authorize(authURL.String(), "alice")
+	if _, err := p.Continue(context.Background(), env, credential.Request{
+		Descriptor: d, Subject: subjectUser(), Pending: res.Pending, Challenge: ch,
+		Answer: credential.Answer{"redirectUrl": redirectWith(redirect, "iss", "https://evil.example.test")},
+	}); !errors.Is(err, credential.ErrInvalidGrant) {
+		t.Fatalf("RFC 9207 issuer mismatch: %v", err)
+	}
 	done, err := p.Continue(context.Background(), env, credential.Request{
 		Descriptor: d, Subject: subjectUser(), Pending: res.Pending, Challenge: ch,
 		Answer: credential.Answer{"redirectUrl": redirect},
