@@ -128,10 +128,10 @@ func withWebOIDCParams(d credential.Descriptor, clientID, redirectURL string) cr
 			p[k] = v
 		}
 	}
-	if clientID != "" {
+	// The callback is usable only when both the administrator-configured public client and
+	// the server's validated public URL are present. Otherwise retain the legacy paste-redirect flow.
+	if clientID != "" && redirectURL != "" {
 		p["web.client-id"] = clientID
-	}
-	if redirectURL != "" {
 		p["web.redirect-url"] = redirectURL
 	}
 	d.Params = p
