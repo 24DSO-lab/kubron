@@ -851,7 +851,6 @@ func TestCheckKey(t *testing.T) {
 	}
 }
 
-
 // TestWebOIDCClientIDRoundTrip exercises the shared PostgreSQL settings row.
 func TestWebOIDCClientIDRoundTrip(t *testing.T) {
 	s := newTestStore(t, keyString("k1"))

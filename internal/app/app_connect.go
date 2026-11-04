@@ -6,8 +6,8 @@ package app
 import (
 	"context"
 	"errors"
-	"sync"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/24DSO-labs/kubron/internal/audit"

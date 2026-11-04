@@ -128,7 +128,6 @@ func connectFixture(t *testing.T, b *fakeBroker) (*App, *recPlatform, string, *[
 	return a, pl, c.ID, &connected
 }
 
-
 func TestWebOIDCClientIDIsAdminOnly(t *testing.T) {
 	a, _, _, _ := connectFixture(t, &fakeBroker{})
 	if err := a.SetWebOIDCClientID("public-client"); err != nil {
