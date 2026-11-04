@@ -56,6 +56,7 @@ type Service struct {
 	reg     *Registry
 	store   CredentialStore
 	chal    ChallengeStore
+	attempts AttemptLimiter
 	envp    *secrets.Envelope
 	penv    Env
 	now     func() time.Time
@@ -69,6 +70,10 @@ type Service struct {
 // NewService validates the configuration and returns a Service.
 func NewService(cfg Config) (*Service, error) {
 	if cfg.Registry == nil || cfg.Store == nil || cfg.Challenges == nil || cfg.Envelope == nil {
+		return nil, ErrNotConfigured
+	}
+	attempts, ok := cfg.Challenges.(AttemptLimiter)
+	if !ok {
 		return nil, ErrNotConfigured
 	}
 	now := cfg.Now
@@ -87,7 +92,7 @@ func NewService(cfg Config) (*Service, error) {
 	if recheck == nil {
 		recheck = []time.Duration{50 * time.Millisecond, 150 * time.Millisecond, 400 * time.Millisecond}
 	}
-	return &Service{reg: cfg.Registry, store: cfg.Store, chal: cfg.Challenges, envp: cfg.Envelope, penv: env, now: now, log: log,
+	return &Service{reg: cfg.Registry, store: cfg.Store, chal: cfg.Challenges, attempts: attempts, envp: cfg.Envelope, penv: env, now: now, log: log,
 		recheck: recheck, cache: tokenCache{m: map[string]Token{}}}, nil
 }
 
