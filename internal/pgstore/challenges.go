@@ -201,7 +201,7 @@ func (c *Challenges) Fail(ctx context.Context, userKey, idpKey string, now time.
 }
 
 // Reset clears the user's counter after a successful sign-in. The aggregate IdP counter is intentionally left to expire by its window.
-func (c *Challenges) Reset(ctx context.Context, userKey, _ string) error {
+func (c *Challenges) Reset(ctx context.Context, userKey string) error {
 	_, err := c.s.pool.Exec(ctx, `DELETE FROM credential_attempt_limits WHERE dimension='user' AND key_hash=$1`, userKey)
 	return err
 }
