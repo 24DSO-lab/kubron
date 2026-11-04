@@ -98,3 +98,19 @@ func TestBrokerStaticCredentialsNeedNoSignIn(t *testing.T) {
 		t.Fatalf("res=%+v err=%v", res, err)
 	}
 }
+
+func TestBrokerRegistersNativeAKSProvider(t *testing.T) {
+	b, err := BuildBroker(brokerOptions(t, false))
+	if err != nil {
+		t.Fatal(err)
+	}
+	d := credential.Descriptor{Kind: credential.KindAKS}
+	res, err := b.Acquire(context.Background(), credential.Subject{ClusterID: "aks", Scope: credential.ScopeUser, OwnerID: "u1"}, d)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Challenge == nil || res.Challenge.Kind != credential.ChallengeCredentials ||
+		len(res.Challenge.Fields) != 1 || res.Challenge.Fields[0].Name != "tenantId" {
+		t.Fatalf("expected a tenant-id challenge from the native AKS provider, got %+v", res)
+	}
+}

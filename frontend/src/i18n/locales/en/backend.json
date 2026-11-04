@@ -657,6 +657,7 @@
   "credOIDCRedirectInvalid": "the pasted address is not a valid sign-in response",
   "credOIDCListenFailed": "the local sign-in listener could not be started",
   "credOIDCDeviceUnavailable": "the identity provider does not offer the device sign-in",
+
   "kubronPublicURL": "KUBRON_PUBLIC_URL: {p0}",
   "mustBeAbsoluteURL": "must be an absolute URL",
   "mustBeAbsoluteURLWithHost": "must be an absolute URL with a host",
@@ -665,4 +666,10 @@
   "portMustBeBetween1And65535": "port must be between 1 and 65535",
   "schemeMustBeHTTPS": "scheme must be https (http is allowed only for localhost)",
   "httpAllowedOnlyLocalhostLoopback": "http is allowed only for localhost or a loopback IP address"
+
+  "credAKSHTTPError": "Azure sign-in request failed",
+  "credAKSResponseInvalid": "Azure returned an invalid sign-in response",
+  "credAKSClientSecretInvalid": "the client secret is invalid",
+  "credAKSMFARequired": "Azure requires an authentication method unsupported by password sign-in"
+
 }
