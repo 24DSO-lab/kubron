@@ -233,14 +233,24 @@ function onDocumentKeydown(ev: KeyboardEvent) {
   if (ev.key === 'Tab') trapTab(ev)
 }
 
+/** Страховка на случай, если браузер или другой обработчик всё же увёл фокус наружу. */
+function onDocumentFocusin(ev: FocusEvent) {
+  const root = dialogEl.value
+  if (root && ev.target instanceof Node && !root.contains(ev.target)) focusFirst()
+}
+
 watch(() => props.challenge.id, () => { resetValues(false); void nextTick(focusFirst) })
 watch(() => props.attempt, () => { resetValues(true); void nextTick(focusFirst) })
 onMounted(() => {
   resetValues(false)
   focusFirst()
   document.addEventListener('keydown', onDocumentKeydown, true)
+  document.addEventListener('focusin', onDocumentFocusin, true)
 })
-onBeforeUnmount(() => document.removeEventListener('keydown', onDocumentKeydown, true))
+onBeforeUnmount(() => {
+  document.removeEventListener('keydown', onDocumentKeydown, true)
+  document.removeEventListener('focusin', onDocumentFocusin, true)
+})
 </script>
 
 <style scoped>
