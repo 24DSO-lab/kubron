@@ -50,7 +50,7 @@ type config struct {
 var defaultListen = []string{"127.0.0.1:8000", "127.0.0.1:18000"}
 
 // reservedAuthParams cannot be set through auth-request-extra-params: the provider sets them itself.
-var reservedAuthParams = []string{"response_type", "client_id", "redirect_uri", "scope", "state", "nonce",
+var reservedAuthParams = []string{"response_type", "response_mode", "client_id", "redirect_uri", "scope", "state", "nonce",
 	"code_challenge", "code_challenge_method", "request", "request_uri"}
 
 // fileParams would make the provider read a file of the machine it runs on. Nothing here reads files: a CA
