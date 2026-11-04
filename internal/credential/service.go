@@ -53,22 +53,27 @@ type Config struct {
 // Service implements Broker: it orchestrates providers, pending requests and token refresh.
 // A Service is safe for concurrent use; several Services (replicas) may share the same stores.
 type Service struct {
-	reg     *Registry
-	store   CredentialStore
-	chal    ChallengeStore
-	envp    *secrets.Envelope
-	penv    Env
-	now     func() time.Time
-	log     *slog.Logger
-	recheck []time.Duration
-	cache   tokenCache
-	flight  flightGroup
-	live    liveSet // pending requests of providers that implement Canceller (this process only)
+	reg      *Registry
+	store    CredentialStore
+	chal     ChallengeStore
+	attempts AttemptLimiter
+	envp     *secrets.Envelope
+	penv     Env
+	now      func() time.Time
+	log      *slog.Logger
+	recheck  []time.Duration
+	cache    tokenCache
+	flight   flightGroup
+	live     liveSet // pending requests of providers that implement Canceller (this process only)
 }
 
 // NewService validates the configuration and returns a Service.
 func NewService(cfg Config) (*Service, error) {
 	if cfg.Registry == nil || cfg.Store == nil || cfg.Challenges == nil || cfg.Envelope == nil {
+		return nil, ErrNotConfigured
+	}
+	attempts, ok := cfg.Challenges.(AttemptLimiter)
+	if !ok {
 		return nil, ErrNotConfigured
 	}
 	now := cfg.Now
@@ -87,7 +92,7 @@ func NewService(cfg Config) (*Service, error) {
 	if recheck == nil {
 		recheck = []time.Duration{50 * time.Millisecond, 150 * time.Millisecond, 400 * time.Millisecond}
 	}
-	return &Service{reg: cfg.Registry, store: cfg.Store, chal: cfg.Challenges, envp: cfg.Envelope, penv: env, now: now, log: log,
+	return &Service{reg: cfg.Registry, store: cfg.Store, chal: cfg.Challenges, attempts: attempts, envp: cfg.Envelope, penv: env, now: now, log: log,
 		recheck: recheck, cache: tokenCache{m: map[string]Token{}}}, nil
 }
 
@@ -253,6 +258,10 @@ func (s *Service) complete(ctx context.Context, sub Subject, d Descriptor, base 
 	switch {
 	case res.Token != nil:
 		s.cache.put(sub.key(), *res.Token)
+		userKey, _ := attemptKeys(sub, d)
+		if err := s.attempts.Reset(ctx, userKey); err != nil {
+			s.log.Warn("sign-in attempt counters could not be reset", "kind", d.Kind)
+		}
 		if old != nil {
 			_ = s.chal.Delete(ctx, old.ID)
 			s.dropLive(old.ID)
@@ -407,6 +416,18 @@ func (s *Service) advance(ctx context.Context, sub Subject, id string, a Answer,
 		return Result{Challenge: &c}, nil
 	}
 
+	if isAnswer {
+		subject := Subject{Scope: rec.Scope, OwnerID: rec.OwnerID}
+		userKey, idpKey := attemptKeys(subject, st.Descriptor)
+		wait, err := s.attempts.Check(ctx, userKey, idpKey, now)
+		if err != nil {
+			return Result{}, err
+		}
+		if wait > 0 {
+			return Result{}, &RateLimitedError{RetryAfter: wait}
+		}
+	}
+
 	// Claim the request: only one caller (on any replica) can move it from active to busy.
 	if rec.Status == ChallengeBusy && now.Before(rec.LockedUntil) {
 		return s.busyResult(rec, st, isAnswer)
@@ -433,7 +454,7 @@ func (s *Service) advance(ctx context.Context, sub Subject, id string, a Answer,
 		Challenge: publicChallenge(st.Challenge, rec.ID, rec.ExpiresAt), Answer: a}
 	res, perr := p.Continue(ctx, s.penv, req)
 	if perr != nil {
-		return s.failed(ctx, claimed, d, a, saved, perr)
+		return s.failed(ctx, claimed, d, a, saved, perr, isAnswer)
 	}
 	out, err := s.complete(ctx, subject, d, base, res, true, &claimed)
 	if err != nil {
@@ -464,18 +485,38 @@ func (s *Service) release(ctx context.Context, claimed ChallengeRecord) {
 }
 
 // failed handles an error from Continue.
-func (s *Service) failed(ctx context.Context, claimed ChallengeRecord, d Descriptor, a Answer, saved []byte, perr error) (Result, error) {
+func (s *Service) failed(ctx context.Context, claimed ChallengeRecord, d Descriptor, a Answer, saved []byte, perr error, isAnswer bool) (Result, error) {
 	switch {
 	case errors.Is(perr, ErrAnswerRejected):
+		if !isAnswer {
+			// An external authorization was declined while polling; it is not a failed credential answer.
+			_ = s.chal.Delete(ctx, claimed.ID)
+			s.dropLive(claimed.ID)
+			return Result{}, ErrAnswerRejected
+		}
+		subject := Subject{Scope: claimed.Scope, OwnerID: claimed.OwnerID}
+		userKey, idpKey := attemptKeys(subject, d)
+		wait, limitErr := s.attempts.Fail(ctx, userKey, idpKey, s.now(), AttemptWindow,
+			MaxUserAnswerFailures, MaxIDPAnswerFailures, AttemptLockout)
+		if limitErr != nil {
+			s.release(ctx, claimed)
+			return Result{}, limitErr
+		}
 		claimed.Attempts++
 		if claimed.Attempts >= MaxAnswerAttempts {
 			_ = s.chal.Delete(ctx, claimed.ID)
 			s.dropLive(claimed.ID)
 			s.log.Info("sign-in request destroyed after too many wrong answers", "cluster", claimed.ClusterID)
+			if wait > 0 {
+				return Result{}, &RateLimitedError{RetryAfter: wait}
+			}
 			return Result{}, ErrAnswerRejected
 		}
 		claimed.Status, claimed.LockedUntil = ChallengeActive, time.Time{}
 		_, _ = s.chal.Swap(ctx, claimed, claimed.Version)
+		if wait > 0 {
+			return Result{}, &RateLimitedError{RetryAfter: wait}
+		}
 		return Result{}, ErrAnswerRejected
 	case errors.Is(perr, ErrInvalidAnswer):
 		// Not a wrong guess (an empty field, a value of the wrong shape): no attempt is used up, the request stays
@@ -514,7 +555,12 @@ func (s *Service) Sweep(ctx context.Context) (int, error) {
 	for _, r := range s.live.takeIf(func(r liveRequest) bool { return !now.Before(r.expires) }) {
 		r.cancel()
 	}
-	return s.chal.DeleteExpired(ctx, now)
+	n, err := s.chal.DeleteExpired(ctx, now)
+	if err != nil {
+		return n, err
+	}
+	_, err = s.attempts.Sweep(ctx, now.Add(-2*AttemptWindow))
+	return n, err
 }
 
 // --- error scrubbing -------------------------------------------------------------------------------

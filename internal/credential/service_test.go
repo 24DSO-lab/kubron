@@ -238,6 +238,132 @@ func TestFourWrongThenRightStillWorks(t *testing.T) {
 	}
 }
 
+type declinedPollProvider struct{}
+
+func (*declinedPollProvider) Kind() credential.Kind { return credential.KindOIDC }
+func (*declinedPollProvider) Begin(context.Context, credential.Env, credential.Request) (credential.Result, error) {
+	return credential.Result{Challenge: &credential.Challenge{Kind: credential.ChallengeDeviceCode, Poll: true}}, nil
+}
+func (*declinedPollProvider) Continue(context.Context, credential.Env, credential.Request) (credential.Result, error) {
+	return credential.Result{}, credential.ErrAnswerRejected
+}
+
+func TestDeclinedDevicePollsDoNotConsumeAnswerAttempts(t *testing.T) {
+	r := newRig(t)
+	svc := r.newService(&declinedPollProvider{})
+	for i := 0; i < credential.MaxUserAnswerFailures; i++ {
+		res, err := svc.Acquire(bg, subj, desc)
+		if err != nil || res.Challenge == nil {
+			t.Fatalf("Acquire %d = %+v, %v", i, res, err)
+		}
+		if _, err := svc.Poll(bg, subj, res.Challenge.ID); !errors.Is(err, credential.ErrAnswerRejected) {
+			t.Fatalf("Poll %d = %v", i, err)
+		}
+	}
+	res, err := svc.Acquire(bg, subj, desc)
+	if err != nil || res.Challenge == nil {
+		t.Fatalf("Acquire after declined polls = %+v, %v", res, err)
+	}
+	if _, err := svc.Answer(bg, subj, res.Challenge.ID, answer("alice", "wrong")); !errors.Is(err, credential.ErrAnswerRejected) {
+		t.Fatalf("the polls consumed answer attempts: %v", err)
+	}
+}
+
+func TestWrongAnswersAreLimitedAcrossChallengesForOneUser(t *testing.T) {
+	r := newRig(t)
+	for challenge := 0; challenge < 2; challenge++ {
+		ch := r.login()
+		for attempt := 0; attempt < credential.MaxAnswerAttempts; attempt++ {
+			_, err := r.svc.Answer(bg, subj, ch.ID, answer("alice", "wrong"))
+			if challenge == 1 && attempt == credential.MaxAnswerAttempts-1 {
+				var limited *credential.RateLimitedError
+				if !errors.As(err, &limited) || limited.RetryAfterSeconds() != int(credential.AttemptLockout/time.Second) {
+					t.Fatalf("last answer: %v, want rate limit", err)
+				}
+			} else if !errors.Is(err, credential.ErrAnswerRejected) {
+				t.Fatalf("challenge %d attempt %d: %v", challenge, attempt, err)
+			}
+		}
+	}
+
+	// A new challenge cannot bypass the user-wide lockout. Polling remains available.
+	ch := r.login()
+	if res, err := r.svc.Poll(bg, subj, ch.ID); err != nil || res.Challenge == nil {
+		t.Fatalf("Poll while locked = %+v, %v", res, err)
+	}
+	var limited *credential.RateLimitedError
+	if _, err := r.svc.Answer(bg, subj, ch.ID, answer("alice", pwCanary)); !errors.As(err, &limited) {
+		t.Fatalf("answer while locked: %v", err)
+	}
+
+	r.clk.Advance(credential.AttemptLockout)
+	if res, err := r.svc.Answer(bg, subj, ch.ID, answer("alice", pwCanary)); err != nil || res.Token == nil {
+		t.Fatalf("answer after lockout = %+v, %v", res, err)
+	}
+}
+
+func TestUserFailureCounterSpansIdentityProviders(t *testing.T) {
+	r := newRig(t)
+	for i, issuer := range []string{"https://idp-one.example.test", "https://idp-two.example.test"} {
+		d := credential.Descriptor{Kind: credential.KindOIDC, Params: map[string]string{
+			"grant": "password", "issuer-url": issuer,
+		}}
+		res, err := r.svc.Acquire(bg, subj, d)
+		if err != nil || res.Challenge == nil {
+			t.Fatalf("Acquire %d = %+v, %v", i, res, err)
+		}
+		for attempt := 0; attempt < credential.MaxAnswerAttempts; attempt++ {
+			_, err := r.svc.Answer(bg, subj, res.Challenge.ID, answer("alice", "wrong"))
+			if i == 1 && attempt == credential.MaxAnswerAttempts-1 {
+				var limited *credential.RateLimitedError
+				if !errors.As(err, &limited) {
+					t.Fatalf("last answer across IdPs: %v, want rate limit", err)
+				}
+			} else if !errors.Is(err, credential.ErrAnswerRejected) {
+				t.Fatalf("IdP %d attempt %d: %v", i, attempt, err)
+			}
+		}
+	}
+}
+
+func TestWrongAnswersAreLimitedAcrossUsersForOneIDP(t *testing.T) {
+	r := newRig(t)
+	d := credential.Descriptor{Kind: credential.KindOIDC, Params: map[string]string{
+		"grant": "password", "issuer-url": "https://login.example.test/tenant",
+	}}
+	for user := 0; user < credential.MaxIDPAnswerFailures/credential.MaxAnswerAttempts; user++ {
+		sub := credential.Subject{ClusterID: "c1", Scope: credential.ScopeUser, OwnerID: fmt.Sprintf("u-%d", user), SessionID: fmt.Sprintf("s-%d", user)}
+		res, err := r.svc.Acquire(bg, sub, d)
+		if err != nil || res.Challenge == nil {
+			t.Fatalf("Acquire user %d = %+v, %v", user, res, err)
+		}
+		for attempt := 0; attempt < credential.MaxAnswerAttempts; attempt++ {
+			_, err := r.svc.Answer(bg, sub, res.Challenge.ID, answer("alice", "wrong"))
+			if user == credential.MaxIDPAnswerFailures/credential.MaxAnswerAttempts-1 && attempt == credential.MaxAnswerAttempts-1 {
+				var limited *credential.RateLimitedError
+				if !errors.As(err, &limited) {
+					t.Fatalf("last IdP answer: %v, want rate limit", err)
+				}
+			} else if !errors.Is(err, credential.ErrAnswerRejected) {
+				t.Fatalf("user %d attempt %d: %v", user, attempt, err)
+			}
+		}
+	}
+
+	sub := credential.Subject{ClusterID: "c1", Scope: credential.ScopeUser, OwnerID: "another-user", SessionID: "another-session"}
+	res, err := r.svc.Acquire(bg, sub, d)
+	if err != nil || res.Challenge == nil {
+		t.Fatalf("Acquire after IdP limit = %+v, %v", res, err)
+	}
+	var limited *credential.RateLimitedError
+	if _, err := r.svc.Answer(bg, sub, res.Challenge.ID, answer("alice", pwCanary)); !errors.As(err, &limited) {
+		t.Fatalf("answer after IdP limit: %v, want rate limit", err)
+	}
+	if strings.Contains(limited.Error(), "login.example.test") || strings.Contains(limited.Error(), "another-user") {
+		t.Fatalf("rate-limit error leaked identity data: %v", limited)
+	}
+}
+
 func TestChallengeIsBoundToSessionAndUser(t *testing.T) {
 	r := newRig(t)
 	ch := r.login()
