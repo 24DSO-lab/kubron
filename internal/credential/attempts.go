@@ -32,7 +32,7 @@ type AttemptLimiter interface {
 	Fail(ctx context.Context, userKey, idpKey string, now time.Time, window time.Duration, userLimit, idpLimit int, lockout time.Duration) (time.Duration, error)
 	// Reset clears only the user's counter; the aggregate IdP counter expires by its failure window.
 	// Reset clears the user's counter after a successful sign-in.
-	Reset(ctx context.Context, userKey, idpKey string) error
+	Reset(ctx context.Context, userKey string) error
 	// Sweep removes counters older than the supplied cutoff.
 	Sweep(ctx context.Context, before time.Time) (int, error)
 }
