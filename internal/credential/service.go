@@ -451,15 +451,29 @@ func (s *Service) release(ctx context.Context, claimed ChallengeRecord) {
 func (s *Service) failed(ctx context.Context, claimed ChallengeRecord, d Descriptor, a Answer, saved []byte, perr error) (Result, error) {
 	switch {
 	case errors.Is(perr, ErrAnswerRejected):
+		subject := Subject{Scope: claimed.Scope, OwnerID: claimed.OwnerID}
+		userKey, idpKey := attemptKeys(subject, d)
+		wait, limitErr := s.attempts.Fail(ctx, userKey, idpKey, s.now(), AttemptWindow,
+			MaxUserAnswerFailures, MaxIDPAnswerFailures, AttemptLockout)
+		if limitErr != nil {
+			s.release(ctx, claimed)
+			return Result{}, limitErr
+		}
 		claimed.Attempts++
 		if claimed.Attempts >= MaxAnswerAttempts {
 			_ = s.chal.Delete(ctx, claimed.ID)
 			s.dropLive(claimed.ID)
 			s.log.Info("sign-in request destroyed after too many wrong answers", "cluster", claimed.ClusterID)
+			if wait > 0 {
+				return Result{}, &RateLimitedError{RetryAfter: wait}
+			}
 			return Result{}, ErrAnswerRejected
 		}
 		claimed.Status, claimed.LockedUntil = ChallengeActive, time.Time{}
 		_, _ = s.chal.Swap(ctx, claimed, claimed.Version)
+		if wait > 0 {
+			return Result{}, &RateLimitedError{RetryAfter: wait}
+		}
 		return Result{}, ErrAnswerRejected
 	case errors.Is(perr, ErrInvalidAnswer):
 		// Not a wrong guess (an empty field, a value of the wrong shape): no attempt is used up, the request stays
@@ -498,7 +512,12 @@ func (s *Service) Sweep(ctx context.Context) (int, error) {
 	for _, r := range s.live.takeIf(func(r liveRequest) bool { return !now.Before(r.expires) }) {
 		r.cancel()
 	}
-	return s.chal.DeleteExpired(ctx, now)
+	n, err := s.chal.DeleteExpired(ctx, now)
+	if err != nil {
+		return n, err
+	}
+	removed, err := s.attempts.Sweep(ctx, now.Add(-2*AttemptWindow))
+	return n + removed, err
 }
 
 // --- error scrubbing -------------------------------------------------------------------------------
