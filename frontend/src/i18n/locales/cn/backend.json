@@ -632,5 +632,11 @@
   "credUIExecBadToken": "插件返回的令牌包含无效字符",
   "credUIExecBadExpiry": "插件返回了无效的过期时间",
   "credUIExecNoTrustDir": "无法在此系统上保存受信任列表",
-  "credUIExecTrustSave": "无法保存受信任列表"
+  "credUIExecTrustSave": "无法保存受信任列表",
+  "credOIDCHTTPSRequired": "身份提供商仅允许使用 HTTPS 地址",
+  "credOIDCInsecureTLSForbidden": "此处不允许跳过 TLS 验证",
+  "credOIDCResponseTooLarge": "身份提供商的响应过大",
+  "credOIDCBadCA": "身份提供商的 CA 证书无效",
+  "credOIDCTooManyRedirects": "重定向次数过多，已停止"
+
 }

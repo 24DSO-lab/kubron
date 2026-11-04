@@ -632,5 +632,11 @@
   "credUIExecBadToken": "the plugin returned a token with invalid characters",
   "credUIExecBadExpiry": "the plugin returned an invalid expiration time",
   "credUIExecNoTrustDir": "the trust list cannot be saved on this system",
-  "credUIExecTrustSave": "the trust list could not be saved"
+  "credUIExecTrustSave": "the trust list could not be saved",
+  "credOIDCHTTPSRequired": "only HTTPS addresses are allowed for the identity provider",
+  "credOIDCInsecureTLSForbidden": "skipping TLS verification is not allowed here",
+  "credOIDCResponseTooLarge": "the identity provider response is too large",
+  "credOIDCBadCA": "the identity provider CA certificate is not valid",
+  "credOIDCTooManyRedirects": "stopped after too many redirects"
+
 }
