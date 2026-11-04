@@ -96,6 +96,10 @@ type Manager struct {
 	logs     logStreams
 	limits   Limits // лимиты ресурсов вида; наследуются видами сессий
 
+	// scopes — чьи учётные данные у кластера (credential.Scope), узнанные при подключении и в фоновой проверке;
+	// authLost — личные входы, у которых брокер сообщил «нужен вход». Общие для всех видов.
+	scopes   *sync.Map
+	authLost *sync.Map
 	// build строит подключение по плану; в тестах подменяется.
 	build func(ConnPlan) (*ClusterConnection, error)
 
@@ -196,6 +200,8 @@ func NewManager() *Manager {
 		health:           clusterhealth.NewBoard(),
 		terminalSessions: NewTerminalSessionManager(),
 		limits:           Limits{LogStreams: logMaxStreams}, // десктоп: прежний предел логов
+		scopes:           &sync.Map{},
+		authLost:         &sync.Map{},
 	}
 }
 
@@ -208,6 +214,8 @@ func (m *Manager) ForSession() *Manager {
 		terminalSessions: NewTerminalSessionManager(),
 		limits:           m.Limits(),
 		authSession:      m.AuthSessionOf(),
+		scopes:           m.scopes,
+		authLost:         m.authLost,
 		build:            m.build,
 	}
 }
@@ -361,10 +369,21 @@ func (m *Manager) AuthSessionOf() AuthSession {
 }
 
 func (m *Manager) ConnectToCluster(clusterID string) error {
-	plan, err := PlanFor(m.AuthSessionOf(), clusterID)
+	sess := m.AuthSessionOf()
+	orig := sess.OnAuthRequired
+	var key string
+	sess.OnAuthRequired = func(id string) { // брокер сказал «нужен вход»: пометить и передать дальше
+		m.authLost.Store(key, true)
+		if orig != nil {
+			orig(id)
+		}
+	}
+	plan, err := PlanFor(sess, clusterID)
 	if err != nil {
 		return err
 	}
+	key = plan.Key
+	m.noteScope(plan)
 	build := m.build
 	if build == nil {
 		build = buildPlanConnection
@@ -372,9 +391,17 @@ func (m *Manager) ConnectToCluster(clusterID string) error {
 	if _, err := m.pool.getOrCreate(plan.Key, func() (*ClusterConnection, error) { return build(plan) }); err != nil {
 		return err
 	}
+	m.authLost.Delete(plan.Key) // вход действует: пометка «нужен вход» снимается до первого отказа брокера
 	m.viewMu.Lock()
 	defer m.viewMu.Unlock()
 	return m.activateLocked(clusterID, plan.Key)
+}
+
+// noteScope запоминает, чьи учётные данные у кластера, и ставит пометку «нужен вход» при отказе брокера.
+func (m *Manager) noteScope(plan ConnPlan) {
+	if plan.Subject.Scope != "" {
+		m.scopes.Store(plan.ClusterID, plan.Subject.Scope)
+	}
 }
 
 // buildPlanConnection создаёт подключение по плану: конфигурацию даёт только ConfigFor.
@@ -427,9 +454,9 @@ func (m *Manager) GetClusterStatuses() []ClusterStatus {
 			Active:      false,
 		}
 
-		if _, ok := m.lookupConn(cluster.ID); ok {
-			status.Connected = true
-		}
+		_, connected := m.lookupConn(cluster.ID)
+		status.Connected = connected
+		status.AuthRequired = m.authRequired(cluster.ID, connected)
 		if active == cluster.ID {
 			status.Active = true
 		}

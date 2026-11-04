@@ -82,7 +82,10 @@ func (s *connectState) forget(challengeID string) {
 
 // SetBroker sets the sign-in broker; called before OnStartup. A function of the package, not a method of App:
 // it must not appear in the Wails bindings or the RPC.
-func SetBroker(a *App, b credential.Broker) { a.broker = b }
+func SetBroker(a *App, b credential.Broker) {
+	a.broker = b
+	a.k8sMgr.SetAuthSession(k8s.AuthSession{Broker: b}) // фоновая проверка кластеров знает, чьи у кластера данные
+}
 
 // emit sends an event to the owner of this view: to the web session if there is one, otherwise to the shell.
 func (a *App) emit(event string, data any) {

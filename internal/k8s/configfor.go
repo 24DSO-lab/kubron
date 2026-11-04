@@ -41,6 +41,7 @@ type ConnPlan struct {
 	Key       string // pool key: (cluster, subject)
 	session   AuthSession
 	legacy    bool
+	anonymous bool // проверка адреса и TLS: токен брокера не подставляется
 	src       ClusterAuthSource
 }
 
@@ -127,7 +128,7 @@ func ConfigFor(p ConnPlan) (*rest.Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("configuration error: %w", err)
 	}
-	if p.Desc.Kind != credential.KindStatic {
+	if p.Desc.Kind != credential.KindStatic && !p.anonymous {
 		rc.Wrap(brokerTransport(p))
 	}
 	finishRestConfig(rc)
