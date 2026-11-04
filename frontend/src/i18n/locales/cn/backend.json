@@ -571,6 +571,7 @@
   "credCoreCredentialsRejected": "凭据被拒绝",
   "credCoreSavedSignInInvalid": "已保存的登录已失效",
   "credCoreSignInMethodUnsupported": "不支持此登录方式",
+  "credCoreIdPFileUnreadable": "无法读取 kubeconfig 中指定的身份提供商证书文件",
   "credCoreValueUnusable": "无法使用该值",
   "credCoreSignInServiceUnavailable": "登录服务不可用",
   "credCoreMasterKeyNotConfigured": "未配置主加密密钥",

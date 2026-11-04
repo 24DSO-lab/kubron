@@ -6,6 +6,7 @@ package oidc
 import (
 	"context"
 	"errors"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -340,5 +341,56 @@ func TestAuthorizationRequestParameters(t *testing.T) {
 	v := q.Query()
 	if v.Get("scope") != "openid groups" || v.Get("audience") != "api" || v.Get("state") == "forged" || v.Get("client_id") != testClient {
 		t.Fatalf("%v", v)
+	}
+}
+
+// The listener of the desktop is released as soon as the request is cancelled (the Broker calls Cancel with the
+// Pending of the request): the port refuses connections at once, it does not wait for loopbackTTL.
+func TestLoopbackListenerIsClosedRightAfterCancel(t *testing.T) {
+	idp := newFakeIdP(t, false)
+	env := loopbackEnv(t, idp, func(string) error { return nil })
+	d := loopbackDescriptor(idp, map[string]string{"listen-address": "127.0.0.1:0", "skip-open-browser": "true"})
+	p := New()
+	res, err := p.Begin(context.Background(), env, credential.Request{Descriptor: d, Subject: subjectUser()})
+	ch := mustChallenge(t, res, err, credential.ChallengeBrowserLoopback)
+	authURL, err := url.Parse(ch.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	redirect, err := url.Parse(authURL.Query().Get("redirect_uri"))
+	if err != nil || redirect.Port() == "" {
+		t.Fatalf("no redirect_uri with a port in %q: %v", ch.URL, err)
+	}
+	addr := net.JoinHostPort("127.0.0.1", redirect.Port())
+
+	conn, err := net.Dial("tcp", addr)
+	if err != nil {
+		t.Fatalf("the listener must accept connections while the request is open: %v", err)
+	}
+	_ = conn.Close()
+
+	var canceller credential.Canceller = p // the optional interface the Broker looks for
+	canceller.Cancel(res.Pending)
+	if conn, err := net.Dial("tcp", addr); err == nil {
+		_ = conn.Close()
+		t.Fatal("the listener is still open after Cancel")
+	}
+}
+
+func TestLoopbackCloseReleasesEveryListener(t *testing.T) {
+	idp := newFakeIdP(t, false)
+	env := loopbackEnv(t, idp, func(string) error { return nil })
+	d := loopbackDescriptor(idp, map[string]string{"listen-address": "127.0.0.1:0", "skip-open-browser": "true"})
+	p := New()
+	res, err := p.Begin(context.Background(), env, credential.Request{Descriptor: d, Subject: subjectUser()})
+	ch := mustChallenge(t, res, err, credential.ChallengeBrowserLoopback)
+	authURL, _ := url.Parse(ch.URL)
+	redirect, _ := url.Parse(authURL.Query().Get("redirect_uri"))
+	addr := net.JoinHostPort("127.0.0.1", redirect.Port())
+	var closer credential.Closer = p
+	closer.Close()
+	if conn, err := net.Dial("tcp", addr); err == nil {
+		_ = conn.Close()
+		t.Fatal("the listener is still open after Close")
 	}
 }

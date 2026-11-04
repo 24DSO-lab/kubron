@@ -571,6 +571,7 @@
   "credCoreCredentialsRejected": "учётные данные отклонены",
   "credCoreSavedSignInInvalid": "сохранённый вход больше не действителен",
   "credCoreSignInMethodUnsupported": "этот способ входа не поддерживается",
+  "credCoreIdPFileUnreadable": "не удалось прочитать файл сертификата поставщика удостоверений, указанный в kubeconfig",
   "credCoreValueUnusable": "введённое значение нельзя использовать",
   "credCoreSignInServiceUnavailable": "сервис входа недоступен",
   "credCoreMasterKeyNotConfigured": "главный ключ шифрования не настроен",

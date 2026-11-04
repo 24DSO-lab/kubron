@@ -571,6 +571,7 @@
   "credCoreCredentialsRejected": "the credentials were rejected",
   "credCoreSavedSignInInvalid": "the saved sign-in is no longer valid",
   "credCoreSignInMethodUnsupported": "this sign-in method is not supported",
+  "credCoreIdPFileUnreadable": "the identity provider certificate file named in the kubeconfig could not be read",
   "credCoreValueUnusable": "the value could not be used",
   "credCoreSignInServiceUnavailable": "the sign-in service is unavailable",
   "credCoreMasterKeyNotConfigured": "master encryption key is not configured",

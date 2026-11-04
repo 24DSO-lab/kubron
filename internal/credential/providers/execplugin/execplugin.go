@@ -31,9 +31,10 @@ const (
 	kindExecCred    = "ExecCredential"
 	modeAlways      = "Always"
 
-	// paramProvideClusterInfo is set by the core zone from the kubeconfig field provideClusterInfo. When the
-	// parameter is absent the cluster data from cluster.* is passed (it is public data of the cluster).
-	paramProvideClusterInfo = "exec.provideClusterInfo"
+	// paramProvideClusterInfo is set by Describe from the field provideClusterInfo of the exec block (only when the
+	// block states it). When the parameter is absent the cluster data from cluster.* is passed (it is public data of
+	// the cluster).
+	paramProvideClusterInfo = credential.ParamExecProvideClusterInfo
 )
 
 var supportedAPIVersions = map[string]bool{

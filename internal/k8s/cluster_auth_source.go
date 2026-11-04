@@ -3,7 +3,10 @@
 
 package k8s
 
-import "fmt"
+import (
+	"fmt"
+	"path/filepath"
+)
 
 // ClusterAuthSource is what the sign-in broker needs to work out how a stored cluster signs in: the stored
 // kubeconfig and the selected context. For clusters with their own connection mode (in-cluster, oidc-password)
@@ -31,6 +34,17 @@ func LoadClusterAuthSource(clusterID string) (ClusterAuthSource, error) {
 	data, err := clusterStore.Kubeconfig(clusterID)
 	if err != nil {
 		return ClusterAuthSource{}, fmt.Errorf("kubeconfig not found for cluster %s", clusterID)
+	}
+	// Desktop only: the identity provider CA files that oidc-login and auth-provider refer to are embedded before the
+	// broker describes the sign-in (the web policy never reads files of the server machine).
+	if currentPolicy().AllowLocalFiles {
+		base := ""
+		if p := GetClusterKubeconfigPath(clusterID); p != "" {
+			base = filepath.Dir(p)
+		}
+		if data, err = embedIdPFiles(data, meta.ContextName, base); err != nil {
+			return ClusterAuthSource{}, err
+		}
 	}
 	src.Kubeconfig = data
 	return src, nil

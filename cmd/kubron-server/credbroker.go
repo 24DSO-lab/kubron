@@ -73,6 +73,7 @@ func sweepChallenges(ctx context.Context, svc *credential.Service) {
 	for {
 		select {
 		case <-ctx.Done():
+			_ = svc.Close() // release what the providers hold
 			return
 		case <-t.C:
 			if _, err := svc.Sweep(ctx); err != nil {

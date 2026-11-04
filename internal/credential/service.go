@@ -63,6 +63,7 @@ type Service struct {
 	recheck []time.Duration
 	cache   tokenCache
 	flight  flightGroup
+	live    liveSet // pending requests of providers that implement Canceller (this process only)
 }
 
 // NewService validates the configuration and returns a Service.
@@ -215,6 +216,7 @@ func (s *Service) complete(ctx context.Context, sub Subject, d Descriptor, base 
 		s.cache.put(sub.key(), *res.Token)
 		if old != nil {
 			_ = s.chal.Delete(ctx, old.ID)
+			s.dropLive(old.ID)
 		}
 		return Result{Token: res.Token}, nil
 	case res.Challenge != nil:
@@ -226,6 +228,7 @@ func (s *Service) complete(ctx context.Context, sub Subject, d Descriptor, base 
 	}
 	if old != nil {
 		_ = s.chal.Delete(ctx, old.ID)
+		s.dropLive(old.ID)
 	}
 	return Result{}, nil
 }
@@ -274,9 +277,11 @@ func (s *Service) storeChallenge(ctx context.Context, sub Subject, d Descriptor,
 			if _, err := s.chal.Swap(ctx, next, old.Version); err != nil {
 				return Challenge{}, mapChallengeErr(err)
 			}
+			s.track(old.ID, sub, d, res.Pending, old.ExpiresAt)
 			return pub, nil
 		}
 		_ = s.chal.Delete(ctx, old.ID)
+		s.dropLive(old.ID)
 	}
 	id, err := newChallengeID()
 	if err != nil {
@@ -292,6 +297,7 @@ func (s *Service) storeChallenge(ctx context.Context, sub Subject, d Descriptor,
 	if err != nil {
 		return Challenge{}, err
 	}
+	s.track(id, sub, d, res.Pending, exp)
 	s.log.Debug("sign-in request created", "cluster", sub.ClusterID, "kind", pub.Kind)
 	return pub, nil
 }
@@ -327,6 +333,7 @@ func (s *Service) load(ctx context.Context, sub Subject, id string) (ChallengeRe
 	}
 	if !s.now().Before(rec.ExpiresAt) {
 		_ = s.chal.Delete(ctx, id)
+		s.dropLive(id)
 		return ChallengeRecord{}, ErrChallengeExpired
 	}
 	return rec, nil
@@ -351,6 +358,7 @@ func (s *Service) advance(ctx context.Context, sub Subject, id string, a Answer,
 	st, err := s.open(rec)
 	if err != nil {
 		_ = s.chal.Delete(ctx, id) // unreadable state can never be completed
+		s.dropLive(id)
 		return Result{}, ErrChallengeExpired
 	}
 
@@ -423,6 +431,7 @@ func (s *Service) failed(ctx context.Context, claimed ChallengeRecord, d Descrip
 		claimed.Attempts++
 		if claimed.Attempts >= MaxAnswerAttempts {
 			_ = s.chal.Delete(ctx, claimed.ID)
+			s.dropLive(claimed.ID)
 			s.log.Info("sign-in request destroyed after too many wrong answers", "cluster", claimed.ClusterID)
 			return Result{}, ErrAnswerRejected
 		}
@@ -436,6 +445,7 @@ func (s *Service) failed(ctx context.Context, claimed ChallengeRecord, d Descrip
 		return Result{}, ErrInvalidAnswer
 	case errors.Is(perr, ErrChallengeExpired), errors.Is(perr, ErrInvalidGrant), errors.Is(perr, ErrUnsupported):
 		_ = s.chal.Delete(ctx, claimed.ID)
+		s.dropLive(claimed.ID)
 		return Result{}, scrub(perr, d, a, saved)
 	}
 	s.release(ctx, claimed)
@@ -455,12 +465,17 @@ func (s *Service) Cancel(ctx context.Context, sub Subject, challengeID string) e
 	if !bound(rec, sub) {
 		return ErrChallengeExpired
 	}
+	s.dropLive(challengeID) // release what the provider holds (the loopback listener) at once
 	return s.chal.Delete(ctx, challengeID)
 }
 
 // Sweep removes expired requests. The server calls it periodically.
 func (s *Service) Sweep(ctx context.Context) (int, error) {
-	return s.chal.DeleteExpired(ctx, s.now())
+	now := s.now()
+	for _, r := range s.live.takeIf(func(r liveRequest) bool { return !now.Before(r.expires) }) {
+		r.cancel()
+	}
+	return s.chal.DeleteExpired(ctx, now)
 }
 
 // --- error scrubbing -------------------------------------------------------------------------------

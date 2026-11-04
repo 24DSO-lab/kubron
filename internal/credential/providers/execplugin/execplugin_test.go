@@ -489,6 +489,38 @@ func TestProvideClusterInfoSwitch(t *testing.T) {
 	}
 }
 
+// The value of provideClusterInfo comes from the exec block through Describe: true passes the public cluster data,
+// false passes nothing, and a block that does not state it keeps the previous behaviour (public cluster.* data).
+func TestProvideClusterInfoFromDescribe(t *testing.T) {
+	kubeconfig := func(field string) []byte {
+		return []byte("current-context: x\nclusters:\n- {name: c, cluster: {server: 'https://k8s.example.com:6443'}}\n" +
+			"contexts:\n- {name: x, context: {cluster: c, user: u}}\nusers:\n- name: u\n  user:\n    exec:\n" +
+			"      apiVersion: " + v1 + "\n      command: some-plugin\n" + field)
+	}
+	for name, tc := range map[string]struct {
+		field    string
+		wantInfo bool
+	}{
+		"true":   {"      provideClusterInfo: true\n", true},
+		"false":  {"      provideClusterInfo: false\n", false},
+		"absent": {"", true},
+	} {
+		d, err := credential.Describe(kubeconfig(tc.field), "")
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		r := &fakeRunner{out: okOutput(v1)}
+		req := credential.Request{Descriptor: d, Subject: credential.Subject{ClusterID: "c1", Scope: credential.ScopeUser, OwnerID: "u1"}}
+		if _, err := runOnce(t, newProvider(r), req); err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		got := strings.Contains(strings.Join(r.calls[0].Env, "\n"), "k8s.example.com")
+		if got != tc.wantInfo {
+			t.Errorf("%s: cluster info passed = %v, want %v", name, got, tc.wantInfo)
+		}
+	}
+}
+
 func TestProtocolOutput(t *testing.T) {
 	good := func(status string) []byte {
 		return []byte(`{"kind":"ExecCredential","apiVersion":"` + v1 + `","spec":{},"extra":1,"status":` + status + `}`)
