@@ -105,6 +105,8 @@ func (p *Provider) Continue(ctx context.Context, env credential.Env, req credent
 		return s.continueCredentials(ctx, req, sv)
 	case credential.ChallengePasteRedirect:
 		return s.continuePaste(ctx, req, sv)
+	case credential.ChallengeBrowserCallback:
+		return s.continueBrowserCallback(ctx, req, sv)
 	case credential.ChallengeBrowserLoopback:
 		return s.continueLoopback(ctx, req, sv)
 	case credential.ChallengeDeviceCode:
@@ -186,6 +188,9 @@ func (s *session) startRemote(ctx context.Context) (credential.Result, error) {
 	}
 	if s.env.Desktop {
 		return s.startLoopback(ctx)
+	}
+	if s.cfg.webRedirectURL != "" {
+		return s.startBrowserCallback(ctx)
 	}
 	return s.startPaste(ctx)
 }
