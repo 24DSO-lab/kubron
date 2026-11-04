@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	// AttemptWindow bounds the rolling failure counters for interactive sign-in.
+	// AttemptWindow bounds the fixed failure window for interactive sign-in.
 	AttemptWindow = 15 * time.Minute
 	// MaxUserAnswerFailures limits failed answers by one user across identity providers.
 	MaxUserAnswerFailures = 10
@@ -34,7 +34,10 @@ type AttemptLimiter interface {
 }
 
 // RateLimitedError is returned when failed interactive sign-ins exceed a user or IdP limit.
-type RateLimitedError struct{ RetryAfter time.Duration }
+type RateLimitedError struct {
+	// RetryAfter is the duration until another answer may be attempted.
+	RetryAfter time.Duration
+}
 
 func (e *RateLimitedError) Error() string {
 	seconds := int((e.RetryAfter + time.Second - 1) / time.Second)
