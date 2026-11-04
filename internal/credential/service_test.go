@@ -165,6 +165,10 @@ func TestWebCallbackIsBoundToUserAndSessionAndConsumedOnce(t *testing.T) {
 	if _, _, err := r.svc.CallbackSubject(bg, "other-session", state); !errors.Is(err, credential.ErrChallengeExpired) {
 		t.Fatalf("foreign session: %v", err)
 	}
+	poll, err := r.svc.Poll(bg, subj, state)
+	if err != nil || poll.Challenge == nil || poll.Challenge.ID != state {
+		t.Fatalf("browser callback poll = %+v, %v", poll, err)
+	}
 	got, desc, err := r.svc.CallbackSubject(bg, subj.SessionID, state)
 	if err != nil || got != subj || desc.Kind != credential.KindOIDC {
 		t.Fatalf("callback subject = %+v, %v", got, err)
