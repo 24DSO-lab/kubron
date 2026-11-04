@@ -18,7 +18,7 @@ func TestWebBrowserCallback(t *testing.T) {
 	idp.issParam = true
 	env := idp.env(false)
 	d := idp.descriptor("authcode", map[string]string{
-		"web.redirect-url": "https://kubron.example.test/auth/cluster/callback",
+		"web.client-id": testClient, "web.redirect-url": "https://kubron.example.test/auth/cluster/callback",
 	})
 	p := New()
 	res, err := p.Begin(context.Background(), env, credential.Request{Descriptor: d, Subject: subjectUser()})
