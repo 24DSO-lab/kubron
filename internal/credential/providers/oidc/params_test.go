@@ -61,6 +61,20 @@ func TestWebRedirectURLValidation(t *testing.T) {
 	}
 }
 
+func TestExtraParamsCannotChangeAuthorizationResponseMode(t *testing.T) {
+	d := credential.Descriptor{Kind: credential.KindOIDC, Params: map[string]string{
+		"issuer-url": "https://idp.example.test", "client-id": "client",
+		"auth-request-extra-params": "response_mode=form_post&state=attacker",
+	}}
+	cfg, err := newConfig(d, nil, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.extraAuth.Has("response_mode") || cfg.extraAuth.Has("state") {
+		t.Fatalf("reserved OAuth parameters survived filtering: %v", cfg.extraAuth)
+	}
+}
+
 func TestScopes(t *testing.T) {
 	idp := newFakeIdP(t, false)
 	res, err := signInWithPassword(t, idp, idp.env(true), map[string]string{"scope": "groups email openid groups"})
