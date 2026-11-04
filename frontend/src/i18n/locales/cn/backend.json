@@ -665,7 +665,7 @@
   "mustBeOriginWithoutPath": "必须是没有路径的源（origin）",
   "portMustBeBetween1And65535": "端口必须在 1 到 65535 之间",
   "schemeMustBeHTTPS": "协议必须为 https（仅 localhost 允许使用 http）",
-  "httpAllowedOnlyLocalhostLoopback": "http 仅允许用于 localhost 或环回 IP 地址"
+  "httpAllowedOnlyLocalhostLoopback": "http 仅允许用于 localhost 或环回 IP 地址",
 
   "credAKSHTTPError": "Azure 登录请求失败",
   "credAKSResponseInvalid": "Azure 返回了无效的登录响应",

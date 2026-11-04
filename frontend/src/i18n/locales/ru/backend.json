@@ -665,7 +665,7 @@
   "mustBeOriginWithoutPath": "должен содержать только origin без пути",
   "portMustBeBetween1And65535": "порт должен быть в диапазоне от 1 до 65535",
   "schemeMustBeHTTPS": "схема должна быть https (http разрешён только для localhost)",
-  "httpAllowedOnlyLocalhostLoopback": "http разрешён только для localhost или loopback IP-адреса"
+  "httpAllowedOnlyLocalhostLoopback": "http разрешён только для localhost или loopback IP-адреса",
 
   "credAKSHTTPError": "не удалось выполнить запрос входа в Azure",
   "credAKSResponseInvalid": "Azure вернула некорректный ответ при входе",

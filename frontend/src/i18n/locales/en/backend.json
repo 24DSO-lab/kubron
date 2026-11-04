@@ -665,7 +665,7 @@
   "mustBeOriginWithoutPath": "must be an origin without a path",
   "portMustBeBetween1And65535": "port must be between 1 and 65535",
   "schemeMustBeHTTPS": "scheme must be https (http is allowed only for localhost)",
-  "httpAllowedOnlyLocalhostLoopback": "http is allowed only for localhost or a loopback IP address"
+  "httpAllowedOnlyLocalhostLoopback": "http is allowed only for localhost or a loopback IP address",
 
   "credAKSHTTPError": "Azure sign-in request failed",
   "credAKSResponseInvalid": "Azure returned an invalid sign-in response",

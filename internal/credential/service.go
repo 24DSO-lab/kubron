@@ -194,15 +194,16 @@ func (s *Service) begin(ctx context.Context, sub Subject, d Descriptor, saved []
 	if err != nil {
 		return d, Result{}, err
 	}
-rec, saved := s.loadSaved(ctx, sub.key())
-	req := Request{Descriptor: d, Subject: sub, Saved: saved}
+
+	req := Request{
+		Descriptor: d,
+		Subject:    sub,
+		Saved:      saved,
+	}
 
 	res, err := p.Begin(ctx, s.penv, req)
 	if err == nil || !errors.Is(err, ErrUnsupported) || p.Kind() == KindExec || d.Exec == nil {
-		if err != nil {
-			return Result{}, scrub(err, d, nil, saved)
-		}
-		return res, nil
+		return d, res, err
 	}
 
 	fallback := d
@@ -210,19 +211,20 @@ rec, saved := s.loadSaved(ctx, sub.key())
 
 	fp, resolveErr := s.reg.Resolve(fallback)
 	if resolveErr != nil || fp.Kind() != KindExec {
-		return Result{}, scrub(err, d, nil, saved)
+		return d, Result{}, err
 	}
 
 	fallbackReq := Request{
 		Descriptor: fallback,
 		Subject:    sub,
+		Saved:      saved,
 	}
 
-	res, err = fp.Begin(ctx, s.penv, fallbackReq)
-	if err != nil {
-		return Result{}, scrub(err, fallback, nil, saved)
+	res, fallbackErr := fp.Begin(ctx, s.penv, fallbackReq)
+	if fallbackErr != nil {
+		return fallback, Result{}, fallbackErr
 	}
-	}
+
 	return fallback, res, nil
 }
 
