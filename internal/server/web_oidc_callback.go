@@ -1,0 +1,69 @@
+// Copyright 2026 The Kubron Authors
+// SPDX-License-Identifier: Apache-2.0
+
+package server
+
+import (
+	"fmt"
+	"net/http"
+	"strings"
+)
+
+const (
+	webOIDCCallbackPath = "/auth/cluster/callback"
+	webOIDCCallbackOK   = "<!doctype html><html lang=\"en\"><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width\"><title>Authentication complete</title><main><h1>Authentication complete</h1><p>You can return to Kubron.</p></main></html>"
+	webOIDCCallbackFail = "<!doctype html><html lang=\"en\"><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width\"><title>Authentication not completed</title><main><h1>Authentication not completed</h1><p>Return to Kubron and try signing in again.</p></main></html>"
+)
+
+// webOIDCCallbackHandler receives the IdP's top-level GET redirect. SameSite=Lax session cookies are sent
+// for this navigation; unlike RPC it intentionally does not require a CSRF header. The OAuth state is the
+// broker-generated challenge ID and is checked against both the authenticated user and this session.
+func webOIDCCallbackHandler(g *Guard, complete func(view any, state, redirectURL string) error) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-store")
+		w.Header().Set("Referrer-Policy", "no-referrer")
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+
+		fail := func(status int) {
+			w.WriteHeader(status)
+			_, _ = w.Write([]byte(webOIDCCallbackFail))
+		}
+		if r.Method != http.MethodGet || len(r.URL.RawQuery) > 8<<10 {
+			fail(http.StatusBadRequest)
+			return
+		}
+		q := r.URL.Query()
+		states := q["state"]
+		if len(states) != 1 || strings.TrimSpace(states[0]) == "" {
+			fail(http.StatusBadRequest)
+			return
+		}
+		if _, err := g.Sessions.Lookup(g.token(r)); err != nil {
+			if err == ErrSessionStoreUnavailable {
+				w.Header().Set("Retry-After", "5")
+				fail(http.StatusServiceUnavailable)
+				return
+			}
+			fail(http.StatusBadRequest)
+			return
+		}
+		sess, err := g.Sessions.Lookup(g.token(r))
+		if err != nil || sess.View == nil {
+			fail(http.StatusBadRequest)
+			return
+		}
+
+		scheme := "http"
+		if g.secure(r) {
+			scheme = "https"
+		}
+		redirectURL := fmt.Sprintf("%s://%s%s", scheme, r.Host, r.URL.RequestURI())
+		if err := complete(sess.View, states[0], redirectURL); err != nil {
+			fail(http.StatusBadRequest)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(webOIDCCallbackOK))
+	})
+}
