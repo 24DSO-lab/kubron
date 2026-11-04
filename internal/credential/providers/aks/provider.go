@@ -134,8 +134,10 @@ func (p *Provider) Begin(ctx context.Context, env credential.Env, req credential
 		return credential.Result{Token: &tok, Save: encodeSaved(c, "")}, nil
 	case "ropc":
 		if c.username == "" || c.password == "" {
-			return credential.Result{Challenge: &credential.Challenge{Kind: credential.ChallengeCredentials,
-				Fields: []credential.Field{{Name:"username"}, {Name:"password", Secret:true}}}}, Pending: encodePending(pending{Tenant: c.tenant}), nil
+			res := credential.Result{Challenge: &credential.Challenge{Kind: credential.ChallengeCredentials,
+				Fields: []credential.Field{{Name: "username"}, {Name: "password", Secret: true}}}, Pending: encodePending(pending{Tenant: c.tenant})}
+			if staleSaved { res.Save = []byte{} }
+			return res, nil
 		}
 		tok, rt, e := passwordGrant(ctx, env.HTTP, c, c.username, c.password, now(env))
 		if e != nil { return credential.Result{}, e }
@@ -154,7 +156,7 @@ func (p *Provider) beginConfigured(ctx context.Context, env credential.Env, req 
 		tok, err := clientCredentials(ctx, env.HTTP, c, now(env)); if err != nil { return credential.Result{}, err }
 		return credential.Result{Token: &tok, Save: encodeSaved(c, "")}, nil
 	case "ropc":
-		return credential.Result{Challenge: &credential.Challenge{Kind: credential.ChallengeCredentials, Fields: []credential.Field{{Name: "username"}, {Name: "password", Secret: true}}}}, Pending: encodePending(pending{Tenant: c.tenant}), nil
+		return credential.Result{Challenge: &credential.Challenge{Kind: credential.ChallengeCredentials, Fields: []credential.Field{{Name: "username"}, {Name: "password", Secret: true}}}, Pending: encodePending(pending{Tenant: c.tenant})}, nil
 	default:
 		return credential.Result{}, credential.ErrUnsupported
 	}
@@ -258,7 +260,7 @@ func refresh(ctx context.Context,hc *http.Client,c config,rt string,n time.Time)
 	form:=url.Values{"grant_type":{"refresh_token"},"client_id":{c.clientID},"refresh_token":{rt},"scope":{scope(c)+" offline_access"}}
 	body,status,err:=post(ctx,hc,c.authority+"/"+url.PathEscape(c.tenant)+"/oauth2/v2.0/token",form)
 	if err!=nil{return credential.Token{},"",errHTTP}
-	if status<200||status>=300{var oe oauthError; _=json.Unmarshal(body,&oe); if oe.Error=="invalid_grant"||oe.Error=="invalid_grant"||oe.Error=="invalid_token" { return credential.Token{},"",credential.ErrInvalidGrant }; return credential.Token{},"",errResponse}
+	if status<200||status>=300{var oe oauthError; _=json.Unmarshal(body,&oe); if oe.Error=="invalid_grant"||oe.Error=="invalid_token" { return credential.Token{},"",credential.ErrInvalidGrant }; return credential.Token{},"",errResponse}
 	return parseToken(body,n)
 }
 func scope(c config) string { s:=c.serverID+"/.default"; if c.legacy { s="sp:"+s }; return s }
