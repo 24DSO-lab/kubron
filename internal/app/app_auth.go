@@ -66,7 +66,8 @@ func NewSessionView(root *App, source string) *App {
 	// Свой вид менеджеров: активный кластер, терминалы, логи и port-forward принадлежат сессии;
 	// пул подключений (informers) общий.
 	v.k8sMgr = root.k8sMgr.ForSession()
-	v.k8sMgr.SetNotifier(nil) // события пойдут владельцу после BindView; до входа адресата нет
+	v.conn = newConnectState() // входы принадлежат сессии
+	v.k8sMgr.SetNotifier(nil)  // события пойдут владельцу после BindView; до входа адресата нет
 	v.pfMgr = k8s.NewSessionPortForwardManager(v.k8sMgr)
 	v.configureTerminals()
 	v.configurePortForward() // владелец потоков пока неизвестен: режим proxy включается в BindView
@@ -150,6 +151,7 @@ func RestoreActiveCluster(v *App, clusterID string) error {
 	if err := v.authzCluster(auth.PermRead, clusterID); err != nil {
 		return err
 	}
+	v.bindAuthSession()
 	return v.k8sMgr.ConnectToCluster(clusterID)
 }
 
@@ -362,6 +364,8 @@ func (a *App) Login(username, password string) (*auth.UserInfo, error) {
 // Logout закрывает сессию.
 func (a *App) Logout() {
 	if a.auth != nil {
+		// Отзыв до выхода: журнал ещё знает пользователя. Сбой отзыва не мешает выйти.
+		_ = a.revokePersonal(a.currentUserID(), "", "logout")
 		a.auth.Logout()
 	}
 }
@@ -388,7 +392,12 @@ func (a *App) ChangePassword(oldPassword, newPassword string) error {
 	if a.auth == nil {
 		return a.authUnavailable()
 	}
-	return a.auth.ChangePassword(oldPassword, newPassword)
+	uid := a.currentUserID()
+	err := a.auth.ChangePassword(oldPassword, newPassword)
+	if err == nil {
+		err = a.revokePersonal(uid, "", "password-change")
+	}
+	return err
 }
 
 // ─── Управление пользователями (users.manage) ──────────────
@@ -426,21 +435,33 @@ func (a *App) SetUserDisabled(id string, disabled bool) (*auth.UserInfo, error) 
 	if err := a.authz(auth.PermUsersManage); err != nil {
 		return nil, err
 	}
-	return a.auth.SetDisabled(id, disabled)
+	u, err := a.auth.SetDisabled(id, disabled)
+	if err == nil && disabled {
+		err = a.revokePersonal(id, "", "disabled")
+	}
+	return u, err
 }
 
 func (a *App) ResetUserPassword(id, newPassword string) (*auth.UserInfo, error) {
 	if err := a.authz(auth.PermUsersManage); err != nil {
 		return nil, err
 	}
-	return a.auth.ResetPassword(id, newPassword)
+	u, err := a.auth.ResetPassword(id, newPassword)
+	if err == nil {
+		err = a.revokePersonal(id, "", "password-reset")
+	}
+	return u, err
 }
 
 func (a *App) DeleteUser(id string) error {
 	if err := a.authz(auth.PermUsersManage); err != nil {
 		return err
 	}
-	return a.auth.DeleteUser(id)
+	err := a.auth.DeleteUser(id)
+	if err == nil {
+		err = a.revokePersonal(id, "", "user-deleted")
+	}
+	return err
 }
 
 // ─── Журнал аудита (audit.read) ────────────────────────────

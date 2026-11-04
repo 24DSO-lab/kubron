@@ -82,6 +82,11 @@ func EnforceAccess(v *App) bool {
 	if !ViewActive(v) || v.k8sMgr == nil {
 		return false
 	}
+	// Личный вход пользователя отозван (исключение из команды, смена пароля, выход, «отключиться»): закрываем
+	// терминалы, логи и port-forward этого вида, как при потере доступа.
+	if v.applyRevocations() {
+		return true
+	}
 	id := v.k8sMgr.GetActiveContext()
 	if id == "" || v.auth.CanSeeCluster(id) {
 		return false

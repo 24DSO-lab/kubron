@@ -21,7 +21,6 @@ import (
 	"k8s.io/client-go/tools/clientcmd/api"
 
 	"github.com/24DSO-labs/kubron/internal/clusterhealth"
-	"github.com/24DSO-labs/kubron/internal/netpolicy"
 )
 
 type ContextInfo struct {
@@ -34,6 +33,7 @@ type ContextInfo struct {
 
 type ClusterConnection struct {
 	Name            string
+	key             string // ключ в общем пуле; пусто — равен Name
 	Client          *kubernetes.Clientset
 	Config          *rest.Config
 	DynamicClient   dynamic.Interface
@@ -84,7 +84,9 @@ type Manager struct {
 	health *clusterhealth.Board // состояние соединения кластеров; общее для всех видов
 
 	viewMu           sync.RWMutex // защищает activeCtx и rawConfig этого вида
-	activeCtx        string
+	activeCtx        string       // id активного кластера
+	activeKey        string       // ключ его подключения в пуле: (кластер, субъект)
+	authSession      AuthSession
 	rawConfig        *api.Config
 	terminalSessions *TerminalSessionManager
 	termObserver     TerminalObserver // защищён viewMu
@@ -93,6 +95,13 @@ type Manager struct {
 	notifier func(event string, data ...any)
 	logs     logStreams
 	limits   Limits // лимиты ресурсов вида; наследуются видами сессий
+
+	// scopes — чьи учётные данные у кластера (credential.Scope), узнанные при подключении и в фоновой проверке;
+	// authLost — личные входы, у которых брокер сообщил «нужен вход». Общие для всех видов.
+	scopes   *sync.Map
+	authLost *sync.Map
+	// build строит подключение по плану; в тестах подменяется.
+	build func(ConnPlan) (*ClusterConnection, error)
 
 	helmActor atomic.Pointer[string] // пользователь вида: created_by репозиториев Helm (сервис)
 }
@@ -144,9 +153,13 @@ func (m *Manager) SetNotifier(f func(event string, data ...any)) {
 
 // emitCluster сообщает об изменении данных кластера всем видам, у которых он активен:
 // кеши informers общие, а получатели — свои у каждой сессии.
-func (m *Manager) emitCluster(event, clusterName string) {
-	for _, h := range m.pool.holdersOf(clusterName) {
-		h.emit(event, clusterName)
+func (m *Manager) emitCluster(event string, conn *ClusterConnection) {
+	key := conn.key
+	if key == "" {
+		key = conn.Name
+	}
+	for _, h := range m.pool.holdersOf(key) {
+		h.emit(event, conn.Name)
 	}
 }
 
@@ -165,17 +178,18 @@ func (m *Manager) emit(event string, data ...any) {
 // activateLocked делает кластер активным для этого вида и снимает отметку с прежнего:
 // informers прежнего кластера останавливаются, только если его больше не держит ни один
 // другой вид (вызывать под m.viewMu).
-func (m *Manager) activateLocked(clusterID string) error {
-	prev := m.activeCtx
-	if prev == clusterID {
+func (m *Manager) activateLocked(clusterID, key string) error {
+	prev, prevKey := m.activeCtx, m.activeKey
+	if prevKey == key {
+		m.activeCtx = clusterID
 		return nil
 	}
-	if err := m.pool.acquire(clusterID, m); err != nil {
+	if err := m.pool.acquire(key, m); err != nil {
 		return err
 	}
-	m.activeCtx = clusterID
+	m.activeCtx, m.activeKey = clusterID, key
 	if prev != "" {
-		m.pool.release(prev, m)
+		m.pool.release(prevKey, m)
 	}
 	return nil
 }
@@ -186,6 +200,8 @@ func NewManager() *Manager {
 		health:           clusterhealth.NewBoard(),
 		terminalSessions: NewTerminalSessionManager(),
 		limits:           Limits{LogStreams: logMaxStreams}, // десктоп: прежний предел логов
+		scopes:           &sync.Map{},
+		authLost:         &sync.Map{},
 	}
 }
 
@@ -197,6 +213,10 @@ func (m *Manager) ForSession() *Manager {
 		health:           m.health,
 		terminalSessions: NewTerminalSessionManager(),
 		limits:           m.Limits(),
+		authSession:      m.AuthSessionOf(),
+		scopes:           m.scopes,
+		authLost:         m.authLost,
+		build:            m.build,
 	}
 }
 
@@ -206,8 +226,8 @@ func (m *Manager) Detach() {
 	m.viewMu.Lock()
 	defer m.viewMu.Unlock()
 	if m.activeCtx != "" {
-		m.pool.release(m.activeCtx, m)
-		m.activeCtx = ""
+		m.pool.release(m.activeKey, m)
+		m.activeCtx, m.activeKey = "", ""
 	}
 }
 
@@ -294,11 +314,11 @@ func buildConnection(name string, config *rest.Config) (*ClusterConnection, erro
 // RemoveConnection забывает подключение к кластеру (при удалении кластера из приложения).
 // Если кластер был активным, активное подключение сбрасывается.
 func (m *Manager) RemoveConnection(clusterID string) (wasActive bool) {
-	m.pool.remove(clusterID)
+	m.pool.removeCluster(clusterID) // подключения всех субъектов этого кластера
 	m.viewMu.Lock()
 	defer m.viewMu.Unlock()
 	if m.activeCtx == clusterID {
-		m.activeCtx = ""
+		m.activeCtx, m.activeKey = "", ""
 		return true
 	}
 	return false
@@ -306,7 +326,7 @@ func (m *Manager) RemoveConnection(clusterID string) (wasActive bool) {
 
 func (m *Manager) GetActiveConnection() (*ClusterConnection, error) {
 	m.viewMu.RLock()
-	id := m.activeCtx
+	id := m.activeKey
 	m.viewMu.RUnlock()
 	conn, exists := m.pool.get(id)
 	if !exists {
@@ -333,79 +353,99 @@ func (m *Manager) TestConnection() error {
 	return err
 }
 
-func (m *Manager) ConnectToCluster(clusterID string) error {
-	if _, err := m.pool.getOrCreate(clusterID, func() (*ClusterConnection, error) {
-		return buildClusterConnection(clusterID)
-	}); err != nil {
-		return err
-	}
+// SetAuthSession задаёт, кто подключается этим видом (брокер входа, пользователь, сессия). Вызывается до
+// ConnectToCluster; без брокера действует прежний путь.
+func (m *Manager) SetAuthSession(s AuthSession) {
 	m.viewMu.Lock()
-	defer m.viewMu.Unlock()
-	return m.activateLocked(clusterID)
+	m.authSession = s
+	m.viewMu.Unlock()
 }
 
-// buildClusterConnection создаёт подключение по сохранённому kubeconfig кластера.
-// Файловое хранилище отдаёт путь: client-go читает kubeconfig по пути, и относительные пути
-// внутри него резолвятся от каталога файла. Хранилища без файлов отдают байты — конфиг
-// строится в памяти (clientcmd.Load), файл на диске не создаётся.
+// AuthSessionOf возвращает текущие данные подключающегося.
+func (m *Manager) AuthSessionOf() AuthSession {
+	m.viewMu.RLock()
+	defer m.viewMu.RUnlock()
+	return m.authSession
+}
+
+func (m *Manager) ConnectToCluster(clusterID string) error {
+	sess := m.AuthSessionOf()
+	orig := sess.OnAuthRequired
+	var key string
+	sess.OnAuthRequired = func(id string) { // брокер сказал «нужен вход»: пометить и передать дальше
+		m.authLost.Store(key, true)
+		if orig != nil {
+			orig(id)
+		}
+	}
+	plan, err := PlanFor(sess, clusterID)
+	if err != nil {
+		return err
+	}
+	key = plan.Key
+	m.noteScope(plan)
+	build := m.build
+	if build == nil {
+		build = buildPlanConnection
+	}
+	if _, err := m.pool.getOrCreate(plan.Key, func() (*ClusterConnection, error) { return build(plan) }); err != nil {
+		return err
+	}
+	m.authLost.Delete(plan.Key) // вход действует: пометка «нужен вход» снимается до первого отказа брокера
+	m.viewMu.Lock()
+	defer m.viewMu.Unlock()
+	return m.activateLocked(clusterID, plan.Key)
+}
+
+// noteScope запоминает, чьи учётные данные у кластера, и ставит пометку «нужен вход» при отказе брокера.
+func (m *Manager) noteScope(plan ConnPlan) {
+	if plan.Subject.Scope != "" {
+		m.scopes.Store(plan.ClusterID, plan.Subject.Scope)
+	}
+}
+
+// buildPlanConnection создаёт подключение по плану: конфигурацию даёт только ConfigFor.
+func buildPlanConnection(p ConnPlan) (*ClusterConnection, error) {
+	config, err := ConfigFor(p)
+	if err != nil {
+		return nil, err
+	}
+	conn, err := buildConnection(p.ClusterID, config)
+	if err != nil {
+		return nil, err
+	}
+	conn.key = p.Key
+	return conn, nil
+}
+
+// buildClusterConnection — подключение без брокера (фоновая проверка и прежний путь).
 func buildClusterConnection(clusterID string) (*ClusterConnection, error) {
-	meta, err := LoadClusterMeta(clusterID)
+	p, err := PlanFor(AuthSession{}, clusterID)
 	if err != nil {
-		return nil, fmt.Errorf("cluster metadata not found: %w", err)
+		return nil, err
 	}
+	return buildPlanConnection(p)
+}
 
-	// in-cluster и oidc-password строят подключение сами (без exec-плагина и без файлов сервера).
-	if config, ok, err := buildModeConfig(clusterID, meta); ok {
-		if err != nil {
-			return nil, err
-		}
-		config.QPS = 50
-		config.Burst = 100
-		if meta.Mode != ModeInCluster { // адрес API-сервера in-cluster задаёт сам кластер
-			applyClusterAddrPolicy(config)
-		}
-		return buildConnection(clusterID, config)
+// DropPersonal закрывает личное подключение пользователя (informers) к кластеру; пустой clusterID — ко всем кластерам.
+// Вызывается при отзыве входа. Виды, державшие подключение, при следующем обращении получат «нет активного подключения».
+func (m *Manager) DropPersonal(clusterID, owner string) {
+	if owner == "" {
+		return
 	}
+	m.pool.removeIf(func(c *ClusterConnection) bool {
+		return (clusterID == "" || c.Name == clusterID) && c.key == userPoolKey(c.Name, owner)
+	})
+}
 
-	overrides := &clientcmd.ConfigOverrides{}
-	if meta.ContextName != "" {
-		overrides.CurrentContext = meta.ContextName
-	}
-
-	// Политика соединений действует и при подключении, не только при добавлении: так не пройдут ни кластеры,
-	// импортированные из файлов десктопа, ни kubeconfig, сохранённый до включения запретов.
-	if p := currentPolicy(); !p.AllowExec || !p.AllowLocalFiles || netpolicy.For(netpolicy.ScopeClusterAPI) != nil {
-		if err := checkStoredPolicy(clusterID, meta); err != nil {
-			return nil, err
+// lookupConn — подключение кластера для этого вида: личное, затем общее.
+func (m *Manager) lookupConn(clusterID string) (*ClusterConnection, bool) {
+	if owner := m.AuthSessionOf().UserID; owner != "" {
+		if c, ok := m.pool.get(userPoolKey(clusterID, owner)); ok {
+			return c, true
 		}
 	}
-
-	var config *rest.Config
-	if kcPath := GetClusterKubeconfigPath(clusterID); kcPath != "" {
-		config, err = clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
-			&clientcmd.ClientConfigLoadingRules{ExplicitPath: kcPath},
-			overrides,
-		).ClientConfig()
-	} else {
-		var data []byte
-		if data, err = clusterStore.Kubeconfig(clusterID); err != nil {
-			return nil, fmt.Errorf("kubeconfig not found for cluster %s", clusterID)
-		}
-		var cfg *api.Config
-		if cfg, err = clientcmd.Load(data); err != nil {
-			return nil, fmt.Errorf("failed to parse kubeconfig: %w", err)
-		}
-		config, err = clientcmd.NewNonInteractiveClientConfig(*cfg, meta.ContextName, overrides, nil).ClientConfig()
-	}
-	if err != nil {
-		return nil, fmt.Errorf("configuration error: %w", err)
-	}
-
-	config.QPS = 50
-	config.Burst = 100
-	applyClusterAddrPolicy(config)
-
-	return buildConnection(clusterID, config)
+	return m.pool.get(clusterID)
 }
 
 func (m *Manager) GetClusterStatuses() []ClusterStatus {
@@ -425,9 +465,9 @@ func (m *Manager) GetClusterStatuses() []ClusterStatus {
 			Active:      false,
 		}
 
-		if m.pool.has(cluster.ID) {
-			status.Connected = true
-		}
+		_, connected := m.lookupConn(cluster.ID)
+		status.Connected = connected
+		status.AuthRequired = m.authRequired(cluster.ID, connected)
 		if active == cluster.ID {
 			status.Active = true
 		}

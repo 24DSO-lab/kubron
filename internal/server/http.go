@@ -6,6 +6,7 @@ package server
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"mime"
@@ -33,11 +34,16 @@ type rpcResponse struct {
 	Error  *rpcError `json:"error,omitempty"`
 }
 
+// retryAfterError — ошибка метода «слишком много попыток» (например, ответов на вызов входа в кластер). Сервер не
+// импортирует пакет, где она объявлена: достаточно метода.
+type retryAfterError interface{ RetryAfterSeconds() int }
+
 // MapError переводит ошибку метода в HTTP-статус и машинный код (единый формат ошибок, задача 1.3).
 // Текст сообщения остаётся прежним: фронтенд показывает его так же, как в десктопе, а по тексту
 // «требуется вход в систему» распознаёт потерю сессии.
 func MapError(err error) (status int, code string) {
 	var bad *BadArgsError
+	var limited retryAfterError
 	switch {
 	case errors.Is(err, auth.ErrNotAuthenticated):
 		return http.StatusUnauthorized, "unauthenticated"
@@ -53,6 +59,8 @@ func MapError(err error) (status int, code string) {
 		return http.StatusForbidden, "method_denied"
 	case errors.As(err, &bad):
 		return http.StatusBadRequest, "bad_request"
+	case errors.As(err, &limited):
+		return http.StatusTooManyRequests, "rate_limited"
 	default:
 		return http.StatusInternalServerError, "error"
 	}
@@ -159,6 +167,10 @@ func RPCHandler(d *Dispatcher, g *Guard) http.Handler {
 				var hidden bool
 				msg, hidden = exposeMessage(err, reqID)
 				logInternal(r, method, err, hidden)
+			}
+			var limited retryAfterError
+			if errors.As(err, &limited) {
+				w.Header().Set("Retry-After", fmt.Sprint(limited.RetryAfterSeconds()))
 			}
 			if g != nil && code == "unauthenticated" && authed {
 				g.endSession(token) // ядро закрыло сессию (простой, выход): cookie больше не действует

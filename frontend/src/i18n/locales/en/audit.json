@@ -105,6 +105,12 @@
       "stop": "Port-forward stopped"
     },
     "cluster": {
+      "auth": {
+        "challenge": "Cluster sign-in requested",
+        "success": "Cluster sign-in completed",
+        "failure": "Cluster sign-in failed",
+        "revoked": "Cluster sign-in revoked"
+      },
       "credentials": {
         "update": "Cluster credentials replaced"
       }

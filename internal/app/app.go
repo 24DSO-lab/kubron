@@ -14,6 +14,7 @@ import (
 	"github.com/24DSO-labs/kubron/internal/audit"
 	"github.com/24DSO-labs/kubron/internal/auth"
 	"github.com/24DSO-labs/kubron/internal/clusterhealth"
+	"github.com/24DSO-labs/kubron/internal/credential"
 	"github.com/24DSO-labs/kubron/internal/k8s"
 	"github.com/24DSO-labs/kubron/internal/pfproxy"
 	"github.com/24DSO-labs/kubron/internal/replicaevents"
@@ -45,6 +46,14 @@ type App struct {
 	replicaID string
 	// interactive — отключённые администратором терминалы и оболочка узла (KUBRON_DISABLE_*).
 	interactive InteractivePolicy
+	// broker — вход в кластеры (ADR-0018); nil — старый путь без вызовов. conn — состояние входов этого вида.
+	broker credential.Broker
+	conn   *connectState
+	rev    *revocations // отозванные личные входы реплики; общий для всех видов
+	// limitUser и limitIDP ограничивают попытки AnswerChallenge на пользователя и на провайдера входа; nil — без лимита.
+	limitUser, limitIDP AttemptLimiter
+	// finish подменяется в тестах: подключение и проверка кластера после успешного входа.
+	finish func(clusterID string) error
 }
 
 // SetStore задаёт хранилище вместо файлового; вызывается до OnStartup. Это функция пакета, а не метод App:
@@ -62,6 +71,8 @@ func NewApp(p Platform) *App {
 		platform: p,
 		k8sMgr:   mgr,
 		pfMgr:    k8s.NewPortForwardManager(mgr),
+		conn:     newConnectState(),
+		rev:      &revocations{},
 	}
 	a.pfMgr.SetObserver(a.portForwardObserver())
 	a.configureTerminals()
@@ -243,26 +254,26 @@ func kubeconfigChange(src k8s.KubeconfigSource) string {
 	return "unchanged"
 }
 
+// ConnectToCluster is the legacy call, kept for old clients: a thin wrapper over the new flow. If the cluster
+// needs the user to answer a challenge, it returns *ChallengeRequiredError instead of connecting.
 func (a *App) ConnectToCluster(clusterID string) error {
 	if err := a.authzCluster(auth.PermRead, clusterID); err != nil {
 		return err
 	}
-	err := a.k8sMgr.ConnectToCluster(clusterID)
+	res, err := a.connect(context.Background(), clusterID)
 	if err != nil {
 		return err
 	}
-	// Последний кластер — пользовательская настройка десктопа. В вебе активный кластер
-	// принадлежит веб-сессии и сохраняется отдельно в websession (для восстановления на другой реплике).
-	if a.sessionID == "" {
-		config, _ := k8s.LoadKubronConfig()
-		if config == nil {
-			config = &k8s.KubronConfig{}
+	if res.Status == "challenge" && res.Challenge != nil {
+		if a.broker != nil { // an old client will never answer: do not leave the request pending
+			if pc, ok := a.conn.cluster(res.Challenge.ID); ok {
+				_ = a.broker.Cancel(context.Background(), pc.sub, res.Challenge.ID)
+			}
+			a.conn.forget(res.Challenge.ID)
 		}
-		config.LastActiveCluster = clusterID
-		_ = k8s.SaveKubronConfig(config) // запоминание последнего кластера не критично
+		return &ChallengeRequiredError{ClusterID: clusterID, Kind: res.Challenge.Kind}
 	}
-
-	return a.k8sMgr.TestConnection()
+	return nil
 }
 
 func (a *App) GetLastActiveCluster() string {

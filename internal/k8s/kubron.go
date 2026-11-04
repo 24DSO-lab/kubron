@@ -44,6 +44,9 @@ type ClusterStatus struct {
 	ClusterMeta
 	Connected bool `json:"connected"`
 	Active    bool `json:"active"`
+	// AuthRequired — кластер с личным входом, и у пользователя нет действующего входа: нужно войти. Это не то же
+	// самое, что «недоступен» (Health): адрес и TLS проверяются отдельно и входа не требуют.
+	AuthRequired bool `json:"authRequired"`
 	// Error — причина недоступности (пусто, пока кластер в порядке или не проверялся).
 	Error string `json:"error"`
 	// Health — результат фоновой проверки соединения (3.6); nil, пока проверки не было
@@ -187,7 +190,7 @@ func addClusterFromData(data []byte, settings ClusterSettings, teamID string, oi
 		return nil, err
 	}
 
-	if err := CheckKubeconfigPolicy(cfg, contextName, oidc != nil); err != nil {
+	if err := CheckKubeconfigPolicy(cfg, contextName); err != nil {
 		return nil, err
 	}
 

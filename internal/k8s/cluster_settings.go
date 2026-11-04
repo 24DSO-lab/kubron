@@ -337,7 +337,10 @@ func CheckKubeconfig(src KubeconfigSource, contextName string) (*ConnectionCheck
 	}
 
 	// Пробное подключение не должно запускать exec-плагин и читать файлы сервера там, где это запрещено.
-	if err := CheckKubeconfigPolicy(cfg, ctxName, false); err != nil {
+	if err := CheckKubeconfigPolicy(cfg, ctxName); err != nil {
+		return &ConnectionCheck{Error: err.Error()}, nil
+	}
+	if err := checkExecAllowed(cfg, ctxName); err != nil { // клиент client-go запустил бы плагин
 		return &ConnectionCheck{Error: err.Error()}, nil
 	}
 
@@ -423,7 +426,7 @@ func UpdateClusterSettings(id string, settings ClusterSettings, replace Kubeconf
 		if contextName, err = resolveContext(cfg, settings.ContextName, meta.ContextName); err != nil {
 			return nil, err
 		}
-		if err := CheckKubeconfigPolicy(cfg, contextName, meta.Mode == ModeOIDCPassword); err != nil {
+		if err := CheckKubeconfigPolicy(cfg, contextName); err != nil {
 			return nil, err
 		}
 	case readErr == nil:

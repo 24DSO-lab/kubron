@@ -148,6 +148,9 @@ func (a *App) RemoveTeamMember(teamID, userID string) error {
 	}
 	err := a.dir.RemoveMember(teamID, userID)
 	a.recordTeam("RemoveTeamMember", resultOf(err), teamID, "user="+userID)
+	if err == nil { // личные входы пользователя в кластеры этой команды больше не нужны
+		err = a.revokeTeamClusters(userID, teamID, "removed-from-team")
+	}
 	return err
 }
 
@@ -171,7 +174,11 @@ func (a *App) AddOIDCClusterToTeam(teamID, kubeconfigText string, settings k8s.C
 	if a.dir == nil {
 		return nil, errNoTeams
 	}
-	return k8s.AddClusterOIDCToTeam(kubeconfigText, settings, teamID, cred)
+	meta, err := k8s.AddClusterOIDCToTeam(kubeconfigText, settings, teamID, cred)
+	if err == nil {
+		err = a.dropTeamSignIn(meta.ID)
+	}
+	return meta, err
 }
 
 // AddInClusterToTeam добавляет кластер, в котором работает сам сервер (под его ServiceAccount). Это доступ с правами
@@ -201,7 +208,7 @@ func (a *App) SetClusterOIDCCredentials(clusterID string, cred k8s.OIDCCredentia
 	if a.k8sMgr.RemoveConnection(clusterID) {
 		a.pfMgr.StopAll()
 	}
-	return nil
+	return a.dropTeamSignIn(clusterID)
 }
 
 // MoveCluster передаёт кластер другой команде. Нужны права администратора и у текущей, и у новой команды.

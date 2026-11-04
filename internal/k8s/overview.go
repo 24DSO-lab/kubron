@@ -129,7 +129,7 @@ func (m *Manager) GetClusterOverview() (*ClusterOverview, error) {
 	}
 
 	// Из локального кеша informers (если он уже синхронизирован), иначе прямым запросом к API
-	oc := conn.overviewCache(func() { m.emitCluster(EventClusterChanged, conn.Name) })
+	oc := conn.overviewCache(func() { m.emitCluster(EventClusterChanged, conn) })
 
 	run(func() {
 		if l, ok := oc.nodeList(); ok {

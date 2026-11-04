@@ -67,7 +67,7 @@ func TestCheckKubeconfigPolicyChecksServerAddress(t *testing.T) {
 			want    bool
 		}{{netpolicy.ProfilePermissive, c.permissive}, {netpolicy.ProfileStrict, c.strict}} {
 			useClusterAddrPolicy(t, p.profile, "")
-			err := CheckKubeconfigPolicy(cfgWithServer(c.server, ""), "ctx", false)
+			err := CheckKubeconfigPolicy(cfgWithServer(c.server, ""), "ctx")
 			if (err == nil) != p.want {
 				t.Errorf("%s in %s: err=%v, allowed want %v", c.server, p.profile, err, p.want)
 			}
@@ -75,19 +75,19 @@ func TestCheckKubeconfigPolicyChecksServerAddress(t *testing.T) {
 	}
 	// Выключенная политика ничего не проверяет.
 	netpolicy.Set(netpolicy.ScopeClusterAPI, nil)
-	if err := CheckKubeconfigPolicy(cfgWithServer("https://127.0.0.1:6443", ""), "ctx", false); err != nil {
+	if err := CheckKubeconfigPolicy(cfgWithServer("https://127.0.0.1:6443", ""), "ctx"); err != nil {
 		t.Errorf("without a policy any address passes: %v", err)
 	}
 }
 
 func TestCheckKubeconfigPolicyRejectsProxyURL(t *testing.T) {
 	useClusterAddrPolicy(t, netpolicy.ProfilePermissive, "")
-	err := CheckKubeconfigPolicy(cfgWithServer("https://203.0.113.10:6443", "http://proxy.internal:3128"), "ctx", false)
+	err := CheckKubeconfigPolicy(cfgWithServer("https://203.0.113.10:6443", "http://proxy.internal:3128"), "ctx")
 	if err != ErrClusterProxyForbidden {
 		t.Errorf("proxy-url must be rejected: %v", err)
 	}
 	netpolicy.Set(netpolicy.ScopeClusterAPI, nil)
-	if err := CheckKubeconfigPolicy(cfgWithServer("https://203.0.113.10:6443", "http://proxy.internal:3128"), "ctx", false); err != nil {
+	if err := CheckKubeconfigPolicy(cfgWithServer("https://203.0.113.10:6443", "http://proxy.internal:3128"), "ctx"); err != nil {
 		t.Errorf("without a policy proxy-url stays allowed: %v", err)
 	}
 }
