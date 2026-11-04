@@ -26,10 +26,14 @@ const (
 
 // AttemptLimiter stores shared failed-answer counters. Implementations must be safe across replicas.
 type AttemptLimiter interface {
+	// Check returns the remaining lockout duration, if either key is currently blocked.
 	Check(ctx context.Context, userKey, idpKey string, now time.Time) (time.Duration, error)
+	// Fail records one rejected answer in both dimensions and returns the resulting lockout duration.
 	Fail(ctx context.Context, userKey, idpKey string, now time.Time, window time.Duration, userLimit, idpLimit int, lockout time.Duration) (time.Duration, error)
 	// Reset clears only the user's counter; the aggregate IdP counter expires by its failure window.
+	// Reset clears the user's counter after a successful sign-in.
 	Reset(ctx context.Context, userKey, idpKey string) error
+	// Sweep removes counters older than the supplied cutoff.
 	Sweep(ctx context.Context, before time.Time) (int, error)
 }
 
@@ -39,6 +43,7 @@ type RateLimitedError struct {
 	RetryAfter time.Duration
 }
 
+// Error implements error.
 func (e *RateLimitedError) Error() string {
 	seconds := int((e.RetryAfter + time.Second - 1) / time.Second)
 	if seconds < 1 {
@@ -48,6 +53,7 @@ func (e *RateLimitedError) Error() string {
 }
 
 // RetryAfterSeconds lets the HTTP RPC layer translate this error to 429 + Retry-After.
+// RetryAfterSeconds implements the HTTP server's retry-after error contract.
 func (e *RateLimitedError) RetryAfterSeconds() int {
 	seconds := int((e.RetryAfter + time.Second - 1) / time.Second)
 	if seconds < 1 {
