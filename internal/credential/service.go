@@ -438,7 +438,7 @@ func (s *Service) advance(ctx context.Context, sub Subject, id string, a Answer,
 		Challenge: publicChallenge(st.Challenge, rec.ID, rec.ExpiresAt), Answer: a}
 	res, perr := p.Continue(ctx, s.penv, req)
 	if perr != nil {
-		return s.failed(ctx, claimed, d, a, saved, perr)
+		return s.failed(ctx, claimed, d, a, saved, perr, isAnswer)
 	}
 	out, err := s.complete(ctx, subject, d, base, res, true, &claimed)
 	if err != nil {
@@ -469,9 +469,15 @@ func (s *Service) release(ctx context.Context, claimed ChallengeRecord) {
 }
 
 // failed handles an error from Continue.
-func (s *Service) failed(ctx context.Context, claimed ChallengeRecord, d Descriptor, a Answer, saved []byte, perr error) (Result, error) {
+func (s *Service) failed(ctx context.Context, claimed ChallengeRecord, d Descriptor, a Answer, saved []byte, perr error, isAnswer bool) (Result, error) {
 	switch {
 	case errors.Is(perr, ErrAnswerRejected):
+		if !isAnswer {
+			// An external authorization was declined while polling; it is not a failed credential answer.
+			_ = s.chal.Delete(ctx, claimed.ID)
+			s.dropLive(claimed.ID)
+			return Result{}, ErrAnswerRejected
+		}
 		subject := Subject{Scope: claimed.Scope, OwnerID: claimed.OwnerID}
 		userKey, idpKey := attemptKeys(subject, d)
 		wait, limitErr := s.attempts.Fail(ctx, userKey, idpKey, s.now(), AttemptWindow,
