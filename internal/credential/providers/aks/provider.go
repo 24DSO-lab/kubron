@@ -120,14 +120,14 @@ func (p *Provider) Begin(ctx context.Context, env credential.Env, req credential
 	case "devicecode":
 		return startDevice(ctx, env, c)
 	case "spn":
-		if c.secret == "" { return credential.Result{Challenge: &credential.Challenge{Kind: credential.ChallengeCredentials, Fields: []credential.Field{{Name: "clientSecret", Secret: true}}}}, nil }
+		if c.secret == "" { return credential.Result{Challenge: &credential.Challenge{Kind: credential.ChallengeCredentials, Fields: []credential.Field{{Name: "clientSecret", Secret: true}}}}, Pending: encodePending(pending{Tenant: c.tenant}), nil }
 		tok, e := clientCredentials(ctx, env.HTTP, c, now(env))
 		if e != nil { return credential.Result{}, e }
 		return credential.Result{Token: &tok, Save: encodeSaved(c, "")}, nil
 	case "ropc":
 		if c.username == "" || c.password == "" {
 			return credential.Result{Challenge: &credential.Challenge{Kind: credential.ChallengeCredentials,
-				Fields: []credential.Field{{Name:"username"}, {Name:"password", Secret:true}}}}, nil
+				Fields: []credential.Field{{Name:"username"}, {Name:"password", Secret:true}}}}, Pending: encodePending(pending{Tenant: c.tenant}), nil
 		}
 		tok, rt, e := passwordGrant(ctx, env.HTTP, c, c.username, c.password, now(env))
 		if e != nil { return credential.Result{}, e }
@@ -146,7 +146,7 @@ func (p *Provider) beginConfigured(ctx context.Context, env credential.Env, req 
 		tok, err := clientCredentials(ctx, env.HTTP, c, now(env)); if err != nil { return credential.Result{}, err }
 		return credential.Result{Token: &tok, Save: encodeSaved(c, "")}, nil
 	case "ropc":
-		return credential.Result{Challenge: &credential.Challenge{Kind: credential.ChallengeCredentials, Fields: []credential.Field{{Name: "username"}, {Name: "password", Secret: true}}}}, nil
+		return credential.Result{Challenge: &credential.Challenge{Kind: credential.ChallengeCredentials, Fields: []credential.Field{{Name: "username"}, {Name: "password", Secret: true}}}}, Pending: encodePending(pending{Tenant: c.tenant}), nil
 	default:
 		return credential.Result{}, credential.ErrUnsupported
 	}
@@ -155,6 +155,9 @@ func (p *Provider) beginConfigured(ctx context.Context, env credential.Env, req 
 func (p *Provider) Continue(ctx context.Context, env credential.Env, req credential.Request) (credential.Result, error) {
 	c, err := parseConfig(req.Descriptor)
 	if err != nil { return credential.Result{}, err }
+	var prior pending
+	_ = json.Unmarshal(req.Pending, &prior)
+	if c.tenant == "" { c.tenant = prior.Tenant }
 	switch req.Challenge.Kind {
 	case credential.ChallengeCredentials:
 		if c.tenant == "" {
@@ -183,7 +186,7 @@ func (p *Provider) Continue(ctx context.Context, env credential.Env, req credent
 
 func startDevice(ctx context.Context, env credential.Env, c config) (credential.Result, error) {
 	if env.HTTP == nil { return credential.Result{}, credential.ErrUnsupported }
-	form := url.Values{"client_id":{c.clientID}, "scope":{scope(c)}}
+	form := url.Values{"client_id":{c.clientID}, "scope":{scope(c)+" offline_access"}}
 	body, status, err := post(ctx, env.HTTP, c.authority+"/"+url.PathEscape(c.tenant)+"/oauth2/v2.0/devicecode", form)
 	if err != nil { return credential.Result{}, errHTTP }
 	if status < 200 || status >= 300 { return credential.Result{}, errResponse }
@@ -199,6 +202,7 @@ func startDevice(ctx context.Context, env credential.Env, c config) (credential.
 func pollDevice(ctx context.Context, env credential.Env, req credential.Request, c config) (credential.Result, error) {
 	var st pending
 	if json.Unmarshal(req.Pending, &st) != nil || st.DeviceCode == "" || !safeHTTPS(st.TokenURL) { return credential.Result{}, credential.ErrChallengeExpired }
+	c.tenant = st.Tenant
 	n := now(env)
 	if !n.Before(st.Expires) { return credential.Result{}, credential.ErrChallengeExpired }
 	if n.Before(st.Next) { return credential.Result{Challenge:&req.Challenge, Pending:req.Pending}, nil }
@@ -266,6 +270,7 @@ func parseToken(b []byte,n time.Time)(credential.Token,string,error){
 	if len(principal)>256 {principal=""}
 	return credential.Token{Value:v.Access,Expiry:n.Add(time.Duration(v.Expires)*time.Second),Principal:principal},v.Refresh,nil
 }
+func encodePending(p pending) []byte { b, _ := json.Marshal(p); return b }
 func encodeSaved(c config,rt string) []byte { if rt=="" && c.secret=="" { return nil }; b,_:=json.Marshal(saved{Tenant:c.tenant,ClientID:c.clientID,RefreshToken:rt,ClientSecret:c.secret});return b }
 func decodeSaved(b []byte)*saved{if len(b)==0{return nil};var s saved;if json.Unmarshal(b,&s)!=nil||(s.RefreshToken==""&&s.ClientSecret==""){return nil};return &s}
 func now(e credential.Env)time.Time{if e.Now!=nil{return e.Now()};return time.Now()}

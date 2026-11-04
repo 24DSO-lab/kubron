@@ -59,17 +59,17 @@ func TestDeviceCodeFlowAndSlowDown(t *testing.T) {
 	if done.Token.Principal != "audit-id" || string(done.Save) == "" || !strings.Contains(string(done.Save), "rotated") { t.Fatalf("token/save=%+v %s", done.Token, done.Save) }
 }
 
-func TestAuthorityHostMustBeHTTPSAndRootOnly(t *testing.T) {
-	for _, host := range []string{"http://127.0.0.1", "https://127.0.0.1/metadata", "https://user:pass@example.com", "file:///etc/passwd"} {
-		_, err := parseConfig(credential.Descriptor{Params: map[string]string{"authority-host": host}})
-		if !errors.Is(err, credential.ErrUnsupported) { t.Fatalf("%q: %v", host, err) }
-	}
-}
-
 func TestTenantIsRequestedRatherThanDefaulted(t *testing.T) {
 	res, err := New().Begin(context.Background(), credential.Env{}, credential.Request{Descriptor: credential.Descriptor{Kind: credential.KindAKS}})
 	if err != nil || res.Challenge == nil || len(res.Challenge.Fields) != 1 || res.Challenge.Fields[0].Name != "tenantId" {
 		t.Fatalf("res=%+v err=%v", res, err)
+	}
+}
+
+func TestAuthorityHostMustBeHTTPSAndRootOnly(t *testing.T) {
+	for _, host := range []string{"http://127.0.0.1", "https://127.0.0.1/metadata", "https://user:pass@example.com", "file:///etc/passwd"} {
+		_, err := parseConfig(credential.Descriptor{Params: map[string]string{"authority-host": host}})
+		if !errors.Is(err, credential.ErrUnsupported) { t.Fatalf("%q: %v", host, err) }
 	}
 }
 
