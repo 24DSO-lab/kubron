@@ -100,8 +100,4 @@ func EnforceAccess(v *App) bool {
 		return true
 	}
 	return false
-	v.endSessionResources()
-	v.k8sMgr.Detach()
-	v.k8sMgr.Notify(EventClusterAccessRevoked, id)
-	return true
 }
