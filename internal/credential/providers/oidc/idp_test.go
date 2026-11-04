@@ -89,7 +89,11 @@ type fakeIdP struct {
 	lastRefresh   string
 	badEndpoint   string // name of a discovery endpoint (auth, token, jwks, device) that points at a forbidden address
 	noSub         bool
-	nonceOverride string // nonce put into ID tokens of the code flow instead of the requested one
+	deviceRefuse  bool          // the device endpoint is advertised but answers unauthorized_client
+	deviceTTL     time.Duration // real lifetime of device codes (default 10 minutes)
+	deviceEvery   time.Duration // real minimum polling interval (default 5 seconds; always advertised as 5)
+	deviceURI     string        // verification_uri override
+	nonceOverride string        // nonce put into ID tokens of the code flow instead of the requested one
 	noIDToken     bool
 	tokenIssuer   string        // issuer inside ID tokens only
 	ttl           time.Duration // lifetime of ID tokens (default 5 minutes)
@@ -244,7 +248,10 @@ func (f *fakeIdP) pollDevice(w http.ResponseWriter, code string) {
 	case now.After(dg.expires):
 		writeJSON(w, 400, map[string]string{"error": "expired_token"})
 	case !dg.lastPoll.IsZero() && now.Sub(dg.lastPoll) < dg.interval:
-		dg.interval += 5 * time.Second
+		if !dg.slowDownPenaltyDone { // the provider asks for 5 seconds more, once
+			dg.interval += 5 * time.Second
+			dg.slowDownPenaltyDone = true
+		}
 		dg.lastPoll = now
 		writeJSON(w, 400, map[string]string{"error": "slow_down"})
 	case dg.denied:
@@ -261,7 +268,7 @@ func (f *fakeIdP) pollDevice(w http.ResponseWriter, code string) {
 func (f *fakeIdP) device(w http.ResponseWriter, r *http.Request) {
 	_ = r.ParseForm()
 	f.forms = append(f.forms, r.PostForm)
-	if !f.deviceEnabled {
+	if !f.deviceEnabled || f.deviceRefuse {
 		writeJSON(w, 400, map[string]string{"error": "unauthorized_client"})
 		return
 	}
@@ -270,10 +277,21 @@ func (f *fakeIdP) device(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	code := f.next("device")
-	f.devices[code] = &deviceGrant{expires: f.clock.Now().Add(10 * time.Minute), interval: 5 * time.Second}
+	ttl, every := f.deviceTTL, f.deviceEvery
+	if ttl == 0 {
+		ttl = 10 * time.Minute
+	}
+	if every == 0 {
+		every = 5 * time.Second
+	}
+	f.devices[code] = &deviceGrant{expires: f.clock.Now().Add(ttl), interval: every}
+	uri, complete := f.issuer()+"/device-login", f.issuer()+"/device-login?user_code=ABCD-EFGH"
+	if f.deviceURI != "" {
+		uri, complete = f.deviceURI, ""
+	}
 	writeJSON(w, 200, map[string]any{
-		"device_code": code, "user_code": "ABCD-EFGH", "verification_uri": f.issuer() + "/device-login",
-		"verification_uri_complete": f.issuer() + "/device-login?user_code=ABCD-EFGH", "expires_in": 600, "interval": 5,
+		"device_code": code, "user_code": "ABCD-EFGH", "verification_uri": uri,
+		"verification_uri_complete": complete, "expires_in": 600, "interval": 5,
 	})
 }
 

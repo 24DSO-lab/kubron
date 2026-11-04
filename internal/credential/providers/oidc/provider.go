@@ -107,6 +107,8 @@ func (p *Provider) Continue(ctx context.Context, env credential.Env, req credent
 		return s.continuePaste(ctx, req, sv)
 	case credential.ChallengeBrowserLoopback:
 		return s.continueLoopback(ctx, req, sv)
+	case credential.ChallengeDeviceCode:
+		return s.continueDevice(ctx, req, sv)
 	default:
 		return credential.Result{}, credential.ErrUnsupported
 	}
@@ -174,6 +176,20 @@ func rejected(err error) bool {
 	return c == "invalid_grant" || c == "access_denied"
 }
 
+// startRemote is the order for a user whose browser cannot reach this process: the device flow when the
+// provider offers it to this client (RFC 8628), otherwise the user pastes the redirect address. On the
+// desktop the last resort is the local listener, which is better than pasting.
+func (s *session) startRemote(ctx context.Context) (credential.Result, error) {
+	res, err := s.startDevice(ctx)
+	if !errors.Is(err, errDeviceUnavailable) {
+		return res, err
+	}
+	if s.env.Desktop {
+		return s.startLoopback(ctx)
+	}
+	return s.startPaste(ctx)
+}
+
 // interactive starts the flow of the grant when nothing saved was enough.
 func (s *session) interactive(ctx context.Context, req credential.Request, sv *saved) (credential.Result, error) {
 	switch s.cfg.grant {
@@ -185,7 +201,9 @@ func (s *session) interactive(ctx context.Context, req credential.Request, sv *s
 		if s.env.Desktop {
 			return s.startLoopback(ctx)
 		}
-		return s.startPaste(ctx) // a web server cannot receive the redirect of the user's browser
+		return s.startRemote(ctx)
+	case grantDeviceCode:
+		return s.startRemote(ctx)
 	default:
 		return credential.Result{}, credential.ErrUnsupported
 	}

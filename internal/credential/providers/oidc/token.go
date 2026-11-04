@@ -60,8 +60,9 @@ func (s *session) useBasic(d *discovery) bool {
 	return slices.Contains(d.AuthMethods, "client_secret_basic")
 }
 
-// post sends a form to a provider endpoint with the client authentication and parses the answer.
-func (s *session) post(ctx context.Context, d *discovery, endpoint string, form url.Values) (*tokenResponse, error) {
+// postRaw sends a form to a provider endpoint with the client authentication. A 2xx answer is returned as it
+// is; anything else is an *oauthError with the error code of the answer.
+func (s *session) postRaw(ctx context.Context, d *discovery, endpoint string, form url.Values) ([]byte, error) {
 	basic := s.cfg.clientSecret != "" && s.useBasic(d)
 	if !basic {
 		form.Set("client_id", s.cfg.clientID)
@@ -92,6 +93,15 @@ func (s *session) post(ctx context.Context, d *discovery, endpoint string, form 
 		}
 		_ = json.Unmarshal(body, &e)
 		return nil, &oauthError{code: e.Error}
+	}
+	return body, nil
+}
+
+// post is postRaw for endpoints that answer with tokens.
+func (s *session) post(ctx context.Context, d *discovery, endpoint string, form url.Values) (*tokenResponse, error) {
+	body, err := s.postRaw(ctx, d, endpoint, form)
+	if err != nil {
+		return nil, err
 	}
 	var tr tokenResponse
 	if err := json.Unmarshal(body, &tr); err != nil {

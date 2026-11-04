@@ -20,6 +20,7 @@ import (
 const (
 	flowLoopback = "loopback"
 	flowPaste    = "paste"
+	flowDevice   = "device"
 
 	maxPastedURL = 8 << 10
 )
@@ -34,6 +35,12 @@ type pending struct {
 	Verifier    string `json:"verifier,omitempty"`
 	RedirectURI string `json:"redirectUri,omitempty"`
 	LoopID      string `json:"loopId,omitempty"`
+
+	// device flow
+	DeviceCode string    `json:"deviceCode,omitempty"`
+	Interval   int       `json:"interval,omitempty"` // seconds between polls
+	Expires    time.Time `json:"expires,omitzero"`   // the device code stops working
+	NextPoll   time.Time `json:"nextPoll,omitzero"`  // the earliest next request to the provider
 }
 
 func (p pending) encode() []byte {

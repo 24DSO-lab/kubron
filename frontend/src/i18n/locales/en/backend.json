@@ -652,6 +652,7 @@
   "credOIDCStateMismatch": "the sign-in response does not match the request",
   "credOIDCAuthorizationDenied": "the identity provider denied the sign-in request",
   "credOIDCRedirectInvalid": "the pasted address is not a valid sign-in response",
-  "credOIDCListenFailed": "the local sign-in listener could not be started"
+  "credOIDCListenFailed": "the local sign-in listener could not be started",
+  "credOIDCDeviceUnavailable": "the identity provider does not offer the device sign-in"
 
 }
