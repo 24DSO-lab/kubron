@@ -4,8 +4,9 @@
 import { expect, test, type Page, type Route } from '@playwright/test'
 
 // Сценарии диалога входа (ADR-0018, A.5) на мок-RPC: бэкенд нового контракта не нужен. Администратор
-// e2e-admin создаётся smoke.spec.ts (файл идёт раньше по алфавиту). Проверка по data-testid и ролям,
-// не по тексту. ConnectCluster, AnswerChallenge, PollChallenge, CancelChallenge, ListMyConnections и
+// e2e-admin создаёт smoke.spec.ts, а Playwright берёт файлы по алфавиту, поэтому имя файла начинается с
+// «zz-»: он должен идти ПОСЛЕ smoke.spec.ts (как two-users и web-csp). Не переименовывайте его на имя,
+// которое стоит раньше «smoke». Проверка по data-testid и ролям, не по тексту. ConnectCluster, AnswerChallenge, PollChallenge, CancelChallenge, ListMyConnections и
 // DisconnectCluster подменяются через page.route; остальные вызовы идут на настоящий сервер.
 test.describe.configure({ mode: 'serial' })
 
@@ -42,9 +43,12 @@ async function mockRpc(page: Page, replies: Record<string, Reply>): Promise<Mock
 async function openClusterWithMocks(page: Page, replies: Record<string, Reply>): Promise<Mock> {
   const mock = await mockRpc(page, { GetClusterStatuses: [CLUSTER], ...replies })
   await page.goto('/')
+  // Нет экрана входа — администратор не создан: smoke.spec.ts не отработал (см. комментарий в начале файла)
+  await expect(page.getByRole('heading', { name: 'Вход', exact: true })).toBeVisible()
   await page.locator('input[autocomplete=username]').fill(USER)
   await page.locator('input[autocomplete=current-password]').fill(PASSWORD)
-  await page.locator('form button[type=submit]').click()
+  await page.getByRole('button', { name: 'Войти' }).click()
+  await expect(page.getByRole('heading', { name: 'Вход', exact: true })).toHaveCount(0)
   await page.locator('.cluster-icon-wrap').first().click()
   return mock
 }
