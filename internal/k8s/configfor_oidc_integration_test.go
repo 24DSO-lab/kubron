@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
@@ -22,6 +23,7 @@ import (
 // same stored kubeconfig and the same cluster endpoint. The Keycloak/kind gate exercises
 // the real issuer and API-server authenticator; this test stays fast and deterministic.
 func TestOIDCViewsUseTheirOwnIdentityAtTheAPI(t *testing.T) {
+	var seenMu sync.Mutex
 	var seen []string
 	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/api/v1/namespaces" {
@@ -29,7 +31,9 @@ func TestOIDCViewsUseTheirOwnIdentityAtTheAPI(t *testing.T) {
 			return
 		}
 		identity := r.Header.Get("Authorization")
+		seenMu.Lock()
 		seen = append(seen, identity)
+		seenMu.Unlock()
 
 		var namespace string
 		switch identity {
@@ -97,6 +101,8 @@ func TestOIDCViewsUseTheirOwnIdentityAtTheAPI(t *testing.T) {
 	if got := listNamespaces("bob"); len(got) != 1 || got[0] != "bob-only" {
 		t.Fatalf("bob saw namespaces %v, want [bob-only]", got)
 	}
+	seenMu.Lock()
+	defer seenMu.Unlock()
 	if len(seen) != 2 || seen[0] != "Bearer "+canary+"-alice" || seen[1] != "Bearer "+canary+"-bob" {
 		t.Fatalf("API server saw identities %v", seen)
 	}
