@@ -4,10 +4,11 @@
 /**
  * Вход в кластер: RPC и события (контракт internal/credential, ADR-0018). Единственное место, где
  * фронтенд обращается к методам ConnectCluster / AnswerChallenge / PollChallenge / CancelChallenge /
- * ListMyConnections / DisconnectCluster. Привязки Wails для них появляются вместе с бэкендом, поэтому
- * вызов идёт без проверки имени по App.d.ts (вход аргументов и результата описан в types/credential.ts).
+ * ListMyConnections / DisconnectCluster. Имена методов и аргументы проверяет vue-tsc по сгенерированным
+ * привязкам Wails (wailsjs/go/main/App.d.ts); результат приводится к типам из types/credential.ts, потому что
+ * Wails описывает time.Time и строковые перечисления Go как any и string.
  */
-import { callApp, type AppMethod } from './api'
+import { callApp } from './api'
 import { onEvent, type Unsubscribe } from './events'
 import type {
   AuthCompletedEvent, AuthRequiredEvent, ChallengeValues, ConnectionInfo, ConnectResult,
@@ -16,33 +17,29 @@ import type {
 export const EVENT_AUTH_COMPLETED = 'cluster:auth-completed'
 export const EVENT_AUTH_REQUIRED = 'cluster:auth-required'
 
-type LooseCall = (fn: AppMethod, ...args: unknown[]) => Promise<unknown>
-const call = callApp as unknown as LooseCall
-const method = (name: string) => name as AppMethod
-
 export async function connectCluster(clusterId: string): Promise<ConnectResult> {
-  return (await call(method('ConnectCluster'), clusterId)) as ConnectResult
+  return (await callApp('ConnectCluster', clusterId)) as unknown as ConnectResult
 }
 
 /** Ответ на вызов. Возвращает следующий шаг: новый вызов или connected. */
 export async function answerChallenge(challengeId: string, values: ChallengeValues): Promise<ConnectResult> {
-  return (await call(method('AnswerChallenge'), challengeId, values)) as ConnectResult
+  return (await callApp('AnswerChallenge', challengeId, values)) as unknown as ConnectResult
 }
 
 export async function pollChallenge(challengeId: string): Promise<ConnectResult> {
-  return (await call(method('PollChallenge'), challengeId)) as ConnectResult
+  return (await callApp('PollChallenge', challengeId)) as unknown as ConnectResult
 }
 
 export async function cancelChallenge(challengeId: string): Promise<void> {
-  await call(method('CancelChallenge'), challengeId)
+  await callApp('CancelChallenge', challengeId)
 }
 
 export async function listMyConnections(): Promise<ConnectionInfo[]> {
-  return ((await call(method('ListMyConnections'))) as ConnectionInfo[] | null) ?? []
+  return ((await callApp('ListMyConnections')) as unknown as ConnectionInfo[] | null) ?? []
 }
 
 export async function disconnectCluster(clusterId: string): Promise<void> {
-  await call(method('DisconnectCluster'), clusterId)
+  await callApp('DisconnectCluster', clusterId)
 }
 
 export function onAuthCompleted(handler: (e: AuthCompletedEvent) => void): Unsubscribe {
