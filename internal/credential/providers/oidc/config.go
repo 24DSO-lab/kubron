@@ -96,6 +96,9 @@ func newConfig(d credential.Descriptor, sv *saved, desktop bool) (config, error)
 			c.clientID = webClientID
 		}
 		c.webRedirectURL = strings.TrimSpace(p["web.redirect-url"])
+		if c.webRedirectURL != "" && !validWebRedirectURL(c.webRedirectURL) {
+			return config{}, credential.ErrUnsupported
+		}
 	}
 	if c.issuer == "" || c.clientID == "" {
 		return config{}, errConfig
@@ -205,6 +208,27 @@ func parseListen(v string) ([]string, error) {
 		return nil, credential.ErrUnsupported
 	}
 	return out, nil
+}
+
+// validWebRedirectURL accepts only the fixed callback path over HTTPS, or HTTP on loopback.
+// The value normally comes from validated KUBRON_PUBLIC_URL, but is checked again at the provider boundary.
+func validWebRedirectURL(raw string) bool {
+	u, err := url.Parse(raw)
+	if err != nil || u.User != nil || u.Fragment != "" || u.RawQuery != "" || u.Opaque != "" || u.Path != "/auth/cluster/callback" || u.Host == "" {
+		return false
+	}
+	if u.Scheme == "https" {
+		return true
+	}
+	if u.Scheme != "http" {
+		return false
+	}
+	h := strings.Trim(u.Hostname(), "[]")
+	if strings.EqualFold(h, "localhost") {
+		return true
+	}
+	ip := net.ParseIP(h)
+	return ip != nil && ip.IsLoopback()
 }
 
 // validHost accepts a bare host name or IP for the redirect URL.
