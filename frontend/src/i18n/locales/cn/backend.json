@@ -648,6 +648,10 @@
   "credOIDCNonceMismatch": "ID 令牌中的 nonce 不匹配",
   "credOIDCSignInStateInvalid": "登录状态无效",
   "credOIDCAddressNotAllowed": "不允许使用该地址",
-  "credOIDCIssuerMixup": "登录响应来自意外的颁发者"
+  "credOIDCIssuerMixup": "登录响应来自意外的颁发者",
+  "credOIDCStateMismatch": "登录响应与请求不匹配",
+  "credOIDCAuthorizationDenied": "身份提供商拒绝了登录请求",
+  "credOIDCRedirectInvalid": "粘贴的地址不是有效的登录响应",
+  "credOIDCListenFailed": "无法启动本地登录监听器"
 
 }

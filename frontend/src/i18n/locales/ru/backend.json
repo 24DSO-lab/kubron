@@ -648,6 +648,10 @@
   "credOIDCNonceMismatch": "nonce в ID-токене не совпадает",
   "credOIDCSignInStateInvalid": "состояние входа повреждено",
   "credOIDCAddressNotAllowed": "адрес не разрешён",
-  "credOIDCIssuerMixup": "ответ входа получен от неожиданного издателя"
+  "credOIDCIssuerMixup": "ответ входа получен от неожиданного издателя",
+  "credOIDCStateMismatch": "ответ входа не соответствует запросу",
+  "credOIDCAuthorizationDenied": "поставщик удостоверений отклонил запрос на вход",
+  "credOIDCRedirectInvalid": "вставленный адрес не является корректным ответом входа",
+  "credOIDCListenFailed": "не удалось запустить локальный приём ответа входа"
 
 }

@@ -27,7 +27,8 @@ type randSource = io.Reader
 
 // Provider implements credential.Provider for credential.KindOIDC.
 type Provider struct {
-	rand randSource
+	rand  randSource
+	loops loopbackRegistry
 }
 
 // Option configures New.
@@ -102,6 +103,10 @@ func (p *Provider) Continue(ctx context.Context, env credential.Env, req credent
 	switch req.Challenge.Kind {
 	case credential.ChallengeCredentials:
 		return s.continueCredentials(ctx, req, sv)
+	case credential.ChallengePasteRedirect:
+		return s.continuePaste(ctx, req, sv)
+	case credential.ChallengeBrowserLoopback:
+		return s.continueLoopback(ctx, req, sv)
 	default:
 		return credential.Result{}, credential.ErrUnsupported
 	}
@@ -174,6 +179,13 @@ func (s *session) interactive(ctx context.Context, req credential.Request, sv *s
 	switch s.cfg.grant {
 	case grantPassword:
 		return s.startPassword(ctx, req, sv)
+	case grantAuthcodeKeyboard:
+		return s.startPaste(ctx)
+	case grantAuthcode:
+		if s.env.Desktop {
+			return s.startLoopback(ctx)
+		}
+		return s.startPaste(ctx) // a web server cannot receive the redirect of the user's browser
 	default:
 		return credential.Result{}, credential.ErrUnsupported
 	}

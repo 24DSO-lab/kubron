@@ -39,6 +39,7 @@ type session struct {
 	opts idpnet.Options
 	now  func() time.Time
 	rand randSource
+	p    *Provider
 	disc *discovery
 }
 
@@ -62,7 +63,7 @@ func (p *Provider) newSession(env credential.Env, cfg config) (*session, error) 
 	if now == nil {
 		now = time.Now
 	}
-	return &session{cfg: cfg, env: env, hc: hc, opts: opts, now: now, rand: p.rand}, nil
+	return &session{cfg: cfg, env: env, hc: hc, opts: opts, now: now, rand: p.rand, p: p}, nil
 }
 
 // discover fetches the provider metadata once per session and checks it: the issuer must be the configured

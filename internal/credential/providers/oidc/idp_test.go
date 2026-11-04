@@ -89,6 +89,7 @@ type fakeIdP struct {
 	lastRefresh   string
 	badEndpoint   string // name of a discovery endpoint (auth, token, jwks, device) that points at a forbidden address
 	noSub         bool
+	nonceOverride string // nonce put into ID tokens of the code flow instead of the requested one
 	noIDToken     bool
 	tokenIssuer   string        // issuer inside ID tokens only
 	ttl           time.Duration // lifetime of ID tokens (default 5 minutes)
@@ -345,8 +346,15 @@ func (f *fakeIdP) authorize(authURL, user string) string {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	code := f.next("code")
-	f.codes[code] = &authCode{user: user, nonce: q.Get("nonce"), challenge: q.Get("code_challenge"), redirect: q.Get("redirect_uri")}
+	nonce := q.Get("nonce")
+	if f.nonceOverride != "" {
+		nonce = f.nonceOverride
+	}
+	f.codes[code] = &authCode{user: user, nonce: nonce, challenge: q.Get("code_challenge"), redirect: q.Get("redirect_uri")}
 	back, _ := url.Parse(q.Get("redirect_uri"))
+	if back.Path == "" {
+		back.Path = "/" // a browser shows the empty path as "/"
+	}
 	bq := back.Query()
 	bq.Set("code", code)
 	bq.Set("state", q.Get("state"))

@@ -648,6 +648,10 @@
   "credOIDCNonceMismatch": "the ID token nonce does not match",
   "credOIDCSignInStateInvalid": "the sign-in state is invalid",
   "credOIDCAddressNotAllowed": "the address is not allowed",
-  "credOIDCIssuerMixup": "the sign-in response came from an unexpected issuer"
+  "credOIDCIssuerMixup": "the sign-in response came from an unexpected issuer",
+  "credOIDCStateMismatch": "the sign-in response does not match the request",
+  "credOIDCAuthorizationDenied": "the identity provider denied the sign-in request",
+  "credOIDCRedirectInvalid": "the pasted address is not a valid sign-in response",
+  "credOIDCListenFailed": "the local sign-in listener could not be started"
 
 }
