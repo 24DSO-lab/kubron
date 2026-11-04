@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -335,6 +336,18 @@ func (s *Service) storeChallenge(ctx context.Context, sub Subject, d Descriptor,
 	if err != nil {
 		return Challenge{}, err
 	}
+	if res.Challenge.Kind == ChallengeBrowserCallback {
+		// Use the broker-generated, session-bound challenge ID as OAuth state. This lets any replica
+		// route the IdP redirect to the shared challenge store without keeping process-local state.
+		u, err := url.Parse(res.Challenge.URL)
+		if err != nil {
+			return Challenge{}, ErrUnsupported
+		}
+		q := u.Query()
+		q.Set("state", id)
+		u.RawQuery = q.Encode()
+		res.Challenge.URL = u.String()
+	}
 	pub := publicChallenge(*res.Challenge, id, exp)
 	blob, keyID, err := s.seal(id, pendingState{Descriptor: d, Pending: res.Pending, Challenge: pub})
 	if err != nil {
@@ -390,6 +403,37 @@ func (s *Service) load(ctx context.Context, sub Subject, id string) (ChallengeRe
 // Answer implements Broker: the user's answer to a challenge.
 func (s *Service) Answer(ctx context.Context, sub Subject, challengeID string, a Answer) (Result, error) {
 	return s.advance(ctx, sub, challengeID, a, true)
+}
+
+// CallbackSubject resolves a browser callback only when the challenge belongs to this user and web session.
+// Unknown, expired, foreign and non-callback challenges deliberately have the same error.
+func (s *Service) CallbackSubject(ctx context.Context, ownerID, sessionID, challengeID string) (Subject, error) {
+	if ownerID == "" || sessionID == "" || challengeID == "" {
+		return Subject{}, ErrChallengeExpired
+	}
+	rec, err := s.load(ctx, Subject{OwnerID: ownerID, SessionID: sessionID}, challengeID)
+	if err != nil {
+		return Subject{}, ErrChallengeExpired
+	}
+	st, err := s.open(rec)
+	if err != nil || st.Challenge.Kind != ChallengeBrowserCallback {
+		return Subject{}, ErrChallengeExpired
+	}
+	return Subject{ClusterID: rec.ClusterID, Scope: rec.Scope, OwnerID: rec.OwnerID, SessionID: rec.SessionID}, nil
+}
+
+// AnswerCallback submits the complete redirect URL. The challenge is claimed and consumed by the same
+// compare-and-swap path as ordinary answers, so replay and concurrent callbacks cannot complete twice.
+func (s *Service) AnswerCallback(ctx context.Context, sub Subject, challengeID, redirectURL string) (Result, error) {
+	rec, err := s.load(ctx, sub, challengeID)
+	if err != nil {
+		return Result{}, ErrChallengeExpired
+	}
+	st, err := s.open(rec)
+	if err != nil || st.Challenge.Kind != ChallengeBrowserCallback {
+		return Result{}, ErrChallengeExpired
+	}
+	return s.Answer(ctx, sub, challengeID, Answer{"redirectUrl": redirectURL})
 }
 
 // Poll implements Broker: asks whether an out-of-band sign-in (device code, browser) has finished.
