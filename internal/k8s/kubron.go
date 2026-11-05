@@ -150,7 +150,7 @@ func AddClusterFromFile(sourcePath string, settings ClusterSettings) (*ClusterMe
 		return nil, err
 	}
 
-	return addClusterFromData(data, settings, "", nil)
+	return addClusterFromData(data, settings, "")
 }
 
 // AddClusterFromText регистрирует кластер по тексту kubeconfig.
