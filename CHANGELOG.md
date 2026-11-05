@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- **Manual Kubernetes tokens:** an unverified JWT `sub` is no longer presented as an authenticated Kubernetes principal in audit or connection details. The API server remains the authority for token validation; the unverified `exp` is used only as a cache hint.
+
 ### Changed
 
 - **Cluster authentication docs:** updated the English and Russian user guides to describe the implemented credential broker, OIDC and AKS sign-in modes, Desktop exec confirmation, Web manual-token fallback and unsupported Azure modes.
