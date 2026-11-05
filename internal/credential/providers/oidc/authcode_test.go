@@ -281,7 +281,7 @@ func TestPasteRedirect(t *testing.T) {
 			"another host": {strings.Replace(good, "localhost:8000", "evil.example.com", 1), credential.ErrInvalidAnswer},
 			"another path": {strings.Replace(good, "8000/", "8000/other", 1), credential.ErrInvalidAnswer},
 			"wrong state":  {redirectWith(good, "state", "forged"), credential.ErrAnswerRejected},
-			"wrong issuer": {redirectWith(good, "iss", "https://evil.example.test"), credential.ErrAnswerRejected},
+			"wrong issuer": {redirectWith(good, "iss", "https://evil.example.test"), credential.ErrInvalidGrant},
 			"no code":      {redirectWith(good, "code", ""), credential.ErrInvalidAnswer},
 			"not a url":    {"%%%", credential.ErrInvalidAnswer},
 			"empty":        {"", credential.ErrInvalidAnswer},

@@ -429,6 +429,7 @@ func (s *Service) CallbackSubject(ctx context.Context, sessionID, challengeID st
 	}
 	return Subject{ClusterID: rec.ClusterID, Scope: rec.Scope, OwnerID: rec.OwnerID, SessionID: rec.SessionID}, st.Descriptor, nil
 }
+
 // AnswerCallback submits the complete redirect URL. The challenge is claimed and consumed by the same
 // compare-and-swap path as ordinary answers, so replay and concurrent callbacks cannot complete twice.
 func (s *Service) AnswerCallback(ctx context.Context, sub Subject, challengeID, redirectURL string) (Result, error) {
