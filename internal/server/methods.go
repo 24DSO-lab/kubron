@@ -34,7 +34,6 @@ var allowedMethods = []string{
 	"ClearHelmOperations",
 	"ChangePassword",
 	"CloseTerminal",
-	"ConnectToCluster",
 	"ConnectCluster",
 	"AnswerChallenge",
 	"PollChallenge",

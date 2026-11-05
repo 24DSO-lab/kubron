@@ -49,14 +49,3 @@ export function onAuthCompleted(handler: (e: AuthCompletedEvent) => void): Unsub
 export function onAuthRequired(handler: (e: AuthRequiredEvent) => void): Unsubscribe {
   return onEvent(EVENT_AUTH_REQUIRED, handler)
 }
-
-/**
- * Бэкенд ещё без нового контракта (метод не найден): вызывающий откатывается на ConnectToCluster.
- * Решение принимается по коду и статусу, не по тексту сообщения (docs/i18n.md).
- */
-export function isMethodMissing(e: unknown): boolean {
-  const err = e as { code?: string; status?: number; message?: string } | null
-  if (err?.status === 404 || err?.code === 'not_found' || err?.code === 'unknown_method') return true
-  // Десктоп: api.ts бросает Error, если функции нет в привязках
-  return typeof err?.message === 'string' && err.message.endsWith('is not available in the Go bindings')
-}

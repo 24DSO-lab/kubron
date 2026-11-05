@@ -353,29 +353,6 @@ func TestChallengeBelongsToTheSessionThatStartedIt(t *testing.T) {
 	}
 }
 
-// The old client gets a typed error, the pending request is cancelled, nothing is connected.
-func TestLegacyConnectToClusterReturnsTypedErrorOnChallenge(t *testing.T) {
-	b := &fakeBroker{desc: credential.Descriptor{Kind: credential.KindOIDC},
-		acquire: []credential.Result{challenge("c1", credential.ChallengeDeviceCode)}}
-	a, _, id, connected := connectFixture(t, b)
-	err := a.ConnectToCluster(id)
-	var ce *ChallengeRequiredError
-	if !errors.As(err, &ce) || !errors.Is(err, credential.ErrChallengeRequired) || ce.ClusterID != id {
-		t.Fatalf("got %v", err)
-	}
-	if len(*connected) != 0 || len(b.cancels) != 1 {
-		t.Fatalf("connected=%v cancels=%v", *connected, b.cancels)
-	}
-}
-
-func TestLegacyConnectToClusterConnectsWhenNoChallenge(t *testing.T) {
-	b := &fakeBroker{desc: credential.Descriptor{Kind: credential.KindStatic}}
-	a, _, id, connected := connectFixture(t, b)
-	if err := a.ConnectToCluster(id); err != nil || len(*connected) != 1 {
-		t.Fatalf("err=%v connected=%v", err, *connected)
-	}
-}
-
 func TestDisconnectClusterRevokesOnlyThePersonalSignIn(t *testing.T) {
 	b := &fakeBroker{desc: credential.Descriptor{Kind: credential.KindOIDC}}
 	a, _, id, _ := connectFixture(t, b)
