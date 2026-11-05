@@ -217,3 +217,50 @@ func TestCustomCA(t *testing.T) {
 		t.Fatalf("derived client: %v", err)
 	}
 }
+
+func TestWrapClientPreservesTLSAndAddsNetworkGuard(t *testing.T) {
+	requests := 0
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		requests++
+		_, _ = w.Write([]byte("ok"))
+	}))
+	defer srv.Close()
+
+	desktop, err := WrapClient(srv.Client(), true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := get(desktop, srv.URL); err != nil {
+		t.Fatalf("wrapped desktop client must preserve its test CA: %v", err)
+	}
+	if requests != 1 {
+		t.Fatalf("expected one desktop request, got %d", requests)
+	}
+
+	requests = 0
+	web, err := WrapClient(srv.Client(), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := get(web, srv.URL); err == nil || !netpolicy.IsBlocked(err) {
+		t.Fatalf("web client must block loopback before connecting, got %v", err)
+	}
+	if requests != 0 {
+		t.Fatalf("web request reached loopback server: %d", requests)
+	}
+}
+
+func TestWrapClientRejectsCustomRoundTripper(t *testing.T) {
+	base := &http.Client{Transport: roundTripperFunc(func(*http.Request) (*http.Response, error) {
+		return nil, errors.New("unexpected request")
+	})}
+	if _, err := WrapClient(base, true); !errors.Is(err, ErrBadCA) {
+		t.Fatalf("custom transports must fail closed, got %v", err)
+	}
+}
+
+type roundTripperFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripperFunc) RoundTrip(r *http.Request) (*http.Response, error) {
+	return f(r)
+}
