@@ -189,7 +189,7 @@ func (a *App) connect(ctx context.Context, clusterID string) (credential.Connect
 	if err != nil {
 		return credential.ConnectResult{}, err
 	}
-	if plan.Legacy() { // in-cluster: no sign-in
+	if plan.InCluster() { // in-cluster: no sign-in
 		return credential.ConnectResult{Status: "connected"}, a.finishConnect(clusterID)
 	}
 	if a.sessionID != "" && plan.Desc.Kind == credential.KindOIDC {
