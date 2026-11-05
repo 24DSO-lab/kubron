@@ -73,3 +73,29 @@ A.6–A.8 → C.1 → B.3–B.4, B.2 (закрывает «browser sign-in») �
 2. Порядок облачных провайдеров: EKS, GKE, AKS.
 3. Песочницы `exec` в вебе нет и не будет; тикет B.10 снят.
 4. Выбор библиотеки keyring и ключа без PostgreSQL поручен реализатору: см. `docs/decisions/2026-11-02-cluster-auth.md` (ждёт ревью человеком).
+
+## Статус (после фазы 2)
+
+Завершающая серия (ветка `feat/cred-finish`, пункты 1.1–1.7 и 2.1–2.4) выполнена; CI зелёный до 2.4 включительно, для 2.1–2.3 запущен. C.4 (e2e с Keycloak и kind) остаётся открытым. B.1 завершён задачей 2.1: «общая учётная запись команды»
+идёт через брокер (`ModeTeamAccount`, область `team`), старый путь `oidc-password` удалён (2.2–2.4: `ClassifyAuth`, `oidcSecret`, `OIDCCredentials`,
+`verifyOIDCLogin`, `ErrOIDCLoginRequired`, `ErrOIDCAuthCode`, `ErrExecForbidden`, `checkExecAllowed`, `App.ConnectToCluster`, `internal/oidcpassword`, `cmd/oidc-spike`).
+
+Ждёт человека: [B.3 security decision](../decisions/2026-11-04-oidc-browser-callback.md) и решение D-01/D-02. Статус ADR-0018 не менялся.
+Файла `docs/decisions/2026-11-02-cluster-auth.md` в репозитории нет (на него ссылается пункт 4 решений владельца).
+
+### Вторая волна (не входит в текущий релиз)
+
+| Тема | Состояние |
+| --- | --- |
+| B.7a Нативный провайдер AWS EKS | не начат; в вебе работает `manual-token`, на десктопе плагин `aws` после подтверждения |
+| B.7b Нативный провайдер GKE | не начат; то же (`gke-gcloud-auth-plugin`) |
+| B.7c Azure (AKS): остаток | device-code, service principal, ROPC готовы; managed identity, Azure CLI, `azd` и workload identity не поддержаны |
+| `browser-callback` | веб-возврат реализован (PR #155); для десктопа остаётся loopback; финальное решение ждёт ревью |
+| PTY для `interactiveMode: Always` | не сделан: такие плагины на десктопе не запускаются (понятное сообщение) |
+| Удаление читателя прежнего формата и колонки `secret_enc` | `MigrateLegacyOIDC` оставлен без изменений, колонка не удаляется до отдельного решения о миграции данных |
+
+### Известные ограничения
+
+- В вебе ссылки kubeconfig на файлы IdP (CA и т. п.) молча игнорируются, а не отклоняются.
+- Для Dex нужен `offline_access`, IdP по `http` в серверном режиме не работает (см. `docs/deploy.md`, «Вход в кластеры: что настроить в IdP»).
+- Ручная приёмка в веб-режиме на двух kubeconfig (3.1) и e2e с Keycloak и kind (3.2) требуют окружения пользователя и не выполнялись в песочнице.

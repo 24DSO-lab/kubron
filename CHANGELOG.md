@@ -7,7 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Shared team account:** an administrator of a team cluster can choose a shared account in the add/edit dialog. The sign-in is verified by the credential broker (team scope), stored encrypted and used by the whole team; other members are told to ask a cluster administrator. New `ResetClusterSharedAccount` forgets the saved shared sign-in.
+
 ### Changed
+
+- **Cluster sign-in:** all connections go through the credential broker. Without a broker only clusters with static credentials and the in-cluster mode connect. The `exec` block of a kubeconfig is never run by the connection code. The test connection of a kubeconfig that signs in through a plugin checks only the address and TLS.
+- **Cluster dialogs:** the login and password fields for `oidc-login` are removed; sign-in happens in the sign-in dialog.
+
+### Removed
+
+- `internal/oidcpassword`, `cmd/oidc-spike`, `App.ConnectToCluster`, `AddOIDCClusterToTeam`, `SetClusterOIDCCredentials` (and their RPC methods) and the error messages that belonged to them. Clusters saved in the old mode keep working: the stored mode value `oidc-password` now means the shared team account, and `MigrateLegacyOIDC` is unchanged. The `secret_enc` column is kept.
 
 - **Cluster authentication docs:** updated the English and Russian user guides to describe the implemented credential broker, OIDC and AKS sign-in modes, Desktop exec confirmation, Web manual-token fallback and unsupported Azure modes.
 

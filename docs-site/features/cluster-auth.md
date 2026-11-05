@@ -39,6 +39,10 @@ Static credentials remain shared cluster credentials. Interactive credentials ar
 
 Passwords for personal interactive sign-in are not stored. Where a provider supports refresh tokens, Kubron stores the provider's opaque refresh state encrypted.
 
+## Shared team account
+
+For a cluster that belongs to a team and signs in through an identity provider, a cluster administrator can switch on **Shared team account** in the add or edit dialog. The administrator signs in once when connecting; the provider verifies the sign-in and Kubron stores it encrypted for the whole team. Other members connect with it and, until it exists, see "ask a cluster administrator". If the password changed at the provider, use **Forget the shared sign-in** in the cluster settings. Switching the option on or off forgets the saved sign-ins of that cluster.
+
 ## Troubleshooting
 
 - **The sign-in dialog says the mode is unsupported:** check the `users[].user` authentication settings in the selected kubeconfig context. Some cloud modes are intentionally unsupported.
