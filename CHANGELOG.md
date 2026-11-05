@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **OIDC integration coverage:** CI now exercises password, refresh-token rotation, authorization code + PKCE through the paste-redirect flow, device authorization and a real Keycloak-backed kind API server with two isolated Kubernetes RBAC identities.
+- **Credential guidance:** documented per-user refresh-token storage, explicit team-scope password storage, IdP egress/TLS requirements and the actual OIDC redirect flags.
 - **GKE sign-in with a service account key:** a kubeconfig that uses `gke-gcloud-auth-plugin` now asks for a service
   account key (JSON) instead of showing a manual-token command. The key is exchanged for a token with the JWT-bearer
   grant at the fixed Google address and is saved encrypted. The credentials of the server (Application Default
