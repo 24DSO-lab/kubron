@@ -25,6 +25,11 @@ type Config struct {
 	AllowRemote bool
 	// PublicURL — публичный origin сервера для browser-callback (KUBRON_PUBLIC_URL). Пусто — browser-callback выключен.
 	PublicURL string
+	// GKEOAuthClientID и GKEOAuthClientSecret — OAuth-клиент Google для входа пользователя в GKE
+	// (KUBRON_GKE_OAUTH_CLIENT_ID, KUBRON_GKE_OAUTH_CLIENT_SECRET). Без идентификатора вход в GKE идёт только
+	// по ключу сервисного аккаунта. Секрет не логируется и не отдаётся в API.
+	GKEOAuthClientID     string
+	GKEOAuthClientSecret string
 	// AllowedHosts — допустимые значения заголовка Host (KUBRON_ALLOWED_HOSTS, через запятую; allowedhosts.go). Пусто —
 	// проверка выключена. Потоки port-forward (*.pf.<домен>) разрешаются автоматически.
 	AllowedHosts []string
@@ -147,6 +152,8 @@ func LoadConfig(args []string, getenv func(string) string, out io.Writer) (Confi
 	}
 	cfg.AllowRemote = truthy(getenv("KUBRON_ALLOW_REMOTE"))
 	cfg.PublicURL = strings.TrimSpace(getenv("KUBRON_PUBLIC_URL"))
+	cfg.GKEOAuthClientID = strings.TrimSpace(getenv("KUBRON_GKE_OAUTH_CLIENT_ID"))
+	cfg.GKEOAuthClientSecret = strings.TrimSpace(getenv("KUBRON_GKE_OAUTH_CLIENT_SECRET"))
 	cfg.ReplicaID = strings.TrimSpace(getenv("KUBRON_REPLICA_ID"))
 	cfg.MetricsListen = strings.TrimSpace(getenv("KUBRON_METRICS_LISTEN"))
 	cfg.DataDir = getenv("KUBRON_DATA_DIR")
@@ -296,6 +303,9 @@ func truthy(s string) bool {
 func (c Config) Validate() error {
 	if err := validatePublicURL(c.PublicURL); err != nil {
 		return fmt.Errorf("KUBRON_PUBLIC_URL: %w", err)
+	}
+	if c.GKEOAuthClientSecret != "" && c.GKEOAuthClientID == "" {
+		return errors.New("KUBRON_GKE_OAUTH_CLIENT_SECRET is set without KUBRON_GKE_OAUTH_CLIENT_ID")
 	}
 	if c.SessionTTL <= 0 {
 		return errors.New("session lifetime must be positive")

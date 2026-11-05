@@ -6,9 +6,12 @@ package app
 import (
 	"context"
 	"errors"
+	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/24DSO-labs/kubron/internal/credential"
+	"github.com/24DSO-labs/kubron/internal/credential/providers/gke"
 )
 
 const gkeKubeconfig = `apiVersion: v1
@@ -66,5 +69,44 @@ func TestWebBrokerAsksGKEForAServiceAccountKey(t *testing.T) {
 	}
 	if _, err := b.Answer(context.Background(), sub, c.ID, credential.Answer{"serviceAccountJson": "still not a key"}); !errors.Is(err, credential.ErrInvalidAnswer) {
 		t.Fatalf("the request must still be open: err = %v", err)
+	}
+}
+
+// With a Google OAuth client configured a new GKE sign-in is a Google sign-in, and the secret of the client
+// stays out of the address of the browser and out of the public challenge.
+func TestWebBrokerOffersGoogleSignInWhenTheClientIsConfigured(t *testing.T) {
+	o := brokerOptions(t, false)
+	o.GKEOAuth = &gke.UserOAuth{ClientID: "1-a.apps.googleusercontent.com", ClientSecret: "GOCSPX-secret-canary", WebRedirectURL: "https://kubron.example.com/auth/cluster/callback"}
+	b, err := BuildBroker(o)
+	if err != nil {
+		t.Fatal(err)
+	}
+	d, err := b.Describe([]byte(gkeKubeconfig), "ctx")
+	if err != nil || d.Kind != credential.KindGKE {
+		t.Fatalf("kind = %q err = %v", d.Kind, err)
+	}
+	sub := credential.Subject{ClusterID: "c", Scope: credential.ScopeUser, OwnerID: "u1", SessionID: "s1"}
+	res, err := b.Acquire(context.Background(), sub, d)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := res.Challenge
+	if c == nil || c.Kind != credential.ChallengeBrowserCallback || !c.Poll || c.ID == "" || c.ExpiresAt.IsZero() {
+		t.Fatalf("challenge = %+v", c)
+	}
+	u, err := url.Parse(c.URL)
+	if err != nil || u.Host != "accounts.google.com" || u.Query().Get("state") != c.ID {
+		t.Fatalf("address = %q (the Broker must make the challenge ID the state)", c.URL)
+	}
+	if strings.Contains(c.URL, "secret-canary") {
+		t.Fatal("the client secret is in the address of the browser")
+	}
+}
+
+func TestBuildBrokerRefusesABrokenGoogleClient(t *testing.T) {
+	o := brokerOptions(t, false)
+	o.GKEOAuth = &gke.UserOAuth{ClientID: "", ClientSecret: "x"}
+	if _, err := BuildBroker(o); !errors.Is(err, ErrBrokerOptions) {
+		t.Fatalf("err = %v", err)
 	}
 }

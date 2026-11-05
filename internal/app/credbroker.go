@@ -29,7 +29,11 @@ type BrokerOptions struct {
 	// OpenURL opens the browser (desktop only).
 	OpenURL func(url string) error
 	DataDir string
-	Logger  *slog.Logger
+	// GKEOAuth is the Google OAuth client for the sign-in of a Google user to GKE (optional). Without it GKE
+	// is signed in with a service account key only. The client secret stays in this value: it is not put into
+	// a Descriptor, an event or a log.
+	GKEOAuth *gke.UserOAuth
+	Logger   *slog.Logger
 }
 
 // ErrBrokerOptions means that BuildBroker was given an incomplete configuration.
@@ -55,7 +59,13 @@ func BuildBroker(o BrokerOptions) (*credential.Service, error) {
 	if o.Desktop {
 		execProvider = execplugin.New()
 	}
-	for _, p := range []credential.Provider{oidc.New(), aks.New(), gke.New(), execProvider} {
+	gkeProvider := gke.New()
+	if o.GKEOAuth != nil {
+		if gkeProvider, err = gke.NewWithUserOAuth(*o.GKEOAuth); err != nil {
+			return nil, ErrBrokerOptions
+		}
+	}
+	for _, p := range []credential.Provider{oidc.New(), aks.New(), gkeProvider, execProvider} {
 		if err := reg.Register(p); err != nil {
 			return nil, err
 		}
