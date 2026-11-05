@@ -29,13 +29,19 @@ import (
 var allowedImports = map[string]bool{
 	"bytes":                   true,
 	"context":                 true,
+	"crypto/rand":             true,
 	"crypto/rsa":              true,
+	"crypto/sha256":           true,
+	"crypto/subtle":           true,
 	"crypto/x509":             true,
+	"encoding/base64":         true,
 	"encoding/json":           true,
 	"encoding/pem":            true,
 	"errors":                  true,
 	"io":                      true,
+	"net/url":                 true,
 	"net/http":                true,
+	"strconv":                 true,
 	"strings":                 true,
 	"time":                    true,
 	"golang.org/x/oauth2":     true,
@@ -43,10 +49,12 @@ var allowedImports = map[string]bool{
 	"github.com/24DSO-labs/kubron/internal/credential": true,
 }
 
-// allowedHTTP lists the names of net/http that the sources may use: types only. The default client, the
+// allowedHTTP lists the names of net/http that the sources may use: types, status and method constants, and the
+// constructor of a request that is then sent with Env.HTTP. The default client, the
 // default transport, the package-level request functions and Transport are not on the list.
 var allowedHTTP = map[string]bool{
 	"Client": true, "RoundTripper": true, "Request": true, "Response": true, "ErrUseLastResponse": true,
+	"NewRequestWithContext": true, "MethodPost": true, "StatusOK": true, "StatusTooManyRequests": true,
 }
 
 func sourceFiles(t *testing.T) []string {
