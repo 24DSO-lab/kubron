@@ -481,8 +481,8 @@ osv-scanner в CI; исключения сканеров — только в `.t
   `insecure-skip-tls-verify`: Kubron отклоняет этот параметр для веб-входа. CA IdP можно передать встроенными данными
   kubeconfig; файловые пути на сервере не читаются.
 * **Authorization Code + PKCE.** Для браузерного входа включите Authorization Code Flow и PKCE S256 на клиенте IdP.
-  В режиме `paste-redirect` используется redirect URI из kubeconfig (например, `http://localhost:8000` или другой
-  адрес, указанный в `--oidc-redirect-url`); IdP должен разрешать именно этот URI. Пользователь копирует полный адрес
+  В режиме `paste-redirect` redirect URI формируется из `--listen-address` (по умолчанию `127.0.0.1:8000`, затем `127.0.0.1:18000`)
+  и `--oidc-redirect-url-hostname` (по умолчанию `localhost`); IdP должен разрешать получившийся URI. Пользователь копирует полный адрес
   возврата из адресной строки и вставляет его в Kubron. Новая callback-страница на сервере для этого режима не нужна.
 * **Device grant (RFC 8628).** Если пользователи должны входить по коду устройства, включите Device Authorization Grant
   на публичном OIDC-клиенте. Kubron обнаруживает endpoint через discovery, учитывает `interval` и `slow_down`; если
