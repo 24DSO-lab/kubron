@@ -59,6 +59,41 @@ kubron:
 который принимает callback. TLS завершается на обратном прокси; настройте прокси на передачу
 запросов callback без изменения query-параметров.
 
+## Вход пользователя Google в GKE (необязательно)
+
+По умолчанию GKE входит по ключу сервисного аккаунта. Чтобы пользователи входили своим аккаунтом Google,
+зарегистрируйте OAuth-клиент в Google Cloud (APIs & Services, Credentials) и передайте его серверу:
+
+```sh
+KUBRON_GKE_OAUTH_CLIENT_ID=1234567890-abcdef.apps.googleusercontent.com
+KUBRON_GKE_OAUTH_CLIENT_SECRET=...   # секрет: храните в Secret, не в values
+```
+
+- **С `KUBRON_PUBLIC_URL`:** тип клиента «Web application», в «Authorized redirect URIs» добавьте
+  `<KUBRON_PUBLIC_URL>/auth/cluster/callback`. Браузер возвращается прямо на сервер.
+- **Без `KUBRON_PUBLIC_URL`:** тип клиента «Desktop app»; пользователь вставит адрес страницы, на которую Google
+  вернул браузер (адрес вида `http://127.0.0.1:<порт>/?...`, страница не откроется, это ожидаемо).
+- Запрашиваются scope `openid`, `userinfo.email` и `cloud-platform`. Scope `cloud-platform` для Google чувствительный:
+  для внешних пользователей приложение может потребовать проверки (verification), а в режиме Testing у Google есть
+  ограничения на число пользователей и срок refresh-токена. Проверьте актуальные условия в документации Google
+  (OAuth consent screen) до выкладки.
+- Секрет не попадает в логи, события, API и в адрес, который открывается в браузере. Значение `KUBRON_GKE_OAUTH_CLIENT_SECRET`
+  без `KUBRON_GKE_OAUTH_CLIENT_ID` сервер не принимает при запуске.
+- Переменные не заданы: ничего не меняется, вход идёт по ключу сервисного аккаунта. Ключи, сохранённые раньше,
+  продолжают работать и при заданном клиенте.
+
+Helm:
+
+```yaml
+kubron:
+  extraEnv:
+    - name: KUBRON_GKE_OAUTH_CLIENT_ID
+      value: "1234567890-abcdef.apps.googleusercontent.com"
+    - name: KUBRON_GKE_OAUTH_CLIENT_SECRET
+      valueFrom:
+        secretKeyRef: {name: kubron-gke-oauth, key: client-secret}
+```
+
 ## Запуск через Docker
 
 Образ: distroless, пользователь `65532`, порт `8080`, настройка только через переменные окружения.
