@@ -151,6 +151,7 @@ On Linux add `-tags webkit2_41` to `wails dev` / `wails build` (WebKitGTK 4.1, a
 - **Localization** — [docs/i18n.md](docs/i18n.md), [ADR-0014](docs/adr/0014-i18n.md)
 
 - **Releasing** — [docs/releasing.md](docs/releasing.md)
+- **Manual cloud sign-in lab** — [docs/authentication-lab.md](docs/authentication-lab.md)
 
 ## Server mode
 
