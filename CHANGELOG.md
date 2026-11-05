@@ -128,9 +128,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Docs:** README, the roadmap and `docs/tickets/stage-1.md` no longer describe the image as unpublished, the server as
+- **Docs:** README, the roadmap and `docs/archive/tickets/stage-1.md` no longer describe the image as unpublished, the server as
   single-replica or `SetupAdmin` as open; stale "PR n" and branch notes were removed from `docs/ha.md` and
-  `docs/ha-sessions.md`; `docs/tickets/stage-4-5.md` records the status of stages 4-6 and what is still open.
+  `docs/ha-sessions.md`; `docs/archive/tickets/stage-4-5.md` records the status of stages 4-6 and what is still open.
 - **Release:** `publish.yml` is called by `release.yml` after CI instead of reacting to the tag on its own, so SBOMs reach the
   immutable GitHub Release and the image is never published from an untested commit. A published image or chart version is
   never overwritten. `Chart.yaml` holds `0.0.0-dev` placeholders; the version comes from the tag.

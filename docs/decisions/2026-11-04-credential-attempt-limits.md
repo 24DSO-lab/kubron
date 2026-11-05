@@ -1,6 +1,6 @@
 # Credential answer attempt limits
 
-**Status: ждёт ревью человеком**
+**Status: принято 2026-11-05**
 
 ## Контекст
 
