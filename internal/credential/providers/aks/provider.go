@@ -245,7 +245,7 @@ func (p *Provider) Continue(ctx context.Context, env credential.Env, req credent
 	}
 	env, err = secureEnv(env)
 	if err != nil {
-		return credential.Result{}, errHTTPClient
+		return credential.Result{}, credential.ErrUnsupported
 	}
 	var prior pending
 	_ = json.Unmarshal(req.Pending, &prior)
