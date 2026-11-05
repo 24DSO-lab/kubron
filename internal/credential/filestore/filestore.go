@@ -267,6 +267,33 @@ func (s *Store) Delete(ctx context.Context, k credential.Key) error {
 	return err
 }
 
+// DeleteIfVersion implements credential.CredentialStore. The version check and deletion share one file lock.
+func (s *Store) DeleteIfVersion(ctx context.Context, k credential.Key, expectedVersion int64) error {
+	if err := k.Validate(); err != nil {
+		return err
+	}
+	unlock, err := s.lock(ctx)
+	if err != nil {
+		return err
+	}
+	defer unlock()
+	d, err := s.load()
+	if err != nil {
+		return err
+	}
+	for i, r := range d.Records {
+		if r.key() != k {
+			continue
+		}
+		if r.Version != expectedVersion {
+			return credential.ErrVersionConflict
+		}
+		d.Records = slices.Delete(d.Records, i, i+1)
+		return s.save(d)
+	}
+	return credential.ErrVersionConflict
+}
+
 // List implements credential.CredentialStore.
 func (s *Store) List(_ context.Context, ownerID string) ([]credential.Meta, error) {
 	d, err := s.load()
