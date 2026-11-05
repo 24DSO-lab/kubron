@@ -18,7 +18,7 @@
 
 </div>
 
-Kubron is an open-source **Kubernetes Operations Workspace** for desktop and web, built with **Go**, **Wails** and **Vue**. Bring cluster visibility, troubleshooting and day-to-day operations together with Helm and GitOps built in. No telemetry, no mandatory account, your kubeconfig never leaves your machine.
+Kubron is an open-source **Kubernetes Operations Workspace** for desktop and web, built with **Go**, **Wails** and **Vue**. Bring cluster visibility, troubleshooting and day-to-day operations together with Helm and GitOps built in. No telemetry or mandatory account. In desktop mode, kubeconfig stays on your machine; web mode stores it encrypted on the server.
 
 <p align="center">
   <img src="docs/images/screenshots/overview.png" alt="Kubron cluster overview: node and pod counts, CPU and memory usage, pods closest to their limits, workloads, recent changes, blockers and certificate expiry" width="100%">
@@ -46,7 +46,7 @@ Kubron is an open-source **Kubernetes Operations Workspace** for desktop and web
 ## Why Kubron
 
 - **Lightweight and native** — written in Go with Wails: a compact desktop app that uses the system webview
-- **Private by default** — no telemetry and no mandatory account; your kubeconfig never leaves your machine
+- **Private by default** — no telemetry or mandatory account; desktop kubeconfig stays local, while web-mode kubeconfigs are encrypted at rest on the server
 - **Desktop and web** — the same UI as a desktop app or served over HTTP for teams (web mode supports multi-user teams)
 - **Helm and GitOps built in** — manage releases and applications without installing extra plugins
 - **Open source** — Apache-2.0, with a public `pkg/ext` API for extensions
@@ -59,6 +59,7 @@ Kubron is an open-source **Kubernetes Operations Workspace** for desktop and web
 
 ### Clusters
 - **Multi-cluster management** — add clusters from a kubeconfig, switch between them from a single window, and give each one a name, color, icon and environment tag (`dev` / `test` / `stage` / `prod`)
+- **Cluster sign-in** — automatic OIDC login with password, browser authorization-code + PKCE, device-code and legacy refresh; each interactive user gets their own Kubernetes identity. See the [sign-in guide](docs/cluster-sign-in.md)
 - **Namespace scoping** — pick one, several or all namespaces; works with restricted RBAC (no cluster-wide `list` required) and reports partial failures instead of hiding them
 - **Live updates** — shared informers keep lists and the dashboard fresh without hammering the API server
 
