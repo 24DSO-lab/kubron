@@ -1,6 +1,6 @@
 # AKS credential provider: device code, service principal and ROPC
 
-**Статус: ждёт ревью человеком**
+**Статус: принято 2026-11-05**
 
 ## Проблема
 

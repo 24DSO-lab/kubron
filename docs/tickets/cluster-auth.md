@@ -25,7 +25,7 @@
 | A.3 | Интерфейс `Provider`, реестр и автомат вызовов | `Begin`/`Continue`/`Cancel`; id непредсказуем, срок жизни ≤ 10 мин, одноразовое завершение, привязка к сессии и пользователю; состояние в PostgreSQL при нескольких репликах; тесты: чужая сессия не завершает вызов, повтор отвергается | 5 | A.1 |
 | A.4 | Контракт RPC и событий | `ConnectToCluster` возвращает `connected`/`challenge`; `AnswerChallenge`, `PollChallenge`, событие `cluster:auth-completed` адресно сессии; методы классифицированы в `methods.go`, `policy_test` расширен; привязки Wails и веб-клиент обновлены; старые коды ошибок не используются для решений в UI | 4 | A.3 |
 | A.5 | Универсальный диалог входа | один компонент рисует `credentials`, `device-code`, `paste-redirect`, `secret-fields`, `manual-token`, `confirm-exec`; доступность с клавиатуры, отмена, повторная попытка, индикатор ожидания; все тексты через i18n (`en`, `ru`, `cn`), без литералов; e2e по `data-testid` | 6 | A.4 |
-| A.6 | Хранилище секретов | envelope-шифрование; десктоп: мастер-ключ в системном хранилище, запасной файл `0600` с предупреждением в UI; веб без PostgreSQL: `KUBRON_SECRET_KEY` или автогенерируемый ключ в каталоге данных; `kubron-server rekey` покрывает `cluster_credentials`; тесты: повреждённый шифротекст даёт ошибку, а не «пусто»; библиотека `zalando/go-keyring` (решение в `docs/decisions/2026-11-02-cluster-auth.md`); проверка доступности хранилища при старте, падение на файл не молчит | 5 | A.1 |
+| A.6 | Хранилище секретов | envelope-шифрование; десктоп: мастер-ключ в системном хранилище, запасной файл `0600` с предупреждением в UI; веб без PostgreSQL: `KUBRON_SECRET_KEY` или автогенерируемый ключ в каталоге данных; `kubron-server rekey` покрывает `cluster_credentials`; тесты: повреждённый шифротекст даёт ошибку, а не «пусто»; библиотека `zalando/go-keyring` (ADR-0018, раздел 6); проверка доступности хранилища при старте, падение на файл не молчит | 5 | A.1 |
 | A.7 | Пул `(кластер, субъект)` и `ConfigFor` | informer одного пользователя недоступен другому (тест с двумя пользователями разных прав); ресурсы, Helm, терминал, логи, port-forward, метрики берут конфиг только через `ConfigFor`; статический тест запрещает обход; фоновая проверка (3.6) различает «недоступен» и «нужен вход»; нагрузочный тест по числу субъектов на кластер | 6 | A.3 |
 | A.8 | Обновление токенов | один обновляющий на субъект (`singleflight` + оптимистичная блокировка по `version` между репликами); тест на гонку двух реплик при ротации refresh-токена; `invalid_grant` приводит к новому вызову | 4 | A.3, A.6 |
 | A.9 | Аудит и субъект | события `cluster.auth.challenge/success/failure/revoked`; субъект Kubernetes (`sub`/логин из токена) рядом с пользователем приложения; фильтр и экспорт; метки i18n `audit.actions.*` | 3 | A.4 |
@@ -48,7 +48,7 @@
 | B.8 | `manual-token` | запасной способ для любого `exec` без нативного провайдера: интерфейс показывает точную команду из kubeconfig (с экранированием и без выполнения), принимает `ExecCredential` JSON или токен; срок берётся из `expirationTimestamp`, после истечения новый вызов; лимит размера и строгая валидация | 3 | A.5 |
 | B.9 | Десктоп: `exec` по спецификации | `client.authentication.k8s.io` v1 и v1beta1: `interactiveMode`, `provideClusterInfo`, `env`, кэш по `expirationTimestamp`, таймаут, stderr в UI; интерактивным плагинам даётся псевдотерминал; подтверждение `confirm-exec` с запоминанием по хэшу блока; без подтверждения команда не запускается ни при каком пути (тест); плагин запускается, если найден в `PATH`; при отсутствии бинаря — нативный провайдер (oidc-login: B.2, B.4; облака: B.7), иначе `installHint` | 6 | A.5, B.2, B.4 |
 
-**Текущий статус B.3:** реализация браузерного callback находится в [PR #155](https://github.com/24DSO-lab/kubron/pull/155); security decision [OIDC web browser callback state binding](../decisions/2026-11-04-oidc-browser-callback.md) ожидает ревью человеком. Критерии считаются закрытыми после успешного CI и ревью.
+**Текущий статус B.3:** реализация браузерного callback находится в [PR #155](https://github.com/24DSO-lab/kubron/pull/155); security decision [OIDC web browser callback state binding](../decisions/2026-11-04-oidc-browser-callback.md) принято 2026-11-05. Критерии считаются закрытыми после успешного CI и ревью PR.
 
 ## Фаза C. Безопасность, проверка, документация
 
@@ -74,7 +74,7 @@ A.6–A.8 → C.1 → B.3–B.4, B.2 (закрывает «browser sign-in») �
 1. Десктоп: плагин `exec`, если найден в `PATH` (после подтверждения), иначе нативный провайдер.
 2. Порядок облачных провайдеров: EKS, GKE, AKS.
 3. Песочницы `exec` в вебе нет и не будет; тикет B.10 снят.
-4. Выбор библиотеки keyring и ключа без PostgreSQL поручен реализатору: см. `docs/decisions/2026-11-02-cluster-auth.md` (ждёт ревью человеком).
+4. Выбор библиотеки keyring и ключа без PostgreSQL поручен реализатору; результат описан в ADR-0018, раздел 6 (принято 2026-11-05).
 
 ## Статус (после фазы 2)
 
@@ -82,8 +82,7 @@ A.6–A.8 → C.1 → B.3–B.4, B.2 (закрывает «browser sign-in») �
 идёт через брокер (`ModeTeamAccount`, область `team`), старый путь `oidc-password` удалён (2.2–2.4: `ClassifyAuth`, `oidcSecret`, `OIDCCredentials`,
 `verifyOIDCLogin`, `ErrOIDCLoginRequired`, `ErrOIDCAuthCode`, `ErrExecForbidden`, `checkExecAllowed`, `App.ConnectToCluster`, `internal/oidcpassword`, `cmd/oidc-spike`).
 
-Ждёт человека: [B.3 security decision](../decisions/2026-11-04-oidc-browser-callback.md) и решение D-01/D-02. Статус ADR-0018 не менялся.
-Файла `docs/decisions/2026-11-02-cluster-auth.md` в репозитории нет (на него ссылается пункт 4 решений владельца).
+Приняты 2026-11-05: [B.3 security decision](../decisions/2026-11-04-oidc-browser-callback.md) и выбор хранения ключа без PostgreSQL (ADR-0018, раздел 6). Статус ADR-0018 не менялся.
 
 ### Вторая волна (не входит в текущий релиз)
 
@@ -92,7 +91,7 @@ A.6–A.8 → C.1 → B.3–B.4, B.2 (закрывает «browser sign-in») �
 | B.7a Нативный провайдер AWS EKS | провайдер `internal/credential/providers/eks` влит из PR #162; режимы и проверки на реальном AWS остаются за владельцем EKS-тикета |
 | B.7b Нативный провайдер GKE | провайдер `providers/gke` в `refactor`; остаток описан в строке B.7b выше (device flow Google недоступен) |
 | B.7c Azure (AKS): остаток | device-code, service principal, ROPC готовы; managed identity, Azure CLI, `azd` и workload identity не поддержаны |
-| `browser-callback` | веб-возврат реализован (PR #155); для десктопа остаётся loopback; финальное решение ждёт ревью |
+| `browser-callback` | веб-возврат реализован (PR #155); для десктопа остаётся loopback; решение принято 2026-11-05 |
 | PTY для `interactiveMode: Always` | не сделан: такие плагины на десктопе не запускаются (понятное сообщение) |
 | Удаление читателя прежнего формата и колонки `secret_enc` | `MigrateLegacyOIDC` оставлен без изменений, колонка не удаляется до отдельного решения о миграции данных |
 

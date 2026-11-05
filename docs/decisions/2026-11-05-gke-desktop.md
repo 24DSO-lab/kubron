@@ -1,6 +1,6 @@
 # Решения: вход пользователя Google в GKE на десктопе (слушатель и настройка клиента)
 
-Статус: **ждёт ревью человеком**.
+Статус: **принято 2026-11-05**.
 
 Область: `internal/credential/providers/gke/loopback.go`, `internal/app/gke_oauth_store.go`, `app_gke_oauth.go`,
 `credbroker_desktop.go`, карточка `GKEOAuthSettings.vue` в настройках.
