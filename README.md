@@ -59,7 +59,7 @@ Kubron is an open-source **Kubernetes Operations Workspace** for desktop and web
 
 ### Clusters
 - **Multi-cluster management** — add clusters from a kubeconfig, switch between them from a single window, and give each one a name, color, icon and environment tag (`dev` / `test` / `stage` / `prod`)
-- **Cluster sign-in** — automatic OIDC login with password, browser authorization-code + PKCE, device-code and legacy refresh; each interactive user gets their own Kubernetes identity. See the [sign-in guide](docs/cluster-sign-in.md)
+- **Cluster sign-in** — automatic OIDC login with password, browser authorization-code + PKCE, device-code and legacy refresh; interactive sign-ins use per-user credentials by default; a shared team credential is an explicit exception. See the [sign-in guide](docs/cluster-sign-in.md)
 - **Namespace scoping** — pick one, several or all namespaces; works with restricted RBAC (no cluster-wide `list` required) and reports partial failures instead of hiding them
 - **Live updates** — shared informers keep lists and the dashboard fresh without hammering the API server
 
