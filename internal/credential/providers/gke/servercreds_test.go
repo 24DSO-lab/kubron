@@ -13,7 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
+
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -105,8 +105,8 @@ func TestSourcesDoNotReachForServerCredentials(t *testing.T) {
 // TestDependenciesDoNotLinkTheGoogleSearchChain checks the compiled dependency list: the package golang.org/x/oauth2/google
 // (Application Default Credentials, the metadata server) must not be part of the build at all.
 func TestDependenciesDoNotLinkTheGoogleSearchChain(t *testing.T) {
-	goBin := filepath.Join(runtime.GOROOT(), "bin", "go")
-	if _, err := os.Stat(goBin); err != nil {
+	goBin, err := exec.LookPath("go")
+	if err != nil {
 		t.Skip("go tool not found")
 	}
 	out, err := exec.Command(goBin, "list", "-deps", ".").CombinedOutput()
