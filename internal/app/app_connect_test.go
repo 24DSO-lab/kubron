@@ -128,6 +128,33 @@ func connectFixture(t *testing.T, b *fakeBroker) (*App, *recPlatform, string, *[
 	return a, pl, c.ID, &connected
 }
 
+func TestWithWebOIDCParamsRequiresPublicClientAndRedirectPair(t *testing.T) {
+	base := credential.Descriptor{Kind: credential.KindOIDC, Params: map[string]string{
+		"client-id": "kubeconfig-client",
+		"web.client-id": "untrusted-client",
+		"web.redirect-url": "https://evil.example/callback",
+	}}
+	for _, tc := range []struct {
+		name, clientID, redirectURL string
+		wantClient, wantRedirect string
+	}{
+		{name: "no admin client", redirectURL: "https://kubron.example/auth/cluster/callback"},
+		{name: "no public URL", clientID: "admin-public-client"},
+		{name: "both configured", clientID: "admin-public-client", redirectURL: "https://kubron.example/auth/cluster/callback",
+			wantClient: "admin-public-client", wantRedirect: "https://kubron.example/auth/cluster/callback"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := withWebOIDCParams(base, tc.clientID, tc.redirectURL)
+			if got.Params["web.client-id"] != tc.wantClient || got.Params["web.redirect-url"] != tc.wantRedirect {
+				t.Fatalf("web OIDC params = %#v", got.Params)
+			}
+			if got.Params["client-id"] != "kubeconfig-client" {
+				t.Fatalf("the kubeconfig client id was changed: %#v", got.Params)
+			}
+		})
+	}
+}
+
 func TestWebOIDCClientIDIsAdminOnly(t *testing.T) {
 	a, _, _, _ := connectFixture(t, &fakeBroker{})
 	if err := a.SetWebOIDCClientID("public-client"); err != nil {

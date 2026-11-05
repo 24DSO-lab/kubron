@@ -128,10 +128,10 @@ func withWebOIDCParams(d credential.Descriptor, clientID, redirectURL string) cr
 			p[k] = v
 		}
 	}
-	if clientID != "" {
+	// The callback is usable only when both the administrator-configured public client and
+	// the server's validated public URL are present. Otherwise retain the legacy paste-redirect flow.
+	if clientID != "" && redirectURL != "" {
 		p["web.client-id"] = clientID
-	}
-	if redirectURL != "" {
 		p["web.redirect-url"] = redirectURL
 	}
 	d.Params = p
@@ -306,6 +306,59 @@ func (a *App) AnswerChallenge(challengeID string, values map[string]string) (cre
 	return a.advance(challengeID, func(sub credential.Subject) (credential.Result, error) {
 		return a.broker.Answer(context.Background(), sub, challengeID, credential.Answer(values))
 	})
+}
+
+// CompleteWebOIDCCallback completes a browser redirect for the authenticated web session.
+// It is a package function, not an App method, so it is not exposed through Wails or RPC.
+func CompleteWebOIDCCallback(ctx context.Context, a *App, state, redirectURL string) error {
+	if a == nil || a.sessionID == "" || state == "" || redirectURL == "" {
+		return credential.ErrChallengeExpired
+	}
+	if a.auth == nil {
+		return auth.ErrNotAuthenticated
+	}
+	if a.broker == nil {
+		return ErrSignInUnavailable
+	}
+	cb, ok := a.broker.(credential.WebCallbackBroker)
+	if !ok {
+		return ErrSignInUnavailable
+	}
+	if _, err := a.auth.Current(); err != nil {
+		return err
+	}
+	sub, desc, err := cb.CallbackSubject(ctx, a.sessionID, state)
+	if err != nil {
+		if errors.Is(err, credential.ErrChallengeExpired) {
+			return credential.ErrChallengeExpired
+		}
+		return err
+	}
+	need := auth.PermRead
+	if sub.Scope == credential.ScopeTeam {
+		need = auth.PermClusterManage
+	}
+	if err := a.authzCluster(need, sub.ClusterID); err != nil {
+		return err
+	}
+	if err := a.limitCallback(idpKey(desc, sub.ClusterID)); err != nil {
+		return err
+	}
+	res, err := cb.AnswerCallback(ctx, sub, state, redirectURL)
+	if err != nil {
+		a.recordAuthEvent(auditAuthFailure, audit.ResultFailed, sub.ClusterID, "", "reason", authFailureReason(err))
+		return err
+	}
+	if res.Token == nil || res.Challenge != nil {
+		return credential.ErrChallengeExpired
+	}
+	a.conn.forget(state)
+	a.recordAuthEvent(auditAuthSuccess, audit.ResultOK, sub.ClusterID, principalOf(res))
+	if err := a.finishConnect(sub.ClusterID); err != nil {
+		return err
+	}
+	a.emit(EventAuthCompleted, authEventData{ClusterID: sub.ClusterID, ChallengeID: state})
+	return nil
 }
 
 // PollChallenge asks the broker whether a waiting sign-in (device code, browser) has completed.

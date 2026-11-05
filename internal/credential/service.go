@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -335,6 +336,18 @@ func (s *Service) storeChallenge(ctx context.Context, sub Subject, d Descriptor,
 	if err != nil {
 		return Challenge{}, err
 	}
+	if res.Challenge.Kind == ChallengeBrowserCallback {
+		// Use the broker-generated, session-bound challenge ID as OAuth state. This lets any replica
+		// route the IdP redirect to the shared challenge store without keeping process-local state.
+		u, err := url.Parse(res.Challenge.URL)
+		if err != nil {
+			return Challenge{}, ErrUnsupported
+		}
+		q := u.Query()
+		q.Set("state", id)
+		u.RawQuery = q.Encode()
+		res.Challenge.URL = u.String()
+	}
 	pub := publicChallenge(*res.Challenge, id, exp)
 	blob, keyID, err := s.seal(id, pendingState{Descriptor: d, Pending: res.Pending, Challenge: pub})
 	if err != nil {
@@ -392,6 +405,44 @@ func (s *Service) Answer(ctx context.Context, sub Subject, challengeID string, a
 	return s.advance(ctx, sub, challengeID, a, true)
 }
 
+// CallbackSubject resolves a browser callback only when the challenge belongs to this user and web session.
+// Unknown, expired, foreign and non-callback challenges deliberately have the same error.
+func (s *Service) CallbackSubject(ctx context.Context, sessionID, challengeID string) (Subject, Descriptor, error) {
+	if sessionID == "" || challengeID == "" {
+		return Subject{}, Descriptor{}, ErrChallengeExpired
+	}
+	rec, err := s.chal.Get(ctx, challengeID)
+	if errors.Is(err, ErrChallengeNotFound) || (err == nil && rec.SessionID != sessionID) {
+		return Subject{}, Descriptor{}, ErrChallengeExpired
+	}
+	if err != nil {
+		return Subject{}, Descriptor{}, err
+	}
+	sub := Subject{OwnerID: rec.OwnerID, SessionID: sessionID}
+	rec, err = s.load(ctx, sub, challengeID)
+	if err != nil {
+		return Subject{}, Descriptor{}, err
+	}
+	st, err := s.open(rec)
+	if err != nil || st.Challenge.Kind != ChallengeBrowserCallback {
+		return Subject{}, Descriptor{}, ErrChallengeExpired
+	}
+	return Subject{ClusterID: rec.ClusterID, Scope: rec.Scope, OwnerID: rec.OwnerID, SessionID: rec.SessionID}, st.Descriptor, nil
+}
+// AnswerCallback submits the complete redirect URL. The challenge is claimed and consumed by the same
+// compare-and-swap path as ordinary answers, so replay and concurrent callbacks cannot complete twice.
+func (s *Service) AnswerCallback(ctx context.Context, sub Subject, challengeID, redirectURL string) (Result, error) {
+	rec, err := s.load(ctx, sub, challengeID)
+	if err != nil {
+		return Result{}, ErrChallengeExpired
+	}
+	st, err := s.open(rec)
+	if err != nil || st.Challenge.Kind != ChallengeBrowserCallback {
+		return Result{}, ErrChallengeExpired
+	}
+	return s.Answer(ctx, sub, challengeID, Answer{"redirectUrl": redirectURL})
+}
+
 // Poll implements Broker: asks whether an out-of-band sign-in (device code, browser) has finished.
 func (s *Service) Poll(ctx context.Context, sub Subject, challengeID string) (Result, error) {
 	return s.advance(ctx, sub, challengeID, nil, false)
@@ -412,6 +463,13 @@ func (s *Service) advance(ctx context.Context, sub Subject, id string, a Answer,
 
 	// Nothing to poll for a challenge that waits for an answer: report it as it is (no provider call, no attempt).
 	if !isAnswer && !st.Challenge.Poll {
+		c := publicChallenge(st.Challenge, rec.ID, rec.ExpiresAt)
+		return Result{Challenge: &c}, nil
+	}
+
+	// A browser callback is completed by a separate top-level HTTP request. Polling it must be read-only:
+	// claiming the challenge here could race with the callback and make the one-time redirect lose.
+	if !isAnswer && st.Challenge.Kind == ChallengeBrowserCallback {
 		c := publicChallenge(st.Challenge, rec.ID, rec.ExpiresAt)
 		return Result{Challenge: &c}, nil
 	}

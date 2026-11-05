@@ -105,6 +105,8 @@ func (p *Provider) Continue(ctx context.Context, env credential.Env, req credent
 		return s.continueCredentials(ctx, req, sv)
 	case credential.ChallengePasteRedirect:
 		return s.continuePaste(ctx, req, sv)
+	case credential.ChallengeBrowserCallback:
+		return s.continueBrowserCallback(ctx, req, sv)
 	case credential.ChallengeBrowserLoopback:
 		return s.continueLoopback(ctx, req, sv)
 	case credential.ChallengeDeviceCode:
@@ -176,9 +178,8 @@ func rejected(err error) bool {
 	return c == "invalid_grant" || c == "access_denied"
 }
 
-// startRemote is the order for a user whose browser cannot reach this process: the device flow when the
-// provider offers it to this client (RFC 8628), otherwise the user pastes the redirect address. On the
-// desktop the last resort is the local listener, which is better than pasting.
+// startRemote prefers the device flow (RFC 8628), then a server callback when the web client is configured,
+// and finally the compatible paste-redirect flow. Desktop authcode uses its local loopback listener.
 func (s *session) startRemote(ctx context.Context) (credential.Result, error) {
 	res, err := s.startDevice(ctx)
 	if !errors.Is(err, errDeviceUnavailable) {
@@ -186,6 +187,9 @@ func (s *session) startRemote(ctx context.Context) (credential.Result, error) {
 	}
 	if s.env.Desktop {
 		return s.startLoopback(ctx)
+	}
+	if s.cfg.webRedirectURL != "" {
+		return s.startBrowserCallback(ctx)
 	}
 	return s.startPaste(ctx)
 }

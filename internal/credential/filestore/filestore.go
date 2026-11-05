@@ -288,7 +288,7 @@ func (s *Store) DeleteIfVersion(ctx context.Context, k credential.Key, expectedV
 		if r.Version != expectedVersion {
 			return credential.ErrVersionConflict
 		}
-		d.Records = slices.Delete(d.Records, i, i+1)
+		d.Records = append(d.Records[:i], d.Records[i+1:]...)
 		return s.save(d)
 	}
 	return credential.ErrVersionConflict

@@ -4,7 +4,7 @@
   "add": "➕ Add user",
   "webOIDC": {
     "title": "Web OIDC client",
-    "description": "Optional public client ID used for browser-based cluster sign-in. It overrides the client ID from kubeconfig in web mode only; do not enter a client secret.",
+    "description": "Optional public client ID for browser-based cluster sign-in. Set KUBRON_PUBLIC_URL and register its /auth/cluster/callback URL at the identity provider. The override is used only in web mode; do not enter a client secret.",
     "clientID": "Public client ID",
     "save": "Save",
     "saving": "Saving…",
