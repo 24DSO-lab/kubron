@@ -680,10 +680,7 @@
   "credAKSMFARequired": "Azure требует способ аутентификации, не поддерживаемый входом по паролю",
   "webOIDCClientIDInvalid": "Client ID веб-версии должен быть не длиннее 256 байт и не содержать управляющих символов",
   "applicationSettingsStoreUnavailable": "хранилище настроек приложения недоступно",
-
   "credCoreSharedAccountNotSignedIn": "общая учётная запись кластера ещё не выполнила вход: обратитесь к администратору кластера",
-
-
   "credEKSBadRegion": "регион AWS указан неверно",
   "credEKSRegionRequired": "укажите регион AWS",
   "credEKSClusterRequired": "укажите имя кластера EKS",
@@ -705,6 +702,9 @@
   "credEKSState": "состояние входа неверно",
   "credEKSBlocked": "адрес не разрешён",
   "credEKSUnreachable": "AWS недоступен",
-  "credEKSClockSkew": "часы этого сервера сильно расходятся с часами AWS"
-
+  "credEKSClockSkew": "часы этого сервера сильно расходятся с часами AWS",
+  "theClusterDoesNotUseASharedTeamAccount": "кластер не использует общую учётную запись команды",
+  "aSharedAccountIsAvailableOnlyForClustersOfATeam": "общая учётная запись доступна только для кластеров команды",
+  "aSharedAccountIsMeaningfulOnlyForAKubeconfigThatSignsIn": "общая учётная запись имеет смысл только для kubeconfig со входом через провайдера или плагин",
+  "thisClusterNeedsASignInButNoSignInBrokerIsConfigured": "этому кластеру нужен вход, но брокер входа не настроен"
 }

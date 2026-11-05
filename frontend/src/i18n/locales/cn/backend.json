@@ -680,10 +680,7 @@
   "credAKSMFARequired": "Azure 要求使用密码登录不支持的身份验证方式",
   "webOIDCClientIDInvalid": "Web OIDC 客户端 ID 不得超过 256 字节且不能包含控制字符",
   "applicationSettingsStoreUnavailable": "应用程序设置存储不可用",
-
   "credCoreSharedAccountNotSignedIn": "该集群的共享账户尚未登录：请联系集群管理员",
-
-
   "credEKSBadRegion": "AWS 区域无效",
   "credEKSRegionRequired": "需要填写 AWS 区域",
   "credEKSClusterRequired": "需要填写 EKS 集群名称",
@@ -705,6 +702,9 @@
   "credEKSState": "登录状态无效",
   "credEKSBlocked": "不允许该地址",
   "credEKSUnreachable": "无法连接 AWS",
-  "credEKSClockSkew": "此服务器的时钟与 AWS 时钟相差过大"
-
+  "credEKSClockSkew": "此服务器的时钟与 AWS 时钟相差过大",
+  "theClusterDoesNotUseASharedTeamAccount": "该集群未使用团队共享账户",
+  "aSharedAccountIsAvailableOnlyForClustersOfATeam": "共享账户仅适用于团队的集群",
+  "aSharedAccountIsMeaningfulOnlyForAKubeconfigThatSignsIn": "共享账户仅适用于通过身份提供商或插件登录的 kubeconfig",
+  "thisClusterNeedsASignInButNoSignInBrokerIsConfigured": "该集群需要登录，但未配置登录代理"
 }

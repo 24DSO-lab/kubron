@@ -122,7 +122,8 @@
     "nodeshell": {
       "start": "节点 Shell 已打开",
       "stop": "节点 Shell 已关闭"
-    }
+    },
+    "ResetClusterSharedAccount": "已清除共享账户登录"
   },
   "export": {
     "csv": "导出 CSV",

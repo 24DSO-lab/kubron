@@ -680,10 +680,7 @@
   "credAKSMFARequired": "Azure requires an authentication method unsupported by password sign-in",
   "webOIDCClientIDInvalid": "web OIDC client id must be at most 256 bytes and contain no control characters",
   "applicationSettingsStoreUnavailable": "application settings store is unavailable",
-
   "credCoreSharedAccountNotSignedIn": "the shared account of this cluster is not signed in: ask a cluster administrator",
-
-
   "credEKSBadRegion": "the AWS region is not valid",
   "credEKSRegionRequired": "the AWS region is required",
   "credEKSClusterRequired": "the EKS cluster name is required",
@@ -705,6 +702,9 @@
   "credEKSState": "the sign-in state is invalid",
   "credEKSBlocked": "the address is not allowed",
   "credEKSUnreachable": "AWS is unreachable",
-  "credEKSClockSkew": "the clock of this server differs too much from the AWS clock"
-
+  "credEKSClockSkew": "the clock of this server differs too much from the AWS clock",
+  "theClusterDoesNotUseASharedTeamAccount": "the cluster does not use a shared team account",
+  "aSharedAccountIsAvailableOnlyForClustersOfATeam": "a shared account is available only for clusters of a team",
+  "aSharedAccountIsMeaningfulOnlyForAKubeconfigThatSignsIn": "a shared account is meaningful only for a kubeconfig that signs in through an identity provider or a plugin",
+  "thisClusterNeedsASignInButNoSignInBrokerIsConfigured": "this cluster needs a sign-in, but no sign-in broker is configured"
 }
