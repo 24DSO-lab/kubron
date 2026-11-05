@@ -9,6 +9,7 @@ import (
 
 	"github.com/24DSO-labs/kubron/internal/credential"
 	"github.com/24DSO-labs/kubron/internal/credential/providers/aks"
+	"github.com/24DSO-labs/kubron/internal/credential/providers/eks"
 	"github.com/24DSO-labs/kubron/internal/credential/providers/execplugin"
 	"github.com/24DSO-labs/kubron/internal/credential/providers/gke"
 	"github.com/24DSO-labs/kubron/internal/credential/providers/manual"
@@ -65,7 +66,7 @@ func BuildBroker(o BrokerOptions) (*credential.Service, error) {
 			return nil, ErrBrokerOptions
 		}
 	}
-	for _, p := range []credential.Provider{oidc.New(), aks.New(), gkeProvider, execProvider} {
+	for _, p := range []credential.Provider{oidc.New(), aks.New(), eks.New(), gkeProvider, execProvider} {
 		if err := reg.Register(p); err != nil {
 			return nil, err
 		}
