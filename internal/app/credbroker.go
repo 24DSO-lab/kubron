@@ -10,6 +10,7 @@ import (
 	"github.com/24DSO-labs/kubron/internal/credential"
 	"github.com/24DSO-labs/kubron/internal/credential/providers/aks"
 	"github.com/24DSO-labs/kubron/internal/credential/providers/execplugin"
+	"github.com/24DSO-labs/kubron/internal/credential/providers/gke"
 	"github.com/24DSO-labs/kubron/internal/credential/providers/manual"
 	"github.com/24DSO-labs/kubron/internal/credential/providers/oidc"
 	"github.com/24DSO-labs/kubron/internal/idpnet"
@@ -34,7 +35,7 @@ type BrokerOptions struct {
 // ErrBrokerOptions means that BuildBroker was given an incomplete configuration.
 var ErrBrokerOptions = errors.New("the sign-in broker is not configured completely")
 
-// BuildBroker assembles the broker (a *credential.Service; the caller runs Sweep periodically): the oidc provider, the KindExec provider of the mode (execplugin on the
+// BuildBroker assembles the broker (a *credential.Service; the caller runs Sweep periodically): the oidc provider, the GKE provider, the KindExec provider of the mode (execplugin on the
 // desktop, manual in the web), and the single HTTP client for identity providers with the SSRF policy of the mode.
 // It is a function of the package, not a method of App: it must not appear in the Wails bindings or the RPC.
 func BuildBroker(o BrokerOptions) (*credential.Service, error) {
@@ -54,7 +55,7 @@ func BuildBroker(o BrokerOptions) (*credential.Service, error) {
 	if o.Desktop {
 		execProvider = execplugin.New()
 	}
-	for _, p := range []credential.Provider{oidc.New(), aks.New(), execProvider} {
+	for _, p := range []credential.Provider{oidc.New(), aks.New(), gke.New(), execProvider} {
 		if err := reg.Register(p); err != nil {
 			return nil, err
 		}
