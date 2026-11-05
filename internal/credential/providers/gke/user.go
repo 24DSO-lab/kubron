@@ -103,6 +103,7 @@ type pending struct {
 	Nonce       string `json:"nonce"`
 	Verifier    string `json:"verifier"`
 	RedirectURI string `json:"redirectUri"`
+	LoopID      string `json:"loopId,omitempty"`
 }
 
 func (p pending) encode() []byte {
@@ -225,6 +226,12 @@ func (p *Provider) authURL(pd pending) string {
 
 // startUser starts the sign-in of a Google user for this mode.
 func (p *Provider) startUser(env credential.Env) (credential.Result, error) {
+	if env.Desktop {
+		if res, ok, err := p.startLoopback(env); ok {
+			return res, err
+		}
+		// The port could not be opened: fall through to the paste variant.
+	}
 	if !env.Desktop && p.user.WebRedirectURL != "" {
 		pd, err := p.newAuthRequest(flowBrowser, p.user.WebRedirectURL)
 		if err != nil {
@@ -256,8 +263,11 @@ func (p *Provider) startUser(env credential.Env) (credential.Result, error) {
 // continueUser handles the answer of browser-callback and paste-redirect challenges.
 func (p *Provider) continueUser(ctx context.Context, env credential.Env, req credential.Request) (credential.Result, error) {
 	flow := flowPaste
-	if req.Challenge.Kind == credential.ChallengeBrowserCallback {
+	switch req.Challenge.Kind {
+	case credential.ChallengeBrowserCallback:
 		flow = flowBrowser
+	case credential.ChallengeBrowserLoopback:
+		return p.continueLoopback(ctx, env, req)
 	}
 	pd, err := decodePending(req.Pending, flow)
 	if err != nil {
@@ -287,6 +297,11 @@ func (p *Provider) continueUser(ctx context.Context, env credential.Env, req cre
 			return credential.Result{}, invalid(errRedirect)
 		}
 	}
+	return p.handleResponse(ctx, env, pd, q)
+}
+
+// handleResponse validates the parameters of an authorization response against the request and exchanges the code.
+func (p *Provider) handleResponse(ctx context.Context, env credential.Env, pd pending, q url.Values) (credential.Result, error) {
 	// Bind the response to this request before reading anything else from it.
 	if subtle.ConstantTimeCompare([]byte(q.Get("state")), []byte(pd.State)) != 1 {
 		return credential.Result{}, &providerError{kind: credential.ErrAnswerRejected, detail: errAuthState}

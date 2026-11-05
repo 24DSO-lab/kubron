@@ -7,6 +7,8 @@ import (
 	"context"
 	"errors"
 	"io"
+	"net"
+	"time"
 
 	"github.com/24DSO-labs/kubron/internal/credential"
 )
@@ -20,6 +22,11 @@ const FieldServiceAccountJSON = "serviceAccountJson"
 type Provider struct {
 	user *UserOAuth
 	rand io.Reader // nil: crypto/rand; tests replace it
+
+	// The desktop loopback listeners (loopback.go): the one thing that lives outside Pending, in this process.
+	loops  loopbackRegistry
+	listen func(network, address string) (net.Listener, error) // nil: net.Listen; tests replace it
+	ttl    time.Duration                                       // nil: loopbackTTL; tests shorten it
 }
 
 // New returns the provider with service account key sign-in only.
@@ -102,7 +109,7 @@ func (p *Provider) fresh(env credential.Env) (credential.Result, error) {
 func (p *Provider) Continue(ctx context.Context, env credential.Env, req credential.Request) (credential.Result, error) {
 	switch req.Challenge.Kind {
 	case credential.ChallengeSecretFields:
-	case credential.ChallengeBrowserCallback, credential.ChallengePasteRedirect:
+	case credential.ChallengeBrowserCallback, credential.ChallengeBrowserLoopback, credential.ChallengePasteRedirect:
 		if p.user == nil {
 			return credential.Result{}, credential.ErrUnsupported
 		}

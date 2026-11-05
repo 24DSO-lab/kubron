@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/url"
 	"strings"
 	"testing"
@@ -106,8 +107,11 @@ func begin(t *testing.T, p *Provider, env credential.Env) (credential.Challenge,
 	c := *res.Challenge
 	c.ID = testChallengeID
 	flow := flowPaste
-	if c.Kind == credential.ChallengeBrowserCallback {
+	switch c.Kind {
+	case credential.ChallengeBrowserCallback:
 		flow = flowBrowser
+	case credential.ChallengeBrowserLoopback:
+		flow = flowLoopback
 	}
 	pd, err := decodePending(res.Pending, flow)
 	if err != nil {
@@ -162,13 +166,14 @@ func TestUserBeginBrowserCallbackBuildsTheAuthorizationRequest(t *testing.T) {
 func TestUserBeginPasteVariant(t *testing.T) {
 	g := newUserGoogle(t)
 	for name, env := range map[string]credential.Env{
-		"desktop":         {HTTP: g.client, Desktop: true},
-		"web without URL": {HTTP: g.client},
+		"desktop, no free port": {HTTP: g.client, Desktop: true},
+		"web without URL":       {HTTP: g.client},
 	} {
 		t.Run(name, func(t *testing.T) {
 			p := userProvider(t, "")
-			if name == "desktop" {
-				p = userProvider(t, testWebRedirect) // the callback is for the web server only
+			if name == "desktop, no free port" {
+				p = userProvider(t, testWebRedirect)                                                        // the callback is for the web server only
+				p.listen = func(string, string) (net.Listener, error) { return nil, errors.New("no port") } // the loopback is tried first on the desktop
 			}
 			c, _, pd := begin(t, p, env)
 			if c.Kind != credential.ChallengePasteRedirect || len(c.Fields) != 1 || c.Fields[0].Name != "redirectUrl" || !c.Fields[0].Secret || c.Poll {

@@ -39,6 +39,8 @@ var allowedImports = map[string]bool{
 	"encoding/pem":            true,
 	"errors":                  true,
 	"io":                      true,
+	"net":                     true,
+	"sync":                    true,
 	"net/url":                 true,
 	"net/http":                true,
 	"strconv":                 true,
@@ -55,7 +57,14 @@ var allowedImports = map[string]bool{
 var allowedHTTP = map[string]bool{
 	"Client": true, "RoundTripper": true, "Request": true, "Response": true, "ErrUseLastResponse": true,
 	"NewRequestWithContext": true, "MethodPost": true, "StatusOK": true, "StatusTooManyRequests": true,
+	// The listener of the desktop sign-in (loopback.go): a server for 127.0.0.1 only.
+	"Server": true, "Handler": true, "ResponseWriter": true, "Error": true, "NotFound": true, "MethodGet": true,
+	"StatusBadRequest": true, "StatusMisdirectedRequest": true,
 }
+
+// allowedNet lists the names of net that the sources may use: the listener of the desktop sign-in on
+// 127.0.0.1 and the split of a host and port. No Dial, no resolver, no other server.
+var allowedNet = map[string]bool{"Listen": true, "Listener": true, "SplitHostPort": true}
 
 func sourceFiles(t *testing.T) []string {
 	t.Helper()
@@ -79,11 +88,14 @@ func TestSourcesDoNotReachForServerCredentials(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		httpName := ""
+		httpName, netName := "", ""
 		for _, imp := range f.Imports {
 			path, _ := strconv.Unquote(imp.Path.Value)
 			if !allowedImports[path] {
 				t.Errorf("%s imports %q, which is not on the list of allowed imports", name, path)
+			}
+			if path == "net" {
+				netName = "net"
 			}
 			if path == "net/http" {
 				httpName = "http"
@@ -99,6 +111,9 @@ func TestSourcesDoNotReachForServerCredentials(t *testing.T) {
 			}
 			if id, ok := sel.X.(*ast.Ident); ok && httpName != "" && id.Name == httpName && !allowedHTTP[sel.Sel.Name] {
 				t.Errorf("%s: http.%s is not allowed: only Env.HTTP may carry a request", fset.Position(sel.Pos()), sel.Sel.Name)
+			}
+			if id, ok := sel.X.(*ast.Ident); ok && netName != "" && id.Name == netName && !allowedNet[sel.Sel.Name] {
+				t.Errorf("%s: net.%s is not allowed: the only socket is the loopback listener", fset.Position(sel.Pos()), sel.Sel.Name)
 			}
 			switch sel.Sel.Name {
 			case "Getenv", "LookupEnv", "Environ", "ReadFile", "FindDefaultCredentials", "DefaultClient", "DefaultTransport",
