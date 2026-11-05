@@ -15,7 +15,7 @@ import (
 	"github.com/24DSO-labs/kubron/internal/secrets"
 )
 
-const awsKubeconfig = `apiVersion: v1
+const unsupportedExecKubeconfig = `apiVersion: v1
 kind: Config
 current-context: ctx
 clusters:
@@ -32,8 +32,8 @@ users:
   user:
     exec:
       apiVersion: client.authentication.k8s.io/v1beta1
-      command: aws
-      args: ["eks", "get-token", "--cluster-name", "demo"]
+      command: custom-auth-plugin
+      args: ["login"]
 `
 
 func brokerOptions(t *testing.T, desktop bool) BrokerOptions {
@@ -74,7 +74,7 @@ func TestWebBrokerTurnsAnExecKubeconfigIntoManualToken(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	d, err := b.Describe([]byte(awsKubeconfig), "ctx")
+	d, err := b.Describe([]byte(unsupportedExecKubeconfig), "ctx")
 	if err != nil {
 		t.Fatal(err)
 	}
