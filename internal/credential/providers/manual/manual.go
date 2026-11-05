@@ -24,7 +24,7 @@ const (
 	// FieldToken is the name of the answer field (the UI label is credential.field.token).
 	FieldToken = "token"
 
-	kindExecCred    = "ExecCredential"
+	kindExecCred = "ExecCredential"
 )
 
 var supportedAPIVersions = map[string]bool{
