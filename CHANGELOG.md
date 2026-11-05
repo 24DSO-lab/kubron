@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **GKE sign-in with a service account key:** a kubeconfig that uses `gke-gcloud-auth-plugin` now asks for a service
+  account key (JSON) instead of showing a manual-token command. The key is exchanged for a token with the JWT-bearer
+  grant at the fixed Google address and is saved encrypted. The credentials of the server (Application Default
+  Credentials, the metadata server) are never used, and `token_uri` from the key file is ignored.
+
 ## [1.0.0] - 2026-11-03
 
 ### Security
