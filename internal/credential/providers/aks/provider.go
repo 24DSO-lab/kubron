@@ -27,10 +27,10 @@ const (
 )
 
 var (
-	errHTTP       = errors.New("Azure sign-in request failed")
-	errResponse   = errors.New("Azure returned an invalid sign-in response")
-	errMFA        = errors.New("Azure requires an authentication method unsupported by password sign-in")
-	errSecret     = errors.New("the client secret is invalid")
+	errHTTP     = errors.New("Azure sign-in request failed")
+	errResponse = errors.New("Azure returned an invalid sign-in response")
+	errMFA      = errors.New("Azure requires an authentication method unsupported by password sign-in")
+	errSecret   = errors.New("the client secret is invalid")
 )
 
 type Provider struct{}
