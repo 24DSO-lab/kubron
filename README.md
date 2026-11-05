@@ -147,7 +147,7 @@ On Linux add `-tags webkit2_41` to `wails dev` / `wails build` (WebKitGTK 4.1, a
 - **User guides** (PDF): Helm — [English](docs/DOCS/EN/Kubron-Helm-User-Guide-EN.pdf), [Русский](docs/DOCS/RU/Kubron-Helm-User-Guide.pdf); GitOps — [English](docs/DOCS/EN/Kubron-ArgoCD-User-Guide-EN.pdf), [Русский](docs/DOCS/RU/Kubron-ArgoCD-User-Guide.pdf)
 - **Server deployment** (Russian) — [docs/deploy.md](docs/deploy.md), [high availability](docs/ha.md), [backup and restore](docs/backup.md), [logging](docs/logging.md), [metrics](docs/metrics.md), [HTTP security](docs/http-security.md)
 - **Server security** (Russian) — [threat model](docs/threat-model.md), [security review](docs/security-review.md)
-- **Web version status** — what is done and what is still open: [docs/tickets](docs/tickets)
+- **Documentation map and project status** — [docs/README.md](docs/README.md) (what is done is in the [archive](docs/archive/README.md), what is still open is in [docs/tickets](docs/tickets) and [docs/decisions](docs/decisions))
 - **Localization** — [docs/i18n.md](docs/i18n.md), [ADR-0014](docs/adr/0014-i18n.md)
 
 - **Releasing** — [docs/releasing.md](docs/releasing.md)
@@ -186,7 +186,7 @@ go run ./cmd/kubron-server --listen 127.0.0.1:8080
 - [x] Shared, persistent Helm catalog in server mode
 - [x] Publish the signed container image and Helm chart to a registry
 - [x] HTTP port-forward and terminals in web mode
-- [ ] Second-person review of the threat model and security review, and a pentest on a test stand ([status](docs/tickets/stage-4-5.md))
+- [ ] Second-person review of the threat model and security review, and a pentest on a test stand ([status](docs/archive/tickets/stage-4-5.md))
 - [ ] Code-signed Windows and macOS builds
 - [ ] SSO/OIDC login for organizations
 
