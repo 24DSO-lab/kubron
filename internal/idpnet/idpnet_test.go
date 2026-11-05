@@ -219,6 +219,11 @@ func TestCustomCA(t *testing.T) {
 }
 
 func TestWrapClientPreservesTLSAndAddsNetworkGuard(t *testing.T) {
+	// The default single-user registry is intentionally empty; install the same
+	// permissive cluster policy used by the server so this test exercises the guard.
+	pol := netpolicy.New("idp-test", netpolicy.ProfilePermissive, nil)
+	netpolicy.Set(netpolicy.ScopeClusterAPI, pol)
+	t.Cleanup(func() { netpolicy.Set(netpolicy.ScopeClusterAPI, nil) })
 	requests := 0
 	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		requests++
