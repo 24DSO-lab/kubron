@@ -110,11 +110,13 @@ func (s *session) redirectURI(port string) string {
 // checkResponse validates the parameters of an authorization response against the request: the issuer
 // (RFC 9207), the state, an error from the provider, and the presence of a code. It returns the code.
 func (s *session) checkResponse(d *discovery, q url.Values, p pending) (string, error) {
-	if err := d.checkIssuerParam(q); err != nil {
-		return "", wrap(err, credential.ErrInvalidGrant) // a response from another issuer ends this request
-	}
+	// Bind the response to this request before interpreting provider-controlled parameters. A wrong state
+	// is always rejected as an answer mismatch, regardless of the issuer parameter supplied with it.
 	if subtle.ConstantTimeCompare([]byte(q.Get("state")), []byte(p.State)) != 1 {
 		return "", wrap(errState, credential.ErrAnswerRejected)
+	}
+	if err := d.checkIssuerParam(q); err != nil {
+		return "", wrap(err, credential.ErrInvalidGrant) // a response from another issuer ends this request
 	}
 	if q.Get("error") != "" {
 		return "", wrap(errDenied, credential.ErrInvalidGrant)
@@ -162,7 +164,7 @@ func (s *session) startBrowserCallback(ctx context.Context) (credential.Result, 
 	}
 	return credential.Result{
 		Challenge: &credential.Challenge{Kind: credential.ChallengeBrowserCallback, URL: u, Poll: true, IntervalSec: 2},
-		Pending: p.encode(),
+		Pending:   p.encode(),
 	}, nil
 }
 
