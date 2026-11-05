@@ -210,7 +210,13 @@ jobs:
           scope: test
 
       - name: gofmt
-        run: test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
+        run: |
+          files="$(gofmt -l .)"
+          if [ -n "$files" ]; then
+            printf '%s\n' "$files"
+            gofmt -d $files
+            exit 1
+          fi
 
       - run: go vet -tags $GO_TAGS ./...
       - run: go build -tags $GO_TAGS ./...
