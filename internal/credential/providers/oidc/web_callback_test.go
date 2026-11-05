@@ -83,8 +83,8 @@ func TestWebBrowserCallbackRejectsForeignRedirectAndState(t *testing.T) {
 	ch.ID = challengeID
 
 	for name, redirect := range map[string]string{
-		"foreign host": "https://evil.example.test/auth/cluster/callback?code=x&state=" + challengeID,
-		"foreign path": "https://kubron.example.test/other?code=x&state=" + challengeID,
+		"foreign host":  "https://evil.example.test/auth/cluster/callback?code=x&state=" + challengeID,
+		"foreign path":  "https://kubron.example.test/other?code=x&state=" + challengeID,
 		"foreign state": "https://kubron.example.test/auth/cluster/callback?code=x&state=wrong",
 	} {
 		t.Run(name, func(t *testing.T) {
