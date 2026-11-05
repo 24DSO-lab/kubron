@@ -120,14 +120,17 @@ func TestContinueBareToken(t *testing.T) {
 	}
 }
 
-func TestBareJWTUsesExpAndSub(t *testing.T) {
+func TestBareJWTUsesExpiryButDoesNotTrustSubject(t *testing.T) {
 	exp := now.Add(2 * time.Hour).Unix()
-	res, err := run(t, jwt(fmt.Sprintf(`{"exp":%d,"sub":"alice"}`, exp)))
+	res, err := run(t, jwt(fmt.Sprintf(`{"exp":%d,"sub":"forged-user"}`, exp)))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !res.Token.Expiry.Equal(time.Unix(exp, 0)) || res.Token.Principal != "alice" {
-		t.Fatalf("token = %+v", res.Token)
+	if !res.Token.Expiry.Equal(time.Unix(exp, 0)) {
+		t.Fatalf("expiry = %v, want %v", res.Token.Expiry, time.Unix(exp, 0))
+	}
+	if res.Token.Principal != "" {
+		t.Fatalf("unverified JWT subject must not be trusted, got %q", res.Token.Principal)
 	}
 }
 
