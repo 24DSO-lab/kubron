@@ -23,11 +23,8 @@ const (
 	DefaultTTL = 5 * time.Minute
 	// FieldToken is the name of the answer field (the UI label is credential.field.token).
 	FieldToken = "token"
-
-
-
 	maxPrincipalLen = 256
-	kindExecCred = "ExecCredential"
+	kindExecCred    = "ExecCredential"
 )
 
 var supportedAPIVersions = map[string]bool{
