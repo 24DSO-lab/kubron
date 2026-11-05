@@ -4,7 +4,6 @@
 package app
 
 import (
-	"context"
 	"sync"
 
 	"github.com/24DSO-labs/kubron/internal/audit"
@@ -64,7 +63,10 @@ func (a *App) revokePersonal(userID, clusterID, reason string) error {
 	if a.broker == nil || userID == "" {
 		return nil
 	}
-	err := a.broker.Revoke(context.Background(), credential.RevokeFilter{ClusterID: clusterID, OwnerID: userID, Scope: credential.ScopeUser})
+	// A revoke is a security action: it runs to the end even if the view of the caller is released meanwhile.
+	ctx, cancel := a.detachedCtx(storeTimeout)
+	defer cancel()
+	err := a.broker.Revoke(ctx, credential.RevokeFilter{ClusterID: clusterID, OwnerID: userID, Scope: credential.ScopeUser})
 	if err != nil {
 		return err
 	}
@@ -140,7 +142,9 @@ func (a *App) dropTeamSignIn(clusterID string) error {
 	if a.broker == nil || clusterID == "" {
 		return nil
 	}
-	return a.broker.Revoke(context.Background(), credential.RevokeFilter{ClusterID: clusterID, Scope: credential.ScopeTeam})
+	ctx, cancel := a.detachedCtx(storeTimeout)
+	defer cancel()
+	return a.broker.Revoke(ctx, credential.RevokeFilter{ClusterID: clusterID, Scope: credential.ScopeTeam})
 }
 
 // revokeClusterSignIns forgets every saved sign-in of a cluster, personal and shared: the way the cluster signs in
@@ -149,5 +153,7 @@ func (a *App) revokeClusterSignIns(clusterID string) error {
 	if a.broker == nil || clusterID == "" {
 		return nil
 	}
-	return a.broker.Revoke(context.Background(), credential.RevokeFilter{ClusterID: clusterID})
+	ctx, cancel := a.detachedCtx(storeTimeout)
+	defer cancel()
+	return a.broker.Revoke(ctx, credential.RevokeFilter{ClusterID: clusterID})
 }

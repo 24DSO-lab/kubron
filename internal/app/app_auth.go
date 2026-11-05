@@ -70,6 +70,8 @@ func NewSessionView(root *App, source string) *App {
 	v.conn = newConnectState() // входы принадлежат сессии
 	v.k8sMgr.SetNotifier(nil)  // события пойдут владельцу после BindView; до входа адресата нет
 	v.pfMgr = k8s.NewSessionPortForwardManager(v.k8sMgr)
+	// Своя граница отмены: операции вида кончаются с его освобождением (ReleaseView) или остановкой ядра.
+	v.base, v.cancel = context.WithCancel(root.baseContext())
 	v.configureTerminals()
 	v.configurePortForward() // владелец потоков пока неизвестен: режим proxy включается в BindView
 	if root.auth == nil {
@@ -164,6 +166,9 @@ func ViewActive(v *App) bool { return v != nil && v.auth != nil && v.auth.Active
 func ReleaseView(v *App) {
 	if v == nil {
 		return
+	}
+	if v.cancel != nil {
+		v.cancel() // незавершённые обращения вида к провайдерам входа не должны пережить сессию
 	}
 	v.endSessionResources()
 	v.k8sMgr.Detach()
