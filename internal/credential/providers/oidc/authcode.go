@@ -162,7 +162,7 @@ func (s *session) startBrowserCallback(ctx context.Context) (credential.Result, 
 	}
 	return credential.Result{
 		Challenge: &credential.Challenge{Kind: credential.ChallengeBrowserCallback, URL: u, Poll: true, IntervalSec: 2},
-		Pending: p.encode(),
+		Pending:   p.encode(),
 	}, nil
 }
 
