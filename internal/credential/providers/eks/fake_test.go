@@ -415,4 +415,3 @@ func signIn(t *testing.T, p *Provider, env credential.Env, d credential.Descript
 	mustChallenge(t, res, err, credential.ChallengeSecretFields)
 	return step(t, p, env, d, res, nil, keys)
 }
-
