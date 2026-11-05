@@ -30,11 +30,11 @@ describe('добавление кластера в сервисном режим
     expect(callApp).toHaveBeenCalledWith('AddClusterToTeam', 't1', 'kc', settings)
   })
 
-  it('с логином и паролем oidc-login — AddOIDCClusterToTeam', async () => {
-    const oidc = { username: 'vasya', password: 'pw' }
-    const res = await useClusters().addClusterFromText('kc', settings, 't1', oidc)
+  it('общая учётная запись команды — флаг в настройках, пароль не передаётся', async () => {
+    const shared = { ...settings, sharedAccount: true } as ClusterSettings
+    const res = await useClusters().addClusterFromText('kc', shared, 't1')
     expect(res.ok).toBe(true)
-    expect(callApp).toHaveBeenCalledWith('AddOIDCClusterToTeam', 't1', 'kc', settings, oidc)
+    expect(callApp).toHaveBeenCalledWith('AddClusterToTeam', 't1', 'kc', shared)
   })
 
   it('in-cluster — AddInClusterToTeam', async () => {

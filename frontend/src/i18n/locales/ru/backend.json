@@ -482,21 +482,11 @@
   "unknownExportFormatUseCsvOrJson": "неизвестный формат выгрузки: используйте csv или json",
   "kubronClusterCheckInterval": "KUBRON_CLUSTER_CHECK_INTERVAL {p0}: {p1}",
   "clusterCheckIntervalMustBe0": "интервал проверки кластеров должен быть 0 (выключено) или не меньше 5 с",
-  "connExecForbidden": "Плагины учётных данных (exec) в веб-режиме запрещены: используйте токен или клиентский сертификат",
   "connLocalFilesForbidden": "kubeconfig ссылается на файлы сервера: встройте сертификаты и токены в него (поля -data)",
-  "connLoginPasswordRequired": "Нужны логин и пароль",
-  "connIssuerMustBeHttps": "Адрес провайдера входа должен быть https-ссылкой",
   "connStorageNoSecrets": "Это хранилище не умеет хранить секреты подключения: используйте PostgreSQL",
   "connNotInCluster": "Сервер запущен не внутри кластера Kubernetes",
-  "connNotOidcPassword": "Кластер не использует oidc-password",
-  "connNoStoredSettings": "У кластера нет сохранённых настроек подключения",
-  "connStoredSettingsDamaged": "Сохранённые настройки подключения повреждены",
-  "connIdpSignInFailed": "Не удалось войти в провайдер входа: {p0}",
   "connInClusterConfig": "Настройка in-cluster: {p0}",
   "connUnknownMode": "Неизвестный режим подключения {p0}",
-  "connNoStoredSignIn": "У кластера нет сохранённых настроек входа",
-  "connSignInDamaged": "Сохранённые настройки входа повреждены",
-  "connNotOidcLogin": "kubeconfig не использует oidc-login с паролем",
   "oidcUnsupportedGrant": "Неподдерживаемый тип входа oidc-login",
   "oidcGrantOnlyPassword": "{p0} {p1}: в веб-режиме доступен только password",
   "netpolicyInvalidAllowEntry": "Неверный CIDR или адрес {p0} в списке исключений",
@@ -657,7 +647,6 @@
   "credOIDCRedirectInvalid": "вставленный адрес не является корректным ответом входа",
   "credOIDCListenFailed": "не удалось запустить локальный приём ответа входа",
   "credOIDCDeviceUnavailable": "поставщик удостоверений не поддерживает вход с другого устройства",
-
   "kubronPublicURL": "KUBRON_PUBLIC_URL: {p0}",
   "mustBeAbsoluteURL": "должен быть абсолютным URL",
   "mustBeAbsoluteURLWithHost": "должен быть абсолютным URL с именем хоста",
@@ -666,12 +655,11 @@
   "portMustBeBetween1And65535": "порт должен быть в диапазоне от 1 до 65535",
   "schemeMustBeHTTPS": "схема должна быть https (http разрешён только для localhost)",
   "httpAllowedOnlyLocalhostLoopback": "http разрешён только для localhost или loopback IP-адреса",
-
   "credAKSHTTPError": "не удалось выполнить запрос входа в Azure",
   "credAKSResponseInvalid": "Azure вернула некорректный ответ при входе",
   "credAKSClientSecretInvalid": "секрет клиента недействителен",
   "credAKSMFARequired": "Azure требует способ аутентификации, не поддерживаемый входом по паролю",
   "webOIDCClientIDInvalid": "Client ID веб-версии должен быть не длиннее 256 байт и не содержать управляющих символов",
-  "applicationSettingsStoreUnavailable": "хранилище настроек приложения недоступно"
-
+  "applicationSettingsStoreUnavailable": "хранилище настроек приложения недоступно",
+  "credCoreSharedAccountNotSignedIn": "общая учётная запись кластера ещё не выполнила вход: обратитесь к администратору кластера"
 }

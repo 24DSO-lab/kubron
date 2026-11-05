@@ -210,7 +210,7 @@ func (a *App) connect(ctx context.Context, clusterID string) (credential.Connect
 		// The shared account of a team is entered by a cluster administrator only: anybody else would connect with
 		// credentials of their own choice as the team.
 		_ = a.broker.Cancel(ctx, plan.Subject, res.Challenge.ID)
-		return credential.ConnectResult{}, credential.ErrChallengeRequired
+		return credential.ConnectResult{}, errSharedAccountNotSignedIn{}
 	}
 	return a.connectResultOf(clusterID, plan, res)
 }
@@ -428,4 +428,16 @@ func principalOf(res credential.Result) string {
 func (a *App) canManageCluster(clusterID string) bool {
 	_, err := a.auth.CheckCluster(auth.PermClusterManage, clusterID)
 	return err == nil
+}
+
+// errSharedAccountNotSignedIn: the shared account of the team has no saved sign-in, and only a cluster administrator
+// can enter it. It is still ErrChallengeRequired for callers that test for it.
+type errSharedAccountNotSignedIn struct{}
+
+func (errSharedAccountNotSignedIn) Error() string {
+	return "the shared account of this cluster is not signed in: ask a cluster administrator"
+}
+
+func (errSharedAccountNotSignedIn) Is(target error) bool {
+	return target == credential.ErrChallengeRequired
 }

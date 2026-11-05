@@ -49,17 +49,14 @@
     "noAdminTeams": "You are not an administrator of any team, so you cannot add clusters. Ask an organization administrator.",
     "methodInCluster": "This server's cluster",
     "inClusterHint": "Adds the cluster the Kubron server itself runs in. Access uses the server's ServiceAccount, so everyone with a role in the team gets its permissions.",
-    "oidcHint": "This kubeconfig signs in through oidc-login. The server cannot run it, so it will sign in to the identity provider itself with the login and password below and renew the token on its own.",
-    "oidcUser": "Login",
-    "oidcPassword": "Password",
-    "oidcStored": "The password is stored encrypted and is never shown again. You can change it later in the cluster settings.",
-    "authCodeUnsupported": "This kubeconfig signs in through a browser (oidc-login, authcode). That cannot work on the server. Use a kubeconfig with the password grant, a token or a client certificate.",
-    "execForbidden": "This kubeconfig runs an external command to get credentials (exec). That is not allowed on the server. Use a token or a client certificate.",
     "sectionArgo": "Argo CD",
     "argoUrl": "Argo CD address",
     "argoUrlPlaceholder": "https://argocd.example.com",
     "argoUrlHint": "Published address of Argo CD (for example, an Ingress). If set, Kubron opens it instead of forwarding a port. Leave empty to open Argo CD through the cluster API.",
-    "argoUrlInvalid": "Enter an http or https address without credentials, query or fragment."
+    "argoUrlInvalid": "Enter an http or https address without credentials, query or fragment.",
+    "sharedAccount": "Shared team account",
+    "sharedAccountOn": "Everyone in the team connects with one account. A cluster administrator signs in once when connecting; other members are asked to contact the administrator.",
+    "sharedAccountOff": "Each user signs in to the cluster with their own account."
   },
   "edit": {
     "kubeconfig": "Kubeconfig",
@@ -74,10 +71,10 @@
     "stateText": "Editing text: no changes yet",
     "stateKeep": "Stored in Kubron",
     "deleteCluster": "Delete cluster",
-    "oidcTitle": "Sign-in to the identity provider",
-    "oidcHint": "The server signs in to the identity provider with this login and password. If the password was changed there, enter the new one: it is checked before saving.",
-    "oidcUpdate": "Update login and password",
-    "oidcUpdated": "Login and password updated."
+    "accountTitle": "Cluster account",
+    "accountChangeWarning": "Saved sign-ins of this cluster will be forgotten and everyone will have to sign in again.",
+    "accountReset": "Forget the shared sign-in",
+    "accountResetDone": "The shared sign-in is forgotten. The next connection will ask a cluster administrator to sign in."
   },
   "appearance": {
     "environment": "Environment",

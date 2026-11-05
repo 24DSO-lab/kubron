@@ -482,21 +482,11 @@
   "unknownExportFormatUseCsvOrJson": "未知 export format: use csv or json",
   "kubronClusterCheckInterval": "KUBRON_CLUSTER_CHECK_INTERVAL {p0}: {p1}",
   "clusterCheckIntervalMustBe0": "cluster check interval 必须是 0 (off) or at least 5s",
-  "connExecForbidden": "Web 模式不允许凭证插件（exec）：请使用令牌或客户端证书",
   "connLocalFilesForbidden": "kubeconfig 引用了服务器上的文件：请将证书和令牌嵌入其中（-data 字段）",
-  "connLoginPasswordRequired": "login and 密码 are required",
-  "connIssuerMustBeHttps": "the identity provider address 必须是 an https URL",
   "connStorageNoSecrets": "this storage 无法 keep connection secrets: use the PostgreSQL storage",
   "connNotInCluster": "the server 不是 running inside a Kubernetes cluster",
-  "connNotOidcPassword": "the cluster 不 use oidc-password",
-  "connNoStoredSettings": "the cluster 没有 stored connection settings",
-  "connStoredSettingsDamaged": "存储的连接设置已损坏",
-  "connIdpSignInFailed": "登录身份提供商失败：{p0}",
   "connInClusterConfig": "in-集群 configuration: {p0}",
   "connUnknownMode": "未知 connection mode {p0}",
-  "connNoStoredSignIn": "the cluster 没有 stored sign-in settings",
-  "connSignInDamaged": "存储的登录设置已损坏",
-  "connNotOidcLogin": "此 kubeconfig 未使用带 password 授权的 oidc-login",
   "oidcUnsupportedGrant": "不支持的 oidc-login 授权类型",
   "netpolicyInvalidAllowEntry": "allow 列表中包含无效的 CIDR 或地址 {p0}",
   "netpolicyUnknownProfile": "未知的网络策略配置文件 {p0}",
@@ -657,7 +647,6 @@
   "credOIDCRedirectInvalid": "粘贴的地址不是有效的登录响应",
   "credOIDCListenFailed": "无法启动本地登录监听器",
   "credOIDCDeviceUnavailable": "身份提供商不支持设备登录",
-
   "kubronPublicURL": "KUBRON_PUBLIC_URL: {p0}",
   "mustBeAbsoluteURL": "必须是绝对 URL",
   "mustBeAbsoluteURLWithHost": "必须是带主机名的绝对 URL",
@@ -666,12 +655,11 @@
   "portMustBeBetween1And65535": "端口必须在 1 到 65535 之间",
   "schemeMustBeHTTPS": "协议必须为 https（仅 localhost 允许使用 http）",
   "httpAllowedOnlyLocalhostLoopback": "http 仅允许用于 localhost 或环回 IP 地址",
-
   "credAKSHTTPError": "Azure 登录请求失败",
   "credAKSResponseInvalid": "Azure 返回了无效的登录响应",
   "credAKSClientSecretInvalid": "客户端密钥无效",
   "credAKSMFARequired": "Azure 要求使用密码登录不支持的身份验证方式",
   "webOIDCClientIDInvalid": "Web OIDC 客户端 ID 不得超过 256 字节且不能包含控制字符",
-  "applicationSettingsStoreUnavailable": "应用程序设置存储不可用"
-
+  "applicationSettingsStoreUnavailable": "应用程序设置存储不可用",
+  "credCoreSharedAccountNotSignedIn": "该集群的共享账户尚未登录：请联系集群管理员"
 }
