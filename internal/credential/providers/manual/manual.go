@@ -18,9 +18,9 @@ import (
 
 const (
 	// MaxAnswerBytes bounds what the user can paste: an ExecCredential is a few KiB at most.
-	MaxAnswerBytes  = 64 << 10
+	MaxAnswerBytes = 64 << 10
 	// DefaultTTL is the lifetime of a token that carries no expiry of its own.
-	DefaultTTL      = 5 * time.Minute
+	DefaultTTL = 5 * time.Minute
 	// FieldToken is the name of the answer field (the UI label is credential.field.token).
 	FieldToken      = "token"
 	maxPrincipalLen = 256
