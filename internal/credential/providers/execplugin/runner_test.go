@@ -6,7 +6,7 @@ package execplugin
 import (
 	"bytes"
 	"context"
-	"io"
+
 	"os"
 	"os/exec"
 	"testing"
@@ -49,7 +49,9 @@ func runnerHelperCommand(t *testing.T, mode string, timeout time.Duration) Comma
 }
 
 func TestOSRunnerKeepsCredentialStdoutSeparateFromDiagnostics(t *testing.T) {
+
 	out, err := (osRunner{}).Run(context.Background(), runnerHelperCommand(t, "streams", 5*time.Second))
+
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,7 +78,8 @@ func TestOSRunnerEnforcesTimeout(t *testing.T) {
 }
 
 func TestOSRunnerUsesClosedStdin(t *testing.T) {
-	cmd := runnerHelperCommand(t, "stdin", 5*time.Second)
+
+	cmd := runnerHelperCommand(t, "stdin", 5*time.Secon
 	out, err := (osRunner{}).Run(context.Background(), cmd)
 	if err != nil {
 		t.Fatal(err)

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- **Manual Kubernetes tokens:** an unverified JWT `sub` is no longer presented as an authenticated Kubernetes principal in audit or connection details. The API server remains the authority for token validation; the unverified `exp` is used only as a cache hint.
+
 ### Changed
 
 - **Cluster authentication network policy:** native AKS sign-in now uses the shared IdP HTTP client, enforcing `KUBRON_CLUSTER_ADDR_POLICY` on Azure authority connections and redirects, with HTTPS-only web requests, bounded responses/timeouts and no environment proxy.
@@ -14,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **OIDC integration coverage:** CI exercises password, refresh-token rotation, authorization code + PKCE through paste-redirect and desktop loopback, device authorization, and a real Keycloak-backed kind API server with two isolated Kubernetes RBAC identities.
+- **Credential guidance:** documented per-user refresh-token storage, explicit team-scope password storage, IdP egress/TLS requirements and the actual OIDC redirect flags.
 - **GKE sign-in with a service account key:** a kubeconfig that uses `gke-gcloud-auth-plugin` now asks for a service
   account key (JSON) instead of showing a manual-token command. The key is exchanged for a token with the JWT-bearer
   grant at the fixed Google address and is saved encrypted. The credentials of the server (Application Default
