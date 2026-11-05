@@ -234,7 +234,6 @@ func TestSecretNeverLeaks(t *testing.T) {
 	}
 }
 
-
 func FuzzParseExecCredential(f *testing.F) {
 	f.Add("")
 	f.Add("opaque-token")
