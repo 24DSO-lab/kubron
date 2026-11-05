@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/24DSO-labs/kubron/internal/credential"
+	"github.com/24DSO-labs/kubron/internal/netpolicy"
 )
 
 func TestUnsupportedModesDoNotUseHostCredentials(t *testing.T) {
@@ -146,5 +147,48 @@ func TestTokenPrincipalIsOnlyLabel(t *testing.T) {
 	tok, rt, err := parseToken([]byte(`{"access_token":"eyJhbGciOiJub25lIn0.eyJvaWQiOiJhYmMiLCJ1cG4iOiJ1c2VyIn0.sig","refresh_token":"r","expires_in":60}`), time.Now())
 	if err != nil || rt != "r" || tok.Principal != "abc" {
 		t.Fatalf("%+v %q %v", tok, rt, err)
+	}
+}
+
+func TestWebDeviceFlowUsesClusterAddressPolicy(t *testing.T) {
+	requests := 0
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		requests++
+		_, _ = w.Write([]byte(`{"device_code":"device","user_code":"ABCD","verification_uri":"https://microsoft.com/devicelogin","expires_in":600,"interval":5}`))
+	}))
+	defer srv.Close()
+
+	policy := netpolicy.New("test", netpolicy.ProfilePermissive, nil)
+	netpolicy.Set(netpolicy.ScopeClusterAPI, policy)
+	t.Cleanup(func() { netpolicy.Set(netpolicy.ScopeClusterAPI, nil) })
+
+	d := credential.Descriptor{Kind: credential.KindAKS, Params: map[string]string{
+		"tenant-id": "tenant", "authority-host": srv.URL,
+	}}
+	_, err := New().Begin(context.Background(), credential.Env{HTTP: srv.Client()}, credential.Request{Descriptor: d})
+	if !errors.Is(err, errHTTP) {
+		t.Fatalf("expected blocked authority request, got %v", err)
+	}
+	if requests != 0 {
+		t.Fatalf("request reached loopback IdP despite web policy: %d", requests)
+	}
+}
+
+func TestDesktopDeviceFlowMayUseLoopbackAuthority(t *testing.T) {
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"device_code":"device","user_code":"ABCD","verification_uri":"https://microsoft.com/devicelogin","expires_in":600,"interval":5}`))
+	}))
+	defer srv.Close()
+
+	policy := netpolicy.New("test", netpolicy.ProfilePermissive, nil)
+	netpolicy.Set(netpolicy.ScopeClusterAPI, policy)
+	t.Cleanup(func() { netpolicy.Set(netpolicy.ScopeClusterAPI, nil) })
+
+	d := credential.Descriptor{Kind: credential.KindAKS, Params: map[string]string{
+		"tenant-id": "tenant", "authority-host": srv.URL,
+	}}
+	res, err := New().Begin(context.Background(), credential.Env{HTTP: srv.Client(), Desktop: true}, credential.Request{Descriptor: d})
+	if err != nil || res.Challenge == nil || res.Challenge.Kind != credential.ChallengeDeviceCode {
+		t.Fatalf("desktop loopback authority should be allowed: result=%+v err=%v", res, err)
 	}
 }
