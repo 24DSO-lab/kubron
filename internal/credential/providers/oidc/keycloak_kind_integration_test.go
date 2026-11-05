@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -43,17 +44,41 @@ func TestKeycloakKindRBAC(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
 	defer cancel()
 
-	if _, err := alice.CoreV1().Pods("alice-ops").List(ctx, metav1.ListOptions{}); err != nil {
-		t.Fatalf("alice should list pods in alice-ops: %v", err)
+	if err := waitForKeycloakAuthentication(ctx, alice, "alice-ops"); err != nil {
+		t.Fatalf("alice should authenticate and list pods in alice-ops: %v", err)
 	}
 	if _, err := alice.CoreV1().Pods("bob-ops").List(ctx, metav1.ListOptions{}); !apierrors.IsForbidden(err) {
 		t.Fatalf("alice should be forbidden from bob-ops, got %v", err)
 	}
-	if _, err := bob.CoreV1().Pods("bob-ops").List(ctx, metav1.ListOptions{}); err != nil {
-		t.Fatalf("bob should list pods in bob-ops: %v", err)
+	if err := waitForKeycloakAuthentication(ctx, bob, "bob-ops"); err != nil {
+		t.Fatalf("bob should authenticate and list pods in bob-ops: %v", err)
 	}
 	if _, err := bob.CoreV1().Pods("alice-ops").List(ctx, metav1.ListOptions{}); !apierrors.IsForbidden(err) {
 		t.Fatalf("bob should be forbidden from alice-ops, got %v", err)
+	}
+}
+
+// waitForKeycloakAuthentication allows the API server a short window to refresh issuer/JWKS discovery
+// after startup. A persistent 401 still fails the integration test; only transient startup 401s are retried.
+func waitForKeycloakAuthentication(ctx context.Context, client *kubernetes.Clientset, namespace string) error {
+	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
+	defer cancel()
+	ticker := time.NewTicker(500 * time.Millisecond)
+	defer ticker.Stop()
+
+	for {
+		_, err := client.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
+		if err == nil {
+			return nil
+		}
+		if !apierrors.IsUnauthorized(err) {
+			return err
+		}
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("OIDC authentication did not become ready within 20 seconds: %w", err)
+		case <-ticker.C:
+		}
 	}
 }
 
