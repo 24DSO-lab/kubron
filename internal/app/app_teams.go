@@ -6,6 +6,7 @@ package app
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/24DSO-labs/kubron/internal/audit"
@@ -16,6 +17,8 @@ import (
 // Управление командами существует только в сервисном режиме (PostgreSQL). В десктопе и в личном режиме
 // команд нет, методы возвращают понятную ошибку.
 var errNoTeams = errors.New("teams are available only in service mode")
+
+var errNotSharedAccount = errors.New("the cluster does not use a shared team account")
 
 // TeamView — команда в списке пользователя: общие сведения и его роль в ней.
 type TeamView struct {
@@ -155,30 +158,17 @@ func (a *App) RemoveTeamMember(teamID, userID string) error {
 }
 
 // AddClusterToTeam добавляет кластер (по тексту kubeconfig) в команду; право — администратор команды.
+// Общая учётная запись (settings.SharedAccount) выбирается здесь же: право то же, вход вводит администратор кластера
+// при первом подключении, а не в этом вызове.
 func (a *App) AddClusterToTeam(teamID, kubeconfigText string, settings k8s.ClusterSettings) (*k8s.ClusterMeta, error) {
-	if err := a.authzTeam(auth.PermClusterManage, teamID, "team", teamID, "displayName", settings.DisplayName); err != nil {
+	if err := a.authzTeam(auth.PermClusterManage, teamID, "team", teamID, "displayName", settings.DisplayName,
+		"sharedAccount", strconv.FormatBool(settings.SharedAccount)); err != nil {
 		return nil, err
 	}
 	if a.dir == nil {
 		return nil, errNoTeams
 	}
 	return k8s.AddClusterFromTextToTeam(kubeconfigText, settings, teamID)
-}
-
-// AddOIDCClusterToTeam добавляет кластер, kubeconfig которого использует oidc-login с паролем (grant password):
-// сервер сам получает и обновляет токен, а логин и пароль хранит зашифрованными. Пароль в журнал не попадает.
-func (a *App) AddOIDCClusterToTeam(teamID, kubeconfigText string, settings k8s.ClusterSettings, cred k8s.OIDCCredentials) (*k8s.ClusterMeta, error) {
-	if err := a.authzTeam(auth.PermClusterManage, teamID, "team", teamID, "displayName", settings.DisplayName, "mode", k8s.ModeOIDCPassword); err != nil {
-		return nil, err
-	}
-	if a.dir == nil {
-		return nil, errNoTeams
-	}
-	meta, err := k8s.AddClusterOIDCToTeam(kubeconfigText, settings, teamID, cred)
-	if err == nil {
-		err = a.dropTeamSignIn(meta.ID)
-	}
-	return meta, err
 }
 
 // AddInClusterToTeam добавляет кластер, в котором работает сам сервер (под его ServiceAccount). Это доступ с правами
@@ -196,19 +186,27 @@ func (a *App) AddInClusterToTeam(teamID string, settings k8s.ClusterSettings) (*
 	return k8s.AddInClusterToTeam(settings, teamID)
 }
 
-// SetClusterOIDCCredentials меняет логин и пароль кластера в режиме oidc-password (например, сменился пароль в
-// провайдере входа). Вход проверяется до сохранения; открытое подключение пересоздаётся при следующем обращении.
-func (a *App) SetClusterOIDCCredentials(clusterID string, cred k8s.OIDCCredentials) error {
-	if err := a.authzCluster(auth.PermClusterManage, clusterID, "id", clusterID, "mode", k8s.ModeOIDCPassword); err != nil {
+// ResetClusterSharedAccount забывает сохранённый вход общей учётной записи команды (например, сменился пароль в
+// провайдере входа). Следующее подключение попросит администратора кластера войти заново; остальные участники до
+// тех пор увидят просьбу обратиться к администратору. Пароль нигде не вводится: вход идёт через брокер.
+func (a *App) ResetClusterSharedAccount(clusterID string) error {
+	if err := a.authzCluster(auth.PermClusterManage, clusterID, "id", clusterID, "mode", k8s.ModeTeamAccount); err != nil {
 		return err
 	}
-	if err := k8s.SetClusterOIDCCredentials(clusterID, cred); err != nil {
+	meta, err := k8s.LoadClusterMeta(clusterID)
+	if err != nil {
+		return err
+	}
+	if meta.Mode != k8s.ModeTeamAccount {
+		return errNotSharedAccount
+	}
+	if err := a.dropTeamSignIn(clusterID); err != nil {
 		return err
 	}
 	if a.k8sMgr.RemoveConnection(clusterID) {
 		a.pfMgr.StopAll()
 	}
-	return a.dropTeamSignIn(clusterID)
+	return nil
 }
 
 // MoveCluster передаёт кластер другой команде. Нужны права администратора и у текущей, и у новой команды.

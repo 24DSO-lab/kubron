@@ -5,7 +5,6 @@ package k8s
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -169,12 +168,12 @@ func AddClusterFromTextToTeam(kubeconfigText string, settings ClusterSettings, t
 		return nil, errKubeconfigTooLarge
 	}
 
-	return addClusterFromData([]byte(kubeconfigText), settings, teamID, nil)
+	return addClusterFromData([]byte(kubeconfigText), settings, teamID)
 }
 
-// addClusterFromData регистрирует кластер. oidc != nil — режим oidc-password: kubeconfig должен использовать
-// oidc-login с паролем, логин и пароль сохраняются зашифрованными.
-func addClusterFromData(data []byte, settings ClusterSettings, teamID string, oidc *OIDCCredentials) (*ClusterMeta, error) {
+// addClusterFromData регистрирует кластер. settings.SharedAccount — общая учётная запись команды (ModeTeamAccount):
+// сам вход здесь не выполняется, его вводит администратор при первом подключении (брокер, ScopeTeam).
+func addClusterFromData(data []byte, settings ClusterSettings, teamID string) (*ClusterMeta, error) {
 	settings, err := settings.normalize("")
 	if err != nil {
 		return nil, err
@@ -194,24 +193,9 @@ func addClusterFromData(data []byte, settings ClusterSettings, teamID string, oi
 		return nil, err
 	}
 
-	var secret []byte
-	mode := ""
-	if oidc != nil {
-		kind, params := ClassifyAuth(cfg, contextName)
-		if kind != AuthOIDCPassword {
-			return nil, errors.New("the kubeconfig does not use oidc-login with a password grant")
-		}
-		sec, err := newOIDCSecret(*params, *oidc)
-		if err != nil {
-			return nil, err
-		}
-		if err := verifyOIDCLogin(sec); err != nil {
-			return nil, err
-		}
-		if secret, err = json.Marshal(sec); err != nil {
-			return nil, err
-		}
-		mode = ModeOIDCPassword
+	mode, err := modeForSettings("", settings, teamID, contextSignsIn(cfg, contextName))
+	if err != nil {
+		return nil, err
 	}
 
 	id := uniqueClusterID(settings.DisplayName)
@@ -232,16 +216,6 @@ func addClusterFromData(data []byte, settings ClusterSettings, teamID string, oi
 	}
 
 	// Хранилище записывает kubeconfig и метаданные вместе: при сбое не остаётся полузаписанного кластера.
-	if secret != nil {
-		ms, err := modeStore()
-		if err != nil {
-			return nil, err
-		}
-		if err := ms.SaveWithSecret(meta, data, secret); err != nil {
-			return nil, err
-		}
-		return meta, nil
-	}
 	if err := clusterStore.Save(meta, data); err != nil {
 		return nil, err
 	}

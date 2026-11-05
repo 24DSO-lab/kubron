@@ -11,7 +11,7 @@
 | Учётные данные кластеров (kubeconfig, токены, client-key) | PostgreSQL, зашифрованы ключом выше | `internal/secretbox`, `internal/k8s/kubeconfig_mask.go` (наружу секреты не отдаются) |
 | Сессии и CSRF-токены | PostgreSQL (`internal/websession`, ADR-0004) | cookie `__Host-kubron_session` по HTTPS, CSRF-токен, автовыход по бездействию (по умолчанию 15 минут) |
 | Пароли пользователей | PostgreSQL | Argon2id v=19, m=19 MiB, t=2, p=1; legacy PBKDF2-HMAC-SHA256 проверяется и автоматически обновляется при успешном входе (`internal/auth/password.go`) |
-| Пароли и токены IdP (oidc-password) | PostgreSQL, зашифрованы | `internal/oidcpassword`, политика адресов IdP |
+| Пароли и токены IdP (вход через брокер) | PostgreSQL (`cluster_credentials`), зашифрованы | `internal/credential`, `internal/idpnet`, политика адресов IdP |
 | Данные кластеров, доступные через Kubernetes API | кластеры | права общей учётки кластера и роли Kubron |
 | Журнал аудита | PostgreSQL (`internal/audit`) | запись на сервере, пользователь не правит |
 
@@ -70,8 +70,8 @@
 
 | # | Угроза | Мера | Где |
 | --- | --- | --- | --- |
-| S | Подмена IdP, SSRF через адрес IdP | политика адресов действует и для IdP; egress ограничивается `networkPolicy.egress.idp` | `internal/oidcpassword`, `internal/netpolicy`, `docs/deploy.md` |
-| I | Пароль пользователя IdP попадает в журналы | пароль используется только для обмена токеном, не логируется и не хранится | `internal/oidcpassword` |
+| S | Подмена IdP, SSRF через адрес IdP | политика адресов действует и для IdP; egress ограничивается `networkPolicy.egress.idp` | `internal/idpnet`, `internal/netpolicy`, `docs/deploy.md` |
+| I | Пароль пользователя IdP попадает в журналы | пароль используется только для обмена токеном, не логируется и не хранится; ошибки провайдеров очищаются (`scrub`) | `internal/credential/providers/oidc` |
 
 ### 5. Цепочка поставки
 

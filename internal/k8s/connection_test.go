@@ -7,9 +7,10 @@ import (
 	"errors"
 	"testing"
 
+	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 
-	"github.com/24DSO-labs/kubron/internal/oidcpassword"
+	"github.com/24DSO-labs/kubron/internal/credential"
 )
 
 func kubeconfigWith(ai *clientcmdapi.AuthInfo, cl *clientcmdapi.Cluster) *clientcmdapi.Config {
@@ -23,6 +24,8 @@ func kubeconfigWith(ai *clientcmdapi.AuthInfo, cl *clientcmdapi.Cluster) *client
 	}
 }
 
+func clientcmdapiToYAML(cfg *clientcmdapi.Config) ([]byte, error) { return clientcmd.Write(*cfg) }
+
 func oidcExec(args ...string) *clientcmdapi.AuthInfo {
 	return &clientcmdapi.AuthInfo{Exec: &clientcmdapi.ExecConfig{Command: "kubectl", Args: append([]string{"oidc-login", "get-token"}, args...)}}
 }
@@ -31,34 +34,7 @@ func oidcExec(args ...string) *clientcmdapi.AuthInfo {
 func restrictive(t *testing.T) {
 	t.Helper()
 	SetConnectionPolicy(ConnectionPolicy{})
-	t.Cleanup(func() { SetConnectionPolicy(ConnectionPolicy{AllowExec: true, AllowLocalFiles: true}) })
-}
-
-func TestClassifyAuth(t *testing.T) {
-	cases := []struct {
-		name string
-		ai   *clientcmdapi.AuthInfo
-		want AuthKind
-	}{
-		{"token", &clientcmdapi.AuthInfo{Token: "t"}, AuthStatic},
-		{"no credentials", &clientcmdapi.AuthInfo{}, AuthStatic},
-		{"oidc password", oidcExec("--oidc-issuer-url=https://idp", "--oidc-client-id=k8s", "--grant-type=password"), AuthOIDCPassword},
-		{"oidc authcode by default", oidcExec("--oidc-issuer-url=https://idp", "--oidc-client-id=k8s"), AuthOIDCAuthCode},
-		{"oidc without issuer", oidcExec("--grant-type=password"), AuthExec},
-		{"aws", &clientcmdapi.AuthInfo{Exec: &clientcmdapi.ExecConfig{Command: "aws", Args: []string{"eks", "get-token"}}}, AuthExec},
-	}
-	for _, c := range cases {
-		kind, params := ClassifyAuth(kubeconfigWith(c.ai, nil), "ctx")
-		if kind != c.want {
-			t.Errorf("%s: got %s, want %s", c.name, kind, c.want)
-		}
-		if (kind == AuthOIDCPassword) != (params != nil) {
-			t.Errorf("%s: parameters must come with the password grant only", c.name)
-		}
-	}
-	if kind, _ := ClassifyAuth(kubeconfigWith(&clientcmdapi.AuthInfo{}, nil), "missing"); kind != AuthStatic {
-		t.Errorf("unknown context: %s", kind)
-	}
+	t.Cleanup(func() { SetConnectionPolicy(ConnectionPolicy{AllowLocalFiles: true}) })
 }
 
 func TestPolicyAllowsEverythingOnDesktop(t *testing.T) {
@@ -98,45 +74,68 @@ func TestWebPolicy(t *testing.T) {
 	}
 }
 
-// Exec is never run on the server: every path that hands the kubeconfig to client-go as it is refuses it.
-func TestExecIsNeverRunWhereForbidden(t *testing.T) {
-	restrictive(t)
-	for name, ai := range map[string]*clientcmdapi.AuthInfo{
-		"cloud":   {Exec: &clientcmdapi.ExecConfig{Command: "aws", Args: []string{"eks", "get-token"}}},
-		"oidc":    oidcExec("--oidc-issuer-url=https://idp", "--oidc-client-id=k8s", "--grant-type=password"),
-		"browser": oidcExec("--oidc-issuer-url=https://idp", "--oidc-client-id=k8s"),
+func TestAuthKindOfFollowsTheBrokersDescription(t *testing.T) {
+	for _, c := range []struct {
+		name string
+		ai   *clientcmdapi.AuthInfo
+		want credential.Kind
+	}{
+		{"token", &clientcmdapi.AuthInfo{Token: "t"}, credential.KindStatic},
+		{"no credentials", &clientcmdapi.AuthInfo{}, credential.KindStatic},
+		{"oidc password", oidcExec("--oidc-issuer-url=https://idp", "--oidc-client-id=k8s", "--grant-type=password"), credential.KindOIDC},
+		{"oidc browser", oidcExec("--oidc-issuer-url=https://idp", "--oidc-client-id=k8s"), credential.KindOIDC},
+		{"other exec", &clientcmdapi.AuthInfo{Exec: &clientcmdapi.ExecConfig{Command: "my-plugin", APIVersion: "client.authentication.k8s.io/v1"}}, credential.KindExec},
 	} {
-		if err := checkExecAllowed(kubeconfigWith(ai, nil), "ctx"); !errors.Is(err, ErrExecForbidden) {
-			t.Errorf("%s: got %v, want ErrExecForbidden", name, err)
+		cfg := kubeconfigWith(c.ai, nil)
+		data, err := clientcmdapiToYAML(cfg)
+		if err != nil {
+			t.Fatal(err)
 		}
-	}
-	if err := checkExecAllowed(kubeconfigWith(&clientcmdapi.AuthInfo{Token: "t"}, nil), "ctx"); err != nil {
-		t.Errorf("a token needs no plugin: %v", err)
-	}
-	SetConnectionPolicy(ConnectionPolicy{AllowExec: true, AllowLocalFiles: true})
-	if err := checkExecAllowed(kubeconfigWith(&clientcmdapi.AuthInfo{Exec: &clientcmdapi.ExecConfig{Command: "aws"}}, nil), "ctx"); err != nil {
-		t.Errorf("desktop runs plugins: %v", err)
+		if got := authKindOf(cfg, data, "ctx"); got != c.want {
+			t.Errorf("%s: got %s, want %s", c.name, got, c.want)
+		}
 	}
 }
 
-func TestNewOIDCSecretValidation(t *testing.T) {
-	p := oidcpassword.ExecParams{IssuerURL: "https://idp.example/realms/x", ClientID: "k8s", Scopes: []string{"groups"}}
-	sec, err := newOIDCSecret(p, OIDCCredentials{Username: " vasya ", Password: "pw"})
-	if err != nil || sec.Username != "vasya" || sec.Password != "pw" || sec.ClientID != "k8s" {
-		t.Fatalf("%+v %v", sec, err)
-	}
-	for name, c := range map[string]struct {
-		p    oidcpassword.ExecParams
-		cred OIDCCredentials
+func TestSharedAccountMode(t *testing.T) {
+	shared := ClusterSettings{SharedAccount: true}
+	for _, c := range []struct {
+		name    string
+		current string
+		s       ClusterSettings
+		teamID  string
+		signsIn bool
+		want    string
+		wantErr error
 	}{
-		"no login":    {p, OIDCCredentials{Password: "pw"}},
-		"no password": {p, OIDCCredentials{Username: "v"}},
-		"http issuer": {oidcpassword.ExecParams{IssuerURL: "http://idp", ClientID: "k8s"}, OIDCCredentials{Username: "v", Password: "pw"}},
-		"no host":     {oidcpassword.ExecParams{IssuerURL: "https://", ClientID: "k8s"}, OIDCCredentials{Username: "v", Password: "pw"}},
+		{"off", "", ClusterSettings{}, "t1", true, "", nil},
+		{"on", "", shared, "t1", true, ModeTeamAccount, nil},
+		{"on without a team", "", shared, "", true, "", errSharedNeedsTeam},
+		{"on for static credentials", "", shared, "t1", false, "", errSharedNeedsSignIn},
+		{"already on is not checked again", ModeTeamAccount, shared, "t1", false, ModeTeamAccount, nil},
+		{"switched off", ModeTeamAccount, ClusterSettings{}, "t1", true, "", nil},
+		{"in-cluster is never changed", ModeInCluster, shared, "t1", true, ModeInCluster, nil},
+		{"in-cluster stays without the flag", ModeInCluster, ClusterSettings{}, "t1", false, ModeInCluster, nil},
 	} {
-		if _, err := newOIDCSecret(c.p, c.cred); err == nil {
-			t.Errorf("%s: expected an error", name)
+		got, err := modeForSettings(c.current, c.s, c.teamID, c.signsIn)
+		if !errors.Is(err, c.wantErr) || got != c.want {
+			t.Errorf("%s: got %q, %v; want %q, %v", c.name, got, err, c.want, c.wantErr)
 		}
+	}
+}
+
+func TestContextSignsIn(t *testing.T) {
+	if contextSignsIn(kubeconfigWith(&clientcmdapi.AuthInfo{Token: "t"}, nil), "ctx") {
+		t.Error("a token does not sign in")
+	}
+	if !contextSignsIn(kubeconfigWith(&clientcmdapi.AuthInfo{Exec: &clientcmdapi.ExecConfig{Command: "aws"}}, nil), "ctx") {
+		t.Error("exec signs in")
+	}
+	if !contextSignsIn(kubeconfigWith(&clientcmdapi.AuthInfo{AuthProvider: &clientcmdapi.AuthProviderConfig{Name: "oidc"}}, nil), "ctx") {
+		t.Error("auth-provider signs in")
+	}
+	if contextSignsIn(kubeconfigWith(&clientcmdapi.AuthInfo{}, nil), "missing") {
+		t.Error("unknown context")
 	}
 }
 

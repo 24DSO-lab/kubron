@@ -22,6 +22,8 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+
+	"github.com/24DSO-labs/kubron/internal/credential"
 )
 
 const (
@@ -57,6 +59,55 @@ type ClusterSettings struct {
 	// ArgoURL — опубликованный адрес Argo CD (Ingress). Если задан, OpenArgoUI открывает его и не создаёт
 	// port-forward; пусто — открытие через port-forward или прокси потоков (ADR-0017).
 	ArgoURL string `json:"argoUrl"`
+	// SharedAccount — общая учётная запись команды: все участники входят в кластер под одной записью, которую вводит
+	// администратор кластера (ModeTeamAccount). Имеет смысл только для kubeconfig с входом через провайдера
+	// (oidc-login, облачный плагин) и только у кластера команды.
+	SharedAccount bool `json:"sharedAccount"`
+}
+
+var (
+	errSharedNeedsTeam   = errors.New("a shared account is available only for clusters of a team")
+	errSharedNeedsSignIn = errors.New("a shared account is meaningful only for a kubeconfig that signs in through an identity provider or a plugin")
+)
+
+// contextSignsIn — контекст получает учётные данные входом (блок exec или auth-provider), а не статически.
+func contextSignsIn(cfg *clientcmdapi.Config, ctxName string) bool {
+	c := cfg.Contexts[ctxName]
+	if c == nil {
+		return false
+	}
+	ai := cfg.AuthInfos[c.AuthInfo]
+	return ai != nil && (ai.Exec != nil || ai.AuthProvider != nil)
+}
+
+// authKindOf — вид входа контекста по описанию брокера (чистая функция credential.Describe, без сети). Если описать
+// не удалось, но вход нужен, это общий exec.
+func authKindOf(cfg *clientcmdapi.Config, data []byte, ctxName string) credential.Kind {
+	if d, err := credential.Describe(data, ctxName); err == nil {
+		return d.Kind
+	}
+	if contextSignsIn(cfg, ctxName) {
+		return credential.KindExec
+	}
+	return credential.KindStatic
+}
+
+// modeForSettings решает режим кластера по настройке «общая учётная запись». Режим in-cluster не меняется. Уже
+// включённая настройка не проверяется заново: kubeconfig мог повредиться, а название поправить нужно.
+func modeForSettings(current string, s ClusterSettings, teamID string, signsIn bool) (string, error) {
+	switch {
+	case current == ModeInCluster:
+		return current, nil
+	case !s.SharedAccount:
+		return "", nil
+	case current == ModeTeamAccount:
+		return current, nil
+	case teamID == "":
+		return "", errSharedNeedsTeam
+	case !signsIn:
+		return "", errSharedNeedsSignIn
+	}
+	return ModeTeamAccount, nil
 }
 
 const maxArgoURLLen = 512
@@ -272,8 +323,8 @@ type KubeconfigContextInfo struct {
 	User      string `json:"user"`
 	Namespace string `json:"namespace"`
 	Server    string `json:"server"`
-	// Auth — как контекст получает учётные данные (AuthKind): по нему диалог просит логин и пароль для oidc-login
-	// или сразу объясняет, что в вебе этот kubeconfig не подойдёт.
+	// Auth — как контекст получает учётные данные (credential.Kind): static, oidc, cloud-eks, cloud-gke, cloud-aks
+	// или exec. По нему диалог предлагает общую учётную запись команды и объясняет, как будет выполнен вход.
 	Auth string `json:"auth"`
 }
 
@@ -300,8 +351,8 @@ func InspectKubeconfig(src KubeconfigSource) (*KubeconfigInfo, error) {
 	info := &KubeconfigInfo{CurrentContext: current}
 	for _, name := range sortedContextNames(cfg) {
 		c := cfg.Contexts[name]
-		kind, _ := ClassifyAuth(cfg, name)
-		item := KubeconfigContextInfo{Name: name, Cluster: c.Cluster, User: c.AuthInfo, Namespace: c.Namespace, Auth: string(kind)}
+		item := KubeconfigContextInfo{Name: name, Cluster: c.Cluster, User: c.AuthInfo, Namespace: c.Namespace,
+			Auth: string(authKindOf(cfg, data, name))}
 		if cl := cfg.Clusters[c.Cluster]; cl != nil {
 			item.Server = cl.Server
 		}
@@ -340,8 +391,16 @@ func CheckKubeconfig(src KubeconfigSource, contextName string) (*ConnectionCheck
 	if err := CheckKubeconfigPolicy(cfg, ctxName); err != nil {
 		return &ConnectionCheck{Error: err.Error()}, nil
 	}
-	if err := checkExecAllowed(cfg, ctxName); err != nil { // клиент client-go запустил бы плагин
-		return &ConnectionCheck{Error: err.Error()}, nil
+	// Блок exec и auth-provider не выполняется никогда (ADR-0018): пробное подключение входит только по
+	// статическим данным, а вход через провайдера проверяется при подключении, через брокер.
+	signs := contextSignsIn(cfg, ctxName)
+	if signs {
+		cfg = cfg.DeepCopy()
+		if c := cfg.Contexts[ctxName]; c != nil {
+			if ai := cfg.AuthInfos[c.AuthInfo]; ai != nil {
+				ai.Exec, ai.AuthProvider = nil, nil
+			}
+		}
 	}
 
 	restCfg, err := clientcmd.NewNonInteractiveClientConfig(*cfg, ctxName, &clientcmd.ConfigOverrides{}, nil).ClientConfig()
@@ -361,6 +420,11 @@ func CheckKubeconfig(src KubeconfigSource, contextName string) (*ConnectionCheck
 		return &ConnectionCheck{Error: err.Error()}, nil
 	}
 	res := &ConnectionCheck{OK: true, ServerVersion: ver.GitVersion}
+	if signs { // address and TLS are checked; the sign-in itself is the broker's business and happens on connect
+		res.Warning = "the kubeconfig signs in through a plugin or an identity provider: the address is reachable, the sign-in is checked when you connect"
+		res.LatencyMs = time.Since(start).Milliseconds()
+		return res, nil
+	}
 
 	// /version нередко открыт без авторизации, поэтому учётные данные проверяем отдельным запросом.
 	clientset, err := kubernetes.NewForConfig(restCfg)
@@ -388,6 +452,9 @@ type ClusterUpdateResult struct {
 	ConnectionChanged bool `json:"connectionChanged"`
 	// CredentialsChanged — в новом kubeconfig изменились секреты (токен, пароль, ключ): для журнала аудита.
 	CredentialsChanged bool `json:"credentialsChanged"`
+	// AccountModeChanged — включили или выключили общую учётную запись команды: сохранённые входы прежнего вида
+	// недействительны (другой владелец), вызывающий их отзывает.
+	AccountModeChanged bool `json:"accountModeChanged"`
 }
 
 // UpdateClusterSettings сохраняет настройки кластера и, если replace непуст, заменяет его kubeconfig.
@@ -417,6 +484,7 @@ func UpdateClusterSettings(id string, settings ClusterSettings, replace Kubeconf
 
 	// Контекст проверяем по тому kubeconfig, который будет сохранён.
 	contextName := meta.ContextName
+	signsIn := false
 	switch {
 	case newData != nil:
 		cfg, err := parseKubeconfig(newData)
@@ -429,6 +497,7 @@ func UpdateClusterSettings(id string, settings ClusterSettings, replace Kubeconf
 		if err := CheckKubeconfigPolicy(cfg, contextName); err != nil {
 			return nil, err
 		}
+		signsIn = contextSignsIn(cfg, contextName)
 	case readErr == nil:
 		// Если сохранённый файл повреждён, не мешаем поправить название и оформление.
 		if cfg, perr := parseKubeconfig(oldData); perr == nil {
@@ -436,9 +505,14 @@ func UpdateClusterSettings(id string, settings ClusterSettings, replace Kubeconf
 			if contextName, cerr = resolveContext(cfg, settings.ContextName, meta.ContextName); cerr != nil {
 				return nil, cerr
 			}
+			signsIn = contextSignsIn(cfg, contextName)
 		}
 	}
 
+	mode, err := modeForSettings(meta.Mode, settings, meta.TeamID, signsIn)
+	if err != nil {
+		return nil, err
+	}
 	changed := newData != nil || contextName != meta.ContextName
 	credsChanged := newData != nil && (readErr != nil || KubeconfigSecretsChanged(string(newData), string(oldData)))
 	meta.DisplayName = settings.DisplayName
@@ -448,12 +522,15 @@ func UpdateClusterSettings(id string, settings ClusterSettings, replace Kubeconf
 	meta.DefaultNamespace = settings.DefaultNamespace
 	meta.ArgoURL = settings.ArgoURL
 	meta.ContextName = contextName
+	modeChanged := mode != meta.Mode
+	meta.Mode = mode
 
 	// Хранилище заменяет kubeconfig и метаданные вместе и при сбое возвращает прежний kubeconfig.
 	if err := clusterStore.Save(meta, newData); err != nil {
 		return nil, err
 	}
-	return &ClusterUpdateResult{Cluster: *meta, ConnectionChanged: changed, CredentialsChanged: credsChanged}, nil
+	return &ClusterUpdateResult{Cluster: *meta, ConnectionChanged: changed || modeChanged, CredentialsChanged: credsChanged,
+		AccountModeChanged: modeChanged}, nil
 }
 
 // writeFileAtomic пишет файл через временный и переименование: при сбое остаётся прежнее содержимое,

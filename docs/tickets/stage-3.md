@@ -142,6 +142,10 @@
   `ClusterMeta.Mode`: `kubeconfig` (по умолчанию), `in-cluster`, `oidc-password`. Политика соединений (`k8s.SetConnectionPolicy`): десктоп разрешает всё, как kubectl,
   `kubron-server` запрещает exec-плагины и ссылки на файлы сервера (`certificate-authority`, `client-key`, `tokenFile` и т. п. — иначе kubeconfig отправил бы файл сервера
   на чужой адрес); проверка при добавлении, правке, пробном подключении и **при каждом подключении** (ловит и кластеры, импортированные до включения запретов).
+  > **Заменено ADR-0018 (задача cluster-auth 2.1–2.3).** Ниже описан прежний путь oidc-password; его код (`internal/oidcpassword`, `AddOIDCClusterToTeam`,
+  > `SetClusterOIDCCredentials`, `ErrExecForbidden`) удалён. Сейчас вход делает брокер, а «общая учётная запись команды» — режим `ModeTeamAccount`
+  > (значение `oidc-password` в хранилище сохранено). См. `docs/tickets/cluster-auth.md`.
+
   `InspectKubeconfig` отдаёт `auth` по каждому контексту (`static`, `oidc-password`, `oidc-authcode`, `exec`). kubeconfig с `oidc-login` и grant password распознаётся:
   диалог просит логин и пароль, `AddOIDCClusterToTeam` проверяет вход у провайдера **до** сохранения, затем кладёт в `secret_enc` (AES-GCM, AAD `cluster/<id>/secret`)
   JSON с издателем, client id/secret, логином и паролем; `rest.Config` строится без exec-блока, токен подставляет `oidcpassword.Source` (обновление по refresh_token,

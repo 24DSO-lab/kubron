@@ -134,12 +134,20 @@ func (a *App) applyRevocations() bool {
 	return false
 }
 
-// dropTeamSignIn forgets the saved shared sign-in of a cluster in the broker. The administrator has just set
-// credentials through the old methods (which write the old store); the broker's record must not outlive them as a
-// stale password, so the next connection asks the administrator once through a challenge.
+// dropTeamSignIn forgets the saved shared sign-in of a cluster in the broker, so that the next connection asks
+// the cluster administrator once through a challenge.
 func (a *App) dropTeamSignIn(clusterID string) error {
 	if a.broker == nil || clusterID == "" {
 		return nil
 	}
 	return a.broker.Revoke(context.Background(), credential.RevokeFilter{ClusterID: clusterID, Scope: credential.ScopeTeam})
+}
+
+// revokeClusterSignIns forgets every saved sign-in of a cluster, personal and shared: the way the cluster signs in
+// has changed (a shared account was switched on or off), and a record of the other kind would belong to nobody.
+func (a *App) revokeClusterSignIns(clusterID string) error {
+	if a.broker == nil || clusterID == "" {
+		return nil
+	}
+	return a.broker.Revoke(context.Background(), credential.RevokeFilter{ClusterID: clusterID})
 }

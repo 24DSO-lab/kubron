@@ -146,7 +146,7 @@ test('чужой кластер неотличим от несуществующ
   const probes: [string, (id: string) => unknown[]][] = [
     ['ConnectCluster', id => [id]],
     ['GetClusterKubeconfig', id => [id]],
-    ['SetClusterOIDCCredentials', id => [id, { username: 'x', password: 'y' }]],
+    ['ResetClusterSharedAccount', id => [id]],
     ['MoveCluster', id => [id, betaId]],
     ['DeleteCluster', id => [id]],
   ]

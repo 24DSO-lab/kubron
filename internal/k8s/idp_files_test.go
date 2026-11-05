@@ -158,16 +158,16 @@ func TestLoadClusterAuthSourceEmbedsIdPFilesOnlyOnTheDesktop(t *testing.T) {
 	SetKubronDir(t.TempDir())
 	t.Cleanup(func() {
 		SetKubronDir("")
-		SetConnectionPolicy(ConnectionPolicy{AllowExec: true, AllowLocalFiles: true})
+		SetConnectionPolicy(ConnectionPolicy{AllowLocalFiles: true})
 	})
-	SetConnectionPolicy(ConnectionPolicy{AllowExec: true, AllowLocalFiles: true})
+	SetConnectionPolicy(ConnectionPolicy{AllowLocalFiles: true})
 	meta, err := AddClusterFromText(oidcLoginKubeconfig("--certificate-authority="+ca), ClusterSettings{DisplayName: "c"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	want := base64.StdEncoding.EncodeToString([]byte(idpCAPEM))
 
-	SetConnectionPolicy(ConnectionPolicy{AllowExec: true, AllowLocalFiles: true})
+	SetConnectionPolicy(ConnectionPolicy{AllowLocalFiles: true})
 	src, err := LoadClusterAuthSource(meta.ID)
 	if err != nil {
 		t.Fatal(err)

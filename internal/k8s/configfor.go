@@ -14,15 +14,14 @@ import (
 	"k8s.io/client-go/tools/clientcmd/api"
 
 	"github.com/24DSO-labs/kubron/internal/credential"
-	"github.com/24DSO-labs/kubron/internal/netpolicy"
 )
 
 // This file is the single place where a rest.Config of a stored cluster is built (ADR-0018, section 4).
 // Every consumer (resources, Helm, terminal, logs, port-forward, metrics, Argo) gets its configuration from a
 // connection built here; TestRestConfigIsBuiltOnlyInConfigFor forbids building one anywhere else.
 
-// AuthSession is who connects: the sign-in broker and the identity of the view. A zero value (no broker) means the
-// old path: the stored kubeconfig as it is, with exec plugins handled by the existing policy.
+// AuthSession is who connects: the sign-in broker and the identity of the view. Without a broker only clusters
+// that need no sign-in (static credentials, in-cluster) can connect.
 type AuthSession struct {
 	Broker    credential.Broker
 	UserID    string
@@ -40,7 +39,7 @@ type ConnPlan struct {
 	Desc      credential.Descriptor
 	Key       string // pool key: (cluster, subject)
 	session   AuthSession
-	legacy    bool
+	inCluster bool
 	anonymous bool // проверка адреса и TLS: токен брокера не подставляется
 	src       ClusterAuthSource
 }
@@ -58,14 +57,15 @@ func poolKey(clusterID string, sub credential.Subject) string {
 // userPoolKey cannot clash with a cluster id: ids never contain a NUL byte.
 func userPoolKey(clusterID, owner string) string { return clusterID + "\x00u\x00" + owner }
 
-// Legacy reports that the cluster is connected without the broker (in-cluster, or no broker is configured).
-func (p ConnPlan) Legacy() bool { return p.legacy }
+// InCluster reports that the server itself runs in this cluster: it connects under its own ServiceAccount and
+// there is no sign-in.
+func (p ConnPlan) InCluster() bool { return p.inCluster }
 
-// scopeFor says whose credentials a cluster has. Static credentials and the shared technical account of
-// oidc-password (the choice of the team admin, migrated from task 3.7) belong to the team; every other interactive
-// kind is personal. The owner of a team is its id ("default" where there are no teams).
+// scopeFor says whose credentials a cluster has. Static credentials and the shared account of the team (the
+// choice of a cluster administrator, ModeTeamAccount) belong to the team; every other interactive kind is
+// personal. The owner of a team is its id ("default" where there are no teams).
 func scopeFor(d credential.Descriptor, src ClusterAuthSource, userID string) (credential.Scope, string) {
-	if d.Kind == credential.KindStatic || src.Mode == ModeOIDCPassword {
+	if d.Kind == credential.KindStatic || src.Mode == ModeTeamAccount {
 		if src.TeamID == "" {
 			return credential.ScopeTeam, "default"
 		}
@@ -77,20 +77,24 @@ func scopeFor(d credential.Descriptor, src ClusterAuthSource, userID string) (cr
 // PlanFor decides how the session connects to the cluster. It reads no secrets and makes no network calls.
 func PlanFor(s AuthSession, clusterID string) (ConnPlan, error) {
 	p := ConnPlan{ClusterID: clusterID, Key: clusterID, session: s}
-	if s.Broker == nil {
-		p.legacy = true
-		return p, nil
-	}
 	src, err := LoadClusterAuthSource(clusterID)
 	if err != nil {
 		return ConnPlan{}, err
 	}
 	p.src = src
-	if src.Mode != "" && src.Mode != ModeOIDCPassword { // in-cluster builds its own configuration
-		p.legacy = true
+	switch src.Mode {
+	case ModeInCluster: // builds its own configuration, nothing to sign in to
+		p.inCluster = true
 		return p, nil
+	case "", ModeKubeconfig, ModeTeamAccount:
+	default:
+		return ConnPlan{}, fmt.Errorf("unknown connection mode %q", src.Mode)
 	}
-	d, err := s.Broker.Describe(src.Kubeconfig, src.ContextName)
+	describe := credential.Describe // a pure function: the same answer with or without a broker
+	if s.Broker != nil {
+		describe = s.Broker.Describe
+	}
+	d, err := describe(src.Kubeconfig, src.ContextName)
 	if err != nil {
 		return ConnPlan{}, err
 	}
@@ -105,8 +109,11 @@ func PlanFor(s AuthSession, clusterID string) (ConnPlan, error) {
 // auth-provider blocks are removed and the token is put into every request by a transport that asks the broker
 // each time, so refresh and expiry are the broker's business and the configuration holds no secret.
 func ConfigFor(p ConnPlan) (*rest.Config, error) {
-	if p.legacy {
-		return legacyRestConfig(p.ClusterID)
+	if p.inCluster {
+		return inClusterRestConfig()
+	}
+	if p.Desc.Kind != credential.KindStatic && p.session.Broker == nil {
+		return nil, errNoBroker
 	}
 	cfg, err := loadStoredKubeconfig(p.ClusterID, p.src.ContextName)
 	if err != nil {
@@ -215,60 +222,15 @@ func (t *brokerRoundTripper) rejected(req *http.Request) {
 	}
 }
 
-// legacyRestConfig is the configuration of a stored cluster without the broker: in-cluster and oidc-password
-// modes, or the stored kubeconfig as it is under the connection policy. It is what buildClusterConnection used
-// to do inline.
-func legacyRestConfig(clusterID string) (*rest.Config, error) {
-	meta, err := LoadClusterMeta(clusterID)
+var errNoBroker = errors.New("this cluster needs a sign-in, but no sign-in broker is configured")
+
+// inClusterRestConfig is the configuration of the cluster the server itself runs in.
+func inClusterRestConfig() (*rest.Config, error) {
+	cfg, err := rest.InClusterConfig()
 	if err != nil {
-		return nil, fmt.Errorf("cluster metadata not found: %w", err)
+		return nil, fmt.Errorf("in-cluster configuration: %w", err)
 	}
-	// in-cluster and oidc-password build the configuration themselves (no exec plugin, no files of the server).
-	if config, ok, err := buildModeConfig(clusterID, meta); ok {
-		if err != nil {
-			return nil, err
-		}
-		config.QPS = 50
-		config.Burst = 100
-		if meta.Mode != ModeInCluster { // the API server address of in-cluster is the cluster's own
-			applyClusterAddrPolicy(config)
-		}
-		return config, nil
-	}
-
-	overrides := &clientcmd.ConfigOverrides{}
-	if meta.ContextName != "" {
-		overrides.CurrentContext = meta.ContextName
-	}
-
-	// The policy applies at connection time as well, not only when a cluster is added: neither clusters imported
-	// from desktop files nor a kubeconfig saved before the restrictions were enabled get through.
-	if pol := currentPolicy(); !pol.AllowExec || !pol.AllowLocalFiles || netpolicy.For(netpolicy.ScopeClusterAPI) != nil {
-		if err := checkStoredPolicy(clusterID, meta); err != nil {
-			return nil, err
-		}
-	}
-
-	var config *rest.Config
-	if kcPath := GetClusterKubeconfigPath(clusterID); kcPath != "" {
-		config, err = clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
-			&clientcmd.ClientConfigLoadingRules{ExplicitPath: kcPath},
-			overrides,
-		).ClientConfig()
-	} else {
-		var data []byte
-		if data, err = clusterStore.Kubeconfig(clusterID); err != nil {
-			return nil, fmt.Errorf("kubeconfig not found for cluster %s", clusterID)
-		}
-		var cfg *api.Config
-		if cfg, err = clientcmd.Load(data); err != nil {
-			return nil, fmt.Errorf("failed to parse kubeconfig: %w", err)
-		}
-		config, err = clientcmd.NewNonInteractiveClientConfig(*cfg, meta.ContextName, overrides, nil).ClientConfig()
-	}
-	if err != nil {
-		return nil, fmt.Errorf("configuration error: %w", err)
-	}
-	finishRestConfig(config)
-	return config, nil
+	cfg.QPS = 50
+	cfg.Burst = 100 // the API server address of in-cluster is the cluster's own: no address policy
+	return cfg, nil
 }
