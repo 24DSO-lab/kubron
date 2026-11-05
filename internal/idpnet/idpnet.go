@@ -173,6 +173,39 @@ func WithTLS(base *http.Client, desktop bool, ca []byte, insecure bool) (*http.C
 	return c, nil
 }
 
+// WrapClient derives a policy-enforcing client from an existing client. It preserves a standard
+// transport's TLS roots and timeout (useful for private test authorities), but never preserves its proxy,
+// redirect handler or custom RoundTripper. Unsupported transports fail closed.
+func WrapClient(base *http.Client, desktop bool) (*http.Client, error) {
+	if base == nil {
+		return NewClient(Options{Desktop: desktop})
+	}
+	var tr *http.Transport
+	if base.Transport == nil {
+		tr = http.DefaultTransport.(*http.Transport).Clone()
+	} else {
+		switch t := base.Transport.(type) {
+		case *guard:
+			tr = t.base.Clone()
+		case *http.Transport:
+			tr = t.Clone()
+		default:
+			return nil, ErrBadCA
+		}
+	}
+	tr.Proxy = nil
+	if tr.TLSClientConfig == nil {
+		tr.TLSClientConfig = &tls.Config{MinVersion: tls.VersionTLS12}
+	} else {
+		tr.TLSClientConfig = tr.TLSClientConfig.Clone()
+		if tr.TLSClientConfig.MinVersion == 0 || tr.TLSClientConfig.MinVersion < tls.VersionTLS12 {
+			tr.TLSClientConfig.MinVersion = tls.VersionTLS12
+		}
+	}
+	pol := Options{Desktop: desktop}.policy()
+	return newClient(&guard{base: tr, desktop: desktop, pol: pol}, base.Timeout), nil
+}
+
 // guard is the round tripper that enforces the rules on every request, including each redirect hop.
 type guard struct {
 	base    *http.Transport

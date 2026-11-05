@@ -22,9 +22,9 @@ const (
 	// DefaultTTL is the lifetime of a token that carries no expiry of its own.
 	DefaultTTL = 5 * time.Minute
 	// FieldToken is the name of the answer field (the UI label is credential.field.token).
-	FieldToken = "token"
-
-	kindExecCred = "ExecCredential"
+	FieldToken      = "token"
+	maxPrincipalLen = 256
+	kindExecCred    = "ExecCredential"
 )
 
 var supportedAPIVersions = map[string]bool{
