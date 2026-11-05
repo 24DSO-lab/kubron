@@ -119,15 +119,7 @@ func parseConfig(d credential.Descriptor) (config, error) {
 // secureEnv wraps every Azure identity-provider request in the shared SSRF, redirect, timeout,
 // response-size and no-proxy policy. Custom transports that cannot be safely wrapped fail closed.
 func secureEnv(env credential.Env) (credential.Env, error) {
-	if env.HTTP == nil || env.HTTP.Transport == nil {
-		hc, err := idpnet.NewClient(idpnet.Options{Desktop: env.Desktop})
-		if err != nil {
-			return env, err
-		}
-		env.HTTP = hc
-		return env, nil
-	}
-	hc, err := idpnet.WithTLS(env.HTTP, env.Desktop, nil, false)
+	hc, err := idpnet.WrapClient(env.HTTP, env.Desktop)
 	if err != nil {
 		return env, err
 	}
