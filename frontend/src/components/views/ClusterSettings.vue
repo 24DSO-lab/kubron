@@ -27,6 +27,9 @@
 
     <MyConnections />
 
+    <!-- OAuth-клиент Google для GKE: настройка десктопа, в вебе его задаёт администратор сервера -->
+    <GKEOAuthSettings v-if="capabilities.fileDialog" />
+
     <!-- App Settings -->
     <div class="settings-card">
       <div class="settings-card-header">
@@ -282,12 +285,15 @@ import { useAppSettings } from '../../composables/useAppSettings'
 import { can } from '../../composables/useAuth'
 import { Perm } from '../../types/auth'
 import MyConnections from '../credential/MyConnections.vue'
+import GKEOAuthSettings from '../credential/GKEOAuthSettings.vue'
+import { useCapabilities } from '../../composables/useCapabilities'
 
 const props = defineProps<{
   clusterName: string
 }>()
 
 const { t } = useI18n()
+const { capabilities } = useCapabilities()
 
 // Установка и удаление стека метрик изменяют кластер
 const canModify = computed(() => can(Perm.Write))

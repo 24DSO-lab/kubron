@@ -82,3 +82,11 @@ export interface AuthCompletedEvent {
 export interface AuthRequiredEvent {
   clusterId: string
 }
+
+/** Настройка OAuth-клиента Google на десктопе (app.GKEOAuthStatus). Секрета клиента здесь нет и быть не может */
+export interface GKEOAuthStatus {
+  configured: boolean
+  clientId: string
+  secretSet: boolean
+  restartRequired: boolean
+}

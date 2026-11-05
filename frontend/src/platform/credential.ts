@@ -11,7 +11,7 @@
 import { callApp } from './api'
 import { onEvent, type Unsubscribe } from './events'
 import type {
-  AuthCompletedEvent, AuthRequiredEvent, ChallengeValues, ConnectionInfo, ConnectResult,
+  AuthCompletedEvent, AuthRequiredEvent, ChallengeValues, ConnectionInfo, ConnectResult, GKEOAuthStatus,
 } from '../types/credential'
 
 export const EVENT_AUTH_COMPLETED = 'cluster:auth-completed'
@@ -48,4 +48,18 @@ export function onAuthCompleted(handler: (e: AuthCompletedEvent) => void): Unsub
 
 export function onAuthRequired(handler: (e: AuthRequiredEvent) => void): Unsubscribe {
   return onEvent(EVENT_AUTH_REQUIRED, handler)
+}
+
+/** Настройка OAuth-клиента Google для входа в GKE (только десктоп; в вебе клиент задаёт администратор сервера). */
+export async function getGKEOAuth(): Promise<GKEOAuthStatus> {
+  return (await callApp('GetGKEOAuth')) as unknown as GKEOAuthStatus
+}
+
+/** Пустой секрет оставляет сохранённый для того же идентификатора клиента. Значение уходит только сюда. */
+export async function saveGKEOAuth(clientId: string, clientSecret: string): Promise<void> {
+  await callApp('SaveGKEOAuth', clientId, clientSecret)
+}
+
+export async function clearGKEOAuth(): Promise<void> {
+  await callApp('ClearGKEOAuth')
 }
