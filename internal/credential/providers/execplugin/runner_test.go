@@ -25,7 +25,7 @@ func TestRunnerHelperProcess(t *testing.T) {
 	case "wait":
 		time.Sleep(2 * time.Second)
 	case "stdin":
-		b, _ := os.ReadFile("/dev/stdin")
+		b, _ := io.ReadAll(os.Stdin)
 		_, _ = os.Stdout.Write(b)
 	}
 	os.Exit(0)
