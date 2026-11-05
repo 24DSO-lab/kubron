@@ -204,6 +204,9 @@ var allowedMethods = []string{
 // deniedMethods — методы, которые в веб-режиме недоступны намеренно.
 var deniedMethods = map[string]string{
 	"PickKubeconfigFile":   "the native file picker is available only on desktop (capabilities.fileDialog)",
+	"GetGKEOAuth":          "the Google OAuth client of the desktop; the web server takes it from KUBRON_GKE_OAUTH_CLIENT_ID and KUBRON_GKE_OAUTH_CLIENT_SECRET",
+	"SaveGKEOAuth":         "the Google OAuth client of the desktop; the web server takes it from KUBRON_GKE_OAUTH_CLIENT_ID and KUBRON_GKE_OAUTH_CLIENT_SECRET",
+	"ClearGKEOAuth":        "the Google OAuth client of the desktop; the web server takes it from KUBRON_GKE_OAUTH_CLIENT_ID and KUBRON_GKE_OAUTH_CLIENT_SECRET",
 	"AddClusterFromFile":   "reads a path on the server filesystem; in web mode the kubeconfig is passed as text (AddClusterFromText)",
 	"OpenBrowserURL":       "opens a browser on the server machine; in web mode the browser opens links itself",
 	"GetFreePort":          "a port on the server machine is of no use to the browser; in web mode port-forward is HTTP-only through a proxy (stage 5)",

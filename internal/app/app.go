@@ -50,8 +50,12 @@ type App struct {
 	interactive InteractivePolicy
 	// broker — вход в кластеры (ADR-0018); nil — старый путь без вызовов. conn — состояние входов этого вида.
 	broker credential.Broker
-	conn   *connectState
-	rev    *revocations // отозванные личные входы реплики; общий для всех видов
+	// gkeOAuth — хранилище настройки OAuth-клиента Google (только десктоп); gkeOAuthActive — клиент, с которым
+	// собран запущенный broker.
+	gkeOAuth       *GKEOAuthStore
+	gkeOAuthActive string
+	conn           *connectState
+	rev            *revocations // отозванные личные входы реплики; общий для всех видов
 	// limitUser и limitIDP ограничивают попытки AnswerChallenge на пользователя и на провайдера входа; nil — без лимита.
 	limitUser, limitIDP AttemptLimiter
 	// finish подменяется в тестах: подключение и проверка кластера после успешного входа.

@@ -39,13 +39,29 @@ func setupDesktopBroker(ctx context.Context, a *app.App, platform *wailsplatform
 		slog.Error("sign-in: the credentials file cannot be used", "error", err.Error())
 		return
 	}
-	svc, err := app.BuildBroker(app.BrokerOptions{
+	// The Google OAuth client of the desktop (settings screen): without it GKE signs in with a key only. A client
+	// that cannot be read is logged and left out; it never stops the broker.
+	gkeStore := app.NewGKEOAuthStore(filepath.Join(dir, "gke-oauth.json"), env)
+	gkeClient, err := gkeStore.Load()
+	if err != nil {
+		slog.Warn("sign-in: the saved Google OAuth client is not used", "error", err.Error())
+		gkeClient = nil
+	}
+	opts := app.BrokerOptions{
 		Desktop: true, Keyring: sel.Keyring, Store: fs, Challenges: credential.NewMemoryChallengeStore(), DataDir: dir,
-		OpenURL: func(u string) error { platform.OpenURL(u); return nil },
-	})
+		OpenURL:  func(u string) error { platform.OpenURL(u); return nil },
+		GKEOAuth: gkeClient,
+	}
+	svc, err := app.BuildBroker(opts)
+	if err != nil && gkeClient != nil {
+		slog.Warn("sign-in: the saved Google OAuth client is not valid and is not used")
+		gkeClient, opts.GKEOAuth = nil, nil
+		svc, err = app.BuildBroker(opts)
+	}
 	if err != nil {
 		slog.Error("sign-in: the broker was not built", "error", err.Error())
 		return
 	}
 	app.SetBroker(a, svc)
+	app.SetGKEOAuth(a, gkeStore, gkeClient)
 }
