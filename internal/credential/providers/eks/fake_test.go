@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -417,4 +416,3 @@ func signIn(t *testing.T, p *Provider, env credential.Env, d credential.Descript
 	return step(t, p, env, d, res, nil, keys)
 }
 
-func itoa(n int) string { return strconv.Itoa(n) }
