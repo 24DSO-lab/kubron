@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Desktop sign-in with a Google account for GKE:** a listener on `127.0.0.1` (one per sign-in, closed after the answer,
+  on cancel or after 10 minutes) receives the redirect of the browser. The Google OAuth client is set in Settings
+  ("Google sign-in for GKE"); the secret is stored encrypted and is never shown again. A change takes effect after a restart.
 - **Shared team account:** an administrator of a team cluster can choose a shared account in the add/edit dialog. The sign-in is verified by the credential broker (team scope), stored encrypted and used by the whole team; other members are told to ask a cluster administrator. New `ResetClusterSharedAccount` forgets the saved shared sign-in.
 
 

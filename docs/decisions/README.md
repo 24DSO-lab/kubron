@@ -13,4 +13,5 @@ decision, consequences, rollback.
 
 | 2026-11-05 | GKE, вход пользователя (B.7b, п. 5) | [2026-11-05-gke-user.md](2026-11-05-gke-user.md) | ждёт ревью человеком |
 | 2026-11-05 | AWS EKS: токен SigV4, ключи, AssumeRole, IAM Identity Center (B.7a) | [2026-11-05-eks.md](2026-11-05-eks.md) |
+| 2026-11-05 | GKE, десктоп: слушатель и настройка клиента | [2026-11-05-gke-desktop.md](2026-11-05-gke-desktop.md) | ждёт ревью человеком |
 
