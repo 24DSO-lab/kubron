@@ -28,7 +28,6 @@ const (
 
 var (
 	errHTTP       = errors.New("Azure sign-in request failed")
-	errHTTPClient = errors.New("Azure sign-in HTTP client cannot enforce the network policy")
 	errResponse   = errors.New("Azure returned an invalid sign-in response")
 	errMFA        = errors.New("Azure requires an authentication method unsupported by password sign-in")
 	errSecret     = errors.New("the client secret is invalid")
@@ -143,7 +142,7 @@ func (p *Provider) Begin(ctx context.Context, env credential.Env, req credential
 	}
 	env, err = secureEnv(env)
 	if err != nil {
-		return credential.Result{}, errHTTPClient
+		return credential.Result{}, credential.ErrUnsupported
 	}
 	sv := decodeSaved(req.Saved)
 	staleSaved := false
