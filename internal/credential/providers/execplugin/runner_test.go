@@ -6,6 +6,7 @@ package execplugin
 import (
 	"bytes"
 	"context"
+	"io"
 	"os"
 	"os/exec"
 	"testing"
