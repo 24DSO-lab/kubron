@@ -53,6 +53,10 @@ type App struct {
 	limitUser, limitIDP AttemptLimiter
 	// finish подменяется в тестах: подключение и проверка кластера после успешного входа.
 	finish func(clusterID string) error
+	// base — контекст жизни вида: у корневого вида это контекст startup (до остановки ядра), у веб-сессии —
+	// дочерний контекст, который отменяет ReleaseView. nil — без отмены (тесты). См. opCtx.
+	base   context.Context
+	cancel context.CancelFunc
 }
 
 // SetStore задаёт хранилище вместо файлового; вызывается до OnStartup. Это функция пакета, а не метод App:
@@ -88,6 +92,7 @@ func (a *App) shutdown(_ context.Context) {
 }
 
 func (a *App) startup(ctx context.Context) {
+	a.base = ctx
 	// Бэкенд сообщает фронтенду об изменениях кластера (informers) вместо постоянного опроса
 	a.k8sMgr.SetNotifier(a.platform.Emit)
 	if err := k8s.InitKubronDir(); err != nil {

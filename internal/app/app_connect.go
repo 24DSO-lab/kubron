@@ -208,8 +208,10 @@ func (a *App) connect(ctx context.Context, clusterID string) (credential.Connect
 	}
 	if res.Challenge != nil && plan.Subject.Scope == credential.ScopeTeam && !a.canManageCluster(clusterID) {
 		// The shared account of a team is entered by a cluster administrator only: anybody else would connect with
-		// credentials of their own choice as the team.
-		_ = a.broker.Cancel(ctx, plan.Subject, res.Challenge.ID)
+		// credentials of their own choice as the team. The challenge is withdrawn even if ctx has already ended.
+		cctx, cancel := a.detachedCtx(storeTimeout)
+		defer cancel()
+		_ = a.broker.Cancel(cctx, plan.Subject, res.Challenge.ID)
 		return credential.ConnectResult{}, errSharedAccountNotSignedIn{}
 	}
 	return a.connectResultOf(clusterID, plan, res)
@@ -237,7 +239,9 @@ func (a *App) ConnectCluster(clusterID string) (credential.ConnectResult, error)
 	if err := a.authzCluster(auth.PermRead, clusterID); err != nil {
 		return credential.ConnectResult{}, err
 	}
-	return a.connect(context.Background(), clusterID)
+	ctx, cancel := a.opCtx(signInTimeout)
+	defer cancel()
+	return a.connect(ctx, clusterID)
 }
 
 // advance runs Answer or Poll for a challenge that belongs to this session and finishes the connection when the
@@ -291,8 +295,10 @@ func (a *App) AnswerChallenge(challengeID string, values map[string]string) (cre
 	if err := a.limitAnswer(challengeID); err != nil {
 		return credential.ConnectResult{}, err
 	}
+	ctx, cancel := a.opCtx(signInTimeout)
+	defer cancel()
 	return a.advance(challengeID, func(sub credential.Subject) (credential.Result, error) {
-		return a.broker.Answer(context.Background(), sub, challengeID, credential.Answer(values))
+		return a.broker.Answer(ctx, sub, challengeID, credential.Answer(values))
 	})
 }
 
@@ -302,6 +308,9 @@ func CompleteWebOIDCCallback(ctx context.Context, a *App, state, redirectURL str
 	if a == nil || a.sessionID == "" || state == "" || redirectURL == "" {
 		return credential.ErrChallengeExpired
 	}
+	// The request context ends with the browser connection; the time of the exchange with the IdP is bounded too.
+	ctx, cancel := context.WithTimeout(ctx, signInTimeout)
+	defer cancel()
 	if a.auth == nil {
 		return auth.ErrNotAuthenticated
 	}
@@ -357,8 +366,10 @@ func (a *App) PollChallenge(challengeID string) (credential.ConnectResult, error
 	if a.broker == nil {
 		return credential.ConnectResult{}, ErrSignInUnavailable
 	}
+	ctx, cancel := a.opCtx(signInTimeout)
+	defer cancel()
 	return a.advance(challengeID, func(sub credential.Subject) (credential.Result, error) {
-		return a.broker.Poll(context.Background(), sub, challengeID)
+		return a.broker.Poll(ctx, sub, challengeID)
 	})
 }
 
@@ -375,7 +386,9 @@ func (a *App) CancelChallenge(challengeID string) error {
 		return credential.ErrChallengeExpired
 	}
 	a.conn.forget(challengeID)
-	return a.broker.Cancel(context.Background(), pc.sub, challengeID)
+	ctx, cancel := a.detachedCtx(storeTimeout) // the request is withdrawn even if the view is being released
+	defer cancel()
+	return a.broker.Cancel(ctx, pc.sub, challengeID)
 }
 
 // ListMyConnections lists the sign-ins the current user has saved (no secrets).
@@ -390,7 +403,9 @@ func (a *App) ListMyConnections() ([]credential.ConnectionInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	list, err := a.broker.List(context.Background(), u.ID)
+	ctx, cancel := a.opCtx(storeTimeout)
+	defer cancel()
+	list, err := a.broker.List(ctx, u.ID)
 	if list == nil {
 		list = []credential.ConnectionInfo{}
 	}
