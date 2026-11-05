@@ -5,7 +5,6 @@ package oidc
 
 import (
 	"context"
-	"net/http"
 	"os"
 	"strings"
 	"testing"
