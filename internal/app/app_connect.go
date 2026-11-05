@@ -27,18 +27,6 @@ const authRequiredEvery = 5 * time.Second
 // ErrSignInUnavailable is returned by the new sign-in methods when no broker is configured.
 var ErrSignInUnavailable = errors.New("sign-in is not available")
 
-// ChallengeRequiredError is what the legacy ConnectToCluster returns when the new flow needs the user to answer a
-// challenge: an old client cannot render it, so it gets a typed error instead of a connection.
-type ChallengeRequiredError struct {
-	ClusterID string
-	Kind      credential.ChallengeKind
-}
-
-func (e *ChallengeRequiredError) Error() string { return credential.ErrChallengeRequired.Error() }
-
-// Unwrap lets errors.Is(err, credential.ErrChallengeRequired) work.
-func (e *ChallengeRequiredError) Unwrap() error { return credential.ErrChallengeRequired }
-
 // connectState is the per-session bookkeeping of the sign-in flow. It is a pointer in App so that session views
 // (which copy App) do not copy the mutex and do not share state.
 type connectState struct {
@@ -190,7 +178,7 @@ func (a *App) finishConnect(clusterID string) error {
 	return a.k8sMgr.TestConnection()
 }
 
-// connect is the shared body of ConnectCluster and the legacy ConnectToCluster. Without a broker, and for
+// connect is the body of ConnectCluster. Without a broker, and for
 // clusters that have their own connection mode, the old path is used unchanged.
 func (a *App) connect(ctx context.Context, clusterID string) (credential.ConnectResult, error) {
 	if a.broker == nil {

@@ -50,7 +50,7 @@ test('Argo CD открывается через прокси потока: UI, A
   if (!id) {
     id = (await result<{ id: string }>(page, 'AddClusterFromText', [readFileSync(KUBECONFIG!, 'utf8'), { displayName: 'argo-kind' }])).id
   }
-  await result(page, 'ConnectToCluster', [id])
+  await result(page, 'ConnectCluster', [id])
 
   const info = await result<{ url: string; mode: string; localPort: number; portForwardId: string; service: string }>(page, 'OpenArgoUI')
   expect(info.mode).toBe('proxy')

@@ -144,7 +144,7 @@ test('каждый видит только кластеры своей кома�
 
 test('чужой кластер неотличим от несуществующего', async () => {
   const probes: [string, (id: string) => unknown[]][] = [
-    ['ConnectToCluster', id => [id]],
+    ['ConnectCluster', id => [id]],
     ['GetClusterKubeconfig', id => [id]],
     ['SetClusterOIDCCredentials', id => [id, { username: 'x', password: 'y' }]],
     ['MoveCluster', id => [id, betaId]],
@@ -162,8 +162,8 @@ test('чужой кластер неотличим от несуществующ
 
 test('администратор организации без членства не читает данные кластера', async () => {
   expect(await names(admin)).toEqual([])
-  const foreign = await rpc(admin, 'ConnectToCluster', [alphaCluster])
-  const missing = await rpc(admin, 'ConnectToCluster', [MISSING])
+  const foreign = await rpc(admin, 'ConnectCluster', [alphaCluster])
+  const missing = await rpc(admin, 'ConnectCluster', [MISSING])
   expect(foreign.error).toBeDefined()
   expect(shape(foreign, [alphaCluster])).toBe(shape(missing, [MISSING]))
   expect(shape(await rpc(admin, 'GetClusterKubeconfig', [alphaCluster]), [alphaCluster]))
@@ -199,14 +199,14 @@ test('администратор команды управляет своей к
 test('исключённый участник теряет кластер сразу', async () => {
   await ok(alice, 'RemoveTeamMember', [alphaId, bobId])
   expect(await names(bob)).toEqual(['beta-cluster'])
-  const r = await rpc(bob, 'ConnectToCluster', [alphaCluster])
-  expect(shape(r, [alphaCluster])).toBe(shape(await rpc(bob, 'ConnectToCluster', [MISSING]), [MISSING]))
+  const r = await rpc(bob, 'ConnectCluster', [alphaCluster])
+  expect(shape(r, [alphaCluster])).toBe(shape(await rpc(bob, 'ConnectCluster', [MISSING]), [MISSING]))
 })
 
 test('потеря доступа закрывает уже открытое подключение', async () => {
   test.skip(!HAS_KIND, 'нужен E2E_KUBECONFIG: подключение к настоящему кластеру')
   await ok(alice, 'SetTeamMember', [alphaId, bobId, 'user'])
-  await ok(bob, 'ConnectToCluster', [alphaCluster])
+  await ok(bob, 'ConnectCluster', [alphaCluster])
   expect(await ok<string>(bob, 'GetActiveContext')).toBe(alphaCluster)
   expect((await ok<{ name: string }[]>(bob, 'GetNamespaces')).map(n => n.name)).toContain('kube-system')
 
@@ -230,7 +230,7 @@ test('потеря доступа закрывает уже открытое п�
     { timeout: 10_000 }).toContain(alphaCluster)
   expect((await rpc(bob, 'GetNamespaces')).error).toBeDefined()
   // Свой кластер у bob по-прежнему доступен
-  await ok(bob, 'ConnectToCluster', [betaCluster])
+  await ok(bob, 'ConnectCluster', [betaCluster])
   expect(await ok<string>(bob, 'GetActiveContext')).toBe(betaCluster)
 })
 

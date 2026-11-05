@@ -95,7 +95,7 @@ test('активный кластер у каждого свой', async () => {
   // Общая настройка LastActiveCluster не должна автоматически подключать кластер в новой веб-сессии.
   expect(await result<string>(bob, 'GetLastActiveCluster')).toBe('')
   expect(await result<string>(bob, 'GetActiveContext')).toBe('')
-  await result(admin, 'ConnectToCluster', [cluster!.id])
+  await result(admin, 'ConnectCluster', [cluster!.id])
   expect(await result<string>(admin, 'GetActiveContext')).toBe(cluster!.id)
   // Подключение администратора не сделало кластер активным у bob
   expect(await result<string>(bob, 'GetActiveContext')).toBe('')

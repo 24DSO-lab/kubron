@@ -259,28 +259,6 @@ func kubeconfigChange(src k8s.KubeconfigSource) string {
 	return "unchanged"
 }
 
-// ConnectToCluster is the legacy call, kept for old clients: a thin wrapper over the new flow. If the cluster
-// needs the user to answer a challenge, it returns *ChallengeRequiredError instead of connecting.
-func (a *App) ConnectToCluster(clusterID string) error {
-	if err := a.authzCluster(auth.PermRead, clusterID); err != nil {
-		return err
-	}
-	res, err := a.connect(context.Background(), clusterID)
-	if err != nil {
-		return err
-	}
-	if res.Status == "challenge" && res.Challenge != nil {
-		if a.broker != nil { // an old client will never answer: do not leave the request pending
-			if pc, ok := a.conn.cluster(res.Challenge.ID); ok {
-				_ = a.broker.Cancel(context.Background(), pc.sub, res.Challenge.ID)
-			}
-			a.conn.forget(res.Challenge.ID)
-		}
-		return &ChallengeRequiredError{ClusterID: clusterID, Kind: res.Challenge.Kind}
-	}
-	return nil
-}
-
 func (a *App) GetLastActiveCluster() string {
 	if a.authz(auth.PermRead) != nil {
 		return ""

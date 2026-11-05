@@ -62,7 +62,7 @@ async function adminLogin(c: Client) {
 async function addCluster(c: Client): Promise<string> {
   const text = readFileSync(KUBECONFIG!, 'utf8')
   const meta = await result<{ id: string }>(c, 'AddClusterFromText', [text, { displayName: 'pf-kind' }])
-  await result(c, 'ConnectToCluster', [meta.id])
+  await result(c, 'ConnectCluster', [meta.id])
   return meta.id
 }
 
@@ -180,7 +180,7 @@ test.describe('терминалы: аудит, сроки, владелец', ()
     await adminLogin(admin)
     const list = await result<{ displayName: string; id: string }[]>(admin, 'GetClusterStatuses')
     if (!list.some(c => c.displayName === 'pf-kind')) await addCluster(admin)
-    else await result(admin, 'ConnectToCluster', [list.find(c => c.displayName === 'pf-kind')!.id])
+    else await result(admin, 'ConnectCluster', [list.find(c => c.displayName === 'pf-kind')!.id])
   })
   test.afterAll(async () => { await admin?.ctx.close() })
 
