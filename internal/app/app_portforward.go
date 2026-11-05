@@ -5,6 +5,7 @@ package app
 
 import (
 	"fmt"
+	"net"
 	"time"
 
 	"github.com/24DSO-labs/kubron/internal/audit"
@@ -89,4 +90,54 @@ func (a *App) GetPortForwardURL(id string) (string, error) {
 		return "", streamid.ErrElsewhere
 	}
 	return a.pfMgr.PortForwardURL(id)
+}
+
+func (a *App) StartPortForward(namespace, pod string, localPort, podPort int) (*k8s.PortForwardSession, error) {
+	if err := a.authz(auth.PermPortForward, "namespace", namespace, "pod", pod, "localPort", localPort, "podPort", podPort); err != nil {
+		return nil, err
+	}
+	return a.pfMgr.StartPortForward(namespace, pod, localPort, podPort)
+}
+
+func (a *App) StartServicePortForward(namespace, service string, localPort, servicePort int) (*k8s.PortForwardSession, error) {
+	if err := a.authz(auth.PermPortForward, "namespace", namespace, "service", service, "localPort", localPort, "servicePort", servicePort); err != nil {
+		return nil, err
+	}
+	return a.pfMgr.StartServicePortForward(namespace, service, localPort, servicePort)
+}
+
+func (a *App) StopPortForward(id string) error {
+	if err := a.authz(auth.PermPortForward, "id", id); err != nil {
+		return err
+	}
+	if !pfproxy.OwnedBy(a.replicaID, id) { // поток открыт на другой реплике: клиент повторит запрос
+		return streamid.ErrElsewhere
+	}
+	return a.pfMgr.StopPortForward(id)
+}
+
+func (a *App) ListPortForwards() []k8s.PortForwardSession {
+	if a.authz(auth.PermRead) != nil {
+		return nil
+	}
+	return a.pfMgr.ListPortForwards()
+}
+
+func (a *App) GetFreePort() (int, error) {
+	if err := a.authz(auth.PermRead); err != nil {
+		return 0, err
+	}
+	l, err := net.Listen("tcp", ":0")
+	if err != nil {
+		return 0, err
+	}
+	defer l.Close()
+	return l.Addr().(*net.TCPAddr).Port, nil
+}
+
+func (a *App) OpenBrowserURL(url string) {
+	if a.authz(auth.PermRead) != nil {
+		return
+	}
+	a.platform.OpenURL(url)
 }
