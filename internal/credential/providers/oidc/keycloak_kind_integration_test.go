@@ -1,0 +1,110 @@
+// Copyright 2026 The Kubron Authors
+// SPDX-License-Identifier: Apache-2.0
+
+package oidc
+
+import (
+	"context"
+	"encoding/json"
+	"io"
+	"net/http"
+	"net/url"
+	"os"
+	"strings"
+	"testing"
+	"time"
+
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+)
+
+// TestKeycloakKindRBAC verifies that a real Keycloak ID token is authenticated by a real kind
+// API server and that Kubernetes RBAC keeps two users' namespace permissions separate.
+func TestKeycloakKindRBAC(t *testing.T) {
+	issuer := os.Getenv("KUBRON_KEYCLOAK_ISSUER")
+	server := os.Getenv("KUBRON_KEYCLOAK_KIND_SERVER")
+	kindCA := os.Getenv("KUBRON_KEYCLOAK_KIND_CA")
+	alicePassword := os.Getenv("KUBRON_KEYCLOAK_ALICE_PASSWORD")
+	bobPassword := os.Getenv("KUBRON_KEYCLOAK_BOB_PASSWORD")
+	if issuer == "" || server == "" || kindCA == "" || alicePassword == "" || bobPassword == "" {
+		t.Skip("Keycloak + kind integration environment is not configured")
+	}
+
+	httpClient := &http.Client{Timeout: 15 * time.Second}
+	aliceToken := keycloakPasswordIDToken(t, httpClient, issuer, "alice", alicePassword)
+	bobToken := keycloakPasswordIDToken(t, httpClient, issuer, "bob", bobPassword)
+
+	alice := keycloakKindClient(t, server, kindCA, aliceToken)
+	bob := keycloakKindClient(t, server, kindCA, bobToken)
+	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+	defer cancel()
+
+	if _, err := alice.CoreV1().Pods("alice-ops").List(ctx, metav1.ListOptions{}); err != nil {
+		t.Fatalf("alice should list pods in alice-ops: %v", err)
+	}
+	if _, err := alice.CoreV1().Pods("bob-ops").List(ctx, metav1.ListOptions{}); !apierrors.IsForbidden(err) {
+		t.Fatalf("alice should be forbidden from bob-ops, got %v", err)
+	}
+	if _, err := bob.CoreV1().Pods("bob-ops").List(ctx, metav1.ListOptions{}); err != nil {
+		t.Fatalf("bob should list pods in bob-ops: %v", err)
+	}
+	if _, err := bob.CoreV1().Pods("alice-ops").List(ctx, metav1.ListOptions{}); !apierrors.IsForbidden(err) {
+		t.Fatalf("bob should be forbidden from alice-ops, got %v", err)
+	}
+}
+
+func keycloakPasswordIDToken(t *testing.T, client *http.Client, issuer, username, password string) string {
+	t.Helper()
+	form := url.Values{
+		"grant_type": {"password"},
+		"client_id":  {"kubron-integration"},
+		"username":   {username},
+		"password":   {password},
+		"scope":      {"openid"},
+	}
+	req, err := http.NewRequest(http.MethodPost, issuer+"/protocol/openid-connect/token", strings.NewReader(form.Encode()))
+	if err != nil {
+		t.Fatalf("create token request for %s: %v", username, err)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatalf("request ID token for %s: %v", username, err)
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil {
+		t.Fatalf("read ID token response for %s: %v", username, err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("Keycloak token endpoint for %s returned HTTP %d: %s", username, resp.StatusCode, body)
+	}
+	var token struct {
+		IDToken string `json:"id_token"`
+	}
+	if err := json.Unmarshal(body, &token); err != nil {
+		t.Fatalf("decode ID token response for %s: %v", username, err)
+	}
+	if token.IDToken == "" {
+		t.Fatalf("Keycloak returned an empty ID token for %s", username)
+	}
+	return token.IDToken
+}
+
+func keycloakKindClient(t *testing.T, server, caFile, token string) *kubernetes.Clientset {
+	t.Helper()
+	client, err := kubernetes.NewForConfig(&rest.Config{
+		Host:        server,
+		BearerToken: token,
+		Timeout:     15 * time.Second,
+		TLSClientConfig: rest.TLSClientConfig{
+			CAFile: caFile,
+		},
+	})
+	if err != nil {
+		t.Fatalf("create Kubernetes client: %v", err)
+	}
+	return client
+}

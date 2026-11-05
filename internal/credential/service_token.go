@@ -90,8 +90,15 @@ func (s *Service) refresh(ctx context.Context, sub Subject, d Descriptor) (Token
 		if len(saved) > 0 && s.savedChanged(ctx, key, base.Version) {
 			continue
 		}
-		if perr == nil && res.Save != nil && len(res.Save) == 0 {
-			if err := s.store.Delete(ctx, key); err != nil {
+		// An invalid refresh token (or a provider asking for an interactive challenge) invalidates the
+		// saved credential only if it is still the version we used. An unconditional Delete here can erase
+		// a newer refresh token written by another replica between savedChanged and the delete.
+		if base.Version > 0 && (errors.Is(perr, ErrInvalidGrant) || perr == nil && res.Save != nil && len(res.Save) == 0) {
+			err := s.store.DeleteIfVersion(ctx, key, base.Version)
+			if errors.Is(err, ErrVersionConflict) {
+				continue // another replica changed or removed the record; read its result before deciding
+			}
+			if err != nil {
 				return Token{}, err
 			}
 		}
