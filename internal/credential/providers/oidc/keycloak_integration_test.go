@@ -5,9 +5,17 @@ package oidc
 
 import (
 	"context"
+	"fmt"
+	"html"
+	"io"
+	"net/http"
+	"net/http/cookiejar"
+	"net/url"
 	"os"
+	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/24DSO-labs/kubron/internal/credential"
 	"github.com/24DSO-labs/kubron/internal/idpnet"
@@ -64,4 +72,110 @@ func TestKeycloakPasswordAndRefresh(t *testing.T) {
 	if second.Token == nil || second.Token.Value == "" || second.Token.Principal != first.Token.Principal {
 		t.Fatal("Keycloak refresh did not preserve the verified subject")
 	}
+
+	// Exercise the authorization-code + PKCE flow through the same paste-redirect
+	// challenge used by the web client. A small browser client follows Keycloak's
+	// login redirects and stops at Kubron's deliberately unserved localhost callback.
+	authDescriptor := credential.Descriptor{Kind: credential.KindOIDC, Params: map[string]string{
+		"grant": "authcode-keyboard", "issuer-url": issuer, "client-id": "kubron-integration",
+	}}
+	authRequest := credential.Request{Descriptor: authDescriptor, Subject: req.Subject}
+	challenge, err := provider.Begin(context.Background(), env, authRequest)
+	if err != nil || challenge.Challenge == nil || challenge.Challenge.URL == "" {
+		t.Fatalf("start authorization-code flow: challenge=%v err=%v", challenge.Challenge != nil, err)
+	}
+	redirectURL, err := keycloakLogin(challenge.Challenge.URL, username, password)
+	if err != nil {
+		t.Fatalf("complete Keycloak login: %v", err)
+	}
+	completed, err := provider.Continue(context.Background(), env, credential.Request{
+		Descriptor: authDescriptor, Subject: req.Subject, Challenge: *challenge.Challenge,
+		Pending: challenge.Pending, Answer: credential.Answer{"redirectUrl": redirectURL},
+	})
+	if err != nil {
+		t.Fatalf("exchange authorization code: %v", err)
+	}
+	if completed.Token == nil || completed.Token.Value == "" || completed.Token.Principal == "" {
+		t.Fatal("Keycloak authorization-code flow did not produce a verified ID token and principal")
+	}
+}
+
+var (
+	keycloakFormRE  = regexp.MustCompile(`(?is)<form\\b[^>]*>`)
+	keycloakInputRE = regexp.MustCompile(`(?is)<input\\b[^>]*>`)
+	keycloakAttrRE  = regexp.MustCompile(`(?is)([a-zA-Z_:][a-zA-Z0-9_:-]*)\\s*=\\s*["']([^"']*)["']`)
+)
+
+// keycloakLogin emulates the human browser part of the authorization-code flow and returns
+// the redirect URL that the user would paste into the Kubron challenge.
+func keycloakLogin(authURL, username, password string) (string, error) {
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		return "", err
+	}
+	browser := &http.Client{
+		Jar: jar, Timeout: 20 * time.Second,
+		CheckRedirect: func(req *http.Request, _ []*http.Request) error {
+			if req.URL.Host == "localhost:8000" {
+				return http.ErrUseLastResponse
+			}
+			return nil
+		},
+	}
+	resp, err := browser.Get(authURL)
+	if err != nil {
+		return "", err
+	}
+	body, readErr := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	_ = resp.Body.Close()
+	if readErr != nil {
+		return "", readErr
+	}
+	var action string
+	values := url.Values{}
+	form := keycloakFormRE.Find(body)
+	if form == nil {
+		return "", fmt.Errorf("Keycloak login form was not found (HTTP %d)", resp.StatusCode)
+	}
+	for _, match := range keycloakAttrRE.FindAllSubmatch(form, -1) {
+		key := strings.ToLower(string(match[1]))
+		if key == "action" {
+			action = html.UnescapeString(string(match[2]))
+		}
+	}
+	if action == "" {
+		return "", fmt.Errorf("Keycloak login form has no action")
+	}
+	for _, input := range keycloakInputRE.FindAll(body, -1) {
+		attrs := map[string]string{}
+		for _, match := range keycloakAttrRE.FindAllSubmatch(input, -1) {
+			attrs[strings.ToLower(string(match[1]))] = html.UnescapeString(string(match[2]))
+		}
+		if name := attrs["name"]; name != "" {
+			values.Add(name, attrs["value"])
+		}
+	}
+	values.Set("username", username)
+	values.Set("password", password)
+	loginURL, err := resp.Request.URL.Parse(action)
+	if err != nil {
+		return "", err
+	}
+	loginResp, err := browser.PostForm(loginURL.String(), values)
+	if err != nil {
+		return "", err
+	}
+	defer loginResp.Body.Close()
+	if loginResp.StatusCode < 300 || loginResp.StatusCode >= 400 {
+		return "", fmt.Errorf("Keycloak login did not redirect (HTTP %d)", loginResp.StatusCode)
+	}
+	location := loginResp.Header.Get("Location")
+	if location == "" {
+		return "", fmt.Errorf("Keycloak login redirect has no location")
+	}
+	redirect, err := loginResp.Request.URL.Parse(location)
+	if err != nil {
+		return "", err
+	}
+	return redirect.String(), nil
 }
