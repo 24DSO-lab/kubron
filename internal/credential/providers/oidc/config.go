@@ -25,11 +25,12 @@ const (
 
 // config is what a Descriptor says about the identity provider, after defaults and checks.
 type config struct {
-	grant        string
-	issuer       string
-	clientID     string
-	clientSecret string
-	scopes       []string // always starts with "openid"
+	grant          string
+	issuer         string
+	clientID       string
+	webRedirectURL string // server-controlled callback URL for the web authorization-code flow
+	clientSecret   string
+	scopes         []string // always starts with "openid"
 	// username and password from the kubeconfig (grant password); empty when the user is asked.
 	username, password string
 
@@ -49,7 +50,7 @@ type config struct {
 var defaultListen = []string{"127.0.0.1:8000", "127.0.0.1:18000"}
 
 // reservedAuthParams cannot be set through auth-request-extra-params: the provider sets them itself.
-var reservedAuthParams = []string{"response_type", "client_id", "redirect_uri", "scope", "state", "nonce",
+var reservedAuthParams = []string{"response_type", "response_mode", "client_id", "redirect_uri", "scope", "state", "nonce",
 	"code_challenge", "code_challenge_method", "request", "request_uri"}
 
 // fileParams would make the provider read a file of the machine it runs on. Nothing here reads files: a CA
@@ -88,6 +89,18 @@ func newConfig(d credential.Descriptor, sv *saved, desktop bool) (config, error)
 		}
 		if len(extra) == 0 {
 			extra = sv.Scopes
+		}
+	}
+	if !desktop {
+		webClientID := strings.TrimSpace(p["web.client-id"])
+		webRedirectURL := strings.TrimSpace(p["web.redirect-url"])
+		if webClientID != "" && webRedirectURL != "" {
+			c.clientID = webClientID
+			c.clientSecret = "" // a web public client must never inherit a kubeconfig client secret
+			c.webRedirectURL = webRedirectURL
+			if !validWebRedirectURL(c.webRedirectURL) {
+				return config{}, credential.ErrUnsupported
+			}
 		}
 	}
 	if c.issuer == "" || c.clientID == "" {
@@ -198,6 +211,27 @@ func parseListen(v string) ([]string, error) {
 		return nil, credential.ErrUnsupported
 	}
 	return out, nil
+}
+
+// validWebRedirectURL accepts only the fixed callback path over HTTPS, or HTTP on loopback.
+// The value normally comes from validated KUBRON_PUBLIC_URL, but is checked again at the provider boundary.
+func validWebRedirectURL(raw string) bool {
+	u, err := url.Parse(raw)
+	if err != nil || u.User != nil || u.Fragment != "" || u.RawQuery != "" || u.Opaque != "" || u.Path != "/auth/cluster/callback" || u.Host == "" {
+		return false
+	}
+	if u.Scheme == "https" {
+		return true
+	}
+	if u.Scheme != "http" {
+		return false
+	}
+	h := strings.Trim(u.Hostname(), "[]")
+	if strings.EqualFold(h, "localhost") {
+		return true
+	}
+	ip := net.ParseIP(h)
+	return ip != nil && ip.IsLoopback()
 }
 
 // validHost accepts a bare host name or IP for the redirect URL.

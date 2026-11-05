@@ -37,6 +37,23 @@ func TestFileStoreBackendsWork(t *testing.T) {
 		t.Fatalf("audit.log was not created: %v", err)
 	}
 
+	// Web OIDC public client metadata is persisted by the file backend.
+	if got, err := s.WebOIDCClientID(); err != nil || got != "" {
+		t.Fatalf("empty web OIDC client id: %q %v", got, err)
+	}
+	if err := s.SetWebOIDCClientID("kubron-public-client"); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := s.WebOIDCClientID(); err != nil || got != "kubron-public-client" {
+		t.Fatalf("web OIDC client id: %q %v", got, err)
+	}
+	if err := s.SetWebOIDCClientID(""); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := s.WebOIDCClientID(); err != nil || got != "" {
+		t.Fatalf("cleared web OIDC client id: %q %v", got, err)
+	}
+
 	// токены Argo: хранилище не nil
 	if s.ArgoTokens() == nil {
 		t.Fatal("ArgoTokens() returned nil")

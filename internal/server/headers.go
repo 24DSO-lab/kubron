@@ -4,6 +4,7 @@
 package server
 
 import (
+	"context"
 	"net"
 	"net/http"
 	"regexp"
@@ -14,9 +15,16 @@ import (
 type HandlerOption func(*handlerOptions)
 
 type handlerOptions struct {
+	webOIDCCallback func(context.Context, any, string, string) error
+
 	cspReportOnly bool
 	readyz        ReadyzConfig
 	build         string // версия сервера для проверки контракта RPC (WithContractBuild)
+}
+
+// WithWebOIDCCallback registers the session-bound OIDC browser callback route.
+func WithWebOIDCCallback(fn func(context.Context, any, string, string) error) HandlerOption {
+	return func(o *handlerOptions) { o.webOIDCCallback = fn }
 }
 
 // WithCSPReportOnly отдаёт политику в заголовке Content-Security-Policy-Report-Only: браузер

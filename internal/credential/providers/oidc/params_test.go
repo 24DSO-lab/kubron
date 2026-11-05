@@ -27,6 +27,82 @@ func signInWithPassword(t *testing.T, idp *fakeIdP, env credential.Env, extra ma
 	return New().Begin(context.Background(), env, credential.Request{Descriptor: idp.descriptor("password", args), Subject: subjectUser()})
 }
 
+func TestWebPublicClientOverridesClientSecret(t *testing.T) {
+	d := credential.Descriptor{Kind: credential.KindOIDC, Params: map[string]string{
+		"issuer-url": "https://idp.example.test", "client-id": "kubeconfig-client",
+		"client-secret": "must-not-be-used", "web.client-id": "web-public-client",
+		"web.redirect-url": "https://kubron.example.test/auth/cluster/callback",
+	}}
+	cfg, err := newConfig(d, nil, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.clientID != "web-public-client" || cfg.clientSecret != "" {
+		t.Fatalf("web public client config: clientID=%q secret=%q", cfg.clientID, cfg.clientSecret)
+	}
+}
+
+func TestWebRedirectWithoutPublicClientIsIgnored(t *testing.T) {
+	d := credential.Descriptor{Kind: credential.KindOIDC, Params: map[string]string{
+		"issuer-url": "https://idp.example.test", "client-id": "kubeconfig-client",
+		"client-secret": "kubeconfig-secret", "web.redirect-url": "https://kubron.example.test/auth/cluster/callback",
+	}}
+	cfg, err := newConfig(d, nil, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.webRedirectURL != "" || cfg.clientID != "kubeconfig-client" || cfg.clientSecret != "kubeconfig-secret" {
+		t.Fatalf("callback was enabled without public client: %+v", cfg)
+	}
+}
+
+func TestWebClientIDWithoutRedirectDoesNotOverrideKubeconfig(t *testing.T) {
+	d := credential.Descriptor{Kind: credential.KindOIDC, Params: map[string]string{
+		"issuer-url": "https://idp.example.test", "client-id": "kubeconfig-client",
+		"client-secret": "kubeconfig-secret", "web.client-id": "admin-public-client",
+	}}
+	cfg, err := newConfig(d, nil, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.webRedirectURL != "" || cfg.clientID != "kubeconfig-client" || cfg.clientSecret != "kubeconfig-secret" {
+		t.Fatalf("partial web callback config changed legacy auth: %+v", cfg)
+	}
+}
+
+func TestWebRedirectURLValidation(t *testing.T) {
+	for _, tc := range []struct {
+		url  string
+		want bool
+	}{
+		{"https://kubron.example.test/auth/cluster/callback", true},
+		{"http://localhost:8080/auth/cluster/callback", true},
+		{"http://127.0.0.1:8080/auth/cluster/callback", true},
+		{"http://kubron.example.test/auth/cluster/callback", false},
+		{"https://kubron.example.test/other", false},
+		{"https://user@kubron.example.test/auth/cluster/callback", false},
+		{"javascript:alert(1)", false},
+	} {
+		if got := validWebRedirectURL(tc.url); got != tc.want {
+			t.Errorf("validWebRedirectURL(%q) = %v, want %v", tc.url, got, tc.want)
+		}
+	}
+}
+
+func TestExtraParamsCannotChangeAuthorizationResponseMode(t *testing.T) {
+	d := credential.Descriptor{Kind: credential.KindOIDC, Params: map[string]string{
+		"issuer-url": "https://idp.example.test", "client-id": "client",
+		"auth-request-extra-params": "response_mode=form_post&state=attacker",
+	}}
+	cfg, err := newConfig(d, nil, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.extraAuth.Has("response_mode") || cfg.extraAuth.Has("state") {
+		t.Fatalf("reserved OAuth parameters survived filtering: %v", cfg.extraAuth)
+	}
+}
+
 func TestScopes(t *testing.T) {
 	idp := newFakeIdP(t, false)
 	res, err := signInWithPassword(t, idp, idp.env(true), map[string]string{"scope": "groups email openid groups"})
@@ -202,6 +278,27 @@ func TestExtraAuthParams(t *testing.T) {
 	}
 	if _, err := newConfig(credential.Descriptor{Params: map[string]string{"client-id": "c"}}, nil, true); !errors.Is(err, errConfig) {
 		t.Errorf("missing issuer: %v", err)
+	}
+}
+
+func TestWebClientIDOverridesKubeconfigOnlyInWeb(t *testing.T) {
+	d := credential.Descriptor{Kind: credential.KindOIDC, Params: map[string]string{
+		"issuer-url": "https://idp.example", "client-id": "kubeconfig-client",
+		"web.client-id": "admin-public-client", "web.redirect-url": "https://kubron.example/auth/cluster/callback",
+	}}
+	web, err := newConfig(d, nil, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if web.clientID != "admin-public-client" || web.webRedirectURL != "https://kubron.example/auth/cluster/callback" {
+		t.Fatalf("web overrides not applied: client=%q redirect=%q", web.clientID, web.webRedirectURL)
+	}
+	desktop, err := newConfig(d, nil, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if desktop.clientID != "kubeconfig-client" || desktop.webRedirectURL != "" {
+		t.Fatalf("web-only settings affected desktop: client=%q redirect=%q", desktop.clientID, desktop.webRedirectURL)
 	}
 }
 

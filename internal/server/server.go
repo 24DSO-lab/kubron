@@ -23,6 +23,9 @@ func NewHandler(d *Dispatcher, static fs.FS, g *Guard, opts ...HandlerOption) ht
 	mux := http.NewServeMux()
 	mux.Handle("POST /api/rpc/{method}", contractGuard(o.build, RPCHandler(d, g)))
 	mux.Handle("GET /api/session", SessionHandler(g))
+	if g != nil && o.webOIDCCallback != nil {
+		mux.Handle("GET /auth/cluster/callback", webOIDCCallbackHandler(g, o.webOIDCCallback))
+	}
 	if g != nil && g.Hub != nil {
 		mux.Handle("GET /api/ws", contractGuard(o.build, WSHandler(g)))
 	}

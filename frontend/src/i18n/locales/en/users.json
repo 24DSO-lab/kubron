@@ -2,6 +2,14 @@
   "title": "Users",
   "subtitle": "Local accounts and their roles",
   "add": "➕ Add user",
+  "webOIDC": {
+    "title": "Web OIDC client",
+    "description": "Optional public client ID for browser-based cluster sign-in. Set KUBRON_PUBLIC_URL and register its /auth/cluster/callback URL at the identity provider. The override is used only in web mode; do not enter a client secret.",
+    "clientID": "Public client ID",
+    "save": "Save",
+    "saving": "Saving…",
+    "saved": "Web OIDC client ID saved"
+  },
   "idle": {
     "title": "Auto sign-out on inactivity",
     "description": "The session ends if the user does not move the mouse or press keys. Running terminals and port forwards are closed. Applies to all accounts.",

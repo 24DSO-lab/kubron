@@ -281,6 +281,7 @@ func TestPasteRedirect(t *testing.T) {
 			"another host": {strings.Replace(good, "localhost:8000", "evil.example.com", 1), credential.ErrInvalidAnswer},
 			"another path": {strings.Replace(good, "8000/", "8000/other", 1), credential.ErrInvalidAnswer},
 			"wrong state":  {redirectWith(good, "state", "forged"), credential.ErrAnswerRejected},
+			"wrong issuer": {redirectWith(good, "iss", "https://evil.example.test"), credential.ErrAnswerRejected},
 			"no code":      {redirectWith(good, "code", ""), credential.ErrInvalidAnswer},
 			"not a url":    {"%%%", credential.ErrInvalidAnswer},
 			"empty":        {"", credential.ErrInvalidAnswer},
@@ -315,6 +316,39 @@ func TestPasteRedirect(t *testing.T) {
 		if _, err := answer(res2, ch2, good); !errors.Is(err, credential.ErrAnswerRejected) {
 			t.Errorf("state of another request: %v", err)
 		}
+	}
+}
+
+func TestPasteRedirectRejectsStateReplayAcrossChallenges(t *testing.T) {
+	idp := newFakeIdP(t, false)
+	idp.issParam = true
+	env, ctx := idp.env(true), context.Background()
+	p := New()
+	d := idp.descriptor("authcode-keyboard", nil)
+	first, err := p.Begin(ctx, env, credential.Request{Descriptor: d, Subject: subjectUser()})
+	firstChallenge := mustChallenge(t, first, err, credential.ChallengePasteRedirect)
+	second, err := p.Begin(ctx, env, credential.Request{Descriptor: d, Subject: subjectUser()})
+	secondChallenge := mustChallenge(t, second, err, credential.ChallengePasteRedirect)
+
+	firstURL, err := url.Parse(firstChallenge.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	secondURL, err := url.Parse(secondChallenge.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if firstURL.Query().Get("state") == secondURL.Query().Get("state") {
+		t.Fatal("authorization challenges must use independent state values")
+	}
+
+	replayed := idp.authorize(firstChallenge.URL, "alice")
+	_, err = p.Continue(ctx, env, credential.Request{
+		Descriptor: d, Subject: subjectUser(), Challenge: secondChallenge, Pending: second.Pending,
+		Answer: credential.Answer{"redirectUrl": replayed},
+	})
+	if !errors.Is(err, credential.ErrAnswerRejected) {
+		t.Fatalf("a callback from another challenge must be rejected: %v", err)
 	}
 }
 

@@ -96,6 +96,7 @@ Kubron is an open-source **Kubernetes Operations Workspace** for desktop and web
 - **Project access** — roles and access of projects
 
 ### Security & access control
+- **Security-sensitive implementation decisions** — [OIDC browser callback](docs/decisions/2026-11-04-oidc-browser-callback.md) (ждёт ревью человеком), [all decisions](docs/decisions/README.md)
 - **Local users & roles** — `admin`, `operator` and `user` roles built on fine-grained permissions (read, secrets, operate, write, exec, port-forward, cluster and user management, audit)
 - **Safe defaults** — PBKDF2-SHA256 password hashing (600k iterations), lockout after failed attempts, auto-logout on inactivity that closes terminals and port forwards
 - **Audit log** — track who did what, with log rotation
@@ -147,7 +148,7 @@ On Linux add `-tags webkit2_41` to `wails dev` / `wails build` (WebKitGTK 4.1, a
 - **Server security** (Russian) — [threat model](docs/threat-model.md), [security review](docs/security-review.md)
 - **Web version status** — what is done and what is still open: [docs/tickets](docs/tickets)
 - **Localization** — [docs/i18n.md](docs/i18n.md), [ADR-0014](docs/adr/0014-i18n.md)
-- **Architecture decisions** — [docs/adr](docs/adr); security implementation decisions: [docs/decisions](docs/decisions)
+
 - **Releasing** — [docs/releasing.md](docs/releasing.md)
 
 ## Server mode

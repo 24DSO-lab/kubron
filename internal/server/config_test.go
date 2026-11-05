@@ -247,3 +247,43 @@ func TestLoadConfigMetricsListen(t *testing.T) {
 		t.Error("a metrics address without a port must be rejected")
 	}
 }
+
+func TestLoadConfigPublicURL(t *testing.T) {
+	if cfg, err := LoadConfig(nil, env(nil), io.Discard); err != nil || cfg.PublicURL != "" {
+		t.Fatalf("empty public URL should disable browser callbacks: %+v %v", cfg, err)
+	}
+
+	for _, value := range []string{
+		"https://kubron.example.com",
+		"https://kubron.example.com/",
+		"http://localhost:8080",
+		"http://dev.localhost:8080",
+		"http://127.0.0.1:8080",
+		"http://[::1]:8080",
+	} {
+		cfg, err := LoadConfig(nil, env(map[string]string{"KUBRON_PUBLIC_URL": value}), io.Discard)
+		if err != nil || cfg.PublicURL != value {
+			t.Errorf("KUBRON_PUBLIC_URL=%q: cfg=%+v err=%v", value, cfg, err)
+		}
+	}
+
+	for _, value := range []string{
+		"kubron.example.com",
+		"https://",
+		"ftp://kubron.example.com",
+		"http://kubron.example.com",
+		"http://192.0.2.10",
+		"https://user:password@kubron.example.com",
+		"https://kubron.example.com?next=/",
+		"https://kubron.example.com#callback",
+		"https://kubron.example.com/prefix",
+		"https://kubron.example.com:bad",
+		"https://kubron.example.com:0",
+		"https://kubron.example.com:65536",
+		"https://kubron.example.com#",
+	} {
+		if _, err := LoadConfig(nil, env(map[string]string{"KUBRON_PUBLIC_URL": value}), io.Discard); err == nil {
+			t.Errorf("KUBRON_PUBLIC_URL=%q: expected validation error", value)
+		}
+	}
+}

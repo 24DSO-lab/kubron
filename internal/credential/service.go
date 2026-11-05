@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -53,22 +54,27 @@ type Config struct {
 // Service implements Broker: it orchestrates providers, pending requests and token refresh.
 // A Service is safe for concurrent use; several Services (replicas) may share the same stores.
 type Service struct {
-	reg     *Registry
-	store   CredentialStore
-	chal    ChallengeStore
-	envp    *secrets.Envelope
-	penv    Env
-	now     func() time.Time
-	log     *slog.Logger
-	recheck []time.Duration
-	cache   tokenCache
-	flight  flightGroup
-	live    liveSet // pending requests of providers that implement Canceller (this process only)
+	reg      *Registry
+	store    CredentialStore
+	chal     ChallengeStore
+	attempts AttemptLimiter
+	envp     *secrets.Envelope
+	penv     Env
+	now      func() time.Time
+	log      *slog.Logger
+	recheck  []time.Duration
+	cache    tokenCache
+	flight   flightGroup
+	live     liveSet // pending requests of providers that implement Canceller (this process only)
 }
 
 // NewService validates the configuration and returns a Service.
 func NewService(cfg Config) (*Service, error) {
 	if cfg.Registry == nil || cfg.Store == nil || cfg.Challenges == nil || cfg.Envelope == nil {
+		return nil, ErrNotConfigured
+	}
+	attempts, ok := cfg.Challenges.(AttemptLimiter)
+	if !ok {
 		return nil, ErrNotConfigured
 	}
 	now := cfg.Now
@@ -87,7 +93,7 @@ func NewService(cfg Config) (*Service, error) {
 	if recheck == nil {
 		recheck = []time.Duration{50 * time.Millisecond, 150 * time.Millisecond, 400 * time.Millisecond}
 	}
-	return &Service{reg: cfg.Registry, store: cfg.Store, chal: cfg.Challenges, envp: cfg.Envelope, penv: env, now: now, log: log,
+	return &Service{reg: cfg.Registry, store: cfg.Store, chal: cfg.Challenges, attempts: attempts, envp: cfg.Envelope, penv: env, now: now, log: log,
 		recheck: recheck, cache: tokenCache{m: map[string]Token{}}}, nil
 }
 
@@ -194,21 +200,37 @@ func (s *Service) begin(ctx context.Context, sub Subject, d Descriptor, saved []
 	if err != nil {
 		return d, Result{}, err
 	}
-	res, err := p.Begin(ctx, s.penv, Request{Descriptor: d, Subject: sub, Saved: saved})
-	if err == nil || !errors.Is(err, ErrUnsupported) || d.Kind == KindExec || d.Exec == nil {
+
+	req := Request{
+		Descriptor: d,
+		Subject:    sub,
+		Saved:      saved,
+	}
+
+	res, err := p.Begin(ctx, s.penv, req)
+	if err == nil || !errors.Is(err, ErrUnsupported) || p.Kind() == KindExec || d.Exec == nil {
 		return d, res, err
 	}
 
 	fallback := d
 	fallback.Kind = KindExec
+
 	fp, resolveErr := s.reg.Resolve(fallback)
-	if resolveErr != nil {
+	if resolveErr != nil || fp.Kind() != KindExec {
 		return d, Result{}, err
 	}
-	res, fallbackErr := fp.Begin(ctx, s.penv, Request{Descriptor: fallback, Subject: sub})
+
+	fallbackReq := Request{
+		Descriptor: fallback,
+		Subject:    sub,
+		Saved:      saved,
+	}
+
+	res, fallbackErr := fp.Begin(ctx, s.penv, fallbackReq)
 	if fallbackErr != nil {
 		return fallback, Result{}, fallbackErr
 	}
+
 	return fallback, res, nil
 }
 
@@ -237,6 +259,10 @@ func (s *Service) complete(ctx context.Context, sub Subject, d Descriptor, base 
 	switch {
 	case res.Token != nil:
 		s.cache.put(sub.key(), *res.Token)
+		userKey, _ := attemptKeys(sub, d)
+		if err := s.attempts.Reset(ctx, userKey); err != nil {
+			s.log.Warn("sign-in attempt counters could not be reset", "kind", d.Kind)
+		}
 		if old != nil {
 			_ = s.chal.Delete(ctx, old.ID)
 			s.dropLive(old.ID)
@@ -310,6 +336,18 @@ func (s *Service) storeChallenge(ctx context.Context, sub Subject, d Descriptor,
 	if err != nil {
 		return Challenge{}, err
 	}
+	if res.Challenge.Kind == ChallengeBrowserCallback {
+		// Use the broker-generated, session-bound challenge ID as OAuth state. This lets any replica
+		// route the IdP redirect to the shared challenge store without keeping process-local state.
+		u, err := url.Parse(res.Challenge.URL)
+		if err != nil {
+			return Challenge{}, ErrUnsupported
+		}
+		q := u.Query()
+		q.Set("state", id)
+		u.RawQuery = q.Encode()
+		res.Challenge.URL = u.String()
+	}
 	pub := publicChallenge(*res.Challenge, id, exp)
 	blob, keyID, err := s.seal(id, pendingState{Descriptor: d, Pending: res.Pending, Challenge: pub})
 	if err != nil {
@@ -367,6 +405,44 @@ func (s *Service) Answer(ctx context.Context, sub Subject, challengeID string, a
 	return s.advance(ctx, sub, challengeID, a, true)
 }
 
+// CallbackSubject resolves a browser callback only when the challenge belongs to this user and web session.
+// Unknown, expired, foreign and non-callback challenges deliberately have the same error.
+func (s *Service) CallbackSubject(ctx context.Context, sessionID, challengeID string) (Subject, Descriptor, error) {
+	if sessionID == "" || challengeID == "" {
+		return Subject{}, Descriptor{}, ErrChallengeExpired
+	}
+	rec, err := s.chal.Get(ctx, challengeID)
+	if errors.Is(err, ErrChallengeNotFound) || (err == nil && rec.SessionID != sessionID) {
+		return Subject{}, Descriptor{}, ErrChallengeExpired
+	}
+	if err != nil {
+		return Subject{}, Descriptor{}, err
+	}
+	sub := Subject{OwnerID: rec.OwnerID, SessionID: sessionID}
+	rec, err = s.load(ctx, sub, challengeID)
+	if err != nil {
+		return Subject{}, Descriptor{}, err
+	}
+	st, err := s.open(rec)
+	if err != nil || st.Challenge.Kind != ChallengeBrowserCallback {
+		return Subject{}, Descriptor{}, ErrChallengeExpired
+	}
+	return Subject{ClusterID: rec.ClusterID, Scope: rec.Scope, OwnerID: rec.OwnerID, SessionID: rec.SessionID}, st.Descriptor, nil
+}
+// AnswerCallback submits the complete redirect URL. The challenge is claimed and consumed by the same
+// compare-and-swap path as ordinary answers, so replay and concurrent callbacks cannot complete twice.
+func (s *Service) AnswerCallback(ctx context.Context, sub Subject, challengeID, redirectURL string) (Result, error) {
+	rec, err := s.load(ctx, sub, challengeID)
+	if err != nil {
+		return Result{}, ErrChallengeExpired
+	}
+	st, err := s.open(rec)
+	if err != nil || st.Challenge.Kind != ChallengeBrowserCallback {
+		return Result{}, ErrChallengeExpired
+	}
+	return s.Answer(ctx, sub, challengeID, Answer{"redirectUrl": redirectURL})
+}
+
 // Poll implements Broker: asks whether an out-of-band sign-in (device code, browser) has finished.
 func (s *Service) Poll(ctx context.Context, sub Subject, challengeID string) (Result, error) {
 	return s.advance(ctx, sub, challengeID, nil, false)
@@ -389,6 +465,25 @@ func (s *Service) advance(ctx context.Context, sub Subject, id string, a Answer,
 	if !isAnswer && !st.Challenge.Poll {
 		c := publicChallenge(st.Challenge, rec.ID, rec.ExpiresAt)
 		return Result{Challenge: &c}, nil
+	}
+
+	// A browser callback is completed by a separate top-level HTTP request. Polling it must be read-only:
+	// claiming the challenge here could race with the callback and make the one-time redirect lose.
+	if !isAnswer && st.Challenge.Kind == ChallengeBrowserCallback {
+		c := publicChallenge(st.Challenge, rec.ID, rec.ExpiresAt)
+		return Result{Challenge: &c}, nil
+	}
+
+	if isAnswer {
+		subject := Subject{Scope: rec.Scope, OwnerID: rec.OwnerID}
+		userKey, idpKey := attemptKeys(subject, st.Descriptor)
+		wait, err := s.attempts.Check(ctx, userKey, idpKey, now)
+		if err != nil {
+			return Result{}, err
+		}
+		if wait > 0 {
+			return Result{}, &RateLimitedError{RetryAfter: wait}
+		}
 	}
 
 	// Claim the request: only one caller (on any replica) can move it from active to busy.
@@ -417,7 +512,7 @@ func (s *Service) advance(ctx context.Context, sub Subject, id string, a Answer,
 		Challenge: publicChallenge(st.Challenge, rec.ID, rec.ExpiresAt), Answer: a}
 	res, perr := p.Continue(ctx, s.penv, req)
 	if perr != nil {
-		return s.failed(ctx, claimed, d, a, saved, perr)
+		return s.failed(ctx, claimed, d, a, saved, perr, isAnswer)
 	}
 	out, err := s.complete(ctx, subject, d, base, res, true, &claimed)
 	if err != nil {
@@ -448,18 +543,38 @@ func (s *Service) release(ctx context.Context, claimed ChallengeRecord) {
 }
 
 // failed handles an error from Continue.
-func (s *Service) failed(ctx context.Context, claimed ChallengeRecord, d Descriptor, a Answer, saved []byte, perr error) (Result, error) {
+func (s *Service) failed(ctx context.Context, claimed ChallengeRecord, d Descriptor, a Answer, saved []byte, perr error, isAnswer bool) (Result, error) {
 	switch {
 	case errors.Is(perr, ErrAnswerRejected):
+		if !isAnswer {
+			// An external authorization was declined while polling; it is not a failed credential answer.
+			_ = s.chal.Delete(ctx, claimed.ID)
+			s.dropLive(claimed.ID)
+			return Result{}, ErrAnswerRejected
+		}
+		subject := Subject{Scope: claimed.Scope, OwnerID: claimed.OwnerID}
+		userKey, idpKey := attemptKeys(subject, d)
+		wait, limitErr := s.attempts.Fail(ctx, userKey, idpKey, s.now(), AttemptWindow,
+			MaxUserAnswerFailures, MaxIDPAnswerFailures, AttemptLockout)
+		if limitErr != nil {
+			s.release(ctx, claimed)
+			return Result{}, limitErr
+		}
 		claimed.Attempts++
 		if claimed.Attempts >= MaxAnswerAttempts {
 			_ = s.chal.Delete(ctx, claimed.ID)
 			s.dropLive(claimed.ID)
 			s.log.Info("sign-in request destroyed after too many wrong answers", "cluster", claimed.ClusterID)
+			if wait > 0 {
+				return Result{}, &RateLimitedError{RetryAfter: wait}
+			}
 			return Result{}, ErrAnswerRejected
 		}
 		claimed.Status, claimed.LockedUntil = ChallengeActive, time.Time{}
 		_, _ = s.chal.Swap(ctx, claimed, claimed.Version)
+		if wait > 0 {
+			return Result{}, &RateLimitedError{RetryAfter: wait}
+		}
 		return Result{}, ErrAnswerRejected
 	case errors.Is(perr, ErrInvalidAnswer):
 		// Not a wrong guess (an empty field, a value of the wrong shape): no attempt is used up, the request stays
@@ -498,7 +613,12 @@ func (s *Service) Sweep(ctx context.Context) (int, error) {
 	for _, r := range s.live.takeIf(func(r liveRequest) bool { return !now.Before(r.expires) }) {
 		r.cancel()
 	}
-	return s.chal.DeleteExpired(ctx, now)
+	n, err := s.chal.DeleteExpired(ctx, now)
+	if err != nil {
+		return n, err
+	}
+	_, err = s.attempts.Sweep(ctx, now.Add(-2*AttemptWindow))
+	return n, err
 }
 
 // --- error scrubbing -------------------------------------------------------------------------------
