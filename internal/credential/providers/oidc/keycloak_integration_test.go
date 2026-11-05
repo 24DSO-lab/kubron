@@ -101,7 +101,7 @@ func TestKeycloakPasswordAndRefresh(t *testing.T) {
 
 	// Exercise the real device authorization endpoint and one RFC 8628 pending poll.
 	deviceDescriptor := credential.Descriptor{Kind: credential.KindOIDC, Params: map[string]string{
-		"grant": "device-code", "issuer-url": issuer, "client-id": "kubron-integration",
+		"grant": "device-code", "issuer-url": issuer, "client-id": "kubron-device-integration",
 	}}
 	deviceStarted, err := provider.Begin(context.Background(), env, credential.Request{
 		Descriptor: deviceDescriptor, Subject: req.Subject,
