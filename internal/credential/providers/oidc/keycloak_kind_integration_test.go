@@ -5,11 +5,13 @@ package oidc
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"io"
 	"net/http"
 	"net/url"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -90,7 +92,46 @@ func keycloakPasswordIDToken(t *testing.T, client *http.Client, issuer, username
 	if token.IDToken == "" {
 		t.Fatalf("Keycloak returned an empty ID token for %s", username)
 	}
+	assertKeycloakIDTokenClaims(t, token.IDToken, issuer, username)
 	return token.IDToken
+}
+
+func assertKeycloakIDTokenClaims(t *testing.T, raw, issuer, username string) {
+	t.Helper()
+	parts := strings.Split(raw, ".")
+	if len(parts) != 3 {
+		t.Fatal("Keycloak returned a malformed ID token")
+	}
+	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
+	if err != nil {
+		t.Fatalf("decode ID token claims: %v", err)
+	}
+	var claims struct {
+		Issuer            string          `json:"iss"`
+		Audience          json.RawMessage `json:"aud"`
+		PreferredUsername string          `json:"preferred_username"`
+	}
+	if err := json.Unmarshal(payload, &claims); err != nil {
+		t.Fatalf("decode ID token claims: %v", err)
+	}
+	var audience string
+	if err := json.Unmarshal(claims.Audience, &audience); err != nil {
+		var values []string
+		if err := json.Unmarshal(claims.Audience, &values); err != nil {
+			t.Fatalf("Keycloak ID token has an invalid audience claim")
+		}
+		if !slices.Contains(values, "kubron-integration") {
+			t.Fatalf("Keycloak ID token audience does not include kubron-integration: %v", values)
+		}
+	} else if audience != "kubron-integration" {
+		t.Fatalf("Keycloak ID token audience is %q, want kubron-integration", audience)
+	}
+	if claims.Issuer != issuer {
+		t.Fatalf("Keycloak ID token issuer is %q, want %q", claims.Issuer, issuer)
+	}
+	if claims.PreferredUsername != username {
+		t.Fatalf("Keycloak ID token preferred_username is %q, want %q", claims.PreferredUsername, username)
+	}
 }
 
 func keycloakKindClient(t *testing.T, server, caFile, token string) *kubernetes.Clientset {
