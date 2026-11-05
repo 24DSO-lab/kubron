@@ -130,13 +130,13 @@ func connectFixture(t *testing.T, b *fakeBroker) (*App, *recPlatform, string, *[
 
 func TestWithWebOIDCParamsRequiresPublicClientAndRedirectPair(t *testing.T) {
 	base := credential.Descriptor{Kind: credential.KindOIDC, Params: map[string]string{
-		"client-id": "kubeconfig-client",
-		"web.client-id": "untrusted-client",
+		"client-id":        "kubeconfig-client",
+		"web.client-id":    "untrusted-client",
 		"web.redirect-url": "https://evil.example/callback",
 	}}
 	for _, tc := range []struct {
 		name, clientID, redirectURL string
-		wantClient, wantRedirect string
+		wantClient, wantRedirect    string
 	}{
 		{name: "no admin client", redirectURL: "https://kubron.example/auth/cluster/callback"},
 		{name: "no public URL", clientID: "admin-public-client"},
