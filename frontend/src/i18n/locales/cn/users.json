@@ -4,7 +4,7 @@
   "add": "➕ 添加用户",
   "webOIDC": {
     "title": "Web OIDC 客户端",
-    "description": "用于通过浏览器登录集群的可选公共客户端 ID。仅在 Web 模式下覆盖 kubeconfig 中的客户端 ID；请勿填写客户端密钥。",
+    "description": "用于通过浏览器登录集群的可选公共客户端 ID。请设置 KUBRON_PUBLIC_URL，并在身份提供方注册 KUBRON_PUBLIC_URL/auth/cluster/callback。仅在 Web 模式下覆盖 kubeconfig 中的客户端 ID；请勿填写客户端密钥。",
     "clientID": "公共客户端 ID",
     "save": "保存",
     "saving": "正在保存…",

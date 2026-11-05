@@ -44,7 +44,10 @@ func (e *unavailable) Is(target error) bool { return target == credential.ErrSer
 // wrapped is an error with a fixed message and a typed cause for errors.Is / errors.As.
 type wrapped struct{ msg, cause error }
 
-func (w *wrapped) Error() string   { return w.msg.Error() }
+func (w *wrapped) Error() string { return w.msg.Error() }
+func (w *wrapped) Is(target error) bool {
+	return errors.Is(w.msg, target) || errors.Is(w.cause, target)
+}
 func (w *wrapped) Unwrap() []error { return []error{w.msg, w.cause} }
 
 // wrap returns msg whose Is-chain also contains cause. cause's text is never shown.

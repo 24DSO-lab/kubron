@@ -50,7 +50,7 @@ type config struct {
 var defaultListen = []string{"127.0.0.1:8000", "127.0.0.1:18000"}
 
 // reservedAuthParams cannot be set through auth-request-extra-params: the provider sets them itself.
-var reservedAuthParams = []string{"response_type", "client_id", "redirect_uri", "scope", "state", "nonce",
+var reservedAuthParams = []string{"response_type", "response_mode", "client_id", "redirect_uri", "scope", "state", "nonce",
 	"code_challenge", "code_challenge_method", "request", "request_uri"}
 
 // fileParams would make the provider read a file of the machine it runs on. Nothing here reads files: a CA
@@ -92,10 +92,16 @@ func newConfig(d credential.Descriptor, sv *saved, desktop bool) (config, error)
 		}
 	}
 	if !desktop {
-		if webClientID := strings.TrimSpace(p["web.client-id"]); webClientID != "" {
+		webClientID := strings.TrimSpace(p["web.client-id"])
+		webRedirectURL := strings.TrimSpace(p["web.redirect-url"])
+		if webClientID != "" && webRedirectURL != "" {
 			c.clientID = webClientID
+			c.clientSecret = "" // a web public client must never inherit a kubeconfig client secret
+			c.webRedirectURL = webRedirectURL
+			if !validWebRedirectURL(c.webRedirectURL) {
+				return config{}, credential.ErrUnsupported
+			}
 		}
-		c.webRedirectURL = strings.TrimSpace(p["web.redirect-url"])
 	}
 	if c.issuer == "" || c.clientID == "" {
 		return config{}, errConfig
@@ -205,6 +211,27 @@ func parseListen(v string) ([]string, error) {
 		return nil, credential.ErrUnsupported
 	}
 	return out, nil
+}
+
+// validWebRedirectURL accepts only the fixed callback path over HTTPS, or HTTP on loopback.
+// The value normally comes from validated KUBRON_PUBLIC_URL, but is checked again at the provider boundary.
+func validWebRedirectURL(raw string) bool {
+	u, err := url.Parse(raw)
+	if err != nil || u.User != nil || u.Fragment != "" || u.RawQuery != "" || u.Opaque != "" || u.Path != "/auth/cluster/callback" || u.Host == "" {
+		return false
+	}
+	if u.Scheme == "https" {
+		return true
+	}
+	if u.Scheme != "http" {
+		return false
+	}
+	h := strings.Trim(u.Hostname(), "[]")
+	if strings.EqualFold(h, "localhost") {
+		return true
+	}
+	ip := net.ParseIP(h)
+	return ip != nil && ip.IsLoopback()
 }
 
 // validHost accepts a bare host name or IP for the redirect URL.

@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -128,6 +129,61 @@ func (r *rig) login() credential.Challenge {
 
 func answer(user, pw string) credential.Answer {
 	return credential.Answer{"username": user, "password": pw}
+}
+
+type browserCallbackProvider struct{}
+
+func (browserCallbackProvider) Kind() credential.Kind { return credential.KindOIDC }
+func (browserCallbackProvider) Begin(context.Context, credential.Env, credential.Request) (credential.Result, error) {
+	return credential.Result{Challenge: &credential.Challenge{
+		Kind: credential.ChallengeBrowserCallback, URL: "https://idp.example/auth?state=provisional", Poll: true,
+	}}, nil
+}
+func (browserCallbackProvider) Continue(_ context.Context, _ credential.Env, req credential.Request) (credential.Result, error) {
+	if req.Answer["redirectUrl"] == "" {
+		return credential.Result{Challenge: &req.Challenge, Pending: req.Pending}, nil
+	}
+	return credential.Result{Token: &credential.Token{Value: "callback-token", Principal: "alice"}}, nil
+}
+
+func TestWebCallbackIsBoundToUserAndSessionAndConsumedOnce(t *testing.T) {
+	r := newRig(t)
+	r.svc = r.newService(browserCallbackProvider{})
+	res, err := r.svc.Acquire(bg, subj, credential.Descriptor{Kind: credential.KindOIDC})
+	if err != nil || res.Challenge == nil || res.Challenge.Kind != credential.ChallengeBrowserCallback {
+		t.Fatalf("Acquire = %+v, %v", res, err)
+	}
+	u, err := url.Parse(res.Challenge.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	state := u.Query().Get("state")
+	if state == "" || state != res.Challenge.ID {
+		t.Fatalf("callback state must be broker challenge ID: id=%q state=%q", res.Challenge.ID, state)
+	}
+	if _, _, err := r.svc.CallbackSubject(bg, "other-session", state); !errors.Is(err, credential.ErrChallengeExpired) {
+		t.Fatalf("foreign session: %v", err)
+	}
+	// A second Service instance shares only the challenge store and envelope, as another server replica would.
+	replica := r.newService(browserCallbackProvider{})
+	poll, err := replica.Poll(bg, subj, state)
+	if err != nil || poll.Challenge == nil || poll.Challenge.ID != state {
+		t.Fatalf("browser callback poll = %+v, %v", poll, err)
+	}
+	got, desc, err := replica.CallbackSubject(bg, subj.SessionID, state)
+	if err != nil || got != subj || desc.Kind != credential.KindOIDC {
+		t.Fatalf("callback subject = %+v, %v", got, err)
+	}
+	done, err := replica.AnswerCallback(bg, got, state, "https://kubron.example/auth/cluster/callback?code=CANARY-code&state="+state)
+	if err != nil || done.Token == nil {
+		t.Fatalf("callback answer = %+v, %v", done, err)
+	}
+	if _, err := replica.AnswerCallback(bg, got, state, "https://kubron.example/auth/cluster/callback?code=CANARY-code&state="+state); !errors.Is(err, credential.ErrChallengeExpired) {
+		t.Fatalf("replay: %v", err)
+	}
+	if strings.Contains(r.logs.String(), state) || strings.Contains(r.logs.String(), "CANARY-code") {
+		t.Fatalf("OAuth state or code leaked into logs: %s", r.logs.String())
+	}
 }
 
 func TestMemoryChallengeStoreContract(t *testing.T) {

@@ -56,6 +56,12 @@ func (a *App) limitAnswer(challengeID string) error {
 	if !ok {
 		return nil // an unknown challenge fails in advance without reaching any IdP
 	}
+	return a.limitCallback(pc.idp)
+}
+
+// limitCallback takes one request from the application-user and IdP buckets. It is shared by RPC answers
+// and the browser callback endpoint; callback routing does not depend on process-local challenge bookkeeping.
+func (a *App) limitCallback(idp string) error {
 	if a.limitUser != nil {
 		if uid := a.currentUserID(); uid != "" {
 			if ok, wait := a.limitUser.Allow("answer:" + uid); !ok {
@@ -64,7 +70,7 @@ func (a *App) limitAnswer(challengeID string) error {
 		}
 	}
 	if a.limitIDP != nil {
-		if ok, wait := a.limitIDP.Allow("answer:" + pc.idp); !ok {
+		if ok, wait := a.limitIDP.Allow("answer:" + idp); !ok {
 			return &RateLimitedError{wait: wait}
 		}
 	}
