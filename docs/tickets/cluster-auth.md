@@ -78,7 +78,7 @@ A.6–A.8 → C.1 → B.3–B.4, B.2 (закрывает «browser sign-in») �
 
 ## Статус (после фазы 2)
 
-Завершающая серия (ветка `feat/cred-finish`, пункты 1.1–1.7 и 2.1–2.4) выполнена; CI зелёный до 2.4 включительно, для 2.1–2.3 запущен. C.4 (e2e с Keycloak и kind) закрыт отдельным прогоном, см. выше. B.1 завершён задачей 2.1: «общая учётная запись команды»
+Завершающая серия (ветка `feat/cred-finish`, пункты 1.1–1.7 и 2.1–2.4) выполнена; CI зелёный по всей серии. C.4 (e2e с Keycloak и kind) закрыт отдельным прогоном, см. выше. B.1 завершён задачей 2.1: «общая учётная запись команды»
 идёт через брокер (`ModeTeamAccount`, область `team`), старый путь `oidc-password` удалён (2.2–2.4: `ClassifyAuth`, `oidcSecret`, `OIDCCredentials`,
 `verifyOIDCLogin`, `ErrOIDCLoginRequired`, `ErrOIDCAuthCode`, `ErrExecForbidden`, `checkExecAllowed`, `App.ConnectToCluster`, `internal/oidcpassword`, `cmd/oidc-spike`).
 
@@ -100,4 +100,4 @@ A.6–A.8 → C.1 → B.3–B.4, B.2 (закрывает «browser sign-in») �
 
 - В вебе ссылки kubeconfig на файлы IdP (CA и т. п.) молча игнорируются, а не отклоняются.
 - Для Dex нужен `offline_access`, IdP по `http` в серверном режиме не работает (см. `docs/deploy.md`, «Вход в кластеры: что настроить в IdP»).
-- Ручная приёмка в веб-режиме на двух kubeconfig (3.1) требует окружения пользователя и не выполнялась в песочнице. Keycloak и kind (3.2) прогнаны в CI отдельным workflow (C.4).
+- Ручная приёмка в веб-режиме на двух kubeconfig (3.1) требует окружения владельца: сценарий и таблица проверок в [docs/acceptance/2026-11-05-cluster-auth-manual.md](../acceptance/2026-11-05-cluster-auth-manual.md). Keycloak и kind (3.2) прогнаны в CI отдельным workflow (C.4).
