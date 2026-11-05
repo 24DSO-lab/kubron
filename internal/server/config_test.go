@@ -8,6 +8,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 )
@@ -285,5 +286,27 @@ func TestLoadConfigPublicURL(t *testing.T) {
 		if _, err := LoadConfig(nil, env(map[string]string{"KUBRON_PUBLIC_URL": value}), io.Discard); err == nil {
 			t.Errorf("KUBRON_PUBLIC_URL=%q: expected validation error", value)
 		}
+	}
+}
+
+func TestLoadConfigGKEOAuth(t *testing.T) {
+	cfg, err := LoadConfig(nil, env(nil), io.Discard)
+	if err != nil || cfg.GKEOAuthClientID != "" || cfg.GKEOAuthClientSecret != "" {
+		t.Fatalf("default: %+v %v", cfg, err)
+	}
+	cfg, err = LoadConfig(nil, env(map[string]string{
+		"KUBRON_GKE_OAUTH_CLIENT_ID": " id.apps.googleusercontent.com ", "KUBRON_GKE_OAUTH_CLIENT_SECRET": " s3cret\n",
+	}), io.Discard)
+	if err != nil || cfg.GKEOAuthClientID != "id.apps.googleusercontent.com" || cfg.GKEOAuthClientSecret != "s3cret" {
+		t.Fatalf("set: %+v %v", cfg, err)
+	}
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("id and secret: %v", err)
+	}
+	// A secret without an id is a mistake of the deployment, and the error must not repeat the secret.
+	cfg.GKEOAuthClientID = ""
+	err = cfg.Validate()
+	if err == nil || strings.Contains(err.Error(), "s3cret") {
+		t.Fatalf("secret without id: %v", err)
 	}
 }

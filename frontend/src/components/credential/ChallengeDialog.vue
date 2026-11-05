@@ -75,9 +75,9 @@
         <div v-for="(f, i) in fields" :key="f.name" class="ch-field">
           <label :for="`${uid}-${f.name}`" class="ch-label">{{ fieldLabel(f.name) }}</label>
           <div class="ch-input-row">
-            <textarea v-if="challenge.kind === 'manual-token' || challenge.kind === 'paste-redirect'"
+            <textarea v-if="challenge.kind === 'manual-token' || challenge.kind === 'paste-redirect' || isMultilineField(challenge.kind, f.name)"
               :id="`${uid}-${f.name}`" v-model="values[f.name]" class="ch-input ch-area" :class="{ 'ch-masked': f.secret && !reveal[f.name] }"
-              rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" :disabled="busy"
+              :rows="isMultilineField(challenge.kind, f.name) ? 8 : 3" spellcheck="false" autocomplete="off" autocapitalize="off" wrap="off" :disabled="busy"
               :data-testid="`field-${f.name}`" :data-autofocus="i === 0 ? '' : undefined" />
             <input v-else :id="`${uid}-${f.name}`" v-model="values[f.name]" class="ch-input"
               :type="f.secret && !reveal[f.name] ? 'password' : 'text'" spellcheck="false" autocapitalize="off"
@@ -134,7 +134,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } 
 import { useI18n } from 'vue-i18n'
 import type { Challenge, ChallengeValues } from '../../types/credential'
 import {
-  challengeFields, commandLine, execCommandLine, fieldsFilled, formatCountdown, hasForm, safeHref,
+  challengeFields, clearFieldValues, commandLine, execCommandLine, fieldsFilled, formatCountdown, hasForm, isMultilineField, safeHref,
 } from './challengeView'
 
 const props = defineProps<{
@@ -185,11 +185,8 @@ function autocompleteFor(name: string): string {
 }
 
 function resetValues(onlySecrets: boolean) {
-  const secret = new Set(fields.value.filter((f) => f.secret).map((f) => f.name))
-  for (const f of fields.value) {
-    if (!onlySecrets || secret.has(f.name)) values[f.name] = ''
-    reveal[f.name] = false
-  }
+  clearFieldValues(fields.value, values, onlySecrets)
+  for (const f of fields.value) reveal[f.name] = false
 }
 
 function onSubmit() {
@@ -248,6 +245,7 @@ onMounted(() => {
   document.addEventListener('focusin', onDocumentFocusin, true)
 })
 onBeforeUnmount(() => {
+  resetValues(true) // секреты не переживают диалог
   document.removeEventListener('keydown', onDocumentKeydown, true)
   document.removeEventListener('focusin', onDocumentFocusin, true)
 })

@@ -22,8 +22,7 @@ const (
 	// DefaultTTL is the lifetime of a token that carries no expiry of its own.
 	DefaultTTL = 5 * time.Minute
 	// FieldToken is the name of the answer field (the UI label is credential.field.token).
-	FieldToken = "token"
-
+	FieldToken      = "token"
 	maxPrincipalLen = 256
 	kindExecCred    = "ExecCredential"
 )
@@ -179,7 +178,7 @@ func parseExecCredential(text string, now time.Time) (credential.Token, error) {
 	if !expiry.After(now) {
 		return credential.Token{}, rejected(errExpired)
 	}
-	return credential.Token{Value: ec.Status.Token, Expiry: expiry, Principal: claims.sub}, nil
+	return credential.Token{Value: ec.Status.Token, Expiry: expiry}, nil
 }
 
 func bareToken(text string, now time.Time) (credential.Token, error) {
@@ -194,7 +193,7 @@ func bareToken(text string, now time.Time) (credential.Token, error) {
 	if !expiry.After(now) {
 		return credential.Token{}, rejected(errExpired)
 	}
-	return credential.Token{Value: text, Expiry: expiry, Principal: claims.sub}, nil
+	return credential.Token{Value: text, Expiry: expiry}, nil
 }
 
 // validToken accepts printable ASCII without spaces. A token ends up in an Authorization header, so line
@@ -213,11 +212,10 @@ func validToken(s string) bool {
 
 type claims struct {
 	exp time.Time
-	sub string
 }
 
-// jwtClaims reads exp and sub from a JWT payload without verifying the signature: the API server verifies
-// it, here the values only set the cache lifetime and the audit name. Anything unexpected yields zero values.
+// jwtClaims reads only exp from a JWT payload without verifying the signature. The API server verifies the
+// token; an unverified sub must never be presented as an authenticated Kubernetes identity in audit or UI.
 func jwtClaims(token string) (claims, bool) {
 	parts := strings.Split(token, ".")
 	if len(parts) != 3 {
@@ -229,7 +227,6 @@ func jwtClaims(token string) (claims, bool) {
 	}
 	var p struct {
 		Exp json.Number `json:"exp"`
-		Sub string      `json:"sub"`
 	}
 	dec := json.NewDecoder(bytes.NewReader(raw))
 	dec.UseNumber()
@@ -240,17 +237,5 @@ func jwtClaims(token string) (claims, bool) {
 	if secs, err := p.Exp.Float64(); err == nil && secs > 0 && secs < 1<<40 {
 		out.exp = time.Unix(int64(secs), 0)
 	}
-	if len(p.Sub) <= maxPrincipalLen && printable(p.Sub) {
-		out.sub = p.Sub
-	}
 	return out, true
-}
-
-func printable(s string) bool {
-	for _, r := range s {
-		if r < 0x20 || r == 0x7f {
-			return false
-		}
-	}
-	return true
 }

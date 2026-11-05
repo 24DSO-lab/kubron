@@ -7,11 +7,13 @@ import (
 	"context"
 	"log/slog"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/24DSO-labs/kubron/internal/app"
 	"github.com/24DSO-labs/kubron/internal/credential"
 	"github.com/24DSO-labs/kubron/internal/credential/filestore"
+	"github.com/24DSO-labs/kubron/internal/credential/providers/gke"
 	"github.com/24DSO-labs/kubron/internal/logging"
 	"github.com/24DSO-labs/kubron/internal/pgstore"
 	"github.com/24DSO-labs/kubron/internal/secrets"
@@ -44,6 +46,12 @@ func setupBroker(ctx context.Context, cfg server.Config, pg *pgstore.Store, core
 		slog.Warn("secrets: master key warning", "code", w)
 	}
 	o := app.BrokerOptions{Keyring: sel.Keyring, DataDir: cfg.DataDir}
+	if cfg.GKEOAuthClientID != "" {
+		o.GKEOAuth = &gke.UserOAuth{ClientID: cfg.GKEOAuthClientID, ClientSecret: cfg.GKEOAuthClientSecret}
+		if cfg.PublicURL != "" { // the callback of this server; without it the user pastes the address
+			o.GKEOAuth.WebRedirectURL = strings.TrimRight(cfg.PublicURL, "/") + gke.WebCallbackPath
+		}
+	}
 	if pg != nil {
 		o.Store, o.Challenges = pg.Credentials(), pg.Challenges()
 	} else {

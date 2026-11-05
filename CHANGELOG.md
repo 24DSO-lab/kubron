@@ -7,20 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+
 ### Added
 
 - **Shared team account:** an administrator of a team cluster can choose a shared account in the add/edit dialog. The sign-in is verified by the credential broker (team scope), stored encrypted and used by the whole team; other members are told to ask a cluster administrator. New `ResetClusterSharedAccount` forgets the saved shared sign-in.
 
-### Changed
-
-- **Cluster sign-in:** all connections go through the credential broker. Without a broker only clusters with static credentials and the in-cluster mode connect. The `exec` block of a kubeconfig is never run by the connection code. The test connection of a kubeconfig that signs in through a plugin checks only the address and TLS.
-- **Cluster dialogs:** the login and password fields for `oidc-login` are removed; sign-in happens in the sign-in dialog.
 
 ### Removed
 
 - `internal/oidcpassword`, `cmd/oidc-spike`, `App.ConnectToCluster`, `AddOIDCClusterToTeam`, `SetClusterOIDCCredentials` (and their RPC methods) and the error messages that belonged to them. Clusters saved in the old mode keep working: the stored mode value `oidc-password` now means the shared team account, and `MigrateLegacyOIDC` is unchanged. The `secret_enc` column is kept.
 
+
+### Security
+
+- **Manual Kubernetes tokens:** an unverified JWT `sub` is no longer presented as an authenticated Kubernetes principal in audit or connection details. The API server remains the authority for token validation; the unverified `exp` is used only as a cache hint.
+
+### Changed
+- **Cluster sign-in:** all connections go through the credential broker. Without a broker only clusters with static credentials and the in-cluster mode connect. The `exec` block of a kubeconfig is never run by the connection code. The test connection of a kubeconfig that signs in through a plugin checks only the address and TLS.
+- **Cluster dialogs:** the login and password fields for `oidc-login` are removed; sign-in happens in the sign-in dialog.
+
+- **Cluster authentication network policy:** native AKS sign-in now uses the shared IdP HTTP client, enforcing `KUBRON_CLUSTER_ADDR_POLICY` on Azure authority connections and redirects, with HTTPS-only web requests, bounded responses/timeouts and no environment proxy.
+
 - **Cluster authentication docs:** updated the English and Russian user guides to describe the implemented credential broker, OIDC and AKS sign-in modes, Desktop exec confirmation, Web manual-token fallback and unsupported Azure modes.
+
+### Added
+
+- **OIDC integration coverage:** CI exercises password, refresh-token rotation, authorization code + PKCE through paste-redirect and desktop loopback, device authorization, and a real Keycloak-backed kind API server with two isolated Kubernetes RBAC identities.
+- **Credential guidance:** documented per-user refresh-token storage, explicit team-scope password storage, IdP egress/TLS requirements and the actual OIDC redirect flags.
+- **GKE sign-in with a Google account:** when `KUBRON_GKE_OAUTH_CLIENT_ID` (and `KUBRON_GKE_OAUTH_CLIENT_SECRET`) are
+  set, a new GKE sign-in uses the authorization-code flow with PKCE (browser callback on the server, or a pasted
+  address). The refresh token is saved encrypted and bound to the OAuth client. Without these variables nothing changes.
+- **GKE sign-in with a service account key:** a kubeconfig that uses `gke-gcloud-auth-plugin` now asks for a service
+  account key (JSON) instead of showing a manual-token command. The key is exchanged for a token with the JWT-bearer
+  grant at the fixed Google address and is saved encrypted. The credentials of the server (Application Default
+  Credentials, the metadata server) are never used, and `token_uri` from the key file is ignored.
 
 ## [1.0.0] - 2026-11-03
 

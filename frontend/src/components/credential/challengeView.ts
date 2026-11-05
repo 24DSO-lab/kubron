@@ -14,6 +14,24 @@ export function challengeFields(c: Challenge): ChallengeField[] {
   return []
 }
 
+/**
+ * Секретные поля secret-fields, значение которых многострочное (файл ключа). Список явный: другие поля остаются
+ * однострочными. Поле рисуется маскированной областью ввода, а не type=password: тот теряет переносы строк.
+ */
+const MULTILINE_FIELDS: ReadonlySet<string> = new Set(['serviceAccountJson'])
+export const isMultilineField = (kind: ChallengeKind, name: string) => kind === 'secret-fields' && MULTILINE_FIELDS.has(name)
+
+/** Очищает значения формы: все или только секретные. Возвращает число очищенных значений. */
+export function clearFieldValues(fields: ChallengeField[], values: Record<string, string>, onlySecrets: boolean): number {
+  let n = 0
+  for (const f of fields) {
+    if (onlySecrets && !f.secret) continue
+    if (values[f.name]) n++
+    values[f.name] = ''
+  }
+  return n
+}
+
 /** Виды вызова, у которых есть форма с кнопкой «Отправить» */
 const FORM_KINDS: ReadonlySet<ChallengeKind> = new Set(['credentials', 'paste-redirect', 'secret-fields', 'manual-token'])
 export const hasForm = (kind: ChallengeKind) => FORM_KINDS.has(kind)

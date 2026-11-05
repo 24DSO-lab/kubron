@@ -162,6 +162,27 @@ func StoreContract(t *testing.T, newHarness func(t *testing.T) StoreHarness) {
 		}
 	})
 
+	run("DeleteIfVersionIsCompareAndSwap", func(t *testing.T, h StoreHarness) {
+		k := userKey("c1", "u1")
+		h.prep(t, "c1")
+		meta, err := h.Store.Put(ctx, rec(k, "refresh-v1"), 0)
+		if err != nil || meta.Version != 1 {
+			t.Fatalf("initial write: %+v, %v", meta, err)
+		}
+		if err := h.Store.DeleteIfVersion(ctx, k, meta.Version+1); !errors.Is(err, credential.ErrVersionConflict) {
+			t.Fatalf("delete with a stale version: %v", err)
+		}
+		if got, err := h.Store.Get(ctx, k); err != nil || string(got.Secret) != "refresh-v1" {
+			t.Fatalf("stale delete removed the record: %+v, %v", got, err)
+		}
+		if err := h.Store.DeleteIfVersion(ctx, k, meta.Version); err != nil {
+			t.Fatalf("delete with the current version: %v", err)
+		}
+		if err := h.Store.DeleteIfVersion(ctx, k, meta.Version); !errors.Is(err, credential.ErrVersionConflict) {
+			t.Fatalf("delete of a missing record: %v", err)
+		}
+	})
+
 	run("ScopesAndOwnersAreSeparate", func(t *testing.T, h StoreHarness) {
 		h.prep(t, "c1", "c2")
 		keys := []credential.Key{userKey("c1", "x"), teamKey("c1", "x"), userKey("c1", "y"), userKey("c2", "x")}

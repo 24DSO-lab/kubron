@@ -133,6 +133,24 @@ func (c *Credentials) Delete(ctx context.Context, k credential.Key) error {
 	return err
 }
 
+// DeleteIfVersion implements credential.CredentialStore. The version predicate makes invalidation safe
+// against a refresh-token rotation committed by another replica.
+func (c *Credentials) DeleteIfVersion(ctx context.Context, k credential.Key, expectedVersion int64) error {
+	if err := k.Validate(); err != nil {
+		return err
+	}
+	tag, err := c.s.pool.Exec(ctx, `DELETE FROM cluster_credentials
+		WHERE cluster_id=$1 AND owner_kind=$2 AND owner_id=$3 AND version=$4`,
+		k.ClusterID, string(k.Scope), k.OwnerID, expectedVersion)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() != 1 {
+		return credential.ErrVersionConflict
+	}
+	return nil
+}
+
 // List implements credential.CredentialStore.
 func (c *Credentials) List(ctx context.Context, ownerID string) ([]credential.Meta, error) {
 	rows, err := c.s.pool.Query(ctx, `SELECT cluster_id, owner_kind, `+credColumns+`
