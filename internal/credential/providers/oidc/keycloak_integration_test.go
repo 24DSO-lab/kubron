@@ -98,6 +98,29 @@ func TestKeycloakPasswordAndRefresh(t *testing.T) {
 	if completed.Token == nil || completed.Token.Value == "" || completed.Token.Principal == "" {
 		t.Fatal("Keycloak authorization-code flow did not produce a verified ID token and principal")
 	}
+
+	// Exercise the real device authorization endpoint and one RFC 8628 pending poll.
+	deviceDescriptor := credential.Descriptor{Kind: credential.KindOIDC, Params: map[string]string{
+		"grant": "device-code", "issuer-url": issuer, "client-id": "kubron-integration",
+	}}
+	deviceStarted, err := provider.Begin(context.Background(), env, credential.Request{
+		Descriptor: deviceDescriptor, Subject: req.Subject,
+	})
+	if err != nil || deviceStarted.Challenge == nil || deviceStarted.Challenge.Kind != credential.ChallengeDeviceCode {
+		t.Fatalf("start Keycloak device flow: challenge=%v err=%v", deviceStarted.Challenge != nil, err)
+	}
+	deviceChallenge := *deviceStarted.Challenge
+	if deviceChallenge.URL == "" || deviceChallenge.UserCode == "" || !deviceChallenge.Poll || deviceChallenge.IntervalSec < 1 {
+		t.Fatalf("incomplete Keycloak device challenge: %+v", deviceChallenge)
+	}
+	time.Sleep(time.Duration(deviceChallenge.IntervalSec)*time.Second + 100*time.Millisecond)
+	pending, err := provider.Continue(context.Background(), env, credential.Request{
+		Descriptor: deviceDescriptor, Subject: req.Subject, Challenge: deviceChallenge, Pending: deviceStarted.Pending,
+	})
+	if err != nil || pending.Challenge == nil || pending.Challenge.Kind != credential.ChallengeDeviceCode {
+		t.Fatalf("Keycloak device authorization should remain pending before user approval: challenge=%v err=%v",
+			pending.Challenge != nil, err)
+	}
 }
 
 var (
