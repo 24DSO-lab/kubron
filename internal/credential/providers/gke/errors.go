@@ -24,6 +24,14 @@ var (
 	errTokenRequest   = errors.New("Google rejected the token request")
 	errTokenResponse  = errors.New("Google returned an invalid token response")
 	errUnreachable    = errors.New("Google sign-in is unreachable")
+
+	errUserConfig    = errors.New("the Google sign-in client is not configured correctly")
+	errRedirect      = errors.New("the pasted address is not a valid Google sign-in response")
+	errAuthState     = errors.New("the sign-in response does not match this request")
+	errAuthDenied    = errors.New("Google sign-in was denied or cancelled")
+	errCodeRejected  = errors.New("Google did not accept the sign-in code")
+	errIDToken       = errors.New("the Google ID token does not match this sign-in")
+	errSavedRejected = errors.New("Google no longer accepts the saved sign-in")
 )
 
 // providerError ties a detail to a contract error: errors.Is matches the contract error, the text is the
