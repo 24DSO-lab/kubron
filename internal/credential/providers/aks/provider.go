@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/24DSO-labs/kubron/internal/credential"
+	"github.com/24DSO-labs/kubron/internal/idpnet"
 )
 
 const (
@@ -27,6 +28,7 @@ const (
 
 var (
 	errHTTP     = errors.New("Azure sign-in request failed")
+	errHTTPClient = errors.New("Azure sign-in HTTP client cannot enforce the network policy")
 	errResponse = errors.New("Azure returned an invalid sign-in response")
 	errMFA      = errors.New("Azure requires an authentication method unsupported by password sign-in")
 	errSecret   = errors.New("the client secret is invalid")
@@ -115,10 +117,33 @@ func parseConfig(d credential.Descriptor) (config, error) {
 	return c, nil
 }
 
+// secureEnv wraps every Azure identity-provider request in the shared SSRF, redirect, timeout,
+// response-size and no-proxy policy. Custom transports that cannot be safely wrapped fail closed.
+func secureEnv(env credential.Env) (credential.Env, error) {
+	if env.HTTP == nil || env.HTTP.Transport == nil {
+		hc, err := idpnet.NewClient(idpnet.Options{Desktop: env.Desktop})
+		if err != nil {
+			return env, err
+		}
+		env.HTTP = hc
+		return env, nil
+	}
+	hc, err := idpnet.WithTLS(env.HTTP, env.Desktop, nil, false)
+	if err != nil {
+		return env, err
+	}
+	env.HTTP = hc
+	return env, nil
+}
+
 func (p *Provider) Begin(ctx context.Context, env credential.Env, req credential.Request) (credential.Result, error) {
 	c, err := parseConfig(req.Descriptor)
 	if err != nil {
 		return credential.Result{}, err
+	}
+	env, err = secureEnv(env)
+	if err != nil {
+		return credential.Result{}, errHTTPClient
 	}
 	sv := decodeSaved(req.Saved)
 	staleSaved := false
@@ -218,6 +243,10 @@ func (p *Provider) Continue(ctx context.Context, env credential.Env, req credent
 	c, err := parseConfig(req.Descriptor)
 	if err != nil {
 		return credential.Result{}, err
+	}
+	env, err = secureEnv(env)
+	if err != nil {
+		return credential.Result{}, errHTTPClient
 	}
 	var prior pending
 	_ = json.Unmarshal(req.Pending, &prior)
