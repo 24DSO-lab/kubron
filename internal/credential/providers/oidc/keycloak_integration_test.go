@@ -101,9 +101,9 @@ func TestKeycloakPasswordAndRefresh(t *testing.T) {
 }
 
 var (
-	keycloakFormRE  = regexp.MustCompile(`(?is)<form\\b[^>]*>`)
-	keycloakInputRE = regexp.MustCompile(`(?is)<input\\b[^>]*>`)
-	keycloakAttrRE  = regexp.MustCompile(`(?is)([a-zA-Z_:][a-zA-Z0-9_:-]*)\\s*=\\s*["']([^"']*)["']`)
+	keycloakFormRE  = regexp.MustCompile(`(?is)<form\b[^>]*>`)
+	keycloakInputRE = regexp.MustCompile(`(?is)<input\b[^>]*>`)
+	keycloakAttrRE  = regexp.MustCompile(`(?is)([a-zA-Z_:][a-zA-Z0-9_:-]*)\s*=\s*["']([^"']*)["']`)
 )
 
 // keycloakLogin emulates the human browser part of the authorization-code flow and returns
