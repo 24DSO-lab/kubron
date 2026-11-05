@@ -5,9 +5,9 @@ package k8s
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -30,6 +30,8 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+
+	"github.com/24DSO-labs/kubron/internal/credential"
 )
 
 // fakeKubeAPI — минимальный API-сервер по TLS: версия, обнаружение API и ConfigMap (в них драйвер configmap
@@ -192,76 +194,17 @@ func matchSelector(labels map[string]string, sel string) bool {
 	return true
 }
 
-// fakeIdP — IdP с password и refresh_token. Токены живут меньше refreshSkew (30 с), поэтому каждый запрос к API
-// требует обновления: так проверяется, что Helm ходит через общий WrapTransport подключения.
-type fakeIdP struct {
-	srv       *httptest.Server
-	passwordN atomic.Int32
-	refreshN  atomic.Int32
-	issued    atomic.Int32
-}
-
-func newFakeIdP(t *testing.T) *fakeIdP {
-	t.Helper()
-	f := &fakeIdP{}
-	mux := http.NewServeMux()
-	mux.HandleFunc("/.well-known/openid-configuration", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, 200, map[string]string{"issuer": f.srv.URL, "token_endpoint": f.srv.URL + "/token"})
-	})
-	mux.HandleFunc("/token", func(w http.ResponseWriter, r *http.Request) {
-		_ = r.ParseForm()
-		switch r.Form.Get("grant_type") {
-		case "password":
-			f.passwordN.Add(1)
-			if r.Form.Get("username") != "alice" || r.Form.Get("password") != "s3cret" {
-				writeJSON(w, 401, map[string]string{"error": "invalid_grant"})
-				return
-			}
-		case "refresh_token":
-			f.refreshN.Add(1)
-		default:
-			w.WriteHeader(400)
-			return
-		}
-		n := f.issued.Add(1)
-		enc := func(v any) string {
-			b, _ := json.Marshal(v)
-			return base64.RawURLEncoding.EncodeToString(b)
-		}
-		idToken := enc(map[string]string{"alg": "none"}) + "." + enc(map[string]any{"exp": time.Now().Add(10 * time.Second).Unix(), "n": n}) + ".sig"
-		writeJSON(w, 200, map[string]any{"id_token": idToken, "refresh_token": "refresh-" + string(rune('a'+n)), "expires_in": 10})
-	})
-	f.srv = httptest.NewServer(mux)
-	t.Cleanup(f.srv.Close)
-	return f
-}
-
-// modeTestStore — хранилище в памяти с секретами подключения, как у PostgreSQL (modeClusterStore), и без файлов.
+// modeTestStore — хранилище в памяти без файлов; умеет SaveWithSecret, как PostgreSQL (modeClusterStore).
 type modeTestStore struct {
 	*memClusterStore
-	secrets map[string][]byte
 }
 
 func newModeTestStore() *modeTestStore {
-	return &modeTestStore{memClusterStore: newMemClusterStore(), secrets: map[string][]byte{}}
+	return &modeTestStore{memClusterStore: newMemClusterStore()}
 }
 
-func (s *modeTestStore) SaveWithSecret(meta *ClusterMeta, kubeconfig, secret []byte) error {
-	if err := s.Save(meta, kubeconfig); err != nil {
-		return err
-	}
-	if secret != nil {
-		s.mu.Lock()
-		s.secrets[meta.ID] = append([]byte(nil), secret...)
-		s.mu.Unlock()
-	}
-	return nil
-}
-
-func (s *modeTestStore) Secret(id string) ([]byte, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.secrets[id], nil
+func (s *modeTestStore) SaveWithSecret(meta *ClusterMeta, kubeconfig, _ []byte) error {
+	return s.Save(meta, kubeconfig)
 }
 
 func kubeconfigFor(t *testing.T, api *fakeKubeAPI, ai *clientcmdapi.AuthInfo) []byte {
@@ -392,22 +335,38 @@ func TestHelmConfigForClustersWithoutKubeconfigFile(t *testing.T) {
 	}
 }
 
-// oidc-password: токен выдаёт и обновляет сервер (WrapTransport подключения); Helm должен пользоваться тем же
-// источником токена, а не копией kubeconfig. Токены в тесте живут 10 с (< 30 с запаса), то есть обновляются на каждом запросе.
-func TestHelmOIDCPasswordRefreshesToken(t *testing.T) {
+// rotatingBroker выдаёт новый токен на каждый вызов: так видно, что запрос берёт токен у брокера, а не из копии.
+type rotatingBroker struct {
+	*scriptBroker
+	n atomic.Int32
+}
+
+func (b *rotatingBroker) Token(context.Context, credential.Subject, credential.Descriptor) (credential.Token, error) {
+	return credential.Token{Value: fmt.Sprintf("tok-%d-0123456789abcdef", b.n.Add(1))}, nil
+}
+
+// Вход через брокер: токен подставляет транспорт подключения на каждый запрос; Helm должен пользоваться тем же
+// транспортом, а не копией kubeconfig.
+func TestHelmUsesTheBrokerTokenOnEveryRequest(t *testing.T) {
 	api := newFakeKubeAPI(t)
-	idp := newFakeIdP(t)
 	store := newModeTestStore()
 	useClusterStore(t, store)
 
 	login := &clientcmdapi.AuthInfo{Exec: &clientcmdapi.ExecConfig{Command: "kubectl", APIVersion: "client.authentication.k8s.io/v1",
-		Args: []string{"oidc-login", "get-token", "--oidc-issuer-url=" + idp.srv.URL, "--oidc-client-id=kubernetes", "--grant-type=password"}}}
-	secret, _ := json.Marshal(oidcSecret{IssuerURL: idp.srv.URL, ClientID: "kubernetes", Username: "alice", Password: "s3cret"})
-	if err := store.SaveWithSecret(&ClusterMeta{ID: "c1", DisplayName: "c1", ContextName: "ctx", Mode: ModeOIDCPassword},
-		kubeconfigFor(t, api, login), secret); err != nil {
+		Args: []string{"oidc-login", "get-token", "--oidc-issuer-url=https://idp.example", "--oidc-client-id=kubernetes"}}}
+	if err := store.Save(&ClusterMeta{ID: "c1", DisplayName: "c1", ContextName: "ctx", Mode: ModeTeamAccount}, kubeconfigFor(t, api, login)); err != nil {
 		t.Fatal(err)
 	}
-	m := managerWithConn(t, "c1")
+	b := &rotatingBroker{scriptBroker: &scriptBroker{kind: credential.KindOIDC}}
+	plan, err := PlanFor(AuthSession{Broker: b}, "c1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	conn, err := buildPlanConnection(plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := managerWithBuiltConn(plan.Key, conn)
 
 	cfg, err := m.helmConfigDriver("apps", nil, "configmap")
 	if err != nil {
@@ -420,16 +379,13 @@ func TestHelmOIDCPasswordRefreshesToken(t *testing.T) {
 
 	distinct := map[string]bool{}
 	for _, h := range api.authHeaders() {
-		if !strings.HasPrefix(h, "Bearer ") || len(h) < 20 {
-			t.Fatalf("a request went out without the id_token: %q", h)
+		if !strings.HasPrefix(h, "Bearer tok-") {
+			t.Fatalf("a request went out without the broker token: %q", h)
 		}
 		distinct[h] = true
 	}
-	if idp.passwordN.Load() != 1 {
-		t.Errorf("the password grant must run once, got %d", idp.passwordN.Load())
-	}
-	if idp.refreshN.Load() == 0 || len(distinct) < 2 {
-		t.Errorf("the token must be refreshed while Helm works: refresh grants=%d, distinct tokens=%d", idp.refreshN.Load(), len(distinct))
+	if len(distinct) < 2 {
+		t.Errorf("the broker is asked for the token on each request: distinct tokens=%d, calls=%d", len(distinct), b.n.Load())
 	}
 }
 

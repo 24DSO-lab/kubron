@@ -90,21 +90,22 @@
             :checking="probe.checking.value" :can-test="canTest" @test="runTest" />
         </section>
 
-        <!-- oidc-password: сервер входит в провайдер входа сам; сменился пароль — введите новый -->
-        <section v-if="cluster.mode === 'oidc-password'" class="cl-section" data-testid="oidc-update">
-          <h3 class="cl-section-title">{{ $t('cluster.edit.oidcTitle') }}</h3>
+        <!-- Общая учётная запись команды: вход под ней вводит администратор кластера при подключении -->
+        <section v-if="canChooseAccount" class="cl-section" data-testid="shared-account">
+          <h3 class="cl-section-title">{{ $t('cluster.edit.accountTitle') }}</h3>
           <div class="cl-field">
-            <p class="cl-hint">{{ $t('cluster.edit.oidcHint') }}</p>
-            <label :for="`${uid}-oidc-user`" class="cl-label">{{ $t('cluster.dialog.oidcUser') }}</label>
-            <input :id="`${uid}-oidc-user`" v-model="oidcUser" class="cl-input" autocomplete="off" spellcheck="false" />
-            <label :for="`${uid}-oidc-pass`" class="cl-label">{{ $t('cluster.dialog.oidcPassword') }}</label>
-            <input :id="`${uid}-oidc-pass`" v-model="oidcPassword" type="password" class="cl-input" autocomplete="new-password" />
-            <div class="cl-pick">
-              <button type="button" class="cl-btn" :disabled="!oidcReady || oidcBusy" @click="updateOidc">
-                {{ $t('cluster.edit.oidcUpdate') }}
+            <label class="cl-check">
+              <input v-model="sharedAccount" type="checkbox" data-testid="shared-account-checkbox" />
+              {{ $t('cluster.dialog.sharedAccount') }}
+            </label>
+            <p class="cl-hint">{{ $t(sharedAccount ? 'cluster.dialog.sharedAccountOn' : 'cluster.dialog.sharedAccountOff') }}</p>
+            <p v-if="sharedAccount !== initial.sharedAccount" class="cl-hint is-warn">{{ $t('cluster.edit.accountChangeWarning') }}</p>
+            <div v-if="initial.sharedAccount" class="cl-pick">
+              <button type="button" class="cl-btn" :disabled="resetBusy" data-testid="shared-account-reset" @click="resetSharedAccount">
+                {{ $t('cluster.edit.accountReset') }}
               </button>
             </div>
-            <p v-if="oidcMessage" class="cl-hint" :class="{ 'is-error': oidcFailed }" role="status">{{ oidcMessage }}</p>
+            <p v-if="resetMessage" class="cl-hint" :class="{ 'is-error': resetFailed }" role="status">{{ resetMessage }}</p>
           </div>
         </section>
 
@@ -132,6 +133,7 @@ import { useI18n } from 'vue-i18n'
 import type { ClusterSettings, ClusterStatus, KubeconfigSource } from '../../types'
 import { isValidArgoUrl, MAX_ARGO_URL } from '../../composables/argoUrl'
 import { NO_KUBECONFIG_SOURCE, pickContextName, useKubeconfigProbe } from '../../composables/useKubeconfigProbe'
+import { canShareAccount, isSharedAccount } from '../../composables/clusterAuth'
 import { errorText } from '../../composables/errorText'
 import { firstPlaceholderRange, hasHiddenSecret } from '../../composables/kubeconfigSecrets'
 import ClusterAvatar from './ClusterAvatar.vue'
@@ -169,6 +171,7 @@ const initial = {
   namespace: props.cluster.defaultNamespace || '',
   context: props.cluster.contextName,
   argoUrl: props.cluster.argoUrl || '',
+  sharedAccount: isSharedAccount(props.cluster),
 }
 
 const name = ref(initial.name)
@@ -178,6 +181,15 @@ const environment = ref(initial.environment)
 const namespace = ref(initial.namespace)
 const contextName = ref(initial.context)
 const argoUrl = ref(initial.argoUrl)
+const sharedAccount = ref(initial.sharedAccount)
+
+// Выбор общей записи доступен у кластера команды, который входит через провайдера (или уже на общей записи)
+const canChooseAccount = computed(() => {
+  if (!props.cluster.teamId || props.cluster.mode === 'in-cluster') return false
+  if (initial.sharedAccount) return true
+  const ctx = probe.info.value?.contexts.find(c => c.name === contextName.value)
+  return canShareAccount(ctx?.auth, true)
+})
 
 type KubeconfigMode = 'keep' | 'file' | 'text'
 const { capabilities } = useCapabilities()
@@ -199,28 +211,24 @@ function replaceSecret() {
   el.setSelectionRange(range[0], range[1])
 }
 
-// Смена логина и пароля oidc-password: действие отдельное от «Сохранить», пароль в форме не задерживается
-const oidcUser = ref('')
-const oidcPassword = ref('')
-const oidcBusy = ref(false)
-const oidcMessage = ref('')
-const oidcFailed = ref(false)
-const oidcReady = computed(() => oidcUser.value.trim().length > 0 && oidcPassword.value.length > 0)
+// Сброс сохранённого входа общей записи: действие отдельное от «Сохранить», пароль нигде не вводится
+const resetBusy = ref(false)
+const resetMessage = ref('')
+const resetFailed = ref(false)
 
-async function updateOidc() {
-  if (!oidcReady.value || oidcBusy.value) return
-  oidcBusy.value = true
-  oidcMessage.value = ''
+async function resetSharedAccount() {
+  if (resetBusy.value) return
+  resetBusy.value = true
+  resetMessage.value = ''
   try {
-    await callApp('SetClusterOIDCCredentials', props.cluster.id, { username: oidcUser.value.trim(), password: oidcPassword.value })
-    oidcFailed.value = false
-    oidcMessage.value = t('cluster.edit.oidcUpdated')
-    oidcPassword.value = ''
+    await callApp('ResetClusterSharedAccount', props.cluster.id)
+    resetFailed.value = false
+    resetMessage.value = t('cluster.edit.accountResetDone')
   } catch (e) {
-    oidcFailed.value = true
-    oidcMessage.value = errorText(e)
+    resetFailed.value = true
+    resetMessage.value = errorText(e)
   } finally {
-    oidcBusy.value = false
+    resetBusy.value = false
   }
 }
 
@@ -256,7 +264,8 @@ const canSave = computed(() =>
 const dirty = computed(() =>
   name.value !== initial.name || icon.value !== initial.icon || color.value !== initial.color ||
   environment.value !== initial.environment || namespace.value !== initial.namespace ||
-  contextName.value !== initial.context || argoUrl.value.trim() !== initial.argoUrl || hasReplacement.value,
+  contextName.value !== initial.context || argoUrl.value.trim() !== initial.argoUrl || hasReplacement.value ||
+  (canChooseAccount.value && sharedAccount.value !== initial.sharedAccount),
 )
 
 const selectedServer = computed(() => probe.info.value?.contexts.find(c => c.name === contextName.value)?.server ?? '')
@@ -352,6 +361,7 @@ async function submit() {
     defaultNamespace: namespace.value,
     contextName: contextName.value,
     argoUrl: argoUrl.value.trim(),
+    sharedAccount: canChooseAccount.value ? sharedAccount.value : initial.sharedAccount,
   }
   const err = await props.save(props.cluster.id, settings, replacement.value)
   saving.value = false

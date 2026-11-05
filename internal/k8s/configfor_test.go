@@ -308,9 +308,7 @@ func TestRestConfigIsBuiltOnlyInConfigFor(t *testing.T) {
 	// Files allowed to build one, with the reason.
 	allowed := map[string]string{
 		"internal/k8s/configfor.go":        "ConfigFor itself",
-		"internal/k8s/connection.go":       "in-cluster and oidc-password mode configs, called only from legacyRestConfig",
 		"internal/k8s/cluster_settings.go": "test of a kubeconfig that is not stored yet (not a session consumer)",
-		"cmd/oidc-spike/main.go":           "standalone spike tool",
 	}
 	root := filepath.Join("..", "..")
 	fset := token.NewFileSet()
@@ -364,7 +362,7 @@ func identName(e ast.Expr) string {
 	return ""
 }
 
-// Whose credentials a cluster has: static and the shared account of oidc-password belong to the team, everything
+// Whose credentials a cluster has: static and the shared account of the team (ModeTeamAccount) belong to the team, everything
 // else to the user.
 func TestScopeFor(t *testing.T) {
 	for _, c := range []struct {
@@ -377,8 +375,8 @@ func TestScopeFor(t *testing.T) {
 		{"static", credential.Descriptor{Kind: credential.KindStatic}, ClusterAuthSource{TeamID: "t1"}, credential.ScopeTeam, "t1"},
 		{"static without teams", credential.Descriptor{Kind: credential.KindStatic}, ClusterAuthSource{}, credential.ScopeTeam, "default"},
 		{"oidc", credential.Descriptor{Kind: credential.KindOIDC}, ClusterAuthSource{TeamID: "t1"}, credential.ScopeUser, "u1"},
-		{"oidc-password mode is the team's account", credential.Descriptor{Kind: credential.KindOIDC},
-			ClusterAuthSource{Mode: ModeOIDCPassword, TeamID: "t1"}, credential.ScopeTeam, "t1"},
+		{"shared team account mode", credential.Descriptor{Kind: credential.KindOIDC},
+			ClusterAuthSource{Mode: ModeTeamAccount, TeamID: "t1"}, credential.ScopeTeam, "t1"},
 		{"cloud", credential.Descriptor{Kind: credential.KindEKS}, ClusterAuthSource{TeamID: "t1"}, credential.ScopeUser, "u1"},
 	} {
 		if sc, owner := scopeFor(c.d, c.src, "u1"); sc != c.scope || owner != c.owner {

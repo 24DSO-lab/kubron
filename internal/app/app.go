@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strconv"
 	"strings"
 	"time"
 
@@ -226,7 +227,8 @@ func (a *App) DeleteCluster(id string) error {
 // UpdateCluster сохраняет настройки кластера; непустой kubeconfig заменяет сохранённый.
 // Содержимое kubeconfig в журнал не попадает — только способ замены.
 func (a *App) UpdateCluster(id string, settings k8s.ClusterSettings, kubeconfig k8s.KubeconfigSource) (*k8s.ClusterUpdateResult, error) {
-	if err := a.authzCluster(auth.PermClusterManage, id, "id", id, "displayName", settings.DisplayName, "kubeconfig", kubeconfigChange(kubeconfig)); err != nil {
+	if err := a.authzCluster(auth.PermClusterManage, id, "id", id, "displayName", settings.DisplayName, "kubeconfig", kubeconfigChange(kubeconfig),
+		"sharedAccount", strconv.FormatBool(settings.SharedAccount)); err != nil {
 		return nil, err
 	}
 	kubeconfig.BaseClusterID = id // скрытые секреты берутся только у редактируемого кластера
@@ -239,6 +241,12 @@ func (a *App) UpdateCluster(id string, settings k8s.ClusterSettings, kubeconfig 
 	}
 	if res.CredentialsChanged {
 		a.recordCredentialsUpdate(id)
+	}
+	if res.AccountModeChanged {
+		// Личные и общие входы разного владельца: прежние сохранённые входы кластера больше не подходят.
+		if err := a.revokeClusterSignIns(id); err != nil {
+			return nil, err
+		}
 	}
 	// Подключение собрано по прежнему kubeconfig/контексту: забываем его, следующее
 	// подключение построит новое. Проброшенные порты старого активного кластера теряют смысл.

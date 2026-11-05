@@ -9,8 +9,8 @@ import (
 )
 
 // ClusterAuthSource is what the sign-in broker needs to work out how a stored cluster signs in: the stored
-// kubeconfig and the selected context. For clusters with their own connection mode (in-cluster, oidc-password)
-// Kubeconfig is empty: the broker is not involved in those yet.
+// kubeconfig and the selected context. For clusters with their own connection mode (in-cluster) Kubeconfig is
+// empty: there is nothing to sign in to.
 type ClusterAuthSource struct {
 	Kubeconfig  []byte
 	ContextName string
@@ -26,9 +26,9 @@ func LoadClusterAuthSource(clusterID string) (ClusterAuthSource, error) {
 		return ClusterAuthSource{}, fmt.Errorf("cluster metadata not found: %w", err)
 	}
 	src := ClusterAuthSource{ContextName: meta.ContextName, Mode: meta.Mode, TeamID: meta.TeamID}
-	// in-cluster has no kubeconfig and no sign-in. oidc-password keeps its kubeconfig (the exec block says how to
-	// reach the IdP) and, with a broker, signs in as the team (see PlanFor).
-	if meta.Mode != "" && meta.Mode != ModeOIDCPassword {
+	// in-cluster has no kubeconfig and no sign-in. The shared account of a team keeps its kubeconfig (the exec block
+	// says how to reach the IdP) and signs in as the team (see PlanFor).
+	if meta.Mode != "" && meta.Mode != ModeKubeconfig && meta.Mode != ModeTeamAccount {
 		return src, nil
 	}
 	data, err := clusterStore.Kubeconfig(clusterID)

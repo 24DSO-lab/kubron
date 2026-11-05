@@ -122,7 +122,8 @@
     "nodeshell": {
       "start": "Node shell opened",
       "stop": "Node shell closed"
-    }
+    },
+    "ResetClusterSharedAccount": "Shared account sign-in forgotten"
   },
   "export": {
     "csv": "Export CSV",

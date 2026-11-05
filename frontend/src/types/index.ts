@@ -15,7 +15,7 @@ export interface ClusterMeta {
   environment: string
   /** Команда-владелец (только сервисный режим) */
   teamId?: string
-  /** Способ подключения: kubeconfig (или пусто), in-cluster, oidc-password (сервисный режим) */
+  /** Способ подключения: kubeconfig (или пусто), in-cluster, oidc-password — общая учётная запись команды (сервисный режим) */
   mode?: string
   /** Опубликованный адрес Argo CD; '' — открытие через port-forward или прокси */
   argoUrl?: string
@@ -47,6 +47,8 @@ export interface ClusterSettings {
   contextName: string
   /** Опубликованный адрес Argo CD (http/https); '' — через port-forward или прокси потоков */
   argoUrl: string
+  /** Общая учётная запись команды: вход под одной записью вводит администратор кластера (только кластер команды) */
+  sharedAccount: boolean
 }
 
 /** Источник kubeconfig: задаётся ровно одно поле (зеркало k8s.KubeconfigSource) */
@@ -64,18 +66,12 @@ export interface KubeconfigContextInfo {
   user: string
   namespace: string
   server: string
-  /** Как контекст получает учётные данные (k8s.AuthKind); у старых ответов поля нет */
+  /** Как контекст получает учётные данные (credential.Kind); у старых ответов поля нет */
   auth?: KubeconfigAuth | string
 }
 
-/** static — токен, сертификат; oidc-password — oidc-login с паролем; oidc-authcode — oidc-login через браузер; exec — другой плагин */
-export type KubeconfigAuth = 'static' | 'oidc-password' | 'oidc-authcode' | 'exec'
-
-/** Логин и пароль для oidc-login: сервер сам получает токен у провайдера входа */
-export interface OIDCCredentials {
-  username: string
-  password: string
-}
+/** static — данные в kubeconfig; oidc, cloud-eks, cloud-gke, cloud-aks, exec — вход через брокера */
+export type KubeconfigAuth = 'static' | 'oidc' | 'cloud-eks' | 'cloud-gke' | 'cloud-aks' | 'exec'
 
 export interface KubeconfigInfo {
   contexts: KubeconfigContextInfo[]
@@ -104,8 +100,6 @@ export type AddClusterPayload =
     kind: 'text'; text: string; settings: ClusterSettings
     /** команда-владелец (сервисный режим) */
     teamId?: string
-    /** для kubeconfig с oidc-login (grant password) */
-    oidc?: OIDCCredentials
   }
   /** Кластер, в котором работает сам сервер (админ организации) */
   | { kind: 'in-cluster'; settings: ClusterSettings; teamId: string }

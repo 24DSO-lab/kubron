@@ -87,8 +87,8 @@ func main() {
 
 	// Каталог данных задаётся до запуска ядра: хранилища открываются в OnStartup
 	k8s.SetKubronDir(cfg.DataDir)
-	// Веб-сервер не запускает команды из kubeconfig и не читает по ним файлы сервера (задача 3.7).
-	k8s.SetConnectionPolicy(k8s.ConnectionPolicy{AllowExec: false, AllowLocalFiles: false})
+	// Блок exec из kubeconfig не выполняется нигде (вход делает брокер); веб-сервер не читает по kubeconfig файлы сервера (задача 3.7).
+	k8s.SetConnectionPolicy(k8s.ConnectionPolicy{AllowLocalFiles: false})
 	// Запросы Helm к адресам, которые задаёт пользователь (репозитории, OCI), проходят через защиту от SSRF (ADR-0015).
 	if err := setupHelmNetPolicy(os.Getenv); err != nil {
 		fatal("network policy", err)

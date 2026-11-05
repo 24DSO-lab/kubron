@@ -378,3 +378,10 @@
   border-top: 1px solid var(--cl-border);
 }
 .cl-foot-spacer { flex: 1; }
+
+.cl-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}

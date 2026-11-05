@@ -125,9 +125,8 @@ var exactPermission = map[string]Permission{
 	"SetTeamMember":             PermUsersManage,
 	"RemoveTeamMember":          PermUsersManage,
 	"AddClusterToTeam":          PermClusterManage,
-	"AddOIDCClusterToTeam":      PermClusterManage,
 	"AddInClusterToTeam":        PermClusterManage,
-	"SetClusterOIDCCredentials": PermClusterManage,
+	"ResetClusterSharedAccount": PermClusterManage,
 	"MoveCluster":               PermClusterManage,
 	// Вход в кластер (ADR-0018): личные данные пользователя, права кластера проверяет Broker и authzCluster.
 	"ConnectCluster":    PermRead,
