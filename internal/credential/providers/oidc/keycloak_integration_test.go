@@ -99,6 +99,43 @@ func TestKeycloakPasswordAndRefresh(t *testing.T) {
 		t.Fatal("Keycloak authorization-code flow did not produce a verified ID token and principal")
 	}
 
+	// Exercise the desktop RFC 8252 loopback listener against the same real IdP. The OpenURL
+	// callback emulates a browser: it completes the Keycloak login and follows the redirect
+	// to the ephemeral 127.0.0.1 listener opened by the provider.
+	loopEnv := env
+	loopEnv.OpenURL = func(authURL string) error {
+		redirectURL, err := keycloakLogin(authURL, username, password)
+		if err != nil {
+			return err
+		}
+		resp, err := http.Get(redirectURL)
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			return fmt.Errorf("desktop loopback callback returned HTTP %d", resp.StatusCode)
+		}
+		return nil
+	}
+	loopDescriptor := credential.Descriptor{Kind: credential.KindOIDC, Params: map[string]string{
+		"grant": "authcode", "issuer-url": issuer, "client-id": "kubron-integration",
+		"listen-address": "127.0.0.1:0", "redirect-url-hostname": "127.0.0.1",
+	}}
+	loopStarted, err := provider.Begin(context.Background(), loopEnv, credential.Request{
+		Descriptor: loopDescriptor, Subject: req.Subject,
+	})
+	if err != nil || loopStarted.Challenge == nil || loopStarted.Challenge.Kind != credential.ChallengeBrowserLoopback {
+		t.Fatalf("start desktop loopback flow: challenge=%v err=%v", loopStarted.Challenge != nil, err)
+	}
+	loopCompleted, err := provider.Continue(context.Background(), loopEnv, credential.Request{
+		Descriptor: loopDescriptor, Subject: req.Subject, Challenge: *loopStarted.Challenge,
+		Pending: loopStarted.Pending,
+	})
+	if err != nil || loopCompleted.Token == nil || loopCompleted.Token.Principal != first.Token.Principal {
+		t.Fatalf("complete desktop loopback flow: token=%v err=%v", loopCompleted.Token != nil, err)
+	}
+
 	// Exercise the real device authorization endpoint and one RFC 8628 pending poll.
 	deviceDescriptor := credential.Descriptor{Kind: credential.KindOIDC, Params: map[string]string{
 		"grant": "device-code", "issuer-url": issuer, "client-id": "kubron-device-integration",
@@ -139,7 +176,8 @@ func keycloakLogin(authURL, username, password string) (string, error) {
 	browser := &http.Client{
 		Jar: jar, Timeout: 20 * time.Second,
 		CheckRedirect: func(req *http.Request, _ []*http.Request) error {
-			if req.URL.Host == "localhost:8000" {
+			host := strings.ToLower(req.URL.Hostname())
+			if host == "localhost" || host == "127.0.0.1" {
 				return http.ErrUseLastResponse
 			}
 			return nil

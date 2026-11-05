@@ -5,11 +5,14 @@ package oidc
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -41,17 +44,41 @@ func TestKeycloakKindRBAC(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
 	defer cancel()
 
-	if _, err := alice.CoreV1().Pods("alice-ops").List(ctx, metav1.ListOptions{}); err != nil {
-		t.Fatalf("alice should list pods in alice-ops: %v", err)
+	if err := waitForKeycloakAuthentication(ctx, alice, "alice-ops"); err != nil {
+		t.Fatalf("alice should authenticate and list pods in alice-ops: %v", err)
 	}
 	if _, err := alice.CoreV1().Pods("bob-ops").List(ctx, metav1.ListOptions{}); !apierrors.IsForbidden(err) {
 		t.Fatalf("alice should be forbidden from bob-ops, got %v", err)
 	}
-	if _, err := bob.CoreV1().Pods("bob-ops").List(ctx, metav1.ListOptions{}); err != nil {
-		t.Fatalf("bob should list pods in bob-ops: %v", err)
+	if err := waitForKeycloakAuthentication(ctx, bob, "bob-ops"); err != nil {
+		t.Fatalf("bob should authenticate and list pods in bob-ops: %v", err)
 	}
 	if _, err := bob.CoreV1().Pods("alice-ops").List(ctx, metav1.ListOptions{}); !apierrors.IsForbidden(err) {
 		t.Fatalf("bob should be forbidden from alice-ops, got %v", err)
+	}
+}
+
+// waitForKeycloakAuthentication allows the API server a short window to refresh issuer/JWKS discovery
+// after startup. A persistent 401 still fails the integration test; only transient startup 401s are retried.
+func waitForKeycloakAuthentication(ctx context.Context, client *kubernetes.Clientset, namespace string) error {
+	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
+	defer cancel()
+	ticker := time.NewTicker(500 * time.Millisecond)
+	defer ticker.Stop()
+
+	for {
+		_, err := client.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
+		if err == nil {
+			return nil
+		}
+		if !apierrors.IsUnauthorized(err) {
+			return err
+		}
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("OIDC authentication did not become ready within 20 seconds: %w", err)
+		case <-ticker.C:
+		}
 	}
 }
 
@@ -90,7 +117,46 @@ func keycloakPasswordIDToken(t *testing.T, client *http.Client, issuer, username
 	if token.IDToken == "" {
 		t.Fatalf("Keycloak returned an empty ID token for %s", username)
 	}
+	assertKeycloakIDTokenClaims(t, token.IDToken, issuer, username)
 	return token.IDToken
+}
+
+func assertKeycloakIDTokenClaims(t *testing.T, raw, issuer, username string) {
+	t.Helper()
+	parts := strings.Split(raw, ".")
+	if len(parts) != 3 {
+		t.Fatal("Keycloak returned a malformed ID token")
+	}
+	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
+	if err != nil {
+		t.Fatalf("decode ID token claims: %v", err)
+	}
+	var claims struct {
+		Issuer            string          `json:"iss"`
+		Audience          json.RawMessage `json:"aud"`
+		PreferredUsername string          `json:"preferred_username"`
+	}
+	if err := json.Unmarshal(payload, &claims); err != nil {
+		t.Fatalf("decode ID token claims: %v", err)
+	}
+	var audience string
+	if err := json.Unmarshal(claims.Audience, &audience); err != nil {
+		var values []string
+		if err := json.Unmarshal(claims.Audience, &values); err != nil {
+			t.Fatalf("Keycloak ID token has an invalid audience claim")
+		}
+		if !slices.Contains(values, "kubron-integration") {
+			t.Fatalf("Keycloak ID token audience does not include kubron-integration: %v", values)
+		}
+	} else if audience != "kubron-integration" {
+		t.Fatalf("Keycloak ID token audience is %q, want kubron-integration", audience)
+	}
+	if claims.Issuer != issuer {
+		t.Fatalf("Keycloak ID token issuer is %q, want %q", claims.Issuer, issuer)
+	}
+	if claims.PreferredUsername != username {
+		t.Fatalf("Keycloak ID token preferred_username is %q, want %q", claims.PreferredUsername, username)
+	}
 }
 
 func keycloakKindClient(t *testing.T, server, caFile, token string) *kubernetes.Clientset {
