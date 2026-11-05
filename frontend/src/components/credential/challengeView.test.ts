@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from 'vitest'
 import {
-  challengeFields, commandLine, fieldsFilled, formatCountdown, isWaiting, pollIntervalMs, safeHref, secondsLeft, shellQuoteWord,
+  challengeFields, clearFieldValues, commandLine, fieldsFilled, formatCountdown, isMultilineField, isWaiting, pollIntervalMs, safeHref, secondsLeft, shellQuoteWord,
 } from './challengeView'
 import type { Challenge } from '../../types/credential'
 
@@ -79,5 +79,33 @@ describe('safeHref', () => {
     expect(safeHref('data:text/html,x')).toBe('')
     expect(safeHref('not a url')).toBe('')
     expect(safeHref(undefined)).toBe('')
+  })
+})
+
+describe('isMultilineField', () => {
+  it('только явный список полей и только для secret-fields', () => {
+    expect(isMultilineField('secret-fields', 'serviceAccountJson')).toBe(true)
+    expect(isMultilineField('secret-fields', 'secretAccessKey')).toBe(false)
+    expect(isMultilineField('secret-fields', 'unknownField')).toBe(false)
+    expect(isMultilineField('credentials', 'serviceAccountJson')).toBe(false)
+  })
+})
+
+describe('clearFieldValues', () => {
+  const fields = [{ name: 'user', secret: false }, { name: 'serviceAccountJson', secret: true }]
+  it('onlySecrets очищает секретные поля и оставляет остальные', () => {
+    const values = { user: 'alice', serviceAccountJson: '{\n"k":1\n}' }
+    expect(clearFieldValues(fields, values, true)).toBe(1)
+    expect(values).toEqual({ user: 'alice', serviceAccountJson: '' })
+  })
+  it('без onlySecrets очищает всё', () => {
+    const values = { user: 'alice', serviceAccountJson: 'x' }
+    expect(clearFieldValues(fields, values, false)).toBe(2)
+    expect(values).toEqual({ user: '', serviceAccountJson: '' })
+  })
+  it('заводит значения для полей, которых ещё нет', () => {
+    const values: Record<string, string> = {}
+    clearFieldValues(fields, values, false)
+    expect(values).toEqual({ user: '', serviceAccountJson: '' })
   })
 })

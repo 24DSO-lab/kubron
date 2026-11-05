@@ -140,4 +140,33 @@ describe('ChallengeDialog: рисует вызов по kind', () => {
     expect(html).toContain('aria-busy="true"')
     expect(html).toMatch(/data-testid="challenge-submit"[^>]*disabled|disabled[^>]*data-testid="challenge-submit"/)
   })
+
+  it('secret-fields: многострочное поле из явного списка — маскированная textarea, а не type=password', async () => {
+    const html = await render(ch({ kind: 'secret-fields', fields: [{ name: 'serviceAccountJson', secret: true }] }))
+    const area = html.match(/<textarea[^>]*data-testid="field-serviceAccountJson"[^>]*>|<textarea[^>]*>/)?.[0] ?? ''
+    expect(area).toContain('data-testid="field-serviceAccountJson"')
+    expect(area).toContain('ch-masked')
+    expect(area).toContain('autocomplete="off"')
+    expect(area).toContain('spellcheck="false"')
+    expect(html).not.toMatch(/<input[^>]*data-testid="field-serviceAccountJson"/)
+    expect(html).not.toContain('type="password"')
+    expect(html).toContain('data-testid="toggle-serviceAccountJson"')
+  })
+
+  it('secret-fields: остальные секретные поля по-прежнему type=password', async () => {
+    const html = await render(ch({ kind: 'secret-fields', fields: [{ name: 'secretAccessKey', secret: true }, { name: 'serviceAccountJson', secret: true }] }))
+    expect(html).toMatch(/<input[^>]*type="password"[^>]*data-testid="field-secretAccessKey"|<input[^>]*data-testid="field-secretAccessKey"[^>]*type="password"/)
+    expect(html).toMatch(/<textarea[^>]*data-testid="field-serviceAccountJson"/)
+  })
+
+  it('secret-fields: подпись поля serviceAccountJson берётся из i18n, а не из имени', async () => {
+    const html = await render(ch({ kind: 'secret-fields', fields: [{ name: 'serviceAccountJson', secret: true }] }))
+    expect(html).toContain('>Service account JSON<')
+    expect(html).not.toContain('>serviceAccountJson<')
+  })
+
+  it('secret-fields: значение не попадает в разметку вызова', async () => {
+    const html = await render(ch({ kind: 'secret-fields', fields: [{ name: 'serviceAccountJson', secret: true }], message: '' }))
+    expect(html).not.toContain('private_key')
+  })
 })
