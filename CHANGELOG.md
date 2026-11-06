@@ -44,6 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Kubernetes connection pool:** informers of a cluster were stopped while the pool mutex was held, so one slow stop (on release, on the idle timer, or when clusters were removed or a personal sign-in was revoked) blocked every other pool operation. Stopping now happens outside the lock. A connection is only marked or taken out of the registry under the mutex; a repeated activation waits for the stop in progress instead of starting informers that the late stop would tear down, a stop is never run twice, a panic in the stop no longer leaves waiters hanging, and a stale idle timer can no longer close a connection earlier than its own delay.
 - **Web sign-in client:** the public OIDC client of the web server replaced the client of every OIDC cluster, for every grant and every identity provider, as soon as it was configured. It now applies only to the authorization-code flow of the issuer it is registered for; password, device-code and legacy-refresh sign-ins and clusters of other issuers keep the client of their kubeconfig. The setting takes an issuer (`GetWebOIDCClient`/`SetWebOIDCClient` replace `GetWebOIDCClientID`/`SetWebOIDCClientID`); a setting without an issuer is not applied until one is entered.
 
 ### Security

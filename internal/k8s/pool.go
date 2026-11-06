@@ -16,6 +16,10 @@ import (
 // активным; когда счётчик падает до нуля, фоновые informers останавливаются (сам клиент
 // остаётся в пуле и переиспользуется при следующей активации).
 //
+// Инвариант: closeFn никогда не вызывается под mu. Под мьютексом подключение только помечается
+// (poolEntry.closing) или снимается с учёта (removeMatching), а остановка informers выполняется
+// после Unlock — медленный Close одного кластера не блокирует операции пула с остальными.
+//
 // СПАЙК: создание подключения идёт под блокировкой пула; для вызовов, которые ходят в сеть
 // (нативный oidc-password), нужен singleflight по ключу — см. ADR-0005.
 type connPool struct {
@@ -43,6 +47,18 @@ type poolEntry struct {
 	idleTimer *time.Timer // отложенная остановка informers при refs == 0
 	// holders — виды, державшие кластер активным: им адресуются события кластера.
 	holders map[*Manager]struct{}
+	// closing не nil, пока informers останавливаются вне p.mu; канал закрывается по завершении.
+	// Пока он открыт, acquire ждёт (вне p.mu), чтобы остановка не снесла заново поднятые informers,
+	// а повторный release и удаление не запускают второй closeFn.
+	closing chan struct{}
+}
+
+// detached — подключение, снятое с учёта под p.mu и ожидающее закрытия уже вне блокировки.
+type detached struct {
+	conn *ClusterConnection
+	// wait не nil, если остановка этого подключения уже идёт (idle-закрытие): её нужно дождаться,
+	// а не повторять closeFn.
+	wait <-chan struct{}
 }
 
 func newConnPool() *connPool {
@@ -126,26 +142,36 @@ func (p *connPool) has(id string) bool {
 	return ok
 }
 
-// acquire отмечает, что ещё один вид держит кластер активным.
+// acquire отмечает, что ещё один вид держит кластер активным. Если informers этого подключения
+// сейчас останавливаются (release/таймер), ждёт конца остановки — вне p.mu, поэтому другие
+// кластеры не блокируются, — и только потом берёт подключение.
 func (p *connPool) acquire(id string, holder *Manager) error {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	e, ok := p.entries[id]
-	if !ok {
-		return fmt.Errorf("cluster %s is not connected", id)
-	}
-	e.refs++
-	if e.idleTimer != nil { // кластер снова востребован: отложенная остановка отменяется
-		e.idleTimer.Stop()
-		e.idleTimer = nil
-	}
-	if holder != nil {
-		if e.holders == nil {
-			e.holders = map[*Manager]struct{}{}
+	for {
+		p.mu.Lock()
+		e, ok := p.entries[id]
+		if !ok {
+			p.mu.Unlock()
+			return fmt.Errorf("cluster %s is not connected", id)
 		}
-		e.holders[holder] = struct{}{}
+		if done := e.closing; done != nil {
+			p.mu.Unlock()
+			<-done
+			continue // за время ожидания подключение могли удалить: проверим заново
+		}
+		e.refs++
+		if e.idleTimer != nil { // кластер снова востребован: отложенная остановка отменяется
+			e.idleTimer.Stop()
+			e.idleTimer = nil
+		}
+		if holder != nil {
+			if e.holders == nil {
+				e.holders = map[*Manager]struct{}{}
+			}
+			e.holders[holder] = struct{}{}
+		}
+		p.mu.Unlock()
+		return nil
 	}
-	return nil
 }
 
 // holdersOf — виды, у которых кластер сейчас активен.
@@ -164,57 +190,97 @@ func (p *connPool) holdersOf(id string) []*Manager {
 }
 
 // release снимает отметку; при нуле останавливает informers кластера.
+//
+// Остановка (closeFn) может быть долгой, поэтому она идёт вне p.mu: под мьютексом подключение
+// только помечается как закрываемое (e.closing), а сам вызов выполняется после Unlock. Подключение
+// остаётся в пуле и переиспользуется; acquire дожидается конца остановки.
 func (p *connPool) release(id string, holder *Manager) {
 	p.mu.Lock()
-	defer p.mu.Unlock()
 	e, ok := p.entries[id]
 	if !ok {
+		p.mu.Unlock()
 		return
 	}
 	delete(e.holders, holder)
 	if e.refs > 0 {
 		e.refs--
 	}
-	if e.refs == 0 {
-		if p.idleTTL <= 0 {
-			p.closeFn(e.conn)
+	if e.refs != 0 || e.closing != nil { // кто-то ещё держит кластер либо остановка уже идёт
+		p.mu.Unlock()
+		return
+	}
+	if p.idleTTL > 0 {
+		p.scheduleIdleCloseLocked(id, e)
+		p.mu.Unlock()
+		return
+	}
+	done := p.beginCloseLocked(e)
+	p.mu.Unlock()
+	p.finishClose(e, done)
+}
+
+// scheduleIdleCloseLocked ставит отложенную остановку informers (вызывать под p.mu, refs == 0).
+func (p *connPool) scheduleIdleCloseLocked(id string, e *poolEntry) {
+	if e.idleTimer != nil {
+		e.idleTimer.Stop()
+	}
+	var t *time.Timer
+	t = time.AfterFunc(p.idleTTL, func() {
+		p.mu.Lock()
+		// Сравнение по самому таймеру: опоздавший callback отменённого или перезапущенного таймера
+		// (acquire → release за время ожидания блокировки) подключение не закрывает.
+		if p.entries[id] != e || e.refs != 0 || e.idleTimer != t || e.closing != nil {
+			p.mu.Unlock()
 			return
 		}
-		if e.idleTimer != nil {
-			e.idleTimer.Stop()
+		e.idleTimer = nil
+		done := p.beginCloseLocked(e)
+		p.mu.Unlock()
+		p.finishClose(e, done)
+	})
+	e.idleTimer = t
+}
+
+// beginCloseLocked помечает подключение закрываемым (вызывать под p.mu). Вызывающий обязан
+// после Unlock вызвать finishClose с возвращённым каналом.
+func (p *connPool) beginCloseLocked(e *poolEntry) chan struct{} {
+	done := make(chan struct{})
+	e.closing = done
+	return done
+}
+
+// finishClose останавливает informers вне p.mu и будит ожидающих acquire. Метка снимается и
+// канал закрывается даже при панике closeFn — иначе acquire повис бы навсегда.
+func (p *connPool) finishClose(e *poolEntry, done chan struct{}) {
+	defer func() {
+		p.mu.Lock()
+		if e.closing == done {
+			e.closing = nil
 		}
-		e.idleTimer = time.AfterFunc(p.idleTTL, func() {
-			p.mu.Lock()
-			defer p.mu.Unlock()
-			if cur, ok := p.entries[id]; ok && cur == e && e.refs == 0 && e.idleTimer != nil {
-				e.idleTimer = nil
-				p.closeFn(e.conn)
-			}
-		})
-	}
+		p.mu.Unlock()
+		close(done)
+	}()
+	p.closeFn(e.conn)
 }
 
 // removeCluster закрывает и забывает подключения кластера для всех субъектов (общее и личные).
 func (p *connPool) removeCluster(clusterID string) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	for key, e := range p.entries {
-		if e.conn.Name != clusterID {
-			continue
-		}
-		if e.idleTimer != nil {
-			e.idleTimer.Stop()
-			e.idleTimer = nil
-		}
-		p.closeFn(e.conn)
-		delete(p.entries, key)
-	}
+	p.removeMatching(func(c *ClusterConnection) bool { return c.Name == clusterID })
 }
 
 // removeIf закрывает и забывает подключения, для которых match возвращает true.
 func (p *connPool) removeIf(match func(*ClusterConnection) bool) {
+	p.removeMatching(match)
+}
+
+// removeMatching снимает подходящие подключения с учёта под p.mu (отменяет таймеры, удаляет из
+// реестра) и закрывает их уже вне блокировки: медленная остановка informers не задерживает остальные
+// операции пула, а массовое отключение кластеров не копит задержки под мьютексом.
+// К возврату все закрытия завершены. Подключение удалено из реестра до закрытия, поэтому его не
+// закроет второй removeMatching, а acquire получит «not connected».
+func (p *connPool) removeMatching(match func(*ClusterConnection) bool) {
 	p.mu.Lock()
-	defer p.mu.Unlock()
+	var batch []detached
 	for key, e := range p.entries {
 		if !match(e.conn) {
 			continue
@@ -223,7 +289,33 @@ func (p *connPool) removeIf(match func(*ClusterConnection) bool) {
 			e.idleTimer.Stop()
 			e.idleTimer = nil
 		}
-		p.closeFn(e.conn)
+		batch = append(batch, detached{conn: e.conn, wait: e.closing})
 		delete(p.entries, key)
+	}
+	p.mu.Unlock()
+	p.closeDetached(batch)
+}
+
+// closeDetached закрывает снятые с учёта подключения. Если остановка уже идёт (wait), её только
+// дожидаются — closeFn дважды не вызывается. Паника одного closeFn не оставляет остальные
+// открытыми: она перебрасывается после обработки всей пачки.
+func (p *connPool) closeDetached(batch []detached) {
+	var panicked any
+	for _, d := range batch {
+		func() {
+			defer func() {
+				if r := recover(); r != nil && panicked == nil {
+					panicked = r
+				}
+			}()
+			if d.wait != nil {
+				<-d.wait
+				return
+			}
+			p.closeFn(d.conn)
+		}()
+	}
+	if panicked != nil {
+		panic(panicked)
 	}
 }
