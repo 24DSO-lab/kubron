@@ -42,6 +42,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `internal/oidcpassword`, `cmd/oidc-spike`, `App.ConnectToCluster`, `AddOIDCClusterToTeam`, `SetClusterOIDCCredentials` (and their RPC methods) and the error messages that belonged to them. Clusters saved in the old mode keep working: the stored mode value `oidc-password` now means the shared team account, and `MigrateLegacyOIDC` is unchanged. The `secret_enc` column is kept.
 
+### Fixed
+
+- **Web sign-in client:** the public OIDC client of the web server replaced the client of every OIDC cluster, for every grant and every identity provider, as soon as it was configured. It now applies only to the authorization-code flow of the issuer it is registered for; password, device-code and legacy-refresh sign-ins and clusters of other issuers keep the client of their kubeconfig. The setting takes an issuer (`GetWebOIDCClient`/`SetWebOIDCClient` replace `GetWebOIDCClientID`/`SetWebOIDCClientID`); a setting without an issuer is not applied until one is entered.
+
 ### Security
 
 - **Manual Kubernetes tokens:** an unverified JWT `sub` is no longer presented as an authenticated Kubernetes principal in audit or connection details. The API server remains the authority for token validation; the unverified `exp` is used only as a cache hint.

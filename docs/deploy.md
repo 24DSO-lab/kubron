@@ -527,10 +527,15 @@ osv-scanner в CI; исключения сканеров — только в `.t
 * **Redirect URI.** Для входа «через браузер» (`paste-redirect`) регистрировать новые redirect URI **не нужно**:
   используется тот, что указан в kubeconfig (например, `http://localhost:8000`). Пользователь копирует адрес,
   на который перешёл браузер, из адресной строки. IdP должен принимать этот адрес как есть.
-* **Веб-клиент для возврата на сервер (`browser-callback`).** Задайте `KUBRON_PUBLIC_URL` (см. выше) и публичный
-  client id веб-клиента (его задаёт администратор организации, `SetWebOIDCClientID`). В IdP зарегистрируйте
-  redirect URI `<KUBRON_PUBLIC_URL>/auth/cluster/callback`. Пока одно из двух не задано, работает вход
-  `paste-redirect`.
+* **Веб-клиент для возврата на сервер (`browser-callback`).** Задайте `KUBRON_PUBLIC_URL` (см. выше), а в разделе
+  «Пользователи» (администратор организации, `SetWebOIDCClient`) укажите публичный client id веб-клиента **и issuer**
+  IdP, у которого он зарегистрирован. В IdP зарегистрируйте redirect URI `<KUBRON_PUBLIC_URL>/auth/cluster/callback`.
+  Клиент применяется только к кластерам, в kubeconfig которых указан тот же issuer и вход через authorization code
+  (`grant` `authcode` или не указан). Кластеры с другим issuer и другие виды входа (`password`, `device-code`,
+  `authcode-keyboard`, `legacy-refresh`) используют клиент из своего kubeconfig. Настройка прежнего вида (только
+  client id, без issuer) не применяется: задайте issuer. Пока что-то из этого не задано, работает вход
+  `paste-redirect`. При смене или удалении клиента пользователи, входившие через него, входят заново (refresh-токен
+  привязан к клиенту). Один веб-клиент покрывает один IdP.
 * **Refresh-токен и `offline_access`.** Чтобы вход не повторялся при каждом подключении, IdP должен выдавать
   refresh-токен. Для Dex у клиента нужен scope `offline_access`: добавьте в kubeconfig
   `--oidc-extra-scope=offline_access`. Без него пользователю придётся входить заново, когда истечёт ID-токен.

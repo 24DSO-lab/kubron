@@ -91,18 +91,6 @@ func newConfig(d credential.Descriptor, sv *saved, desktop bool) (config, error)
 			extra = sv.Scopes
 		}
 	}
-	if !desktop {
-		webClientID := strings.TrimSpace(p["web.client-id"])
-		webRedirectURL := strings.TrimSpace(p["web.redirect-url"])
-		if webClientID != "" && webRedirectURL != "" {
-			c.clientID = webClientID
-			c.clientSecret = "" // a web public client must never inherit a kubeconfig client secret
-			c.webRedirectURL = webRedirectURL
-			if !validWebRedirectURL(c.webRedirectURL) {
-				return config{}, credential.ErrUnsupported
-			}
-		}
-	}
 	if c.issuer == "" || c.clientID == "" {
 		return config{}, errConfig
 	}
@@ -113,6 +101,22 @@ func newConfig(d credential.Descriptor, sv *saved, desktop bool) (config, error)
 	case grantPassword, grantAuthcode, grantAuthcodeKeyboard, grantDeviceCode, grantLegacyRefresh:
 	default:
 		return config{}, credential.ErrUnsupported
+	}
+	// The public client of the web server belongs to the authorization-code flow and to the identity provider
+	// it was registered at (web.issuer-url, put there by the server from the administrator's setting). Every
+	// other grant (password, device code, legacy refresh) and every other issuer keeps the client of the
+	// kubeconfig: that client is the one the provider knows for that flow, and a refresh token is bound to it.
+	if !desktop && c.grant == grantAuthcode && SameIssuer(p["web.issuer-url"], c.issuer) {
+		webClientID := strings.TrimSpace(p["web.client-id"])
+		webRedirectURL := strings.TrimSpace(p["web.redirect-url"])
+		if webClientID != "" && webRedirectURL != "" {
+			c.clientID = webClientID
+			c.clientSecret = "" // a web public client must never inherit a kubeconfig client secret
+			c.webRedirectURL = webRedirectURL
+			if !validWebRedirectURL(c.webRedirectURL) {
+				return config{}, credential.ErrUnsupported
+			}
+		}
 	}
 	if err := c.readOptions(p, desktop); err != nil {
 		return config{}, err

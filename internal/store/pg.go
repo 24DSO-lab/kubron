@@ -25,10 +25,17 @@ type pgBackend struct{ s *pgstore.Store }
 func (p pgBackend) Users() auth.Backend {
 	return pgUsers{Backend: auth.FromExt(p.s.Users()), d: p.s.UserDelta(), f: p.s.LoginFailures()}
 }
-func (p pgBackend) Audit() audit.Backend              { return p.s.Audit() }
-func (p pgBackend) ArgoTokens() k8s.TokenStore        { return p.s.ArgoTokens() }
-func (p pgBackend) WebOIDCClientID() (string, error)  { return p.s.WebOIDCClientID() }
-func (p pgBackend) SetWebOIDCClientID(v string) error { return p.s.SetWebOIDCClientID(v) }
+func (p pgBackend) Audit() audit.Backend       { return p.s.Audit() }
+func (p pgBackend) ArgoTokens() k8s.TokenStore { return p.s.ArgoTokens() }
+
+func (p pgBackend) WebOIDC() (WebOIDC, error) {
+	v, err := p.s.WebOIDC()
+	return WebOIDC{ClientID: v.ClientID, IssuerURL: v.IssuerURL}, err
+}
+
+func (p pgBackend) SetWebOIDC(v WebOIDC) error {
+	return p.s.SetWebOIDC(pgstore.WebOIDC{ClientID: v.ClientID, IssuerURL: v.IssuerURL})
+}
 
 // Access — права по членству в командах (задача 3.2); app подключает их к сервису аутентификации.
 func (p pgBackend) Access() auth.Access { return p.s.Access() }

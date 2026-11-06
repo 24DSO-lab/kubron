@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/24DSO-labs/kubron/internal/credential"
@@ -19,6 +20,7 @@ func TestWebBrowserCallback(t *testing.T) {
 	env := idp.env(false)
 	d := idp.descriptor("authcode", map[string]string{
 		"web.client-id": testClient, "web.redirect-url": "https://kubron.example.test/auth/cluster/callback",
+		"web.issuer-url": idp.issuer(),
 	})
 	p := New()
 	res, err := p.Begin(context.Background(), env, credential.Request{Descriptor: d, Subject: subjectUser()})
@@ -71,6 +73,7 @@ func TestWebBrowserCallbackRejectsForeignRedirectAndState(t *testing.T) {
 	env := idp.env(false)
 	d := idp.descriptor("authcode", map[string]string{
 		"web.client-id": testClient, "web.redirect-url": "https://kubron.example.test/auth/cluster/callback",
+		"web.issuer-url": idp.issuer(),
 	})
 	p := New()
 	res, err := p.Begin(context.Background(), env, credential.Request{Descriptor: d, Subject: subjectUser()})
@@ -96,5 +99,47 @@ func TestWebBrowserCallbackRejectsForeignRedirectAndState(t *testing.T) {
 				t.Fatalf("unexpected error: %v", err)
 			}
 		})
+	}
+}
+
+// The fake provider knows only the client of the kubeconfig: a flow that signed in with the public client of the
+// web server would be rejected. The setting names the right issuer here, so only the grant keeps the flow away.
+func TestWebClientIsNotUsedForPasswordGrant(t *testing.T) {
+	idp := newFakeIdP(t, true)
+	res, err := signInWithPassword(t, idp, idp.env(false), map[string]string{
+		"web.client-id": "web-public-client", "web.redirect-url": "https://kubron.example.test/auth/cluster/callback",
+		"web.issuer-url": idp.issuer(),
+	})
+	mustToken(t, res, err)
+}
+
+func TestWebClientIsNotUsedForDeviceGrant(t *testing.T) {
+	idp := newFakeIdP(t, true)
+	d := idp.descriptor("device-code", map[string]string{
+		"web.client-id": "web-public-client", "web.redirect-url": "https://kubron.example.test/auth/cluster/callback",
+		"web.issuer-url": idp.issuer(),
+	})
+	res, err := New().Begin(context.Background(), idp.env(false), credential.Request{Descriptor: d, Subject: subjectUser()})
+	mustChallenge(t, res, err, credential.ChallengeDeviceCode)
+}
+
+// A client registered at another identity provider must not replace the client of this cluster: the sign-in falls
+// back to the paste-redirect flow with the client and the redirect address of the kubeconfig.
+func TestWebClientIsNotUsedForAnotherIssuer(t *testing.T) {
+	idp := newFakeIdP(t, true)
+	idp.deviceEnabled = false
+	d := idp.descriptor("authcode", map[string]string{
+		"web.client-id": "web-public-client", "web.redirect-url": "https://kubron.example.test/auth/cluster/callback",
+		"web.issuer-url": "https://other-idp.example.test/realms/kubron",
+	})
+	res, err := New().Begin(context.Background(), idp.env(false), credential.Request{Descriptor: d, Subject: subjectUser()})
+	ch := mustChallenge(t, res, err, credential.ChallengePasteRedirect)
+	authURL, err := url.Parse(ch.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	q := authURL.Query()
+	if q.Get("client_id") != testClient || strings.HasPrefix(q.Get("redirect_uri"), "https://kubron.example.test/") {
+		t.Fatalf("the client of another issuer was used: client_id=%q redirect_uri=%q", q.Get("client_id"), q.Get("redirect_uri"))
 	}
 }

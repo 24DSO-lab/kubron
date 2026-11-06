@@ -13,7 +13,9 @@ import (
 	"github.com/24DSO-labs/kubron/internal/audit"
 	"github.com/24DSO-labs/kubron/internal/auth"
 	"github.com/24DSO-labs/kubron/internal/credential"
+	"github.com/24DSO-labs/kubron/internal/credential/providers/oidc"
 	"github.com/24DSO-labs/kubron/internal/k8s"
+	"github.com/24DSO-labs/kubron/internal/store"
 )
 
 // Events sent to the session that owns the sign-in (ADR-0018). The payloads carry identifiers only.
@@ -107,23 +109,35 @@ func SetWebOIDCRedirectURL(a *App, publicURL string) {
 	a.webOIDCRedirectURL = strings.TrimRight(publicURL, "/") + "/auth/cluster/callback"
 }
 
-// withWebOIDCParams removes any web-only overrides that could have come from cluster input,
-// then injects the administrator-controlled values for this web request.
-func withWebOIDCParams(d credential.Descriptor, clientID, redirectURL string) credential.Descriptor {
-	p := make(map[string]string, len(d.Params)+2)
+// withWebOIDCParams removes any web-only overrides that could have come from cluster input, then injects
+// the administrator-controlled values for this web request. The public client applies only to the
+// authorization-code flow and only to the identity provider it is registered at: a cluster with another
+// grant (password, device code, legacy refresh) or another issuer keeps the client of its kubeconfig.
+// A setting without an issuer (the first form of it) is never applied.
+func withWebOIDCParams(d credential.Descriptor, web store.WebOIDC, redirectURL string) credential.Descriptor {
+	p := make(map[string]string, len(d.Params)+3)
 	for k, v := range d.Params {
-		if k != "web.client-id" && k != "web.redirect-url" {
+		if k != "web.client-id" && k != "web.redirect-url" && k != "web.issuer-url" {
 			p[k] = v
 		}
 	}
-	// The callback is usable only when both the administrator-configured public client and
-	// the server's validated public URL are present. Otherwise retain the legacy paste-redirect flow.
-	if clientID != "" && redirectURL != "" {
-		p["web.client-id"] = clientID
+	// The callback is usable only when the administrator-configured public client, its issuer and the
+	// server's validated public URL are all present. Otherwise the paste-redirect flow stays.
+	if web.ClientID != "" && web.IssuerURL != "" && redirectURL != "" &&
+		webClientGrant(d.Params["grant"]) && oidc.SameIssuer(d.Params["issuer-url"], web.IssuerURL) {
+		p["web.client-id"] = web.ClientID
 		p["web.redirect-url"] = redirectURL
+		p["web.issuer-url"] = web.IssuerURL
 	}
 	d.Params = p
 	return d
+}
+
+// webClientGrant reports whether the grant of the kubeconfig is the authorization-code flow (the default
+// when the kubeconfig names none).
+func webClientGrant(grant string) bool {
+	g := strings.TrimSpace(grant)
+	return g == "" || g == "authcode"
 }
 
 // emit sends an event to the owner of this view: to the web session if there is one, otherwise to the shell.
@@ -193,14 +207,14 @@ func (a *App) connect(ctx context.Context, clusterID string) (credential.Connect
 		return credential.ConnectResult{Status: "connected"}, a.finishConnect(clusterID)
 	}
 	if a.sessionID != "" && plan.Desc.Kind == credential.KindOIDC {
-		clientID := ""
+		var web store.WebOIDC
 		if a.store != nil {
-			clientID, err = a.store.WebOIDCClientID()
+			web, err = a.store.WebOIDC()
 			if err != nil {
 				return credential.ConnectResult{}, err
 			}
 		}
-		plan.Desc = withWebOIDCParams(plan.Desc, clientID, a.webOIDCRedirectURL)
+		plan.Desc = withWebOIDCParams(plan.Desc, web, a.webOIDCRedirectURL)
 	}
 	res, err := a.broker.Acquire(ctx, plan.Subject, plan.Desc)
 	if err != nil {

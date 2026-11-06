@@ -851,22 +851,31 @@ func TestCheckKey(t *testing.T) {
 	}
 }
 
-// TestWebOIDCClientIDRoundTrip exercises the shared PostgreSQL settings row.
-func TestWebOIDCClientIDRoundTrip(t *testing.T) {
+// TestWebOIDCRoundTrip exercises the shared PostgreSQL settings row.
+func TestWebOIDCRoundTrip(t *testing.T) {
 	s := newTestStore(t, keyString("k1"))
-	if got, err := s.WebOIDCClientID(); err != nil || got != "" {
-		t.Fatalf("empty client id: %q %v", got, err)
+	if got, err := s.WebOIDC(); err != nil || got != (WebOIDC{}) {
+		t.Fatalf("empty web OIDC client: %+v %v", got, err)
 	}
-	if err := s.SetWebOIDCClientID("kubron-public-client"); err != nil {
+	want := WebOIDC{ClientID: "kubron-public-client", IssuerURL: "https://idp.example.test/realms/kubron"}
+	if err := s.SetWebOIDC(want); err != nil {
 		t.Fatal(err)
 	}
-	if got, err := s.WebOIDCClientID(); err != nil || got != "kubron-public-client" {
-		t.Fatalf("client id: %q %v", got, err)
+	if got, err := s.WebOIDC(); err != nil || got != want {
+		t.Fatalf("web OIDC client: %+v %v", got, err)
 	}
-	if err := s.SetWebOIDCClientID(""); err != nil {
+	// A row of the first form has a client id and no issuer: it is read as unbound (never applied).
+	if _, err := s.pool.Exec(context.Background(),
+		`UPDATE settings SET value = $2 WHERE key = $1`, settingsKeyWebOIDC, []byte(`{"clientId":"old-client"}`)); err != nil {
 		t.Fatal(err)
 	}
-	if got, err := s.WebOIDCClientID(); err != nil || got != "" {
-		t.Fatalf("cleared client id: %q %v", got, err)
+	if got, err := s.WebOIDC(); err != nil || got != (WebOIDC{ClientID: "old-client"}) {
+		t.Fatalf("web OIDC client of the first form: %+v %v", got, err)
+	}
+	if err := s.SetWebOIDC(WebOIDC{}); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := s.WebOIDC(); err != nil || got != (WebOIDC{}) {
+		t.Fatalf("cleared web OIDC client: %+v %v", got, err)
 	}
 }

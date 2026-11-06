@@ -13,43 +13,51 @@ import (
 const settingsKeyWebOIDC = "web-oidc"
 
 type webOIDCSettings struct {
-	ClientID string `json:"clientId"`
+	ClientID  string `json:"clientId"`
+	IssuerURL string `json:"issuerUrl,omitempty"`
 }
 
-// WebOIDCClientID reads the administrator-configured public client id shared by all replicas.
-func (s *Store) WebOIDCClientID() (string, error) {
+// WebOIDC is the administrator-configured public client of the web sign-in and the issuer it is registered at.
+// A row of the first form has no issuer: IssuerURL is then empty and the client is not applied.
+type WebOIDC struct {
+	ClientID  string
+	IssuerURL string
+}
+
+// WebOIDC reads the web sign-in client shared by all replicas.
+func (s *Store) WebOIDC() (WebOIDC, error) {
 	if err := s.ready(); err != nil {
-		return "", err
+		return WebOIDC{}, err
 	}
 	ctx, cancel := opCtx()
 	defer cancel()
 	var raw []byte
 	err := s.pool.QueryRow(ctx, `SELECT value FROM settings WHERE key = $1`, settingsKeyWebOIDC).Scan(&raw)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return "", nil
+		return WebOIDC{}, nil
 	}
 	if err != nil {
-		return "", err
+		return WebOIDC{}, err
 	}
 	var cfg webOIDCSettings
 	if err := json.Unmarshal(raw, &cfg); err != nil {
-		return "", err
+		return WebOIDC{}, err
 	}
-	return cfg.ClientID, nil
+	return WebOIDC{ClientID: cfg.ClientID, IssuerURL: cfg.IssuerURL}, nil
 }
 
-// SetWebOIDCClientID updates the public client id; an empty value removes the override.
-func (s *Store) SetWebOIDCClientID(clientID string) error {
+// SetWebOIDC saves the web sign-in client; empty values remove the setting.
+func (s *Store) SetWebOIDC(v WebOIDC) error {
 	if err := s.ready(); err != nil {
 		return err
 	}
 	ctx, cancel := opCtx()
 	defer cancel()
-	if clientID == "" {
+	if v.ClientID == "" && v.IssuerURL == "" {
 		_, err := s.pool.Exec(ctx, `DELETE FROM settings WHERE key = $1`, settingsKeyWebOIDC)
 		return err
 	}
-	raw, err := json.Marshal(webOIDCSettings{ClientID: clientID})
+	raw, err := json.Marshal(webOIDCSettings{ClientID: v.ClientID, IssuerURL: v.IssuerURL})
 	if err != nil {
 		return err
 	}
