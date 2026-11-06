@@ -47,7 +47,7 @@ func (s fileStore) WebOIDC() (WebOIDC, error) {
 	if err := json.Unmarshal(raw, &cfg); err != nil {
 		return WebOIDC{}, err
 	}
-	return WebOIDC{ClientID: cfg.ClientID, IssuerURL: cfg.IssuerURL}, nil
+	return WebOIDC(cfg), nil
 }
 
 func (s fileStore) SetWebOIDC(v WebOIDC) error {
@@ -61,7 +61,7 @@ func (s fileStore) SetWebOIDC(v WebOIDC) error {
 	if err := os.MkdirAll(s.dir, 0o700); err != nil {
 		return err
 	}
-	raw, err := json.Marshal(webOIDCSettings{ClientID: v.ClientID, IssuerURL: v.IssuerURL})
+	raw, err := json.Marshal(webOIDCSettings(v))
 	if err != nil {
 		return err
 	}
