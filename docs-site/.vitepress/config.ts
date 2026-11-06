@@ -5,16 +5,17 @@ import { defineConfig } from 'vitepress'
 
 const repo = 'https://github.com/24DSO-labs/kubron'
 const releases = `${repo}/releases`
+const base = process.env.DOCS_BASE || '/'
 
 export default defineConfig({
   title: 'Kubron',
   description: 'A Kubernetes Operations Workspace for desktop and self-hosted web. Multi-cluster operations, Helm and GitOps in one place.',
 
   lang: 'en-US',
-  base: process.env.DOCS_BASE || '/',
+  base,
   appearance: 'dark',
   head: [
-    ['link', { rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' }],
+    ['link', { rel: 'icon', href: `${base}favicon.svg`, type: 'image/svg+xml' }],
     ['meta', { name: 'theme-color', content: '#0B0F19' }],
     ['meta', { property: 'og:type', content: 'website' }],
     ['meta', { property: 'og:site_name', content: 'Kubron' }],
@@ -37,9 +38,11 @@ export default defineConfig({
         ],
         sidebar: {
           '/guide/': [{ text: 'Guide', items: [
+            { text: 'What is Kubron', link: '/guide/what-is-kubron' },
             { text: 'Choose a version', link: '/guide/getting-started' },
             { text: 'Desktop', link: '/guide/desktop' },
-            { text: 'Desktop installation details', link: '/guide/installation' },
+            { text: 'Requirements & verification', link: '/guide/installation' },
+            { text: 'Build from source', link: '/guide/build-from-source' },
             { text: 'Web', link: '/guide/web' },
             { text: 'First cluster', link: '/guide/first-cluster' },
             { text: 'Keyboard shortcuts', link: '/guide/shortcuts' }
@@ -86,9 +89,11 @@ export default defineConfig({
         ],
         sidebar: {
           '/ru/guide/': [{ text: 'Руководство', items: [
+            { text: 'Что такое Kubron', link: '/ru/guide/what-is-kubron' },
             { text: 'Выбор версии', link: '/ru/guide/getting-started' },
             { text: 'Desktop', link: '/ru/guide/desktop' },
-            { text: 'Установка Desktop', link: '/ru/guide/installation' },
+            { text: 'Требования и проверка', link: '/ru/guide/installation' },
+            { text: 'Сборка из исходников', link: '/ru/guide/build-from-source' },
             { text: 'Web', link: '/ru/guide/web' },
             { text: 'Первый кластер', link: '/ru/guide/first-cluster' },
             { text: 'Горячие клавиши', link: '/ru/guide/shortcuts' }

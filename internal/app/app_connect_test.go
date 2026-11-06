@@ -18,6 +18,7 @@ import (
 	"github.com/24DSO-labs/kubron/internal/credential"
 	"github.com/24DSO-labs/kubron/internal/k8s"
 	"github.com/24DSO-labs/kubron/internal/signin"
+	"github.com/24DSO-labs/kubron/internal/store"
 	"github.com/24DSO-labs/kubron/pkg/ext"
 )
 
@@ -129,40 +130,80 @@ func connectFixture(t *testing.T, b *fakeBroker) (*App, *recPlatform, string, *[
 	return a, pl, c.ID, &connected
 }
 
-func TestWithWebOIDCParamsRequiresPublicClientAndRedirectPair(t *testing.T) {
-	base := credential.Descriptor{Kind: credential.KindOIDC, Params: map[string]string{
-		"client-id":        "kubeconfig-client",
-		"web.client-id":    "untrusted-client",
-		"web.redirect-url": "https://evil.example/callback",
-	}}
+func TestWithWebOIDCParamsAppliesOnlyToAuthcodeOfTheSameIssuer(t *testing.T) {
+	const (
+		issuer   = "https://idp.example.test/realms/kubron"
+		redirect = "https://kubron.example/auth/cluster/callback"
+	)
+	// Every descriptor carries web overrides as if they came from the kubeconfig: they must never survive.
+	desc := func(grant, iss string) credential.Descriptor {
+		p := map[string]string{
+			"client-id":        "kubeconfig-client",
+			"issuer-url":       iss,
+			"web.client-id":    "untrusted-client",
+			"web.redirect-url": "https://evil.example/callback",
+			"web.issuer-url":   iss,
+		}
+		if grant != "" {
+			p["grant"] = grant
+		}
+		return credential.Descriptor{Kind: credential.KindOIDC, Params: p}
+	}
+	admin := store.WebOIDC{ClientID: "admin-public-client", IssuerURL: issuer}
 	for _, tc := range []struct {
-		name, clientID, redirectURL string
-		wantClient, wantRedirect    string
+		name        string
+		d           credential.Descriptor
+		web         store.WebOIDC
+		redirectURL string
+		applied     bool
 	}{
-		{name: "no admin client", redirectURL: "https://kubron.example/auth/cluster/callback"},
-		{name: "no public URL", clientID: "admin-public-client"},
-		{name: "both configured", clientID: "admin-public-client", redirectURL: "https://kubron.example/auth/cluster/callback",
-			wantClient: "admin-public-client", wantRedirect: "https://kubron.example/auth/cluster/callback"},
+		{"no admin client", desc("authcode", issuer), store.WebOIDC{}, redirect, false},
+		{"no public URL", desc("authcode", issuer), admin, "", false},
+		{"client without an issuer (the first form of the setting)", desc("authcode", issuer), store.WebOIDC{ClientID: "admin-public-client"}, redirect, false},
+		{"issuer without a client", desc("authcode", issuer), store.WebOIDC{IssuerURL: issuer}, redirect, false},
+		{"authcode of the same issuer", desc("authcode", issuer), admin, redirect, true},
+		{"default grant is authcode", desc("", issuer), admin, redirect, true},
+		{"same issuer written differently", desc("authcode", "HTTPS://IDP.example.test/realms/kubron/"), admin, redirect, true},
+		{"another host", desc("authcode", "https://other-idp.example.test/realms/kubron"), admin, redirect, false},
+		{"another realm of the same host", desc("authcode", "https://idp.example.test/realms/other"), admin, redirect, false},
+		{"kubeconfig without an issuer", desc("authcode", ""), admin, redirect, false},
+		{"password grant", desc("password", issuer), admin, redirect, false},
+		{"device-code grant", desc("device-code", issuer), admin, redirect, false},
+		{"authcode-keyboard grant", desc("authcode-keyboard", issuer), admin, redirect, false},
+		{"legacy-refresh grant", desc("legacy-refresh", issuer), admin, redirect, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			got := signin.WithWebOIDCParams(base, tc.clientID, tc.redirectURL)
-			if got.Params["web.client-id"] != tc.wantClient || got.Params["web.redirect-url"] != tc.wantRedirect {
-				t.Fatalf("web OIDC params = %#v", got.Params)
+			got := signin.WithWebOIDCParams(tc.d, tc.web, tc.redirectURL)
+			if tc.applied {
+				if got.Params["web.client-id"] != "admin-public-client" || got.Params["web.redirect-url"] != redirect ||
+					got.Params["web.issuer-url"] != issuer {
+					t.Fatalf("the web client was not applied: %#v", got.Params)
+				}
+			} else {
+				for _, k := range []string{"web.client-id", "web.redirect-url", "web.issuer-url"} {
+					if _, ok := got.Params[k]; ok {
+						t.Fatalf("%s is set although the web client must not apply: %#v", k, got.Params)
+					}
+				}
 			}
 			if got.Params["client-id"] != "kubeconfig-client" {
 				t.Fatalf("the kubeconfig client id was changed: %#v", got.Params)
+			}
+			if tc.d.Params["web.client-id"] != "untrusted-client" {
+				t.Fatalf("the input descriptor was modified: %#v", tc.d.Params)
 			}
 		})
 	}
 }
 
-func TestWebOIDCClientIDIsAdminOnly(t *testing.T) {
+func TestWebOIDCClientIsAdminOnly(t *testing.T) {
+	const issuer = "https://idp.example.test/realms/kubron"
 	a, _, _, _ := connectFixture(t, &fakeBroker{})
-	if err := a.SetWebOIDCClientID("public-client"); err != nil {
+	if err := a.SetWebOIDCClient("public-client", issuer); err != nil {
 		t.Fatal(err)
 	}
-	if got, err := a.GetWebOIDCClientID(); err != nil || got != "public-client" {
-		t.Fatalf("admin read: %q %v", got, err)
+	if got, err := a.GetWebOIDCClient(); err != nil || got.ClientID != "public-client" || got.IssuerURL != issuer {
+		t.Fatalf("admin read: %+v %v", got, err)
 	}
 	bob, err := a.auth.CreateUser("bob", testPass, auth.RoleUser)
 	if err != nil {
@@ -175,11 +216,49 @@ func TestWebOIDCClientIDIsAdminOnly(t *testing.T) {
 	if err := a.auth.ChangePassword(testPass, "another-pass-2"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := a.GetWebOIDCClientID(); !errors.Is(err, auth.ErrForbidden) {
+	if _, err := a.GetWebOIDCClient(); !errors.Is(err, auth.ErrForbidden) {
 		t.Fatalf("non-admin read: %v", err)
 	}
-	if err := a.SetWebOIDCClientID("attacker-client"); !errors.Is(err, auth.ErrForbidden) {
+	if err := a.SetWebOIDCClient("attacker-client", "https://evil.example.test"); !errors.Is(err, auth.ErrForbidden) {
 		t.Fatalf("non-admin write: %v", err)
+	}
+}
+
+func TestSetWebOIDCClientValidation(t *testing.T) {
+	a, _, _, _ := connectFixture(t, &fakeBroker{})
+	for _, tc := range []struct{ name, client, issuer string }{
+		{"client without an issuer", "public-client", ""},
+		{"issuer without a client", "", "https://idp.example.test"},
+		{"http issuer", "public-client", "http://idp.example.test"},
+		{"issuer with a query", "public-client", "https://idp.example.test/?x=1"},
+		{"issuer with an empty query", "public-client", "https://idp.example.test/?"},
+		{"issuer with a fragment", "public-client", "https://idp.example.test/#x"},
+		{"issuer with user information", "public-client", "https://user:pass@idp.example.test"},
+		{"issuer without a host", "public-client", "https://"},
+		{"issuer with a control character", "public-client", "https://idp.example.test/a\nb"},
+		{"client id with a control character", "pub\nlic", "https://idp.example.test"},
+		{"client id that is too long", strings.Repeat("a", 257), "https://idp.example.test"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := a.SetWebOIDCClient(tc.client, tc.issuer); err == nil {
+				t.Fatal("an invalid setting was accepted")
+			}
+		})
+	}
+	if got, err := a.GetWebOIDCClient(); err != nil || got != (store.WebOIDC{}) {
+		t.Fatalf("a rejected setting was stored: %+v %v", got, err)
+	}
+	if err := a.SetWebOIDCClient("  public-client ", " https://idp.example.test "); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := a.GetWebOIDCClient(); got != (store.WebOIDC{ClientID: "public-client", IssuerURL: "https://idp.example.test"}) {
+		t.Fatalf("values are not trimmed: %+v", got)
+	}
+	if err := a.SetWebOIDCClient("", ""); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := a.GetWebOIDCClient(); got != (store.WebOIDC{}) {
+		t.Fatalf("the setting was not cleared: %+v", got)
 	}
 }
 

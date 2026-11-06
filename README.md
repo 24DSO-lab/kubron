@@ -148,7 +148,7 @@ On Linux add `-tags webkit2_41` to `wails dev` / `wails build` (WebKitGTK 4.1, a
 - **Server deployment** (Russian) — [docs/deploy.md](docs/deploy.md), [high availability](docs/ha.md), [backup and restore](docs/backup.md), [logging](docs/logging.md), [metrics](docs/metrics.md), [HTTP security](docs/http-security.md)
 - **Server security** (Russian) — [threat model](docs/threat-model.md), [security review](docs/security-review.md)
 - **Cluster sign-in** (Russian) — [which dialogs you will see and what to do](docs/cluster-sign-in.md); [manual cloud sign-in lab](docs/authentication-lab.md)
-- **Documentation map and project status** — [docs/README.md](docs/README.md) (what is done is in the [archive](docs/archive/README.md), what is still open is in [docs/tickets](docs/tickets))
+- **Documentation map and project status** — [docs/README.md](docs/README.md) (open work is in [docs/tickets](docs/tickets); closed work stays in the git history and the [changelog](CHANGELOG.md))
 - **Localization** — [docs/i18n.md](docs/i18n.md), [ADR-0014](docs/adr/0014-i18n.md)
 - **Releasing** — [docs/releasing.md](docs/releasing.md), [supply chain (ADR-0021)](docs/adr/0021-release-supply-chain.md)
 
@@ -186,7 +186,7 @@ go run ./cmd/kubron-server --listen 127.0.0.1:8080
 - [x] Shared, persistent Helm catalog in server mode
 - [x] Publish the signed container image and Helm chart to a registry
 - [x] HTTP port-forward and terminals in web mode
-- [ ] Second-person review of the threat model and security review, and a pentest on a test stand ([status](docs/archive/tickets/stage-4-5.md))
+- [ ] Independent review and pentest of the cluster sign-in flows (credential broker, AKS, EKS, GKE); the review and pentest of 2026-11-03 cover the rest of the server ([status](docs/security-review.md))
 - [ ] Code-signed Windows and macOS builds
 - [ ] SSO/OIDC login for organizations
 
@@ -194,7 +194,7 @@ Have an idea? Open a [feature request](https://github.com/24DSO-labs/kubron/issu
 
 ## License
 
-Kubron is open source under [Apache-2.0](LICENSE). Local users, roles, the audit log and emergency admin access are part of the core.
+Kubron is open source under [Apache-2.0](LICENSE).
 
 ## Contributing
 

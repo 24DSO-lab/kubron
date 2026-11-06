@@ -4,6 +4,8 @@
 Kubron — Kubernetes Operations Workspace в двух версиях. Обе версии предоставляют интерфейс Kubron для работы с кластерами, workloads, Helm и GitOps. Выберите подходящий способ использования:
 
 
+Впервые здесь? Сначала прочитайте [Что такое Kubron](/ru/guide/what-is-kubron).
+
 ## Desktop
 
 Запускайте Kubron как desktop-приложение на своём компьютере. Это самый простой вариант для индивидуальной работы: не нужно разворачивать сервер, нет обязательной учётной записи и телеметрии. Kubeconfig остаётся на вашем компьютере.
@@ -22,4 +24,6 @@ Kubron — Kubernetes Operations Workspace в двух версиях. Обе в
 
 - [Возможности Kubron](/ru/features/)
 - [Добавить первый кластер](/ru/guide/first-cluster)
+- [Требования и проверка загрузки](/ru/guide/installation)
+- [Сборка из исходников](/ru/guide/build-from-source)
 - [Горячие клавиши](/ru/guide/shortcuts)

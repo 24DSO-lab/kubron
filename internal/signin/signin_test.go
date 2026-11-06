@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/24DSO-labs/kubron/internal/credential"
+	"github.com/24DSO-labs/kubron/internal/store"
 )
 
 func TestStateRemembersAndForgetsChallenges(t *testing.T) {
@@ -137,26 +138,45 @@ func TestIDPKey(t *testing.T) {
 }
 
 func TestWithWebOIDCParamsDropsClusterSuppliedOverrides(t *testing.T) {
-	base := credential.Descriptor{Params: map[string]string{"issuer-url": "https://i", "web.client-id": "evil", "web.redirect-url": "https://evil"}}
+	const (
+		issuer   = "https://idp.example.test/realms/kubron"
+		redirect = "https://app/cb"
+	)
+	base := credential.Descriptor{Params: map[string]string{
+		"issuer-url": issuer, "web.client-id": "evil", "web.redirect-url": "https://evil", "web.issuer-url": "https://evil",
+	}}
+	admin := store.WebOIDC{ClientID: "client", IssuerURL: issuer}
 
-	got := WithWebOIDCParams(base, "", "")
-	if _, ok := got.Params["web.client-id"]; ok {
-		t.Fatal("an override coming from cluster data must be dropped")
+	got := WithWebOIDCParams(base, store.WebOIDC{}, "")
+	for _, k := range []string{"web.client-id", "web.redirect-url", "web.issuer-url"} {
+		if _, ok := got.Params[k]; ok {
+			t.Fatalf("%s coming from cluster data must be dropped", k)
+		}
 	}
-	if got.Params["issuer-url"] != "https://i" {
+	if got.Params["issuer-url"] != issuer {
 		t.Fatal("other params must be kept")
 	}
 	if base.Params["web.client-id"] != "evil" {
 		t.Fatal("the input descriptor must not be modified")
 	}
 
-	got = WithWebOIDCParams(base, "client", "https://app/cb")
-	if got.Params["web.client-id"] != "client" || got.Params["web.redirect-url"] != "https://app/cb" {
+	got = WithWebOIDCParams(base, admin, redirect)
+	if got.Params["web.client-id"] != "client" || got.Params["web.redirect-url"] != redirect || got.Params["web.issuer-url"] != issuer {
 		t.Fatalf("got %+v", got.Params)
 	}
-	got = WithWebOIDCParams(base, "client", "")
-	if _, ok := got.Params["web.client-id"]; ok {
-		t.Fatal("the callback needs both the client and the redirect URL")
+	if got := WithWebOIDCParams(base, admin, ""); got.Params["web.client-id"] != "" {
+		t.Fatal("the callback needs the redirect URL")
+	}
+	if got := WithWebOIDCParams(base, store.WebOIDC{ClientID: "client"}, redirect); got.Params["web.client-id"] != "" {
+		t.Fatal("a client without an issuer must not apply")
+	}
+	other := credential.Descriptor{Params: map[string]string{"issuer-url": "https://other.example.test"}}
+	if got := WithWebOIDCParams(other, admin, redirect); got.Params["web.client-id"] != "" {
+		t.Fatal("another issuer keeps the client of its kubeconfig")
+	}
+	pw := credential.Descriptor{Params: map[string]string{"issuer-url": issuer, "grant": "password"}}
+	if got := WithWebOIDCParams(pw, admin, redirect); got.Params["web.client-id"] != "" {
+		t.Fatal("only the authorization-code flow uses the web client")
 	}
 }
 

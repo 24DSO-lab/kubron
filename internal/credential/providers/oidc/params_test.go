@@ -31,7 +31,7 @@ func TestWebPublicClientOverridesClientSecret(t *testing.T) {
 	d := credential.Descriptor{Kind: credential.KindOIDC, Params: map[string]string{
 		"issuer-url": "https://idp.example.test", "client-id": "kubeconfig-client",
 		"client-secret": "must-not-be-used", "web.client-id": "web-public-client",
-		"web.redirect-url": "https://kubron.example.test/auth/cluster/callback",
+		"web.redirect-url": "https://kubron.example.test/auth/cluster/callback", "web.issuer-url": "https://idp.example.test",
 	}}
 	cfg, err := newConfig(d, nil, false)
 	if err != nil {
@@ -46,6 +46,7 @@ func TestWebRedirectWithoutPublicClientIsIgnored(t *testing.T) {
 	d := credential.Descriptor{Kind: credential.KindOIDC, Params: map[string]string{
 		"issuer-url": "https://idp.example.test", "client-id": "kubeconfig-client",
 		"client-secret": "kubeconfig-secret", "web.redirect-url": "https://kubron.example.test/auth/cluster/callback",
+		"web.issuer-url": "https://idp.example.test",
 	}}
 	cfg, err := newConfig(d, nil, false)
 	if err != nil {
@@ -60,6 +61,7 @@ func TestWebClientIDWithoutRedirectDoesNotOverrideKubeconfig(t *testing.T) {
 	d := credential.Descriptor{Kind: credential.KindOIDC, Params: map[string]string{
 		"issuer-url": "https://idp.example.test", "client-id": "kubeconfig-client",
 		"client-secret": "kubeconfig-secret", "web.client-id": "admin-public-client",
+		"web.issuer-url": "https://idp.example.test",
 	}}
 	cfg, err := newConfig(d, nil, false)
 	if err != nil {
@@ -285,6 +287,7 @@ func TestWebClientIDOverridesKubeconfigOnlyInWeb(t *testing.T) {
 	d := credential.Descriptor{Kind: credential.KindOIDC, Params: map[string]string{
 		"issuer-url": "https://idp.example", "client-id": "kubeconfig-client",
 		"web.client-id": "admin-public-client", "web.redirect-url": "https://kubron.example/auth/cluster/callback",
+		"web.issuer-url": "https://idp.example",
 	}}
 	web, err := newConfig(d, nil, false)
 	if err != nil {
@@ -336,6 +339,88 @@ func TestSigningAlgorithms(t *testing.T) {
 	for _, a := range []string{"none", "HS256", "HS512", ""} {
 		if isAsymmetric(a) {
 			t.Errorf("%q must be refused", a)
+		}
+	}
+}
+
+func TestWebClientAppliesOnlyToAuthcodeOfTheSameIssuer(t *testing.T) {
+	const issuer = "https://idp.example.test/realms/kubron"
+	params := func(grant, webIssuer string) map[string]string {
+		p := map[string]string{
+			"issuer-url": issuer, "client-id": "kubeconfig-client", "client-secret": "kubeconfig-secret",
+			"web.client-id": "admin-public-client", "web.redirect-url": "https://kubron.example.test/auth/cluster/callback",
+		}
+		if grant != "" {
+			p["grant"] = grant
+		}
+		if webIssuer != "" {
+			p["web.issuer-url"] = webIssuer
+		}
+		return p
+	}
+	for _, tc := range []struct {
+		name, grant, webIssuer string
+		applied                bool
+	}{
+		{"authcode of the same issuer", "authcode", issuer, true},
+		{"default grant is authcode", "", issuer, true},
+		{"same issuer written differently", "authcode", "HTTPS://IDP.example.test/realms/kubron/", true},
+		{"password grant", "password", issuer, false},
+		{"device-code grant", "device-code", issuer, false},
+		{"authcode-keyboard grant", "authcode-keyboard", issuer, false},
+		{"legacy-refresh grant", "legacy-refresh", issuer, false},
+		{"another host", "authcode", "https://other-idp.example.test/realms/kubron", false},
+		{"another realm of the same host", "authcode", "https://idp.example.test/realms/other", false},
+		{"no issuer binding", "authcode", "", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			d := credential.Descriptor{Kind: credential.KindOIDC, Params: params(tc.grant, tc.webIssuer)}
+			cfg, err := newConfig(d, nil, false)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if tc.applied {
+				if cfg.clientID != "admin-public-client" || cfg.clientSecret != "" || cfg.webRedirectURL == "" {
+					t.Fatalf("the web client was not applied: %+v", cfg)
+				}
+				return
+			}
+			if cfg.clientID != "kubeconfig-client" || cfg.clientSecret != "kubeconfig-secret" || cfg.webRedirectURL != "" {
+				t.Fatalf("the web client changed a flow it does not belong to: %+v", cfg)
+			}
+		})
+	}
+}
+
+func TestSameIssuer(t *testing.T) {
+	for _, tc := range []struct {
+		a, b string
+		want bool
+	}{
+		{"https://idp.example.test/realms/kubron", "https://idp.example.test/realms/kubron", true},
+		{"https://idp.example.test/realms/kubron", "https://idp.example.test/realms/kubron/", true},
+		{"https://IDP.Example.test/realms/kubron", "https://idp.example.test/realms/kubron", true},
+		{"https://idp.example.test:443/realms/kubron", "https://idp.example.test/realms/kubron", true},
+		{"http://idp.example.test:80", "http://idp.example.test", true},
+		{" https://idp.example.test ", "https://idp.example.test/", true},
+		{"https://[::1]:8443/x", "https://[::1]:8443/x/", true},
+		{"https://[::1]/x", "https://[::1]:443/x", true},
+		{"https://idp.example.test:8443", "https://idp.example.test", false},
+		{"https://idp.example.test/realms/kubron", "https://idp.example.test/realms/Kubron", false},
+		{"https://idp.example.test/a", "https://idp.example.test/b", false},
+		{"https://idp.example.test", "http://idp.example.test", false},
+		{"https://idp.example.test", "https://idp.example.test.evil.test", false},
+		{"https://idp.example.test/?x=1", "https://idp.example.test/?x=1", false},
+		{"https://idp.example.test/?", "https://idp.example.test/?", false},
+		{"https://idp.example.test/#a", "https://idp.example.test/#a", false},
+		{"https://user@idp.example.test", "https://user@idp.example.test", false},
+		{"", "", false},
+		{"idp.example.test", "idp.example.test", false},
+		{"https://", "https://", false},
+		{"ftp://idp.example.test", "ftp://idp.example.test", false},
+	} {
+		if got := SameIssuer(tc.a, tc.b); got != tc.want {
+			t.Errorf("SameIssuer(%q, %q) = %v, want %v", tc.a, tc.b, got, tc.want)
 		}
 	}
 }

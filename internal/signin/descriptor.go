@@ -9,6 +9,8 @@ import (
 	"strings"
 
 	"github.com/24DSO-labs/kubron/internal/credential"
+	"github.com/24DSO-labs/kubron/internal/credential/providers/oidc"
+	"github.com/24DSO-labs/kubron/internal/store"
 )
 
 // События сессии, которой принадлежит вход (ADR-0018). В данных только идентификаторы.
@@ -43,22 +45,32 @@ func IDPKey(d credential.Descriptor, clusterID string) string {
 }
 
 // WithWebOIDCParams убирает веб-переопределения, которые могли прийти из данных кластера, и подставляет значения,
-// заданные администратором, для этого веб-запроса.
-func WithWebOIDCParams(d credential.Descriptor, clientID, redirectURL string) credential.Descriptor {
-	p := make(map[string]string, len(d.Params)+2)
+// заданные администратором, для этого веб-запроса. Публичный клиент действует только для authcode и только у того
+// провайдера, где он зарегистрирован: кластер с другим типом входа (пароль, device code, legacy refresh) или другим
+// издателем остаётся с клиентом из своего kubeconfig. Настройка без издателя (её первая форма) не применяется никогда.
+func WithWebOIDCParams(d credential.Descriptor, web store.WebOIDC, redirectURL string) credential.Descriptor {
+	p := make(map[string]string, len(d.Params)+3)
 	for k, v := range d.Params {
-		if k != "web.client-id" && k != "web.redirect-url" {
+		if k != "web.client-id" && k != "web.redirect-url" && k != "web.issuer-url" {
 			p[k] = v
 		}
 	}
-	// Колбэк пригоден, только когда есть и публичный клиент, заданный администратором, и проверенный публичный URL
-	// сервера. Иначе остаётся прежний сценарий с вставкой адреса перенаправления.
-	if clientID != "" && redirectURL != "" {
-		p["web.client-id"] = clientID
+	// Колбэк пригоден, только когда есть публичный клиент администратора, его издатель и проверенный публичный URL
+	// сервера. Иначе остаётся сценарий с вставкой адреса перенаправления.
+	if web.ClientID != "" && web.IssuerURL != "" && redirectURL != "" &&
+		webClientGrant(d.Params["grant"]) && oidc.SameIssuer(d.Params["issuer-url"], web.IssuerURL) {
+		p["web.client-id"] = web.ClientID
 		p["web.redirect-url"] = redirectURL
+		p["web.issuer-url"] = web.IssuerURL
 	}
 	d.Params = p
 	return d
+}
+
+// webClientGrant — тип входа из kubeconfig это authcode (он же по умолчанию, если тип не указан).
+func webClientGrant(grant string) bool {
+	g := strings.TrimSpace(grant)
+	return g == "" || g == "authcode"
 }
 
 // PrincipalOf — субъект Kubernetes завершённого входа; пусто, если провайдер его не дал.

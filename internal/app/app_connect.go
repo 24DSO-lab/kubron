@@ -14,6 +14,7 @@ import (
 	"github.com/24DSO-labs/kubron/internal/credential"
 	"github.com/24DSO-labs/kubron/internal/k8s"
 	"github.com/24DSO-labs/kubron/internal/signin"
+	"github.com/24DSO-labs/kubron/internal/store"
 )
 
 // Events sent to the session that owns the sign-in (ADR-0018). The payloads carry identifiers only.
@@ -107,14 +108,14 @@ func (a *App) connect(ctx context.Context, clusterID string) (credential.Connect
 		return credential.ConnectResult{Status: "connected"}, a.finishConnect(clusterID)
 	}
 	if a.sessionID != "" && plan.Desc.Kind == credential.KindOIDC {
-		clientID := ""
+		var web store.WebOIDC
 		if a.store != nil {
-			clientID, err = a.store.WebOIDCClientID()
+			web, err = a.store.WebOIDC()
 			if err != nil {
 				return credential.ConnectResult{}, err
 			}
 		}
-		plan.Desc = signin.WithWebOIDCParams(plan.Desc, clientID, a.webOIDCRedirectURL)
+		plan.Desc = signin.WithWebOIDCParams(plan.Desc, web, a.webOIDCRedirectURL)
 	}
 	res, err := a.broker.Acquire(ctx, plan.Subject, plan.Desc)
 	if err != nil {

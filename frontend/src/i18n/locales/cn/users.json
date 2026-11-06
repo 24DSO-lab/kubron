@@ -4,11 +4,13 @@
   "add": "➕ 添加用户",
   "webOIDC": {
     "title": "Web OIDC 客户端",
-    "description": "用于通过浏览器登录集群的可选公共客户端 ID。请设置 KUBRON_PUBLIC_URL，并在身份提供方注册 KUBRON_PUBLIC_URL/auth/cluster/callback。仅在 Web 模式下覆盖 kubeconfig 中的客户端 ID；请勿填写客户端密钥。",
+    "description": "用于通过浏览器登录集群的可选公共客户端（带 PKCE 的授权码流程）。仅对 kubeconfig 中指定了该身份提供方（issuer）并使用授权码登录的集群生效；其他集群和其他登录方式继续使用其 kubeconfig 中的客户端。请设置 KUBRON_PUBLIC_URL，并在身份提供方注册 KUBRON_PUBLIC_URL/auth/cluster/callback。请勿填写客户端密钥。",
     "clientID": "公共客户端 ID",
+    "issuerURL": "颁发者（issuer）URL（https://…）",
+    "issuerRequired": "请填写 issuer URL：未填写时不会使用该客户端。",
     "save": "保存",
     "saving": "正在保存…",
-    "saved": "Web OIDC 客户端 ID 已保存"
+    "saved": "Web OIDC 客户端已保存"
   },
   "idle": {
     "title": "闲置自动退出",

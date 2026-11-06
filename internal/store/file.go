@@ -15,7 +15,8 @@ import (
 )
 
 type webOIDCSettings struct {
-	ClientID string `json:"clientId"`
+	ClientID  string `json:"clientId"`
+	IssuerURL string `json:"issuerUrl,omitempty"`
 }
 
 // fileStore — хранилище десктопа и локального web-режима: файлы в каталоге данных приложения (~/.kubron).
@@ -34,24 +35,24 @@ func (s fileStore) ArgoTokens() k8s.TokenStore { return k8s.NewFileTokenStore() 
 // Clusters — каталог clusters в каталоге данных (k8s.GetKubronDir): путь к kubeconfig нужен client-go и Helm.
 func (s fileStore) Clusters() k8s.ClusterStore { return k8s.NewFileClusterStore() }
 
-func (s fileStore) WebOIDCClientID() (string, error) {
+func (s fileStore) WebOIDC() (WebOIDC, error) {
 	raw, err := os.ReadFile(filepath.Join(s.dir, "web-oidc.json"))
 	if errors.Is(err, os.ErrNotExist) {
-		return "", nil
+		return WebOIDC{}, nil
 	}
 	if err != nil {
-		return "", err
+		return WebOIDC{}, err
 	}
 	var cfg webOIDCSettings
 	if err := json.Unmarshal(raw, &cfg); err != nil {
-		return "", err
+		return WebOIDC{}, err
 	}
-	return cfg.ClientID, nil
+	return WebOIDC{ClientID: cfg.ClientID, IssuerURL: cfg.IssuerURL}, nil
 }
 
-func (s fileStore) SetWebOIDCClientID(clientID string) error {
+func (s fileStore) SetWebOIDC(v WebOIDC) error {
 	path := filepath.Join(s.dir, "web-oidc.json")
-	if clientID == "" {
+	if v.ClientID == "" && v.IssuerURL == "" {
 		if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
 			return err
 		}
@@ -60,7 +61,7 @@ func (s fileStore) SetWebOIDCClientID(clientID string) error {
 	if err := os.MkdirAll(s.dir, 0o700); err != nil {
 		return err
 	}
-	raw, err := json.Marshal(webOIDCSettings{ClientID: clientID})
+	raw, err := json.Marshal(webOIDCSettings{ClientID: v.ClientID, IssuerURL: v.IssuerURL})
 	if err != nil {
 		return err
 	}

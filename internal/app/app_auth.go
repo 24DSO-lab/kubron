@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"runtime"
 	"strings"
 	"time"
@@ -472,30 +473,49 @@ func (a *App) DeleteUser(id string) error {
 	return err
 }
 
-// GetWebOIDCClientID returns the configured public OIDC client id. Only organization administrators may read it.
-func (a *App) GetWebOIDCClientID() (string, error) {
+// GetWebOIDCClient returns the public OIDC client of the web sign-in and the issuer it is registered at.
+// Only organization administrators may read it.
+func (a *App) GetWebOIDCClient() (store.WebOIDC, error) {
 	if err := a.authz(auth.PermUsersManage); err != nil {
-		return "", err
+		return store.WebOIDC{}, err
 	}
 	if a.store == nil {
-		return "", nil
+		return store.WebOIDC{}, nil
 	}
-	return a.store.WebOIDCClientID()
+	return a.store.WebOIDC()
 }
 
-// SetWebOIDCClientID configures the public OIDC client id used by web sign-in. Empty clears the override.
-func (a *App) SetWebOIDCClientID(clientID string) error {
+// SetWebOIDCClient configures the public OIDC client used by the browser sign-in of the web server and the issuer
+// it is registered at: the client is applied only to clusters of that issuer that sign in with the authorization
+// code. Both values are required together; both empty clear the setting.
+func (a *App) SetWebOIDCClient(clientID, issuerURL string) error {
 	if err := a.authz(auth.PermUsersManage); err != nil {
 		return err
 	}
-	clientID = strings.TrimSpace(clientID)
+	clientID, issuerURL = strings.TrimSpace(clientID), strings.TrimSpace(issuerURL)
 	if len(clientID) > 256 || strings.IndexFunc(clientID, func(r rune) bool { return r < 0x20 || r == 0x7f }) >= 0 {
 		return errors.New("web OIDC client id must be at most 256 bytes and contain no control characters")
+	}
+	if (clientID == "") != (issuerURL == "") {
+		return errors.New("web OIDC client id and issuer URL must be set together")
+	}
+	if issuerURL != "" && !validWebOIDCIssuer(issuerURL) {
+		return errors.New("web OIDC issuer URL must be an https URL without query, fragment or user information")
 	}
 	if a.store == nil {
 		return errors.New("application settings store is unavailable")
 	}
-	return a.store.SetWebOIDCClientID(clientID)
+	return a.store.SetWebOIDC(store.WebOIDC{ClientID: clientID, IssuerURL: issuerURL})
+}
+
+// validWebOIDCIssuer accepts an https URL of at most 512 bytes: an issuer has no query, fragment or user
+// information, and the web server talks to identity providers over https only.
+func validWebOIDCIssuer(s string) bool {
+	if len(s) > 512 || strings.IndexFunc(s, func(r rune) bool { return r < 0x20 || r == 0x7f }) >= 0 {
+		return false
+	}
+	u, err := url.Parse(s)
+	return err == nil && u.Scheme == "https" && u.Host != "" && u.User == nil && u.RawQuery == "" && !u.ForceQuery && u.Fragment == ""
 }
 
 // ─── Журнал аудита (audit.read) ────────────────────────────

@@ -4,11 +4,13 @@
   "add": "➕ Add user",
   "webOIDC": {
     "title": "Web OIDC client",
-    "description": "Optional public client ID for browser-based cluster sign-in. Set KUBRON_PUBLIC_URL and register its /auth/cluster/callback URL at the identity provider. The override is used only in web mode; do not enter a client secret.",
+    "description": "Optional public client for browser-based cluster sign-in (authorization code with PKCE). It is used only for clusters whose kubeconfig names this identity provider (issuer) and signs in with the authorization code; other clusters and other sign-in methods keep the client from their kubeconfig. Set KUBRON_PUBLIC_URL and register its /auth/cluster/callback URL at the identity provider. Do not enter a client secret.",
     "clientID": "Public client ID",
+    "issuerURL": "Issuer URL (https://…)",
+    "issuerRequired": "Enter the issuer URL: without it the client is not used.",
     "save": "Save",
     "saving": "Saving…",
-    "saved": "Web OIDC client ID saved"
+    "saved": "Web OIDC client saved"
   },
   "idle": {
     "title": "Auto sign-out on inactivity",

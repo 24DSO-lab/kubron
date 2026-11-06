@@ -10,7 +10,7 @@ The Web edition runs Kubron as a self-hosted server and makes the interface avai
 
 For a local evaluation, the server can use file-based storage and listen only on loopback:
 
-[Follow the local Web quick start](/server/quick-start).
+[Follow the local Web quick start](/server/quick-start). It covers a single-user run from source and a multi-user trial with Docker Compose and PostgreSQL.
 
 This path is for evaluation, not production deployment.
 
@@ -31,7 +31,7 @@ Review the [Web edition overview](/server/) and [security requirements](/feature
 
 ## Connect a cluster
 
-After signing in, add a cluster through the Kubron interface. The available operations are governed by the permissions assigned to the user and the server's Kubernetes RBAC configuration.
+After signing in, add a cluster through the Kubron interface. The server cannot read files from your computer and never runs commands from a kubeconfig; see [Connecting to Kubernetes](/features/cluster-auth#web) for the credential types it supports. The available operations are governed by the permissions assigned to the user and the server's Kubernetes RBAC configuration.
 
 ## Continue exploring
 

@@ -36,11 +36,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Cluster dialogs:** the login and password fields for `oidc-login` are removed; sign-in happens in the sign-in dialog.
 - **Cluster authentication network policy:** native AKS sign-in now uses the shared IdP HTTP client, enforcing `KUBRON_CLUSTER_ADDR_POLICY` on Azure authority connections and redirects, with HTTPS-only web requests, bounded responses/timeouts and no environment proxy.
 - **Cluster authentication docs:** updated the English and Russian user guides to describe the implemented credential broker, OIDC and AKS sign-in modes, Desktop exec confirmation, Web manual-token fallback and unsupported Azure modes. The Russian sign-in guide (`docs/cluster-sign-in.md`) now also covers AKS, EKS and the shared team account.
-- **Documentation:** `docs/README.md` is now a map of all documents; closed stage tickets, the original plan and the static analysis moved to `docs/archive/`. Retrospective ADR-0019…0022 record password hashing, HTTP security, the release supply chain and logging with metrics. The decisions in `docs/decisions/` are accepted. Links to files that never existed were removed.
+- **Documentation:** `docs/README.md` is now a map of all documents; closed stage tickets, the original plan and the static analysis were removed (they stay in the git history). Retrospective ADR-0019…0022 record password hashing, HTTP security, the release supply chain and logging with metrics. The decisions in `docs/decisions/` are accepted. Links to files that never existed were removed.
 
 ### Removed
 
 - `internal/oidcpassword`, `cmd/oidc-spike`, `App.ConnectToCluster`, `AddOIDCClusterToTeam`, `SetClusterOIDCCredentials` (and their RPC methods) and the error messages that belonged to them. Clusters saved in the old mode keep working: the stored mode value `oidc-password` now means the shared team account, and `MigrateLegacyOIDC` is unchanged. The `secret_enc` column is kept.
+
+### Fixed
+
+- **Web sign-in client:** the public OIDC client of the web server replaced the client of every OIDC cluster, for every grant and every identity provider, as soon as it was configured. It now applies only to the authorization-code flow of the issuer it is registered for; password, device-code and legacy-refresh sign-ins and clusters of other issuers keep the client of their kubeconfig. The setting takes an issuer (`GetWebOIDCClient`/`SetWebOIDCClient` replace `GetWebOIDCClientID`/`SetWebOIDCClientID`); a setting without an issuer is not applied until one is entered.
 
 ### Security
 
