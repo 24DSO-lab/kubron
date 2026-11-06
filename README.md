@@ -194,7 +194,7 @@ Have an idea? Open a [feature request](https://github.com/24DSO-labs/kubron/issu
 
 ## License
 
-Kubron is open source under [Apache-2.0](LICENSE). Local users, roles, the audit log and emergency admin access are part of the core.
+Kubron is open source under [Apache-2.0](LICENSE).
 
 ## Contributing
 
