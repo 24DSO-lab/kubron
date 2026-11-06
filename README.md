@@ -59,7 +59,7 @@ Kubron is an open-source **Kubernetes Operations Workspace** for desktop and web
 
 ### Clusters
 - **Multi-cluster management** — add clusters from a kubeconfig, switch between them from a single window, and give each one a name, color, icon and environment tag (`dev` / `test` / `stage` / `prod`)
-- **Cluster sign-in** — automatic OIDC login with password, browser authorization-code + PKCE, device-code and legacy refresh; interactive sign-ins use per-user credentials by default; a shared team credential is an explicit exception. See the [sign-in guide](docs/cluster-sign-in.md)
+- **Cluster sign-in** — built-in sign-in for OIDC (password, browser authorization-code + PKCE, device code, legacy refresh), Azure AKS (device code, service principal, username/password), AWS EKS (access keys, temporary session keys, IAM Identity Center) and Google GKE (Google account or service account key); other `exec` plugins run after your confirmation on the desktop, and the web server never runs them. Interactive sign-ins use per-user credentials by default; a shared team account is an explicit exception chosen by a cluster administrator. See the [sign-in guide](docs/cluster-sign-in.md)
 - **Namespace scoping** — pick one, several or all namespaces; works with restricted RBAC (no cluster-wide `list` required) and reports partial failures instead of hiding them
 - **Live updates** — shared informers keep lists and the dashboard fresh without hammering the API server
 
@@ -97,9 +97,9 @@ Kubron is an open-source **Kubernetes Operations Workspace** for desktop and web
 - **Project access** — roles and access of projects
 
 ### Security & access control
-- **Security-sensitive implementation decisions** — [OIDC browser callback](docs/decisions/2026-11-04-oidc-browser-callback.md) (принято), [all decisions](docs/decisions/README.md)
+- **Architecture and security decisions** — [ADR index](docs/adr/README.md) (including [password hashing](docs/adr/0019-password-hashing.md) and [HTTP security](docs/adr/0020-http-security.md)) and [implementation decisions](docs/decisions/README.md) such as the [OIDC browser callback](docs/decisions/2026-11-04-oidc-browser-callback.md)
 - **Local users & roles** — `admin`, `operator` and `user` roles built on fine-grained permissions (read, secrets, operate, write, exec, port-forward, cluster and user management, audit)
-- **Safe defaults** — PBKDF2-SHA256 password hashing (600k iterations), lockout after failed attempts, auto-logout on inactivity that closes terminals and port forwards
+- **Safe defaults** — Argon2id password hashing (old PBKDF2 hashes are upgraded on the next login), lockout after failed attempts, auto-logout on inactivity that closes terminals and port forwards
 - **Audit log** — track who did what, with log rotation
 - **Extension points** — a public `pkg/ext` API for external modules (e.g. SSO/OIDC, custom storage)
 - **No telemetry** — no mandatory account, your kubeconfig never leaves your machine
@@ -147,11 +147,10 @@ On Linux add `-tags webkit2_41` to `wails dev` / `wails build` (WebKitGTK 4.1, a
 - **User guides** (PDF): Helm — [English](docs/DOCS/EN/Kubron-Helm-User-Guide-EN.pdf), [Русский](docs/DOCS/RU/Kubron-Helm-User-Guide.pdf); GitOps — [English](docs/DOCS/EN/Kubron-ArgoCD-User-Guide-EN.pdf), [Русский](docs/DOCS/RU/Kubron-ArgoCD-User-Guide.pdf)
 - **Server deployment** (Russian) — [docs/deploy.md](docs/deploy.md), [high availability](docs/ha.md), [backup and restore](docs/backup.md), [logging](docs/logging.md), [metrics](docs/metrics.md), [HTTP security](docs/http-security.md)
 - **Server security** (Russian) — [threat model](docs/threat-model.md), [security review](docs/security-review.md)
-- **Documentation map and project status** — [docs/README.md](docs/README.md) (what is done is in the [archive](docs/archive/README.md), what is still open is in [docs/tickets](docs/tickets) and [docs/decisions](docs/decisions))
+- **Cluster sign-in** (Russian) — [which dialogs you will see and what to do](docs/cluster-sign-in.md); [manual cloud sign-in lab](docs/authentication-lab.md)
+- **Documentation map and project status** — [docs/README.md](docs/README.md) (what is done is in the [archive](docs/archive/README.md), what is still open is in [docs/tickets](docs/tickets))
 - **Localization** — [docs/i18n.md](docs/i18n.md), [ADR-0014](docs/adr/0014-i18n.md)
-
-- **Releasing** — [docs/releasing.md](docs/releasing.md)
-- **Manual cloud sign-in lab** — [docs/authentication-lab.md](docs/authentication-lab.md)
+- **Releasing** — [docs/releasing.md](docs/releasing.md), [supply chain (ADR-0021)](docs/adr/0021-release-supply-chain.md)
 
 ## Server mode
 

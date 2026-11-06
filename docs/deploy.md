@@ -369,6 +369,10 @@ Ingress привязку по cookie (`nginx.ingress.kubernetes.io/affinity: coo
 сессии пишутся в аудит (`terminal.start/stop`, `nodeshell.start/stop`: пользователь, кластер, namespace/под,
 причина и длительность).
 
+Число одновременных сессий одного пользователя ограничено: `KUBRON_MAX_TERMINALS` (по умолчанию 8),
+`KUBRON_MAX_LOG_STREAMS` (20) и `KUBRON_MAX_PORT_FORWARDS` (10); `0` снимает ограничение. В чарте это
+`kubron.maxTerminals`, `kubron.maxLogStreams` и `kubron.maxPortForwards` (пусто — значение по умолчанию).
+
 ## Helm: состояние и доступ к сети
 
 **Где хранится состояние.** В сервисном режиме (кластеры в PostgreSQL) репозитории Helm, OCI-реестры

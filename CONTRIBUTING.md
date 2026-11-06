@@ -75,6 +75,25 @@ go vet ./... && go test ./...
 cd frontend && npm test && npm run i18n:check
 ```
 
+## Branches
+
+Day-to-day work goes to `refactor` (or a feature branch) through a pull request. `dev` holds what is ready for a
+release and `master` holds what has been released; do not open pull requests into `master` directly
+(see [docs/releasing.md](docs/releasing.md)).
+
+## Architecture decisions
+
+Write a short ADR in [`docs/adr/`](docs/adr/README.md) before or together with the code when a change:
+
+1. is hard or expensive to undo (storage format, schema, a public RPC contract, a hash format);
+2. touches several parts of the system (core and both shells, the server and the chart, security);
+3. involves a real choice between options that someone may question later;
+4. changes or replaces an earlier ADR.
+
+An ADR is a few lines: context, the choice, and what was rejected and why. Do not edit an accepted ADR; write a new
+one that supersedes it. Smaller implementation choices go to the pull request description, or to
+[`docs/decisions/`](docs/decisions/README.md) when a person has to review them.
+
 ## Releases
 
 A release is cut by running `scripts/release.sh X.Y.Z` from the `dev` branch.
