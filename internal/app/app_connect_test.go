@@ -210,10 +210,10 @@ func TestWebOIDCClientIsAdminOnly(t *testing.T) {
 		t.Fatal(err)
 	}
 	a.auth.Logout()
-	if _, err := a.auth.Login(bob.Username, testPass); err != nil {
+	if _, err := a.auth.Login(t.Context(), bob.Username, testPass); err != nil {
 		t.Fatal(err)
 	}
-	if err := a.auth.ChangePassword(testPass, "another-pass-2"); err != nil {
+	if err := a.auth.ChangePassword(t.Context(), testPass, "another-pass-2"); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := a.GetWebOIDCClient(); !errors.Is(err, auth.ErrForbidden) {
@@ -751,11 +751,11 @@ func TestTeamChallengeIsOnlyForClusterAdministrators(t *testing.T) {
 		t.Fatal(err)
 	}
 	a.auth.Logout()
-	if _, err := a.auth.Login("bob", testPass); err != nil {
+	if _, err := a.auth.Login(t.Context(), "bob", testPass); err != nil {
 		t.Fatal(err)
 	}
 	// bob входит по временному паролю: пока он не сменён, доступ закрыт с ErrPasswordChangeRequired
-	if err := a.auth.ChangePassword(testPass, "another-pass-2"); err != nil {
+	if err := a.auth.ChangePassword(t.Context(), testPass, "another-pass-2"); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := a.ConnectCluster(id); !errors.Is(err, credential.ErrChallengeRequired) {

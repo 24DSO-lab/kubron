@@ -24,14 +24,14 @@ func TestStoreOutageDoesNotHammerTheStore(t *testing.T) {
 	db.setDown(true)
 	db.calls.Store(0)
 	for i := 0; i < 8; i++ {
-		_, _ = a.NewSession(fmt.Sprintf("10.54.0.%d", i+1)).Login("admin", "wrong-password")
+		_, _ = a.NewSession(fmt.Sprintf("10.54.0.%d", i+1)).Login(t.Context(), "admin", "wrong-password")
 	}
 	if got := db.calls.Load(); got != 1 {
 		t.Fatalf("the store was called %d times during the pause, want 1", got)
 	}
 
 	clk = clk.Add(sharedRetryAfter + time.Second)
-	_, _ = a.NewSession("10.54.1.1").Login("admin", "wrong-password")
+	_, _ = a.NewSession("10.54.1.1").Login(t.Context(), "admin", "wrong-password")
 	if got := db.calls.Load(); got != 2 {
 		t.Fatalf("after the pause exactly one probe is expected, calls = %d", got)
 	}
@@ -39,7 +39,7 @@ func TestStoreOutageDoesNotHammerTheStore(t *testing.T) {
 	// Хранилище вернулось: после паузы и истечения локальной блокировки вход работает в обычном режиме.
 	db.setDown(false)
 	clk = clk.Add(maxLockout + time.Minute)
-	if _, err := a.NewSession("10.54.2.1").Login("admin", pw); err != nil {
+	if _, err := a.NewSession("10.54.2.1").Login(t.Context(), "admin", pw); err != nil {
 		t.Fatalf("login after the store recovered: %v", err)
 	}
 }

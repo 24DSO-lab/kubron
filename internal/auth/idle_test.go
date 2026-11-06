@@ -219,10 +219,10 @@ func TestSetIdleTimeoutValidationPermissionAndPersistence(t *testing.T) {
 		t.Fatal(err)
 	}
 	f.s.Logout()
-	if _, err := f.s.Login("bob", "temp-pass-1"); err != nil {
+	if _, err := f.s.Login(t.Context(), "bob", "temp-pass-1"); err != nil {
 		t.Fatal(err)
 	}
-	if err := f.s.ChangePassword("temp-pass-1", "bobs-own-pass"); err != nil {
+	if err := f.s.ChangePassword(t.Context(), "temp-pass-1", "bobs-own-pass"); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := f.s.SetIdleTimeout(1); !errors.Is(err, ErrForbidden) {
@@ -234,7 +234,7 @@ func TestLoginStartsFreshIdleWindow(t *testing.T) {
 	f := newIdleFixture(t)
 	f.s.Logout()
 	f.at(5 * time.Hour)
-	if _, err := f.s.Login("admin", goodPass); err != nil {
+	if _, err := f.s.Login(t.Context(), "admin", goodPass); err != nil {
 		t.Fatal(err)
 	}
 	f.at(5*time.Hour + 10*time.Minute)

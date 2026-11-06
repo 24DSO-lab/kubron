@@ -367,7 +367,7 @@ func (a *App) Login(username, password string) (*auth.UserInfo, error) {
 	if a.auth == nil {
 		return nil, a.authUnavailable()
 	}
-	return a.auth.Login(username, password)
+	return a.auth.Login(a.baseContext(), username, password)
 }
 
 // Logout закрывает сессию.
@@ -402,7 +402,7 @@ func (a *App) ChangePassword(oldPassword, newPassword string) error {
 		return a.authUnavailable()
 	}
 	uid := a.currentUserID()
-	err := a.auth.ChangePassword(oldPassword, newPassword)
+	err := a.auth.ChangePassword(a.baseContext(), oldPassword, newPassword)
 	if err == nil {
 		err = a.revokePersonal(uid, "", "password-change")
 	}

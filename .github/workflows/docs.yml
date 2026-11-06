@@ -1,17 +1,15 @@
-name: Deploy docs
+name: Deploy docs to Cloudflare Pages
 
 on:
   push:
     branches:
       - refactor
-      - master
     paths:
       - 'docs-site/**'
       - '.github/workflows/docs.yml'
   pull_request:
     branches:
       - refactor
-      - master
     paths:
       - 'docs-site/**'
       - '.github/workflows/docs.yml'
@@ -21,15 +19,19 @@ permissions:
   contents: read
 
 concurrency:
-  group: pages
-  cancel-in-progress: true
+  group: docs-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build:
+    name: Build documentation
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Setup Node
         uses: actions/setup-node@v7
@@ -38,31 +40,44 @@ jobs:
           cache: npm
           cache-dependency-path: docs-site/package-lock.json
 
-      - name: Install dependencies and build
+      - name: Install dependencies
+        working-directory: docs-site
+        run: npm ci
+
+      - name: Build site
         working-directory: docs-site
         env:
-          DOCS_BASE: /kubron/
-        run: |
-          npm ci
-          npm run docs:build
+          DOCS_BASE: /
+        run: npm run docs:build
 
-      - name: Upload Pages artifact
+      - name: Upload build artifact
         if: github.event_name != 'pull_request'
-        uses: actions/upload-pages-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
+          name: kubron-docs
           path: docs-site/.vitepress/dist
+          if-no-files-found: error
+          retention-days: 1
 
   deploy:
-    if: github.event_name != 'pull_request'
+    name: Deploy to Cloudflare Pages
+    if: github.ref == 'refs/heads/refactor' && github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-latest
-    permissions:
-      pages: write
-      id-token: write
+    timeout-minutes: 10
     environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      name: production
+      url: https://kubron.pages.dev/
     steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v5
+      - name: Download build artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: kubron-docs
+          path: dist
+
+      - name: Deploy with Wrangler
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=kubron --branch=refactor

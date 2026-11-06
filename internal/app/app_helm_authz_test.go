@@ -86,10 +86,10 @@ func TestHelmManagementIsCheckedAgainstTheTeamOfTheActiveCluster(t *testing.T) {
 	})
 
 	a.auth.Logout()
-	if _, err := a.auth.Login("ops", testPass); err != nil {
+	if _, err := a.auth.Login(t.Context(), "ops", testPass); err != nil {
 		t.Fatal(err)
 	}
-	if err := a.auth.ChangePassword(testPass, "another-pass-2"); err != nil {
+	if err := a.auth.ChangePassword(t.Context(), testPass, "another-pass-2"); err != nil {
 		t.Fatal(err)
 	}
 

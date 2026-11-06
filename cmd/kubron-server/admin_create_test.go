@@ -43,7 +43,7 @@ func TestCreateAdminFromEnvironmentCreatesAdminAndAudits(t *testing.T) {
 	if svc.Status().NeedsSetup {
 		t.Fatal("setup must be complete")
 	}
-	u, err := svc.Login("root", adminPass)
+	u, err := svc.Login(t.Context(), "root", adminPass)
 	if err != nil || u.Role != auth.RoleAdmin {
 		t.Fatalf("login as the new administrator: %+v %v", u, err)
 	}
@@ -63,7 +63,7 @@ func TestCreateAdminReadsPasswordFromStdin(t *testing.T) {
 			t.Fatalf("stdin %q: %v", in, err)
 		}
 		svc, _ := auth.NewServiceWithBackend(dir.Users())
-		if _, err := svc.Login("root", adminPass); err != nil {
+		if _, err := svc.Login(t.Context(), "root", adminPass); err != nil {
 			t.Fatalf("the password from stdin %q must be exact: %v", in, err)
 		}
 	}
@@ -98,7 +98,7 @@ func TestCreateAdminRefusesWhenUsersExist(t *testing.T) {
 		t.Fatalf("second create-admin: %v, want ErrSetupDone", err)
 	}
 	svc, _ := auth.NewServiceWithBackend(st.Users())
-	if _, err := svc.Login("second", adminPass); err == nil {
+	if _, err := svc.Login(t.Context(), "second", adminPass); err == nil {
 		t.Fatal("the refused administrator must not exist")
 	}
 }

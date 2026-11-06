@@ -81,10 +81,10 @@ func TestAuthzWritesAuditTrail(t *testing.T) {
 		t.Fatal(err)
 	}
 	a.auth.Logout()
-	if _, err := a.auth.Login("bob", testPass); err != nil {
+	if _, err := a.auth.Login(t.Context(), "bob", testPass); err != nil {
 		t.Fatal(err)
 	}
-	if err := a.auth.ChangePassword(testPass, "another-pass-2"); err != nil {
+	if err := a.auth.ChangePassword(t.Context(), testPass, "another-pass-2"); err != nil {
 		t.Fatal(err)
 	}
 	before := len(events(t, a))
@@ -147,10 +147,10 @@ func TestAuditLogRequiresPermission(t *testing.T) {
 		t.Fatal(err)
 	}
 	a.auth.Logout()
-	if _, err := a.auth.Login("bob", testPass); err != nil {
+	if _, err := a.auth.Login(t.Context(), "bob", testPass); err != nil {
 		t.Fatal(err)
 	}
-	if err := a.auth.ChangePassword(testPass, "another-pass-2"); err != nil {
+	if err := a.auth.ChangePassword(t.Context(), testPass, "another-pass-2"); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := a.GetAuditLog(audit.Filter{}); !errors.Is(err, auth.ErrForbidden) {
@@ -165,7 +165,7 @@ func TestFailedLoginIsAudited(t *testing.T) {
 		t.Fatal(err)
 	}
 	a.auth.Logout()
-	if _, err := a.auth.Login("admin", "wrong-password"); err == nil {
+	if _, err := a.auth.Login(t.Context(), "admin", "wrong-password"); err == nil {
 		t.Fatal("a wrong password must be rejected")
 	}
 	e := events(t, a)[0]

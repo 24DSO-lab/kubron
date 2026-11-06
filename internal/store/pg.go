@@ -4,6 +4,7 @@
 package store
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"time"
@@ -128,11 +129,15 @@ var (
 )
 
 // Блокировки входа по логину общие для реплик (ADR-0016, раздел 5).
-func (u pgUsers) LockRemaining(key string) (time.Duration, error) { return u.f.LockRemaining(key) }
-func (u pgUsers) RecordFailure(key string, free int, base, max time.Duration) error {
-	return u.f.RecordFailure(key, free, base, max)
+func (u pgUsers) LockRemaining(ctx context.Context, key string) (time.Duration, error) {
+	return u.f.LockRemaining(ctx, key)
 }
-func (u pgUsers) ClearFailures(key string) error { return u.f.ClearFailures(key) }
+func (u pgUsers) RecordFailure(ctx context.Context, key string, free int, base, max time.Duration) error {
+	return u.f.RecordFailure(ctx, key, free, base, max)
+}
+func (u pgUsers) ClearFailures(ctx context.Context, key string) error {
+	return u.f.ClearFailures(ctx, key)
+}
 
 func (u pgUsers) UpsertUser(r auth.UserRecord) error { return u.d.UpsertUser(toExtUser(r)) }
 func (u pgUsers) InsertFirstUser(r auth.UserRecord) (bool, error) {

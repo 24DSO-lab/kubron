@@ -4,6 +4,7 @@
 package auth
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sync/atomic"
@@ -30,28 +31,28 @@ func (d *flakyLockDB) setDown(down bool) {
 	d.failClear.Store(down)
 }
 
-func (d *flakyLockDB) LockRemaining(key string) (time.Duration, error) {
+func (d *flakyLockDB) LockRemaining(ctx context.Context, key string) (time.Duration, error) {
 	d.calls.Add(1)
 	if d.failCheck.Load() {
 		return 0, errStoreDown
 	}
-	return d.lockDB.LockRemaining(key)
+	return d.lockDB.LockRemaining(ctx, key)
 }
 
-func (d *flakyLockDB) RecordFailure(key string, free int, base, maxLock time.Duration) error {
+func (d *flakyLockDB) RecordFailure(ctx context.Context, key string, free int, base, maxLock time.Duration) error {
 	d.calls.Add(1)
 	if d.failRecord.Load() {
 		return errStoreDown
 	}
-	return d.lockDB.RecordFailure(key, free, base, maxLock)
+	return d.lockDB.RecordFailure(ctx, key, free, base, maxLock)
 }
 
-func (d *flakyLockDB) ClearFailures(key string) error {
+func (d *flakyLockDB) ClearFailures(ctx context.Context, key string) error {
 	d.calls.Add(1)
 	if d.failClear.Load() {
 		return errStoreDown
 	}
-	return d.lockDB.ClearFailures(key)
+	return d.lockDB.ClearFailures(ctx, key)
 }
 
 var _ FailureBackend = (*flakyLockDB)(nil)
@@ -79,7 +80,7 @@ func failLogins(t *testing.T, svc *Service, user string, n int, base string) {
 	t.Helper()
 	for i := 0; i < n; i++ {
 		src := fmt.Sprintf("%s.%d", base, i+1)
-		if _, err := svc.NewSession(src).Login(user, "wrong-password"); !errors.Is(err, ErrInvalidCredentials) {
+		if _, err := svc.NewSession(src).Login(t.Context(), user, "wrong-password"); !errors.Is(err, ErrInvalidCredentials) {
 			t.Fatalf("failed login %d: %v", i+1, err)
 		}
 	}
@@ -88,7 +89,7 @@ func failLogins(t *testing.T, svc *Service, user string, n int, base string) {
 // mustBeLocked проверяет, что вход admin с правильным паролем отклонён блокировкой (до проверки пароля).
 func mustBeLocked(t *testing.T, svc *Service, src string) {
 	t.Helper()
-	_, err := svc.NewSession(src).Login("admin", pw)
+	_, err := svc.NewSession(src).Login(t.Context(), "admin", pw)
 	var locked *LockedError
 	if !errors.As(err, &locked) || locked.RetryAfter <= 0 {
 		t.Fatalf("the login must be locked out, got: %v", err)
@@ -136,11 +137,11 @@ func TestHealthyStoreKeepsNoLocalLoginCounter(t *testing.T) {
 		t.Fatalf("with a healthy shared store the login counter must not be kept in memory: %+v", local)
 	}
 
-	if _, err := b.NewSession("10.52.1.1").Login("admin", pw); err != nil { // сбрасывает общий счётчик
+	if _, err := b.NewSession("10.52.1.1").Login(t.Context(), "admin", pw); err != nil { // сбрасывает общий счётчик
 		t.Fatal(err)
 	}
 	failLogins(t, a, "admin", freeAttempts-1, "10.52.2") // с локальным счётчиком вышло бы 3+4 и блокировка
-	if _, err := a.NewSession("10.52.3.1").Login("admin", pw); err != nil {
+	if _, err := a.NewSession("10.52.3.1").Login(t.Context(), "admin", pw); err != nil {
 		t.Fatalf("false lockout after the shared counter was cleared: %v", err)
 	}
 }
@@ -151,7 +152,7 @@ func TestClearFailuresErrorKeepsCounterAndLogin(t *testing.T) {
 	failLogins(t, a, "admin", freeAttempts-1, "10.53.0")
 
 	db.failClear.Store(true)
-	if _, err := a.NewSession("10.53.1.1").Login("admin", pw); err != nil {
+	if _, err := a.NewSession("10.53.1.1").Login(t.Context(), "admin", pw); err != nil {
 		t.Fatalf("a failed counter clear must not break a valid login: %v", err)
 	}
 	db.fmu.Lock()
@@ -166,19 +167,19 @@ func TestClearFailuresErrorKeepsCounterAndLogin(t *testing.T) {
 func TestChangePasswordLockoutSurvivesStoreOutage(t *testing.T) {
 	a, _, db := twoFlakyReplicas(t)
 	v := a.NewSession("10.55.0.1")
-	if _, err := v.Login("admin", pw); err != nil {
+	if _, err := v.Login(t.Context(), "admin", pw); err != nil {
 		t.Fatal(err)
 	}
 
 	db.setDown(true)
 	const newPw = "battery-staple-2"
 	for i := 0; i < freeAttempts; i++ {
-		if err := v.ChangePassword("wrong-old-password", newPw); !errors.Is(err, ErrWrongPassword) {
+		if err := v.ChangePassword(t.Context(), "wrong-old-password", newPw); !errors.Is(err, ErrWrongPassword) {
 			t.Fatalf("attempt %d: %v", i+1, err)
 		}
 	}
 	var locked *LockedError
-	if err := v.ChangePassword(pw, newPw); !errors.As(err, &locked) || locked.RetryAfter <= 0 {
+	if err := v.ChangePassword(t.Context(), pw, newPw); !errors.As(err, &locked) || locked.RetryAfter <= 0 {
 		t.Fatalf("the password change must be locked out while the store is down: %v", err)
 	}
 }
@@ -187,7 +188,7 @@ func TestChangePasswordSharedLockoutIsMirrored(t *testing.T) {
 	a, b, db := twoFlakyReplicas(t)
 	va, vb := a.NewSession("10.57.0.1"), b.NewSession("10.57.1.1")
 	for _, v := range []*Service{va, vb} {
-		if _, err := v.Login("admin", pw); err != nil {
+		if _, err := v.Login(t.Context(), "admin", pw); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -197,14 +198,14 @@ func TestChangePasswordSharedLockoutIsMirrored(t *testing.T) {
 		if i%2 == 1 {
 			v = vb
 		}
-		_ = v.ChangePassword("wrong-old-password", newPw)
+		_ = v.ChangePassword(t.Context(), "wrong-old-password", newPw)
 	}
 	var locked *LockedError
-	if err := va.ChangePassword(pw, newPw); !errors.As(err, &locked) { // видит общую блокировку и запоминает
+	if err := va.ChangePassword(t.Context(), pw, newPw); !errors.As(err, &locked) { // видит общую блокировку и запоминает
 		t.Fatalf("expected the shared lockout: %v", err)
 	}
 	db.setDown(true)
-	if err := va.ChangePassword(pw, newPw); !errors.As(err, &locked) {
+	if err := va.ChangePassword(t.Context(), pw, newPw); !errors.As(err, &locked) {
 		t.Fatalf("the mirrored lockout must survive the outage: %v", err)
 	}
 }
@@ -229,4 +230,48 @@ func TestReplicasRestoreSharedLockoutAfterOutage(t *testing.T) {
 	failLogins(t, b, "admin", freeAttempts-3, "10.56.3")
 	mustBeLocked(t, a, "10.56.9.3") // неудачи двух реплик сложились в общем хранилище
 	mustBeLocked(t, b, "10.56.9.4")
+}
+
+// ctxLockDB — lockDB, чья проверка блокировки уважает отмену контекста, как это делает PostgreSQL.
+type ctxLockDB struct{ *flakyLockDB }
+
+func (d *ctxLockDB) LockRemaining(ctx context.Context, key string) (time.Duration, error) {
+	if err := ctx.Err(); err != nil {
+		d.calls.Add(1)
+		return 0, err
+	}
+	return d.flakyLockDB.LockRemaining(ctx, key)
+}
+
+// Отмена контекста запроса — не сбой общего хранилища: размыкатель не открывается, а неудача входа всё равно
+// записывается в общее хранилище (оборвав запрос, блокировку не обойти).
+func TestLoginCancelDoesNotTripBreakerAndStillRecordsFailure(t *testing.T) {
+	db := &ctxLockDB{newFlakyLockDB()}
+	s, err := NewServiceWithBackend(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Setup("admin", pw); err != nil {
+		t.Fatal(err)
+	}
+
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	if _, err := s.Login(ctx, "admin", "wrong-password"); !errors.Is(err, ErrInvalidCredentials) {
+		t.Fatalf("want ErrInvalidCredentials, got %v", err)
+	}
+	db.fmu.Lock()
+	recorded := db.counts["admin"]
+	db.fmu.Unlock()
+	if recorded != 1 {
+		t.Fatalf("failure must reach the shared store despite cancellation, got %d", recorded)
+	}
+
+	before := db.calls.Load()
+	if _, err := s.Login(t.Context(), "admin", "wrong-password"); !errors.Is(err, ErrInvalidCredentials) {
+		t.Fatalf("want ErrInvalidCredentials, got %v", err)
+	}
+	if db.calls.Load() == before {
+		t.Fatal("cancellation must not open the breaker: the shared store has to be queried again")
+	}
 }
