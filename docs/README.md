@@ -34,6 +34,7 @@
 | [adr/](adr/README.md) | Архитектурные решения (ADR-0001…0022): почему устроено так |
 | [decisions/](decisions/README.md) | Решения по безопасности и реализации (статус: ждёт ревью → принято) |
 | [e2e.md](e2e.md), [perf-check.md](perf-check.md) | Smoke-e2e, замер скорости списков |
+| [authentication-lab.md](authentication-lab.md) | Ручной стенд входа в облачные кластеры (EKS, GKE, AKS) без создания кластеров |
 | [releasing.md](releasing.md) | Как выпускается релиз |
 | [../CONTRIBUTING.md](../CONTRIBUTING.md) | Правила вклада, DCO, заголовки лицензии |
 
