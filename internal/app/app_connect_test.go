@@ -17,6 +17,7 @@ import (
 	"github.com/24DSO-labs/kubron/internal/auth"
 	"github.com/24DSO-labs/kubron/internal/credential"
 	"github.com/24DSO-labs/kubron/internal/k8s"
+	"github.com/24DSO-labs/kubron/internal/signin"
 	"github.com/24DSO-labs/kubron/pkg/ext"
 )
 
@@ -121,7 +122,7 @@ func connectFixture(t *testing.T, b *fakeBroker) (*App, *recPlatform, string, *[
 	}
 	pl := &recPlatform{}
 	a.platform = pl
-	a.conn = newConnectState()
+	a.conn = signin.NewState()
 	a.broker = b
 	var connected []string
 	a.finish = func(id string) error { connected = append(connected, id); return nil }
@@ -144,7 +145,7 @@ func TestWithWebOIDCParamsRequiresPublicClientAndRedirectPair(t *testing.T) {
 			wantClient: "admin-public-client", wantRedirect: "https://kubron.example/auth/cluster/callback"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			got := withWebOIDCParams(base, tc.clientID, tc.redirectURL)
+			got := signin.WithWebOIDCParams(base, tc.clientID, tc.redirectURL)
 			if got.Params["web.client-id"] != tc.wantClient || got.Params["web.redirect-url"] != tc.wantRedirect {
 				t.Fatalf("web OIDC params = %#v", got.Params)
 			}
@@ -343,7 +344,7 @@ func TestChallengeBelongsToTheSessionThatStartedIt(t *testing.T) {
 		t.Fatal(err)
 	}
 	other := *a
-	other.conn = newConnectState()
+	other.conn = signin.NewState()
 	n := len(b.answers)
 	if _, err := other.AnswerChallenge("c1", map[string]string{"password": "p"}); !errors.Is(err, credential.ErrChallengeExpired) {
 		t.Fatalf("got %v", err)
@@ -416,7 +417,7 @@ func openView(t *testing.T, a *App, clusterID string) *App {
 	v := *a
 	v.k8sMgr = a.k8sMgr.ForSession()
 	v.pfMgr = k8s.NewSessionPortForwardManager(v.k8sMgr)
-	v.conn = newConnectState()
+	v.conn = signin.NewState()
 	if err := v.k8sMgr.ConnectToCluster(clusterID); err != nil {
 		t.Fatal(err)
 	}

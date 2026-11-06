@@ -14,6 +14,7 @@ import (
 	"github.com/24DSO-labs/kubron/internal/audit"
 	"github.com/24DSO-labs/kubron/internal/auth"
 	"github.com/24DSO-labs/kubron/internal/k8s"
+	"github.com/24DSO-labs/kubron/internal/signin"
 	"github.com/24DSO-labs/kubron/internal/store"
 )
 
@@ -67,7 +68,7 @@ func NewSessionView(root *App, source string) *App {
 	// Свой вид менеджеров: активный кластер, терминалы, логи и port-forward принадлежат сессии;
 	// пул подключений (informers) общий.
 	v.k8sMgr = root.k8sMgr.ForSession()
-	v.conn = newConnectState() // входы принадлежат сессии
+	v.conn = signin.NewState() // входы принадлежат сессии
 	v.k8sMgr.SetNotifier(nil)  // события пойдут владельцу после BindView; до входа адресата нет
 	v.pfMgr = k8s.NewSessionPortForwardManager(v.k8sMgr)
 	// Своя граница отмены: операции вида кончаются с его освобождением (ReleaseView) или остановкой ядра.
