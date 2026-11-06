@@ -23,7 +23,7 @@ func counted(v *Service) *int32 {
 
 func loginAs(t *testing.T, v *Service, user, pass string) {
 	t.Helper()
-	if _, err := v.Login(user, pass); err != nil {
+	if _, err := v.Login(t.Context(), user, pass); err != nil {
 		t.Fatalf("login %s: %v", user, err)
 	}
 }
@@ -122,7 +122,7 @@ func TestChangePasswordEndsOtherSessionsOnly(t *testing.T) {
 	n1, n2 := counted(v1), counted(v2)
 	loginAs(t, v1, "bob", bobPass)
 	loginAs(t, v2, "bob", bobPass)
-	if err := v1.ChangePassword(bobPass, "another-pass-9"); err != nil {
+	if err := v1.ChangePassword(t.Context(), bobPass, "another-pass-9"); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := v1.Current(); err != nil {
@@ -211,18 +211,18 @@ func TestSourceLockoutAcrossUsernames(t *testing.T) {
 	s.now = func() time.Time { return clock }
 	attacker := s.NewSession("203.0.113.7")
 	for i := 0; i < sourceFreeAttempts; i++ { // разные логины: по логину блокировки нет
-		_, _ = attacker.Login("user"+string(rune('a'+i%26))+string(rune('A'+i/26)), "x")
+		_, _ = attacker.Login(t.Context(), "user"+string(rune('a'+i%26))+string(rune('A'+i/26)), "x")
 	}
 	var locked *LockedError
-	if _, err := attacker.Login("bob", bobPass); !errors.As(err, &locked) {
+	if _, err := attacker.Login(t.Context(), "bob", bobPass); !errors.As(err, &locked) {
 		t.Fatalf("expected an address lockout even with the correct password: %v", err)
 	}
 	other := s.NewSession("198.51.100.9")
-	if _, err := other.Login("bob", bobPass); err != nil {
+	if _, err := other.Login(t.Context(), "bob", bobPass); err != nil {
 		t.Errorf("another address must not suffer: %v", err)
 	}
 	clock = clock.Add(sourceWindow + time.Minute) // окно прошло — счётчик забыт
-	if _, err := attacker.Login("bob", bobPass); err != nil {
+	if _, err := attacker.Login(t.Context(), "bob", bobPass); err != nil {
 		t.Errorf("login must work after the window: %v", err)
 	}
 }
@@ -231,9 +231,9 @@ func TestEmptySourceHasNoAddressLockout(t *testing.T) {
 	s, _ := setupWithUser(t)
 	v := s.NewSession("")
 	for i := 0; i < sourceFreeAttempts+5; i++ {
-		_, _ = v.Login("name"+string(rune('a'+i%26))+string(rune('A'+i/26)), "x")
+		_, _ = v.Login(t.Context(), "name"+string(rune('a'+i%26))+string(rune('A'+i/26)), "x")
 	}
-	if _, err := v.Login("bob", bobPass); err != nil {
+	if _, err := v.Login(t.Context(), "bob", bobPass); err != nil {
 		t.Errorf("there must be no address lockout without an address: %v", err)
 	}
 }
@@ -252,10 +252,10 @@ func TestAuditAttributesActionsToSessionUserAndSource(t *testing.T) {
 		t.Fatal(err)
 	}
 	bob := root.NewSession("10.0.0.2")
-	if _, err := bob.Login("bob", "temp-pass-1"); err != nil {
+	if _, err := bob.Login(t.Context(), "bob", "temp-pass-1"); err != nil {
 		t.Fatal(err)
 	}
-	if err := bob.ChangePassword("temp-pass-1", "bobs-own-pass"); err != nil {
+	if err := bob.ChangePassword(t.Context(), "temp-pass-1", "bobs-own-pass"); err != nil {
 		t.Fatal(err)
 	}
 

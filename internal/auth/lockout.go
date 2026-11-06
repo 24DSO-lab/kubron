@@ -4,6 +4,7 @@
 package auth
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"strings"
@@ -95,8 +96,9 @@ func (l *lockouts) sharedFailed(op string, err error) {
 
 // sharedLockRemaining — остаток блокировки логина в общем хранилище. ok=false: проверить не удалось (сбой или
 // пауза после него), и вызывающий обязан перейти на локальную защиту; нет хранилища вообще — ok=true, 0.
-// Вызывать без s.mu.
-func (l *lockouts) sharedLockRemaining(key string) (d time.Duration, ok bool) {
+// Если проверку оборвала отмена ctx, это не сбой хранилища: размыкатель не открывается, а вызывающий видит
+// ctx.Err() и прекращает операцию. Вызывать без s.mu.
+func (l *lockouts) sharedLockRemaining(ctx context.Context, key string) (d time.Duration, ok bool) {
 	if l.fail == nil {
 		return 0, true
 	}
@@ -104,9 +106,9 @@ func (l *lockouts) sharedLockRemaining(key string) (d time.Duration, ok bool) {
 		l.sharedDegraded.Add(1)
 		return 0, false
 	}
-	d, err := l.fail.LockRemaining(key)
+	d, err := l.fail.LockRemaining(ctx, key)
 	if err != nil {
-		l.sharedFailed("lock check", err)
+		l.sharedError(ctx, "lock check", err)
 		return 0, false
 	}
 	return d, true
@@ -114,7 +116,11 @@ func (l *lockouts) sharedLockRemaining(key string) (d time.Duration, ok bool) {
 
 // sharedRecordFailure учитывает неудачу в общем хранилище. false — записать не удалось (сбой или пауза после
 // него): неудача должна быть учтена локально. Нет хранилища — true, ничего не делает. Вызывать без s.mu.
-func (l *lockouts) sharedRecordFailure(key string) bool {
+//
+// Запись не зависит от отмены ctx: пароль уже проверен и оказался неверным, и клиент не должен уметь «потерять»
+// неудачу, оборвав запрос до записи (иначе блокировку можно обойти). Значения контекста сохраняются, а предел
+// по времени задаёт хранилище.
+func (l *lockouts) sharedRecordFailure(ctx context.Context, key string) bool {
 	if l.fail == nil {
 		return true
 	}
@@ -122,7 +128,7 @@ func (l *lockouts) sharedRecordFailure(key string) bool {
 		l.sharedDegraded.Add(1)
 		return false
 	}
-	if err := l.fail.RecordFailure(key, freeAttempts, baseLockout, maxLockout); err != nil {
+	if err := l.fail.RecordFailure(context.WithoutCancel(ctx), key, freeAttempts, baseLockout, maxLockout); err != nil {
 		l.sharedFailed("failure record", err)
 		return false
 	}
@@ -130,14 +136,24 @@ func (l *lockouts) sharedRecordFailure(key string) bool {
 }
 
 // sharedClearFailures забывает счётчик в общем хранилище (без s.mu). Не удалось — счётчик остаётся: это
-// строже, но не слабее защиты. Во время паузы после сбоя хранилище не опрашивается.
-func (l *lockouts) sharedClearFailures(key string) {
+// строже, но не слабее защиты. Во время паузы после сбоя хранилище не опрашивается. Как и запись неудачи,
+// не прерывается отменой ctx: итог входа уже определён, и счётчик должен соответствовать ему.
+func (l *lockouts) sharedClearFailures(ctx context.Context, key string) {
 	if !l.sharedReady() {
 		return
 	}
-	if err := l.fail.ClearFailures(key); err != nil {
+	if err := l.fail.ClearFailures(context.WithoutCancel(ctx), key); err != nil {
 		l.sharedFailed("counter clear", err)
 	}
+}
+
+// sharedError разбирает ошибку чтения из общего хранилища: отмена или срок вызывающего ctx — не сбой хранилища,
+// и размыкатель не трогается (иначе клиент, обрывающий запросы, отключал бы общую защиту всей реплики).
+func (l *lockouts) sharedError(ctx context.Context, op string, err error) {
+	if ctx.Err() != nil {
+		return
+	}
+	l.sharedFailed(op, err)
 }
 
 // mirrorSharedLockLocked запоминает в памяти блокировку, которую сообщило общее хранилище (d > 0): если оно

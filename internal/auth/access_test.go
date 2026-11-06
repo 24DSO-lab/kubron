@@ -44,7 +44,7 @@ func accessFixture(t *testing.T) (admin, bob, eve *Service, fa *fakeAccess) {
 	loginAs(t, bob, "bob", bobPass)
 	eve = s.NewSession("")
 	loginAs(t, eve, "eve", "temp-pass-2")
-	if err := eve.ChangePassword("temp-pass-2", "eves-own-pass"); err != nil {
+	if err := eve.ChangePassword(t.Context(), "temp-pass-2", "eves-own-pass"); err != nil {
 		t.Fatal(err)
 	}
 	return admin, bob, eve, fa

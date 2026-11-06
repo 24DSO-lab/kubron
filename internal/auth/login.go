@@ -4,6 +4,7 @@
 package auth
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -54,11 +55,11 @@ func (s *Service) dummy() string {
 	return s.dummyHash
 }
 
-// Login проверяет логин и пароль и открывает сессию.
-func (s *Service) Login(username, password string) (*UserInfo, error) {
+// Login проверяет логин и пароль и открывает сессию. ctx — граница отмены обращений к общему хранилищу блокировок.
+func (s *Service) Login(ctx context.Context, username, password string) (*UserInfo, error) {
 	key := normalizeUsername(username)
 
-	shared, checkOK := s.sharedLockRemaining(key) // общее хранилище: вне блокировки, до проверки пароля
+	shared, checkOK := s.sharedLockRemaining(ctx, key) // общее хранилище: вне блокировки, до проверки пароля
 	s.mu.Lock()
 	if len(s.st.users) == 0 {
 		s.mu.Unlock()
@@ -103,8 +104,8 @@ func (s *Service) Login(username, password string) (*UserInfo, error) {
 	}
 
 	failed := !ok || snapshot == nil
-	degraded := !checkOK                       // общее хранилище не ответило на проверку блокировки
-	if failed && !s.sharedRecordFailure(key) { // вне s.mu: ходит во внешнее хранилище
+	degraded := !checkOK                            // общее хранилище не ответило на проверку блокировки
+	if failed && !s.sharedRecordFailure(ctx, key) { // вне s.mu: ходит во внешнее хранилище
 		degraded = true
 	}
 
@@ -143,7 +144,7 @@ func (s *Service) Login(username, password string) (*UserInfo, error) {
 	info := toInfo(rec)
 	hook := s.onLogout
 	s.mu.Unlock()
-	s.sharedClearFailures(key) // в общем хранилище — после снятия блокировки
+	s.sharedClearFailures(ctx, key) // в общем хранилище — после снятия блокировки
 
 	if replaced && hook != nil {
 		hook()
@@ -152,7 +153,7 @@ func (s *Service) Login(username, password string) (*UserInfo, error) {
 }
 
 // ChangePassword меняет пароль текущего пользователя.
-func (s *Service) ChangePassword(oldPassword, newPassword string) error {
+func (s *Service) ChangePassword(ctx context.Context, oldPassword, newPassword string) error {
 	s.mu.Lock()
 	u := s.sessionUserLocked()
 	if u == nil {
@@ -163,7 +164,7 @@ func (s *Service) ChangePassword(oldPassword, newPassword string) error {
 	// Подбор старого пароля (украденная сессия) ограничивается так же, как вход: по логину и по адресу
 	pwKey, ipKey := "pw:"+normalizeUsername(username), s.ipKey()
 	s.mu.Unlock()
-	shared, checkOK := s.sharedLockRemaining(pwKey)
+	shared, checkOK := s.sharedLockRemaining(ctx, pwKey)
 	s.mu.Lock()
 	s.mirrorSharedLockLocked(pwKey, shared) // блокировка из общего хранилища переживёт его сбой
 	if remaining := max(s.lockRemainingLocked(pwKey), shared, s.lockRemainingLocked(ipKey)); remaining > 0 {
@@ -178,7 +179,7 @@ func (s *Service) ChangePassword(oldPassword, newPassword string) error {
 	}
 	if ok, _ := verifyPassword(oldPassword, oldHash); !ok {
 		degraded := !checkOK
-		if !s.sharedRecordFailure(pwKey) { // вне s.mu: ходит во внешнее хранилище
+		if !s.sharedRecordFailure(ctx, pwKey) { // вне s.mu: ходит во внешнее хранилище
 			degraded = true
 		}
 		s.mu.Lock()
@@ -201,7 +202,7 @@ func (s *Service) ChangePassword(oldPassword, newPassword string) error {
 	changed := false
 	defer func() {
 		if changed {
-			s.sharedClearFailures(pwKey)
+			s.sharedClearFailures(ctx, pwKey)
 		}
 	}()
 	s.mu.Lock()
