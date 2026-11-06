@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Manual Kubernetes tokens:** an unverified JWT `sub` is no longer presented as an authenticated Kubernetes principal in audit or connection details. The API server remains the authority for token validation; the unverified `exp` is used only as a cache hint.
 
 ### Changed
+- **Wails 2.17.1 / echo v4.16.1:** bumped Wails and pinned `github.com/labstack/echo/v4` to v4.16.1 to drop v4.16.3 from the module graph (GO-2026-6872, GO-2026-6875; no fixed version exists for the v4 line — the fixes are in echo v5, which Wails does not use).
 - **Cluster sign-in:** all connections go through the credential broker. Without a broker only clusters with static credentials and the in-cluster mode connect. The `exec` block of a kubeconfig is never run by the connection code. The test connection of a kubeconfig that signs in through a plugin checks only the address and TLS.
 - **Cluster dialogs:** the login and password fields for `oidc-login` are removed; sign-in happens in the sign-in dialog.
 
