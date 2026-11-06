@@ -6,6 +6,8 @@ package main
 import (
 	"context"
 	"embed"
+	"log/slog"
+	"os"
 
 	"github.com/24DSO-labs/kubron/internal/app"
 	wailsplatform "github.com/24DSO-labs/kubron/internal/platform/wails"
@@ -58,6 +60,7 @@ func main() {
 	})
 
 	if err != nil {
-		println("Error:", err.Error())
+		slog.Error("wails: приложение завершилось с ошибкой", "error", err)
+		os.Exit(1)
 	}
 }

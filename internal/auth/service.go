@@ -9,7 +9,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -682,7 +682,7 @@ func (s *Service) refreshLocked() {
 		return
 	}
 	if err := s.reloadLocked(); err != nil {
-		log.Printf("auth: users were not refreshed: %v", err)
+		slog.Warn("auth: пользователи не обновлены", "error", err)
 	}
 }
 
@@ -719,7 +719,7 @@ func (s *Service) refreshOnMiss() bool {
 		return false
 	}
 	if err := s.refresh(); err != nil {
-		log.Printf("auth: users were not refreshed: %v", err)
+		slog.Warn("auth: пользователи не обновлены", "error", err)
 		return false
 	}
 	return true
@@ -735,7 +735,7 @@ func (s *Service) RefreshNow() {
 		return
 	}
 	if err := s.refresh(); err != nil {
-		log.Printf("auth: users were not refreshed: %v", err)
+		slog.Warn("auth: пользователи не обновлены", "error", err)
 	}
 }
 
@@ -753,7 +753,7 @@ func (s *Service) RunRefresher(ctx context.Context, every time.Duration) {
 			return
 		case <-t.C:
 			if err := s.refresh(); err != nil {
-				log.Printf("auth: users were not refreshed: %v", err)
+				slog.Warn("auth: пользователи не обновлены", "error", err)
 			}
 		}
 	}
@@ -794,7 +794,7 @@ func (s *Service) sharedLockRemaining(key string) time.Duration {
 	}
 	d, err := s.fail.LockRemaining(key)
 	if err != nil {
-		log.Printf("auth: login lockout is not checked: %v", err)
+		slog.Warn("auth: блокировка входа не проверена", "error", err)
 		return 0
 	}
 	return d
@@ -806,7 +806,7 @@ func (s *Service) sharedRecordFailure(key string) {
 		return
 	}
 	if err := s.fail.RecordFailure(key, freeAttempts, baseLockout, maxLockout); err != nil {
-		log.Printf("auth: failed login is not counted: %v", err)
+		slog.Warn("auth: неудачный вход не учтён", "error", err)
 	}
 }
 
@@ -816,7 +816,7 @@ func (s *Service) sharedClearFailures(key string) {
 		return
 	}
 	if err := s.fail.ClearFailures(key); err != nil {
-		log.Printf("auth: failure counter is not cleared: %v", err)
+		slog.Warn("auth: счётчик неудач не сброшен", "error", err)
 	}
 }
 

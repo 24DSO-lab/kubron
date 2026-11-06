@@ -5,7 +5,8 @@ package app
 
 import (
 	"context"
-	"log"
+	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/24DSO-labs/kubron/internal/clusterhealth"
@@ -31,7 +32,10 @@ func StartHealthMonitor(ctx context.Context, root *App, interval time.Duration) 
 	}
 	mon := root.k8sMgr.NewHealthMonitor()
 	mon.Interval = interval
-	mon.Logf = log.Printf
+	// Logf монитора — printf-style; пересылаем в slog, чтобы записи шли тем же структурированным потоком.
+	mon.Logf = func(format string, args ...any) {
+		slog.Warn(fmt.Sprintf(format, args...), "component", "clusterhealth")
+	}
 	if hs, ok := root.store.(interface{ HealthSink() clusterhealth.Sink }); ok {
 		mon.Sink = hs.HealthSink()
 	}
