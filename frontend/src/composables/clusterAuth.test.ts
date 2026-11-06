@@ -2,33 +2,31 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, expect, it } from 'vitest'
-import { authReady, authRequirement } from './clusterAuth'
+import { canShareAccount, isSharedAccount, signsIn } from './clusterAuth'
 
-describe('authRequirement', () => {
-  it('в десктопе плагины работают как у kubectl: ничего не требуется', () => {
-    for (const a of ['static', 'oidc-password', 'oidc-authcode', 'exec', undefined] as const) {
-      expect(authRequirement(a, false)).toBe('none')
-    }
+describe('signsIn', () => {
+  it('статические данные и старый бэкенд без поля — без входа', () => {
+    expect(signsIn('static')).toBe(false)
+    expect(signsIn(undefined)).toBe(false)
+    expect(signsIn('')).toBe(false)
   })
-  it('в вебе oidc-login с паролем просит логин и пароль, остальные плагины закрыты', () => {
-    expect(authRequirement('static', true)).toBe('none')
-    expect(authRequirement(undefined, true)).toBe('none') // старый бэкенд без поля
-    expect(authRequirement('oidc-password', true)).toBe('credentials')
-    expect(authRequirement('oidc-authcode', true)).toBe('authcode')
-    expect(authRequirement('exec', true)).toBe('exec')
+  it('oidc, облачные и прочие плагины входят через брокера', () => {
+    for (const a of ['oidc', 'cloud-eks', 'cloud-gke', 'cloud-aks', 'exec']) expect(signsIn(a)).toBe(true)
   })
 })
 
-describe('authReady', () => {
-  it('для credentials нужны и логин, и пароль', () => {
-    expect(authReady('credentials', '', '')).toBe(false)
-    expect(authReady('credentials', 'vasya', '')).toBe(false)
-    expect(authReady('credentials', '  ', 'pw')).toBe(false)
-    expect(authReady('credentials', 'vasya', 'pw')).toBe(true)
+describe('canShareAccount', () => {
+  it('нужны и команда, и вход через провайдера', () => {
+    expect(canShareAccount('oidc', true)).toBe(true)
+    expect(canShareAccount('oidc', false)).toBe(false)
+    expect(canShareAccount('static', true)).toBe(false)
   })
-  it('невозможные варианты не отправляются, обычные — всегда', () => {
-    expect(authReady('none', '', '')).toBe(true)
-    expect(authReady('authcode', 'v', 'p')).toBe(false)
-    expect(authReady('exec', 'v', 'p')).toBe(false)
+})
+
+describe('isSharedAccount', () => {
+  it('только режим общей учётной записи', () => {
+    expect(isSharedAccount({ mode: 'oidc-password' })).toBe(true)
+    expect(isSharedAccount({ mode: 'in-cluster' })).toBe(false)
+    expect(isSharedAccount({})).toBe(false)
   })
 })

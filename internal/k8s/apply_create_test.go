@@ -20,6 +20,7 @@ func newCreateManager(t *testing.T) (*Manager, *dynamicfake.FakeDynamicClient) {
 	m := NewManager()
 	m.pool.put("test", &ClusterConnection{Name: "test", DynamicClient: dyn})
 	m.activeCtx = "test"
+	m.activeKey = "test"
 	return m, dyn
 }
 

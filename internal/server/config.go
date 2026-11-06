@@ -10,6 +10,7 @@ import (
 	"io"
 	"net"
 	"net/netip"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -22,6 +23,13 @@ type Config struct {
 	// AllowRemote разрешает слушать не на loopback (KUBRON_ALLOW_REMOTE=1).
 	// Без TLS cookie уходит открытым текстом: для сети нужен обратный прокси с TLS.
 	AllowRemote bool
+	// PublicURL — публичный origin сервера для browser-callback (KUBRON_PUBLIC_URL). Пусто — browser-callback выключен.
+	PublicURL string
+	// GKEOAuthClientID и GKEOAuthClientSecret — OAuth-клиент Google для входа пользователя в GKE
+	// (KUBRON_GKE_OAUTH_CLIENT_ID, KUBRON_GKE_OAUTH_CLIENT_SECRET). Без идентификатора вход в GKE идёт только
+	// по ключу сервисного аккаунта. Секрет не логируется и не отдаётся в API.
+	GKEOAuthClientID     string
+	GKEOAuthClientSecret string
 	// AllowedHosts — допустимые значения заголовка Host (KUBRON_ALLOWED_HOSTS, через запятую; allowedhosts.go). Пусто —
 	// проверка выключена. Потоки port-forward (*.pf.<домен>) разрешаются автоматически.
 	AllowedHosts []string
@@ -143,6 +151,9 @@ func LoadConfig(args []string, getenv func(string) string, out io.Writer) (Confi
 		cfg.Listen = v
 	}
 	cfg.AllowRemote = truthy(getenv("KUBRON_ALLOW_REMOTE"))
+	cfg.PublicURL = strings.TrimSpace(getenv("KUBRON_PUBLIC_URL"))
+	cfg.GKEOAuthClientID = strings.TrimSpace(getenv("KUBRON_GKE_OAUTH_CLIENT_ID"))
+	cfg.GKEOAuthClientSecret = strings.TrimSpace(getenv("KUBRON_GKE_OAUTH_CLIENT_SECRET"))
 	cfg.ReplicaID = strings.TrimSpace(getenv("KUBRON_REPLICA_ID"))
 	cfg.MetricsListen = strings.TrimSpace(getenv("KUBRON_METRICS_LISTEN"))
 	cfg.DataDir = getenv("KUBRON_DATA_DIR")
@@ -290,6 +301,12 @@ func truthy(s string) bool {
 
 // Validate проверяет конфигурацию. Не-loopback адрес без явного разрешения — ошибка.
 func (c Config) Validate() error {
+	if err := validatePublicURL(c.PublicURL); err != nil {
+		return fmt.Errorf("KUBRON_PUBLIC_URL: %w", err)
+	}
+	if c.GKEOAuthClientSecret != "" && c.GKEOAuthClientID == "" {
+		return errors.New("KUBRON_GKE_OAUTH_CLIENT_SECRET is set without KUBRON_GKE_OAUTH_CLIENT_ID")
+	}
 	if c.SessionTTL <= 0 {
 		return errors.New("session lifetime must be positive")
 	}
@@ -356,6 +373,45 @@ func (c Config) Validate() error {
 	if !c.AllowRemote && !isLoopbackHost(host) {
 		return errors.New("address " + c.Listen + " is not loopback: the server does not terminate TLS, so the session cookie would be sent in plain text; " +
 			"to allow network access, put a TLS proxy in front and pass --allow-remote")
+	}
+	return nil
+}
+
+// validatePublicURL проверяет origin, на который IdP будет возвращать browser-callback.
+// В production требуется HTTPS; HTTP допустим только для loopback-разработки.
+func validatePublicURL(raw string) error {
+	if raw == "" {
+		return nil
+	}
+	u, err := url.Parse(raw)
+	if err != nil {
+		return errors.New("must be an absolute URL")
+	}
+	if !u.IsAbs() || u.Opaque != "" || u.Host == "" || u.Hostname() == "" {
+		return errors.New("must be an absolute URL with a host")
+	}
+	if u.User != nil || u.RawQuery != "" || u.ForceQuery || u.Fragment != "" || strings.Contains(raw, "#") {
+		return errors.New("must not contain user information, query, or fragment")
+	}
+	if u.Path != "" && u.Path != "/" {
+		return errors.New("must be an origin without a path")
+	}
+	if port := u.Port(); port != "" {
+		n, err := strconv.Atoi(port)
+		if err != nil || n < 1 || n > 65535 {
+			return errors.New("port must be between 1 and 65535")
+		}
+	}
+	if !strings.EqualFold(u.Scheme, "https") && !strings.EqualFold(u.Scheme, "http") {
+		return errors.New("scheme must be https (http is allowed only for localhost)")
+	}
+	if strings.EqualFold(u.Scheme, "http") {
+		host := strings.TrimSuffix(strings.ToLower(u.Hostname()), ".")
+		ip := net.ParseIP(host)
+		local := host == "localhost" || strings.HasSuffix(host, ".localhost") || (ip != nil && ip.IsLoopback())
+		if !local {
+			return errors.New("http is allowed only for localhost or a loopback IP address")
+		}
 	}
 	return nil
 }

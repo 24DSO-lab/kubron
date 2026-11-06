@@ -64,7 +64,7 @@ func (m *Manager) GetArgoApplicationGraph(namespace, name string) (*ArgoGraph, e
 	if err != nil {
 		return nil, err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(m.baseCtx(), 30*time.Second)
 	defer cancel()
 
 	u, err := conn.DynamicClient.Resource(kindTable["application"].gvr).Namespace(namespace).Get(ctx, name, metav1.GetOptions{})

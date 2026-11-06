@@ -1,8 +1,8 @@
 [Desktop Entry]
 Type=Application
 Name=Kubron
-GenericName=Kubernetes Desktop Manager
-Comment=Desktop application for managing Kubernetes clusters
+GenericName=Kubernetes Operations Workspace
+Comment=Workspace for Kubernetes operations across clusters
 Exec=kubron
 Icon=kubron
 Terminal=false

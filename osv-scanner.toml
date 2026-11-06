@@ -5,3 +5,17 @@
 # id = "GHSA-xxxx-xxxx-xxxx"
 # ignoreUntil = 2027-01-31
 # reason = "Уязвимый код не вызывается: ...; исправление: ...; пересмотр: ..."
+
+# Обход rate limiter через поддельный X-Forwarded-For и проброс атакующего X-Real-IP reverse proxy (CVSS 5.3).
+# echo/v4 — косвенная зависимость (wailsapp/wails dev-сервер, не production-путь); исправления вышли только в echo v5,
+# ветка v4 не поддерживается, fixed version отсутствует. Пересмотр при выходе Wails на echo v5.
+[[IgnoredVulns]]
+id = "GO-2026-6872"
+ignoreUntil = 2027-05-05
+reason = "echo/v4 — косвенная зависимость (wailsapp/wails dev-сервер); уязвимый код не используется в production; фикс только в echo v5, которого нет в wails; пересмотр при переходе Wails на echo v5."
+
+# То же самое для GO-2026-6875 (X-Real-IP): косвенная зависимость, фикс только в echo v5.
+[[IgnoredVulns]]
+id = "GO-2026-6875"
+ignoreUntil = 2027-05-05
+reason = "echo/v4 — косвенная зависимость (wailsapp/wails dev-сервер); уязвимый код не используется в production; фикс только в echo v5, которого нет в wails; пересмотр при переходе Wails на echo v5."

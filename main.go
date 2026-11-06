@@ -10,6 +10,7 @@ import (
 	"os"
 
 	"github.com/24DSO-labs/kubron/internal/app"
+	"github.com/24DSO-labs/kubron/internal/k8s"
 	wailsplatform "github.com/24DSO-labs/kubron/internal/platform/wails"
 
 	"github.com/wailsapp/wails/v2"
@@ -46,6 +47,10 @@ func main() {
 		BackgroundColour: &options.RGBA{R: 30, G: 30, B: 46, A: 1},
 		OnStartup: func(ctx context.Context) {
 			platform.SetContext(ctx)
+			if err := k8s.InitKubronDir(); err != nil {
+				println("Error:", err.Error())
+			}
+			setupDesktopBroker(ctx, a.App, platform)
 			app.OnStartup(a.App)(ctx)
 		},
 		OnShutdown: app.OnShutdown(a.App),

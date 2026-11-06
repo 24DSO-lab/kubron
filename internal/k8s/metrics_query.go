@@ -37,7 +37,7 @@ func (m *Manager) promQuery(path string, params map[string]string) (*PromQueryRe
 		return nil, err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(m.baseCtx(), 30*time.Second)
 	defer cancel()
 
 	req := conn.Client.CoreV1().RESTClient().Get().

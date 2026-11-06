@@ -105,6 +105,12 @@
       "stop": "Port-forward stopped"
     },
     "cluster": {
+      "auth": {
+        "challenge": "Cluster sign-in requested",
+        "success": "Cluster sign-in completed",
+        "failure": "Cluster sign-in failed",
+        "revoked": "Cluster sign-in revoked"
+      },
       "credentials": {
         "update": "Cluster credentials replaced"
       }
@@ -116,7 +122,8 @@
     "nodeshell": {
       "start": "Node shell opened",
       "stop": "Node shell closed"
-    }
+    },
+    "ResetClusterSharedAccount": "Shared account sign-in forgotten"
   },
   "export": {
     "csv": "Export CSV",

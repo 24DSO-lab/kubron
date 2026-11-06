@@ -57,6 +57,8 @@ func snapshot(d metricsDeps) metrics.Snapshot {
 		Draining:        d.Lifecycle.Draining(),
 		LoginBlocked:    st.LoginBlocked,
 		LockoutsStarted: st.LockoutsStarted,
+
+		LoginSharedDegraded: st.SharedDegraded,
 	}
 	if d.PG != nil {
 		p := d.PG.PoolStats()

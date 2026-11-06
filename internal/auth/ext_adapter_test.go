@@ -46,7 +46,7 @@ func TestServiceOverExternalBackend(t *testing.T) {
 	if svc2.Status().NeedsSetup {
 		t.Fatal("no setup is needed after a restart")
 	}
-	if _, err := svc2.Login("admin", "correct-horse-1"); err != nil {
+	if _, err := svc2.Login(t.Context(), "admin", "correct-horse-1"); err != nil {
 		t.Fatalf("login after a restart: %v", err)
 	}
 }

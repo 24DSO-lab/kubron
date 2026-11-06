@@ -22,7 +22,7 @@ func (m *Manager) GetMetricsStatus() (*MetricsStackStatus, error) {
 	if err != nil {
 		return nil, err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(m.baseCtx(), 10*time.Second)
 	defer cancel()
 
 	status := &MetricsStackStatus{
@@ -131,7 +131,7 @@ func (m *Manager) InstallMetricsStack() error {
 		return fmt.Errorf("failed to parse manifest: %w", err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(m.baseCtx(), 60*time.Second)
 	defer cancel()
 
 	for _, obj := range objects {
@@ -158,7 +158,7 @@ func (m *Manager) UninstallMetricsStack() error {
 		return fmt.Errorf("failed to parse manifest: %w", err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(m.baseCtx(), 60*time.Second)
 	defer cancel()
 
 	// Delete in reverse order, skip namespace

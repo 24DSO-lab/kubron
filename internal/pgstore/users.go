@@ -124,6 +124,10 @@ func (b userBackend) Save(d *ext.UserData) error {
 		if err := rows.Err(); err != nil {
 			return err
 		}
+		// Личные данные входа удаляемых пользователей: у owner_id нет внешнего ключа (владелец — пользователь или команда).
+		if err := dropRemovedUsersCredentials(ctx, tx, b.s.orgID, ids); err != nil {
+			return err
+		}
 		// Сначала удаляем: освобождаются имена, которые могут занять новые записи.
 		if _, err := tx.Exec(ctx, `DELETE FROM users WHERE org_id = $1 AND id <> ALL($2)`, b.s.orgID, ids); err != nil {
 			return err
@@ -251,7 +255,14 @@ func (b userBackend) DeleteUser(id string) error {
 	}
 	ctx, cancel := opCtx()
 	defer cancel()
-	_, err := b.s.pool.Exec(ctx, `DELETE FROM users WHERE id = $1 AND org_id = $2`, id, b.s.orgID)
+	// Сохранённые данные входа пользователя в кластеры удаляются вместе с ним (cluster_credentials.owner_id без FK).
+	err := pgx.BeginFunc(ctx, b.s.pool, func(tx pgx.Tx) error {
+		if err := dropOwnerCredentials(ctx, tx, "user", id); err != nil {
+			return err
+		}
+		_, err := tx.Exec(ctx, `DELETE FROM users WHERE id = $1 AND org_id = $2`, id, b.s.orgID)
+		return err
+	})
 	b.s.invalidateAccess()
 	return err
 }

@@ -105,6 +105,12 @@
       "stop": "Port-forward 已停止"
     },
     "cluster": {
+      "auth": {
+        "challenge": "已请求登录集群",
+        "success": "集群登录完成",
+        "failure": "集群登录失败",
+        "revoked": "集群登录已撤销"
+      },
       "credentials": {
         "update": "集群凭据已替换"
       }
@@ -116,7 +122,8 @@
     "nodeshell": {
       "start": "节点 Shell 已打开",
       "stop": "节点 Shell 已关闭"
-    }
+    },
+    "ResetClusterSharedAccount": "已清除共享账户登录"
   },
   "export": {
     "csv": "导出 CSV",

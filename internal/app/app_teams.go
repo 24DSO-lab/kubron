@@ -5,17 +5,19 @@ package app
 
 import (
 	"errors"
-	"fmt"
-	"strings"
+	"strconv"
 
 	"github.com/24DSO-labs/kubron/internal/audit"
 	"github.com/24DSO-labs/kubron/internal/auth"
 	"github.com/24DSO-labs/kubron/internal/k8s"
+	"github.com/24DSO-labs/kubron/internal/teams"
 )
 
 // Управление командами существует только в сервисном режиме (PostgreSQL). В десктопе и в личном режиме
 // команд нет, методы возвращают понятную ошибку.
-var errNoTeams = errors.New("teams are available only in service mode")
+var errNoTeams = teams.ErrNoTeams
+
+var errNotSharedAccount = errors.New("the cluster does not use a shared team account")
 
 // TeamView — команда в списке пользователя: общие сведения и его роль в ней.
 type TeamView struct {
@@ -33,11 +35,17 @@ func (a *App) recordTeam(action, result, teamID, detail string) {
 	a.audit.Record(audit.Event{User: act.Username, Role: string(act.Role), Action: action, Result: result, Detail: detail, Source: act.Source, TeamID: teamID})
 }
 
-func resultOf(err error) string {
-	if err != nil {
-		return audit.ResultFailed
+// teamSvc — управление командами от имени сессии этого вида. Создаётся на вызов: у каждого вида своя сессия.
+func (a *App) teamSvc() *teams.Service {
+	var acc teams.Access
+	if a.auth != nil { // не передаём типизированный nil в интерфейс
+		acc = a.auth
 	}
-	return audit.ResultOK
+	var rec teams.Recorder
+	if a.audit != nil {
+		rec = a.audit
+	}
+	return teams.New(a.dir, acc, rec, a.revokeTeamClusters)
 }
 
 // ListTeams — команды пользователя; администратор организации видит все.
@@ -45,30 +53,20 @@ func (a *App) ListTeams() ([]TeamView, error) {
 	if err := a.authzAny(auth.PermRead, auth.PermUsersManage); err != nil {
 		return nil, err
 	}
-	if a.dir == nil {
-		return nil, errNoTeams
-	}
-	teams, err := a.dir.Teams()
+	entries, err := a.teamSvc().List()
 	if err != nil {
 		return nil, err
 	}
-	org := a.isOrgAdmin()
-	out := make([]TeamView, 0, len(teams))
-	for _, t := range teams {
-		v := TeamView{Team: t}
-		if actor, err := a.auth.CheckTeam(auth.PermRead, t.ID); err == nil {
-			v.MyRole = string(actor.Role)
-		}
-		if v.MyRole != "" || org { // чужие команды видит только администратор организации
-			out = append(out, v)
-		}
+	out := make([]TeamView, 0, len(entries))
+	for _, e := range entries {
+		out = append(out, TeamView{Team: e.Team, MyRole: e.MyRole})
 	}
 	return out, nil
 }
 
 // isOrgAdmin — текущий пользователь администрирует организацию (право users.manage вне команд).
 func (a *App) isOrgAdmin() bool {
-	return a.auth != nil && a.auth.Authorize(auth.PermUsersManage) == nil
+	return a.teamSvc().IsOrgAdmin()
 }
 
 // CreateTeam создаёт команду (администратор организации).
@@ -76,16 +74,7 @@ func (a *App) CreateTeam(name string) (*auth.Team, error) {
 	if err := a.authz(auth.PermUsersManage); err != nil {
 		return nil, err
 	}
-	if a.dir == nil {
-		return nil, errNoTeams
-	}
-	t, err := a.dir.CreateTeam(name)
-	id := ""
-	if t != nil {
-		id = t.ID
-	}
-	a.recordTeam("CreateTeam", resultOf(err), id, "name="+strings.TrimSpace(name))
-	return t, err
+	return a.teamSvc().Create(name)
 }
 
 // RenameTeam переименовывает команду (её администратор или администратор организации).
@@ -93,12 +82,7 @@ func (a *App) RenameTeam(teamID, name string) error {
 	if err := a.authzTeam(auth.PermUsersManage, teamID); err != nil {
 		return err
 	}
-	if a.dir == nil {
-		return errNoTeams
-	}
-	err := a.dir.RenameTeam(teamID, name)
-	a.recordTeam("RenameTeam", resultOf(err), teamID, "name="+strings.TrimSpace(name))
-	return err
+	return a.teamSvc().Rename(teamID, name)
 }
 
 // DeleteTeam удаляет пустую команду без кластеров (администратор организации).
@@ -106,12 +90,7 @@ func (a *App) DeleteTeam(teamID string) error {
 	if err := a.authz(auth.PermUsersManage); err != nil {
 		return err
 	}
-	if a.dir == nil {
-		return errNoTeams
-	}
-	err := a.dir.DeleteTeam(teamID)
-	a.recordTeam("DeleteTeam", resultOf(err), teamID, "")
-	return err
+	return a.teamSvc().Delete(teamID)
 }
 
 // ListTeamMembers — участники команды.
@@ -119,10 +98,7 @@ func (a *App) ListTeamMembers(teamID string) ([]auth.Member, error) {
 	if err := a.authzTeam(auth.PermUsersManage, teamID); err != nil {
 		return nil, err
 	}
-	if a.dir == nil {
-		return nil, errNoTeams
-	}
-	return a.dir.Members(teamID)
+	return a.teamSvc().Members(teamID)
 }
 
 // SetTeamMember добавляет пользователя в команду или меняет его роль в ней.
@@ -130,12 +106,7 @@ func (a *App) SetTeamMember(teamID, userID, role string) error {
 	if err := a.authzTeam(auth.PermUsersManage, teamID); err != nil {
 		return err
 	}
-	if a.dir == nil {
-		return errNoTeams
-	}
-	err := a.dir.SetMember(teamID, userID, auth.Role(strings.TrimSpace(role)))
-	a.recordTeam("SetTeamMember", resultOf(err), teamID, fmt.Sprintf("user=%s role=%s", userID, role))
-	return err
+	return a.teamSvc().SetMember(teamID, userID, role)
 }
 
 // RemoveTeamMember исключает пользователя из команды.
@@ -143,35 +114,21 @@ func (a *App) RemoveTeamMember(teamID, userID string) error {
 	if err := a.authzTeam(auth.PermUsersManage, teamID); err != nil {
 		return err
 	}
-	if a.dir == nil {
-		return errNoTeams
-	}
-	err := a.dir.RemoveMember(teamID, userID)
-	a.recordTeam("RemoveTeamMember", resultOf(err), teamID, "user="+userID)
-	return err
+	return a.teamSvc().RemoveMember(teamID, userID)
 }
 
 // AddClusterToTeam добавляет кластер (по тексту kubeconfig) в команду; право — администратор команды.
+// Общая учётная запись (settings.SharedAccount) выбирается здесь же: право то же, вход вводит администратор кластера
+// при первом подключении, а не в этом вызове.
 func (a *App) AddClusterToTeam(teamID, kubeconfigText string, settings k8s.ClusterSettings) (*k8s.ClusterMeta, error) {
-	if err := a.authzTeam(auth.PermClusterManage, teamID, "team", teamID, "displayName", settings.DisplayName); err != nil {
+	if err := a.authzTeam(auth.PermClusterManage, teamID, "team", teamID, "displayName", settings.DisplayName,
+		"sharedAccount", strconv.FormatBool(settings.SharedAccount)); err != nil {
 		return nil, err
 	}
 	if a.dir == nil {
 		return nil, errNoTeams
 	}
 	return k8s.AddClusterFromTextToTeam(kubeconfigText, settings, teamID)
-}
-
-// AddOIDCClusterToTeam добавляет кластер, kubeconfig которого использует oidc-login с паролем (grant password):
-// сервер сам получает и обновляет токен, а логин и пароль хранит зашифрованными. Пароль в журнал не попадает.
-func (a *App) AddOIDCClusterToTeam(teamID, kubeconfigText string, settings k8s.ClusterSettings, cred k8s.OIDCCredentials) (*k8s.ClusterMeta, error) {
-	if err := a.authzTeam(auth.PermClusterManage, teamID, "team", teamID, "displayName", settings.DisplayName, "mode", k8s.ModeOIDCPassword); err != nil {
-		return nil, err
-	}
-	if a.dir == nil {
-		return nil, errNoTeams
-	}
-	return k8s.AddClusterOIDCToTeam(kubeconfigText, settings, teamID, cred)
 }
 
 // AddInClusterToTeam добавляет кластер, в котором работает сам сервер (под его ServiceAccount). Это доступ с правами
@@ -189,13 +146,21 @@ func (a *App) AddInClusterToTeam(teamID string, settings k8s.ClusterSettings) (*
 	return k8s.AddInClusterToTeam(settings, teamID)
 }
 
-// SetClusterOIDCCredentials меняет логин и пароль кластера в режиме oidc-password (например, сменился пароль в
-// провайдере входа). Вход проверяется до сохранения; открытое подключение пересоздаётся при следующем обращении.
-func (a *App) SetClusterOIDCCredentials(clusterID string, cred k8s.OIDCCredentials) error {
-	if err := a.authzCluster(auth.PermClusterManage, clusterID, "id", clusterID, "mode", k8s.ModeOIDCPassword); err != nil {
+// ResetClusterSharedAccount забывает сохранённый вход общей учётной записи команды (например, сменился пароль в
+// провайдере входа). Следующее подключение попросит администратора кластера войти заново; остальные участники до
+// тех пор увидят просьбу обратиться к администратору. Пароль нигде не вводится: вход идёт через брокер.
+func (a *App) ResetClusterSharedAccount(clusterID string) error {
+	if err := a.authzCluster(auth.PermClusterManage, clusterID, "id", clusterID, "mode", k8s.ModeTeamAccount); err != nil {
 		return err
 	}
-	if err := k8s.SetClusterOIDCCredentials(clusterID, cred); err != nil {
+	meta, err := k8s.LoadClusterMeta(clusterID)
+	if err != nil {
+		return err
+	}
+	if meta.Mode != k8s.ModeTeamAccount {
+		return errNotSharedAccount
+	}
+	if err := a.dropTeamSignIn(clusterID); err != nil {
 		return err
 	}
 	if a.k8sMgr.RemoveConnection(clusterID) {

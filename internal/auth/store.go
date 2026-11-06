@@ -3,7 +3,10 @@
 
 package auth
 
-import "time"
+import (
+	"context"
+	"time"
+)
 
 // UserRecord — запись пользователя в хранилище. Наружу (в интерфейс) не отдаётся: см. UserInfo.
 type UserRecord struct {
@@ -70,13 +73,16 @@ type FirstUserBackend interface {
 // (PostgreSQL), чтобы блокировку нельзя было обойти, перебирая пароли через разные реплики (ADR-0016, раздел 5).
 // Счётчики по адресу клиента остаются в памяти процесса. Ключ — нормализованный логин (в том числе
 // несуществующего: по записи нельзя понять, есть ли такой пользователь); хранилище не должно хранить его открыто.
+//
+// Все методы принимают контекст: отмена вызывающего слоя доходит до БД. Реализация сама ограничивает операцию
+// собственным таймаутом поверх переданного контекста.
 type FailureBackend interface {
 	// LockRemaining возвращает, сколько ещё действует блокировка ключа (0 — не заблокирован).
-	LockRemaining(key string) (time.Duration, error)
+	LockRemaining(ctx context.Context, key string) (time.Duration, error)
 	// RecordFailure атомарно учитывает неудачу. С free-й неудачи ключ блокируется на base·2^(n−free), не дольше max.
-	RecordFailure(key string, free int, base, max time.Duration) error
+	RecordFailure(ctx context.Context, key string, free int, base, max time.Duration) error
 	// ClearFailures забывает счётчик ключа (успешный вход, смена пароля).
-	ClearFailures(key string) error
+	ClearFailures(ctx context.Context, key string) error
 }
 
 // store — пользователи и настройки в памяти поверх Backend. Не потокобезопасно: синхронизацию делает Service.

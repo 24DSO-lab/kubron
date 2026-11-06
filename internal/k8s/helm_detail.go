@@ -105,7 +105,7 @@ func (m *Manager) GetHelmReleaseDetail(namespace, name string) (*HelmReleaseDeta
 	if err != nil {
 		return nil, err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	ctx, cancel := context.WithTimeout(m.baseCtx(), 15*time.Second)
 	defer cancel()
 
 	items, err := listHelmStored(ctx, conn.Client, namespace, helmReleaseSelector(name))
@@ -124,7 +124,7 @@ func (m *Manager) GetHelmReleaseContent(namespace, name string, revision int) (*
 	if err != nil {
 		return nil, err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	ctx, cancel := context.WithTimeout(m.baseCtx(), 15*time.Second)
 	defer cancel()
 
 	if revision <= 0 {

@@ -5,6 +5,7 @@ package credential
 
 import (
 	"errors"
+	"strconv"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -31,6 +32,10 @@ const (
 	ParamClusterTLSName  = "cluster.tls-server-name"
 	ParamClusterInsecure = "cluster.insecure-skip-tls-verify" // "true" only
 )
+
+// ParamExecProvideClusterInfo is the value of provideClusterInfo of the exec block ("true" or "false"). It is set only
+// when the block states the field; without it the exec plugin provider passes the public cluster.* data, as before.
+const ParamExecProvideClusterInfo = "exec.provideClusterInfo"
 
 type kcFile struct {
 	CurrentContext string      `yaml:"current-context"`
@@ -73,6 +78,8 @@ type kcExec struct {
 	Env             []struct{ Name, Value string }
 	InteractiveMode string `yaml:"interactiveMode"`
 	InstallHint     string `yaml:"installHint"`
+	// ProvideClusterInfo is a pointer: a block that does not state the field differs from one that says false.
+	ProvideClusterInfo *bool `yaml:"provideClusterInfo"`
 }
 
 type kcAuthProvider struct {
@@ -97,6 +104,7 @@ type kcAuthProvider struct {
 //	            skip-open-browser, auth-request-extra-params (k=v joined by "&"), username, password,
 //	            insecure-skip-tls-verify; for grant legacy-refresh also id-token and refresh-token
 //	KindEKS     authenticator ("aws-cli" or "aws-iam-authenticator"), cluster-name, region, role-arn, profile
+//	exec block  exec.provideClusterInfo ("true" or "false"), only when the block states provideClusterInfo
 //	KindGKE     use-adc ("true" only)
 //	KindAKS     login, server-id, client-id, tenant-id, environment, client-secret, username, password,
 //	            authority-host, identity-resource-id, federated-token-file, is-legacy
@@ -170,6 +178,9 @@ func Describe(kubeconfig []byte, contextName string) (Descriptor, error) {
 		}
 		d.Exec = spec
 		d.Kind = classifyExec(spec, d.Params)
+		if v := u.User.Exec.ProvideClusterInfo; v != nil {
+			d.Params[ParamExecProvideClusterInfo] = strconv.FormatBool(*v)
+		}
 	case u.User.AuthProvider != nil:
 		if err := describeAuthProvider(u.User.AuthProvider, &d); err != nil {
 			return Descriptor{}, err

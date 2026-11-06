@@ -27,7 +27,7 @@ Please include:
 
 ## Scope
 
-In scope: the Kubron desktop app, the experimental web server (`cmd/kubron-server`),
+In scope: the Kubron desktop app, the web server (`cmd/kubron-server`),
 local authentication and roles, the audit log and the handling of kubeconfig and tokens.
 
 Out of scope: vulnerabilities in third-party dependencies that are already fixed

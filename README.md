@@ -4,7 +4,7 @@
 
 # Kubron
 
-**A fast, private Kubernetes desktop IDE.**
+**A fast, private Kubernetes Operations Workspace.**
 
 [![CI](https://github.com/24DSO-labs/kubron/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/24DSO-labs/kubron/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/24DSO-labs/kubron?include_prereleases)](https://github.com/24DSO-labs/kubron/releases)
@@ -14,11 +14,11 @@
 [![Downloads](https://img.shields.io/github/downloads/24DSO-labs/kubron/total)](https://github.com/24DSO-labs/kubron/releases)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/24DSO-labs/kubron/badge)](https://scorecard.dev/viewer/?uri=github.com/24DSO-labs/kubron)
 
-[Download](#download) · [Features](#features) · [Documentation](#documentation) · [Build from source](#build-from-source) · [Server mode](#server-mode-experimental) · [Roadmap](#roadmap)
+[Download](#download) · [Features](#features) · [Documentation](#documentation) · [Build from source](#build-from-source) · [Server mode](#server-mode) · [Roadmap](#roadmap)
 
 </div>
 
-Kubron is a lightweight, open-source Kubernetes desktop IDE built with **Go** and **Wails**: fast and private, with Helm and GitOps tooling built in. No telemetry, no mandatory account, your kubeconfig never leaves your machine.
+Kubron is an open-source **Kubernetes Operations Workspace** for desktop and web, built with **Go**, **Wails** and **Vue**. Bring cluster visibility, troubleshooting and day-to-day operations together with Helm and GitOps built in. No telemetry or mandatory account. In desktop mode, kubeconfig stays on your machine; web mode stores it encrypted on the server.
 
 <p align="center">
   <img src="docs/images/screenshots/overview.png" alt="Kubron cluster overview: node and pod counts, CPU and memory usage, pods closest to their limits, workloads, recent changes, blockers and certificate expiry" width="100%">
@@ -46,8 +46,8 @@ Kubron is a lightweight, open-source Kubernetes desktop IDE built with **Go** an
 ## Why Kubron
 
 - **Lightweight and native** — written in Go with Wails: a compact desktop app that uses the system webview
-- **Private by default** — no telemetry and no mandatory account; your kubeconfig never leaves your machine
-- **Desktop and web** — the same UI as a desktop app or served over HTTP for teams (web mode is experimental)
+- **Private by default** — no telemetry or mandatory account; desktop kubeconfig stays local, while web-mode kubeconfigs are encrypted at rest on the server
+- **Desktop and web** — the same UI as a desktop app or served over HTTP for teams (web mode supports multi-user teams)
 - **Helm and GitOps built in** — manage releases and applications without installing extra plugins
 - **Open source** — Apache-2.0, with a public `pkg/ext` API for extensions
 
@@ -59,6 +59,7 @@ Kubron is a lightweight, open-source Kubernetes desktop IDE built with **Go** an
 
 ### Clusters
 - **Multi-cluster management** — add clusters from a kubeconfig, switch between them from a single window, and give each one a name, color, icon and environment tag (`dev` / `test` / `stage` / `prod`)
+- **Cluster sign-in** — built-in sign-in for OIDC (password, browser authorization-code + PKCE, device code, legacy refresh), Azure AKS (device code, service principal, username/password), AWS EKS (access keys, temporary session keys, IAM Identity Center) and Google GKE (Google account or service account key); other `exec` plugins run after your confirmation on the desktop, and the web server never runs them. Interactive sign-ins use per-user credentials by default; a shared team account is an explicit exception chosen by a cluster administrator. See the [sign-in guide](docs/cluster-sign-in.md)
 - **Namespace scoping** — pick one, several or all namespaces; works with restricted RBAC (no cluster-wide `list` required) and reports partial failures instead of hiding them
 - **Live updates** — shared informers keep lists and the dashboard fresh without hammering the API server
 
@@ -96,8 +97,9 @@ Kubron is a lightweight, open-source Kubernetes desktop IDE built with **Go** an
 - **Project access** — roles and access of projects
 
 ### Security & access control
+- **Architecture and security decisions** — [ADR index](docs/adr/README.md) (including [password hashing](docs/adr/0019-password-hashing.md) and [HTTP security](docs/adr/0020-http-security.md)) and [implementation decisions](docs/decisions/README.md) such as the [OIDC browser callback](docs/decisions/2026-11-04-oidc-browser-callback.md)
 - **Local users & roles** — `admin`, `operator` and `user` roles built on fine-grained permissions (read, secrets, operate, write, exec, port-forward, cluster and user management, audit)
-- **Safe defaults** — PBKDF2-SHA256 password hashing (600k iterations), lockout after failed attempts, auto-logout on inactivity that closes terminals and port forwards
+- **Safe defaults** — Argon2id password hashing (old PBKDF2 hashes are upgraded on the next login), lockout after failed attempts, auto-logout on inactivity that closes terminals and port forwards
 - **Audit log** — track who did what, with log rotation
 - **Extension points** — a public `pkg/ext` API for external modules (e.g. SSO/OIDC, custom storage)
 - **No telemetry** — no mandatory account, your kubeconfig never leaves your machine
@@ -145,12 +147,12 @@ On Linux add `-tags webkit2_41` to `wails dev` / `wails build` (WebKitGTK 4.1, a
 - **User guides** (PDF): Helm — [English](docs/DOCS/EN/Kubron-Helm-User-Guide-EN.pdf), [Русский](docs/DOCS/RU/Kubron-Helm-User-Guide.pdf); GitOps — [English](docs/DOCS/EN/Kubron-ArgoCD-User-Guide-EN.pdf), [Русский](docs/DOCS/RU/Kubron-ArgoCD-User-Guide.pdf)
 - **Server deployment** (Russian) — [docs/deploy.md](docs/deploy.md), [high availability](docs/ha.md), [backup and restore](docs/backup.md), [logging](docs/logging.md), [metrics](docs/metrics.md), [HTTP security](docs/http-security.md)
 - **Server security** (Russian) — [threat model](docs/threat-model.md), [security review](docs/security-review.md)
-- **Web version status** — what is done and what is still open: [docs/tickets](docs/tickets)
+- **Cluster sign-in** (Russian) — [which dialogs you will see and what to do](docs/cluster-sign-in.md); [manual cloud sign-in lab](docs/authentication-lab.md)
+- **Documentation map and project status** — [docs/README.md](docs/README.md) (open work is in [docs/tickets](docs/tickets); closed work stays in the git history and the [changelog](CHANGELOG.md))
 - **Localization** — [docs/i18n.md](docs/i18n.md), [ADR-0014](docs/adr/0014-i18n.md)
-- **Architecture decisions** — [docs/adr](docs/adr)
-- **Releasing** — [docs/releasing.md](docs/releasing.md)
+- **Releasing** — [docs/releasing.md](docs/releasing.md), [supply chain (ADR-0021)](docs/adr/0021-release-supply-chain.md)
 
-## Server mode (experimental)
+## Server mode
 
 Besides the desktop app, Kubron ships `kubron-server`: the same UI served over HTTP for teams. It stores users, clusters and the audit log in **PostgreSQL 14+**, encrypts kubeconfigs and GitOps integration tokens at rest (`KUBRON_SECRET_KEY`) and is meant to run behind a TLS-terminating reverse proxy.
 
@@ -171,7 +173,7 @@ cd frontend && npm ci && npm run build:web && cd ..
 go run ./cmd/kubron-server --listen 127.0.0.1:8080
 ```
 
-> The web UI is under active development. Listening on a non-loopback address requires `KUBRON_ALLOW_REMOTE=1` and a TLS proxy in front.
+> Listening on a non-loopback address requires `KUBRON_ALLOW_REMOTE=1` and a TLS proxy in front.
 
 ## Roadmap
 
@@ -179,12 +181,12 @@ go run ./cmd/kubron-server --listen 127.0.0.1:8080
 - [x] Helm releases management
 - [x] GitOps applications management
 - [ ] Support for more GitOps tools
-- [x] Web mode with multi-user support, teams and session auth — *experimental*
+- [x] Web mode with multi-user support, teams and session auth
 - [x] High availability for the server (more than one replica)
 - [x] Shared, persistent Helm catalog in server mode
 - [x] Publish the signed container image and Helm chart to a registry
 - [x] HTTP port-forward and terminals in web mode
-- [ ] Second-person review of the threat model and security review, and a pentest on a test stand ([status](docs/tickets/stage-4-5.md))
+- [ ] Independent review and pentest of the cluster sign-in flows (credential broker, AKS, EKS, GKE); the review and pentest of 2026-11-03 cover the rest of the server ([status](docs/security-review.md))
 - [ ] Code-signed Windows and macOS builds
 - [ ] SSO/OIDC login for organizations
 
@@ -192,7 +194,7 @@ Have an idea? Open a [feature request](https://github.com/24DSO-labs/kubron/issu
 
 ## License
 
-Kubron is open source under [Apache-2.0](LICENSE). Local users, roles, the audit log and emergency admin access are part of the core.
+Kubron is open source under [Apache-2.0](LICENSE).
 
 ## Contributing
 

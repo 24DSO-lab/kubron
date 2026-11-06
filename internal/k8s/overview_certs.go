@@ -47,7 +47,7 @@ func (m *Manager) GetCertificateExpiry() (*CertScan, error) {
 	if err != nil {
 		return nil, err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	ctx, cancel := context.WithTimeout(m.baseCtx(), 20*time.Second)
 	defer cancel()
 
 	list, err := conn.Client.CoreV1().Secrets("").List(ctx, metav1.ListOptions{

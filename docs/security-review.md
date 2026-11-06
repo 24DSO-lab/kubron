@@ -53,3 +53,34 @@
 
 1. Перед каждым мажорным релизом пройти сценарии 1–15 на стенде с двумя репликами и записать результат здесь (дата, версия, исполнитель, отклонения).
 2. Новые находки: серьёзность по влиянию (Высокий — захват сервера/кластера без учётки; Средний — раскрытие секрета или обход защиты при условии; Низкий — раскрытие деталей, усложнение атаки).
+
+
+## Дополнение: credential broker и вход в Kubernetes (ADR-0018, 2026-11-04)
+
+Независимое ревью и pentest, завершённые 2026-11-03, предшествуют появлению credential broker и провайдера AKS. Поэтому их подтверждение **не распространяется** на новые потоки входа. Кодовые проверки ниже добавлены, но независимое ревью этих потоков и ручная проверка владельцем ещё требуются.
+
+### Проверяемые границы
+
+- Ответы RPC, события приложения, аудит и логи не содержат пароль, access token, refresh token или client secret.
+- Метрики содержат только allowlisted RPC method и HTTP status; идентификаторы пользователя, кластера, challenge и значения credentials не становятся labels.
+- Challenge привязан к пользователю, сессии, scope и кластеру; повторное использование и доступ из чужой сессии отклоняются.
+- OIDC authorization response проверяет state и issuer; redirect с другим host/path/port отклоняется. PKCE использует S256, токен проверяется по issuer/audience.
+- Kubeconfig и ExecCredential разбираются как недоверенный ввод; web не исполняет exec plugins.
+- IdP-запросы используют общую SSRF/network policy и HTTPS в web-режиме.
+
+### Автоматические проверки
+
+- `internal/app/app_connect_test.go`: `TestSignInSecretsNeverLeaveTheApp` проверяет canary-строки в API-ответах, событиях, audit journal и логах.
+- `internal/server/security_metrics_test.go`: `TestSignInMetricsCarryNoSecretsUsersOrClusters` проверяет отсутствие canary-строк в метриках.
+- `internal/credential/service_test.go`: `TestSecretsNeverLeak`, `TestChallengeIsBoundToSessionAndUser` и `TestChallengeLifecycle`.
+- `internal/credential/providers/oidc/authcode_test.go`: `TestPasteRedirect`, `TestPasteRedirectRejectsStateReplayAcrossChallenges`, `TestAuthorizationRequestParameters`.
+- `internal/credential/describe_test.go`: `FuzzDescribe`; `internal/credential/providers/manual/manual_test.go`: `FuzzParseExecCredential`.
+
+### Остаточные риски для ручного ревью
+
+- Token buckets для `AnswerChallenge` находятся в памяти процесса; лимиты каждой реплики независимы. Это ограничивает скорость на каждой реплике, но не является единым глобальным бюджетом.
+- Для OIDC IdP bucket использует host issuer; для cloud providers без issuer URL — provider kind и cluster ID.
+- Подтверждённый desktop exec plugin выполняется с правами локального пользователя и не является песочницей.
+- ROPC может быть недоступен при MFA/Conditional Access; device-code требует проверки пользователем verification URL и кода.
+
+До отдельного ревью эти потоки следует считать **проверенными автотестами, но не прошедшими независимый pentest**.

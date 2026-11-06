@@ -61,16 +61,16 @@ func TestIPv6PrefixSharesTheSourceLimit(t *testing.T) {
 	fixedClock(s)
 	for i := 0; i < sourceFreeAttempts; i++ {
 		v := s.NewSession(fmt.Sprintf("2001:db8:aa:bb::%x", i+1))
-		if _, err := v.Login(fmt.Sprintf("nobody%d", i), "x"); !errors.Is(err, ErrInvalidCredentials) {
+		if _, err := v.Login(t.Context(), fmt.Sprintf("nobody%d", i), "x"); !errors.Is(err, ErrInvalidCredentials) {
 			t.Fatalf("attempt %d: %v", i, err)
 		}
 	}
 	// новый адрес той же /64 с верным паролем всё равно заблокирован
-	if _, err := s.NewSession("2001:db8:aa:bb:ffff::1").Login("bob", "bobs-own-pass"); !lockedFor(err) {
+	if _, err := s.NewSession("2001:db8:aa:bb:ffff::1").Login(t.Context(), "bob", "bobs-own-pass"); !lockedFor(err) {
 		t.Fatalf("the same /64 must be locked, got %v", err)
 	}
 	// другая /64 не затронута
-	if _, err := s.NewSession("2001:db8:aa:cc::1").Login("bob", "bobs-own-pass"); err != nil {
+	if _, err := s.NewSession("2001:db8:aa:cc::1").Login(t.Context(), "bob", "bobs-own-pass"); err != nil {
 		t.Fatalf("another /64 must not be locked: %v", err)
 	}
 }
@@ -84,30 +84,30 @@ func TestFloodOfUniqueKeysDoesNotEraseActiveLocks(t *testing.T) {
 	// Блокировка по логину: bob с адреса A
 	a := s.NewSession("198.51.100.1")
 	for i := 0; i < freeAttempts; i++ {
-		_, _ = a.Login("bob", "wrong")
+		_, _ = a.Login(t.Context(), "bob", "wrong")
 	}
 	// Блокировка по адресу B (разные логины, чтобы не блокировать конкретного пользователя)
 	b := s.NewSession("198.51.100.2")
 	for i := 0; i < sourceFreeAttempts; i++ {
-		_, _ = b.Login(fmt.Sprintf("probe%d", i), "wrong")
+		_, _ = b.Login(t.Context(), fmt.Sprintf("probe%d", i), "wrong")
 	}
-	if _, err := s.NewSession("192.0.2.50").Login("bob", goodPass); !lockedFor(err) {
+	if _, err := s.NewSession("192.0.2.50").Login(t.Context(), "bob", goodPass); !lockedFor(err) {
 		t.Fatalf("bob must be locked before the flood: %v", err)
 	}
-	if _, err := b.Login("admin", goodPass); !lockedFor(err) {
+	if _, err := b.Login(t.Context(), "admin", goodPass); !lockedFor(err) {
 		t.Fatalf("source B must be locked before the flood: %v", err)
 	}
 
 	// Затопление: втрое больше уникальных логинов и адресов, чем помещается в карту
 	for i := 0; i < 3*maxTracked; i++ {
 		src := fmt.Sprintf("10.%d.%d.%d", i>>16&255, i>>8&255, i&255)
-		_, _ = s.NewSession(src).Login(fmt.Sprintf("flood%d", i), "x")
+		_, _ = s.NewSession(src).Login(t.Context(), fmt.Sprintf("flood%d", i), "x")
 	}
 
-	if _, err := s.NewSession("192.0.2.51").Login("bob", goodPass); !lockedFor(err) {
+	if _, err := s.NewSession("192.0.2.51").Login(t.Context(), "bob", goodPass); !lockedFor(err) {
 		t.Errorf("the lock on bob was erased by the flood: %v", err)
 	}
-	if _, err := b.Login("admin", goodPass); !lockedFor(err) {
+	if _, err := b.Login(t.Context(), "admin", goodPass); !lockedFor(err) {
 		t.Errorf("the lock on source B was erased by the flood: %v", err)
 	}
 	ips, users := count(s)
@@ -126,7 +126,7 @@ func TestFullOfActiveLocksKeepsThemAll(t *testing.T) {
 	}
 	s.mu.Unlock()
 
-	_, _ = s.NewSession("192.0.2.9").Login("newcomer", "x")
+	_, _ = s.NewSession("192.0.2.9").Login(t.Context(), "newcomer", "x")
 
 	ips, users := count(s)
 	if users != maxTracked {
@@ -189,12 +189,12 @@ func TestChangePasswordGuessingIsLimitedAndAudited(t *testing.T) {
 		t.Fatal(err)
 	}
 	for i := 0; i < freeAttempts; i++ {
-		if err := v.ChangePassword("wrong-old", "brand-new-pass-1"); !errors.Is(err, ErrWrongPassword) {
+		if err := v.ChangePassword(t.Context(), "wrong-old", "brand-new-pass-1"); !errors.Is(err, ErrWrongPassword) {
 			t.Fatalf("attempt %d: %v", i, err)
 		}
 	}
 	// даже верный старый пароль во время блокировки не принимается
-	if err := v.ChangePassword(goodPass, "brand-new-pass-1"); !lockedFor(err) {
+	if err := v.ChangePassword(t.Context(), goodPass, "brand-new-pass-1"); !lockedFor(err) {
 		t.Fatalf("expected a lockout, got %v", err)
 	}
 	var denied *audit.Event
@@ -224,9 +224,9 @@ func TestLoginLockoutAuditHasSource(t *testing.T) {
 	}
 	v := root.NewSession("203.0.113.77")
 	for i := 0; i < freeAttempts; i++ {
-		_, _ = v.Login("admin", "wrong")
+		_, _ = v.Login(t.Context(), "admin", "wrong")
 	}
-	if _, err := v.Login("admin", goodPass); !lockedFor(err) {
+	if _, err := v.Login(t.Context(), "admin", goodPass); !lockedFor(err) {
 		t.Fatalf("expected a lockout, got %v", err)
 	}
 	rec.mu.Lock()
@@ -251,14 +251,14 @@ func TestStatsCountLockoutsAndBlockedLogins(t *testing.T) {
 	}
 	v := s.NewSession("203.0.113.9")
 	for i := 0; i < freeAttempts; i++ {
-		if _, err := v.Login("bob", "wrong"); !errors.Is(err, ErrInvalidCredentials) {
+		if _, err := v.Login(t.Context(), "bob", "wrong"); !errors.Is(err, ErrInvalidCredentials) {
 			t.Fatalf("attempt %d: %v", i, err)
 		}
 	}
 	if st := s.Stats(); st.LockoutsStarted != 1 || st.LoginBlocked != 0 {
 		t.Fatalf("after the lockout started: %+v", st)
 	}
-	if _, err := v.Login("bob", "bobs-own-pass"); !lockedFor(err) {
+	if _, err := v.Login(t.Context(), "bob", "bobs-own-pass"); !lockedFor(err) {
 		t.Fatalf("must be locked: %v", err)
 	}
 	if st := s.Stats(); st.LoginBlocked != 1 {
@@ -266,7 +266,7 @@ func TestStatsCountLockoutsAndBlockedLogins(t *testing.T) {
 	}
 	// после истечения блокировки следующая неудача начинает новый период
 	*clock = clock.Add(2 * maxLockout)
-	if _, err := v.Login("bob", "wrong"); !errors.Is(err, ErrInvalidCredentials) {
+	if _, err := v.Login(t.Context(), "bob", "wrong"); !errors.Is(err, ErrInvalidCredentials) {
 		t.Fatal(err)
 	}
 	if st := s.Stats(); st.LockoutsStarted != 2 {

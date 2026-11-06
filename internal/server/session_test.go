@@ -4,6 +4,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -79,6 +80,76 @@ func login(t *testing.T, h http.Handler, name string) (*http.Cookie, string) {
 		t.Fatalf("login: %d %s", rec.Code, rec.Body.String())
 	}
 	return c, rec.Header().Get(csrfHeader)
+}
+
+func TestWebOIDCCallbackUsesAuthenticatedSessionAndDoesNotReflectInput(t *testing.T) {
+	d, err := NewDispatcher(httpTarget{}, []string{"Add"}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sessions := NewSessions(time.Hour, false)
+	view := &struct{ marker string }{marker: "session-view"}
+	token, _ := sessions.Create("user-1", view)
+	called := false
+	h := NewHandler(d, nil, &Guard{Sessions: sessions}, WithWebOIDCCallback(
+		func(_ context.Context, got any, state, redirectURL string) error {
+			called = true
+			if got != view || state != "challenge-123" {
+				t.Fatalf("callback received view=%p state=%q", got, state)
+			}
+			if !strings.Contains(redirectURL, "code=CANARY-code") || !strings.Contains(redirectURL, "state=challenge-123") {
+				t.Fatalf("callback URL is incomplete: %q", redirectURL)
+			}
+			return nil
+		},
+	))
+
+	req := httptest.NewRequest(http.MethodGet, "https://kubron.example.test/auth/cluster/callback?code=CANARY-code&state=challenge-123", nil)
+	req.AddCookie(&http.Cookie{Name: secureCookieName, Value: token})
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK || !called {
+		t.Fatalf("callback: status=%d called=%v body=%s", rec.Code, called, rec.Body.String())
+	}
+	if strings.Contains(rec.Body.String(), "CANARY-code") || strings.Contains(rec.Body.String(), "challenge-123") {
+		t.Fatalf("callback page reflected OAuth parameters: %s", rec.Body.String())
+	}
+	if rec.Header().Get("Cache-Control") != "no-store" || rec.Header().Get("Referrer-Policy") != "no-referrer" {
+		t.Fatalf("callback headers: %v", rec.Header())
+	}
+
+	called = false
+	req = httptest.NewRequest(http.MethodGet, "https://kubron.example.test/auth/cluster/callback?code=CANARY-code&state=challenge-123", nil)
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest || called || strings.Contains(rec.Body.String(), "CANARY-code") {
+		t.Fatalf("anonymous callback: status=%d called=%v body=%s", rec.Code, called, rec.Body.String())
+	}
+}
+
+func TestWebOIDCCallbackRejectsMissingOrDuplicateState(t *testing.T) {
+	d, err := NewDispatcher(httpTarget{}, []string{"Add"}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sessions := NewSessions(time.Hour, false)
+	token, _ := sessions.Create("user-1", &struct{}{})
+	called := false
+	h := NewHandler(d, nil, &Guard{Sessions: sessions}, WithWebOIDCCallback(
+		func(context.Context, any, string, string) error { called = true; return nil },
+	))
+	for _, target := range []string{
+		"https://kubron.example.test/auth/cluster/callback?code=CANARY-code",
+		"https://kubron.example.test/auth/cluster/callback?code=CANARY-code&state=one&state=two",
+	} {
+		req := httptest.NewRequest(http.MethodGet, target, nil)
+		req.AddCookie(&http.Cookie{Name: secureCookieName, Value: token})
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		if rec.Code != http.StatusBadRequest || called || strings.Contains(rec.Body.String(), "CANARY-code") {
+			t.Fatalf("invalid callback %q: status=%d called=%v body=%s", target, rec.Code, called, rec.Body.String())
+		}
+	}
 }
 
 func TestLoginSetsHardenedCookieAndCSRF(t *testing.T) {

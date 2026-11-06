@@ -45,7 +45,7 @@ func (m *Manager) ApplyYAML(namespace, kind, name, yamlData string) error {
 		obj.SetNamespace(namespace)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	ctx, cancel := context.WithTimeout(m.baseCtx(), 15*time.Second)
 	defer cancel()
 
 	cur, err := ri.Get(ctx, name, metav1.GetOptions{})
@@ -176,7 +176,7 @@ func (m *Manager) CreateResourceYAML(namespace, kind, yamlData string) (string, 
 		obj.SetNamespace("") // для кластерного ресурса API-сервер отклонил бы заданный namespace
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	ctx, cancel := context.WithTimeout(m.baseCtx(), 15*time.Second)
 	defer cancel()
 
 	created, err := ri.Create(ctx, obj, metav1.CreateOptions{})

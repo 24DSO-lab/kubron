@@ -703,12 +703,23 @@ func (g *Guard) CloseSession(sessionID string) {
 
 func (g *Guard) secure(r *http.Request) bool { return isSecure(r, g.TrustProxy) }
 
-// clientIP — адрес клиента для журнала и блокировки перебора паролей (см. ProxyTrust).
+// unknownClient — ключ клиента, чей адрес определить нельзя (пустой RemoteAddr, например у unix-сокета).
+// Пустой адрес отключил бы блокировку по адресу (auth.Service.ipKey), поэтому такие клиенты делят один общий
+// ключ: строже, чем без защиты.
+const unknownClient = "unknown"
+
+// clientIP — адрес клиента для журнала и блокировки перебора паролей (см. ProxyTrust). Не бывает пустым.
 func (g *Guard) clientIP(r *http.Request) string {
+	var ip string
 	if g == nil {
-		return remoteHost(r)
+		ip = remoteHost(r)
+	} else {
+		ip = ProxyTrust{Enabled: g.TrustProxy, Hops: g.TrustedProxyHops, CIDRs: g.TrustedProxies}.ClientIP(r)
 	}
-	return ProxyTrust{Enabled: g.TrustProxy, Hops: g.TrustedProxyHops, CIDRs: g.TrustedProxies}.ClientIP(r)
+	if ip == "" {
+		return unknownClient
+	}
+	return ip
 }
 
 // token возвращает токен веб-сессии из cookie запроса.

@@ -7,11 +7,12 @@ import { ref, computed, type Ref } from 'vue'
 import { useArgo } from './useArgo'
 import { useNotifications } from './useNotifications'
 import { errorText } from './errorText'
+import { AuthCancelledError } from './useClusterAuth'
 import { t } from '../i18n'
 import { loadCustomResources, resetCustomResources } from '../resources/customResources'
 import type {
   AddClusterPayload, ClusterMeta, ClusterSettings, ClusterStatus, ClusterUpdateResult,
-  KubeconfigSource, NamespaceInfo, OIDCCredentials, Outcome,
+  KubeconfigSource, NamespaceInfo, Outcome,
 } from '../types'
 
 
@@ -28,7 +29,7 @@ export function useClusterConnection(deps: {
   loadClusters: () => Promise<void>
   pickKubeconfigFile: () => Promise<string>
   addClusterFromFile: (path: string, settings: ClusterSettings) => Promise<Outcome<ClusterMeta>>
-  addClusterFromText: (text: string, settings: ClusterSettings, teamId?: string, oidc?: OIDCCredentials) => Promise<Outcome<ClusterMeta>>
+  addClusterFromText: (text: string, settings: ClusterSettings, teamId?: string) => Promise<Outcome<ClusterMeta>>
   addInCluster: (settings: ClusterSettings, teamId: string) => Promise<Outcome<ClusterMeta>>
   deleteCluster: (id: string) => Promise<void>
   updateCluster: (id: string, settings: ClusterSettings, kubeconfig: KubeconfigSource) => Promise<Outcome<ClusterUpdateResult>>
@@ -80,7 +81,7 @@ export function useClusterConnection(deps: {
       void refreshArgo()
       await refreshData()
     } catch (e: any) {
-      notifications.notifyError(t('cluster.connectionError', { message: errorText(e) }))
+      if (!(e instanceof AuthCancelledError)) notifications.notifyError(t('cluster.connectionError', { message: errorText(e) }))
     } finally {
       connecting.value = false
     }
@@ -91,7 +92,7 @@ export function useClusterConnection(deps: {
     let result: Outcome<ClusterMeta>
     if (payload.kind === 'file') result = await addClusterFromFile(payload.path, payload.settings)
     else if (payload.kind === 'in-cluster') result = await addInCluster(payload.settings, payload.teamId)
-    else result = await addClusterFromText(payload.text, payload.settings, payload.teamId, payload.oidc)
+    else result = await addClusterFromText(payload.text, payload.settings, payload.teamId)
     if (!result.ok) return result.error
     showAddCluster.value = false
     await selectCluster(result.value.id)

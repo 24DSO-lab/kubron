@@ -26,7 +26,7 @@ import (
 	"github.com/24DSO-labs/kubron/internal/pgstore"
 	webplatform "github.com/24DSO-labs/kubron/internal/platform/web"
 	"github.com/24DSO-labs/kubron/internal/replicaevents"
-	"github.com/24DSO-labs/kubron/internal/secretbox"
+	"github.com/24DSO-labs/kubron/internal/secrets"
 	"github.com/24DSO-labs/kubron/internal/server"
 	"github.com/24DSO-labs/kubron/internal/store"
 	"github.com/24DSO-labs/kubron/internal/websession"
@@ -87,8 +87,8 @@ func main() {
 
 	// Каталог данных задаётся до запуска ядра: хранилища открываются в OnStartup
 	k8s.SetKubronDir(cfg.DataDir)
-	// Веб-сервер не запускает команды из kubeconfig и не читает по ним файлы сервера (задача 3.7).
-	k8s.SetConnectionPolicy(k8s.ConnectionPolicy{AllowExec: false, AllowLocalFiles: false})
+	// Блок exec из kubeconfig не выполняется нигде (вход делает брокер); веб-сервер не читает по kubeconfig файлы сервера (задача 3.7).
+	k8s.SetConnectionPolicy(k8s.ConnectionPolicy{AllowLocalFiles: false})
 	// Запросы Helm к адресам, которые задаёт пользователь (репозитории, OCI), проходят через защиту от SSRF (ADR-0015).
 	if err := setupHelmNetPolicy(os.Getenv); err != nil {
 		fatal("network policy", err)
@@ -118,6 +118,7 @@ func main() {
 		if err := checkSecretKey(ctx, pg); err != nil {
 			fatal("database", err)
 		}
+		migrateLegacyCredentials(ctx, pg, slog.Default())
 		pgStore = pg
 		// События между репликами (LISTEN/NOTIFY, ADR-0016): прямой адрес БД, не pgbouncer в режиме transaction.
 		listenURL := cfg.DBListenURL
@@ -130,6 +131,9 @@ func main() {
 		if p, ok := st.(websession.Provider); ok {
 			sessionBackend = p.Sessions()
 		}
+	}
+	if err := setupBroker(ctx, cfg, pgStore, core); err != nil {
+		fatal("sign-in", err)
 	}
 	app.OnStartup(core)(ctx)
 	app.StartUserRefresh(ctx, core, userRefreshEvery) // другие реплики меняют пользователей и роли
@@ -208,7 +212,14 @@ func main() {
 	defer terminals.CloseAll()
 
 	handler := server.NewHandler(dispatcher, dist, guard,
-		server.WithCSPReportOnly(cfg.CSPReportOnly), server.WithContractBuild(version), readyzOption(pgStore, lifecycle))
+		server.WithCSPReportOnly(cfg.CSPReportOnly), server.WithContractBuild(version), readyzOption(pgStore, lifecycle),
+		server.WithWebOIDCCallback(func(ctx context.Context, view any, state, redirectURL string) error {
+			v, ok := view.(*app.App)
+			if !ok {
+				return errors.New("sign-in session is unavailable")
+			}
+			return app.CompleteWebOIDCCallback(ctx, v, state, redirectURL)
+		}))
 	handler = setupMetrics(ctx, cfg, metricsDeps{Core: core, Sessions: sessions, Hub: hub, Terminals: terminals,
 		PG: pgStore, Lifecycle: lifecycle}, handler, dispatcher)
 	if pf != nil {
@@ -234,11 +245,18 @@ func main() {
 
 // openPostgres подключается к БД, применяет миграции и готовит организацию по умолчанию.
 func openPostgres(ctx context.Context, cfg server.Config) (*pgstore.Store, error) {
-	keys, err := secretbox.ParseKeyring(cfg.SecretKey, cfg.PreviousSecretKeys...)
+	// С PostgreSQL мастер-ключ обязателен и приходит только из KUBRON_SECRET_KEY (источники-предупреждения
+	// key-file-* относятся к режимам без БД).
+	sel, err := secrets.Resolve(ctx, secrets.Options{
+		Mode: secrets.ModeServerPG, EnvKey: cfg.SecretKey, EnvPrevious: cfg.PreviousSecretKeys, DataDir: cfg.DataDir,
+	})
 	if err != nil {
 		return nil, err
 	}
-	pg, err := pgstore.Open(ctx, cfg.DatabaseURL, keys)
+	for _, w := range sel.Warnings {
+		slog.Warn("secrets: master key warning", "code", w)
+	}
+	pg, err := pgstore.Open(ctx, cfg.DatabaseURL, sel.Keyring)
 	if err != nil {
 		return nil, err
 	}

@@ -33,7 +33,7 @@ func (m *Manager) GetCronJobDetail(namespace, name string) (*CronJobDetail, erro
 		return nil, err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(m.baseCtx(), 10*time.Second)
 	defer cancel()
 
 	cj, err := conn.Client.BatchV1().CronJobs(namespace).Get(ctx, name, metav1.GetOptions{})
@@ -83,7 +83,7 @@ func (m *Manager) TriggerCronJob(namespace, name string) error {
 		return err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	ctx, cancel := context.WithTimeout(m.baseCtx(), 15*time.Second)
 	defer cancel()
 
 	cj, err := conn.Client.BatchV1().CronJobs(namespace).Get(ctx, name, metav1.GetOptions{})
@@ -115,7 +115,7 @@ func (m *Manager) ToggleCronJobSuspend(namespace, name string) (bool, error) {
 		return false, err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	ctx, cancel := context.WithTimeout(m.baseCtx(), 15*time.Second)
 	defer cancel()
 
 	cj, err := conn.Client.BatchV1().CronJobs(namespace).Get(ctx, name, metav1.GetOptions{})

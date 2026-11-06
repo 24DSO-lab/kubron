@@ -3,9 +3,9 @@ name: CodeQL
 on:
   push:
     branches: [master, dev, refactor]
-    paths-ignore: ["**.md", "docs/**", ".github/ISSUE_TEMPLATE/**"]
+    paths-ignore: ["**.md", "docs/**", "docs-site/**", ".github/ISSUE_TEMPLATE/**", ".github/CODEOWNERS"]
   pull_request:
-    paths-ignore: ["**.md", "docs/**", ".github/ISSUE_TEMPLATE/**"]
+    paths-ignore: ["**.md", "docs/**", "docs-site/**", ".github/ISSUE_TEMPLATE/**", ".github/CODEOWNERS"]
   schedule:
     - cron: "23 6 * * 1"
 

@@ -4,6 +4,7 @@
 package auth
 
 import (
+	"context"
 	"errors"
 	"sync"
 	"testing"
@@ -22,13 +23,13 @@ func newLockDB() *lockDB {
 	return &lockDB{sharedDB: &sharedDB{}, counts: map[string]int{}, until: map[string]time.Time{}}
 }
 
-func (d *lockDB) LockRemaining(key string) (time.Duration, error) {
+func (d *lockDB) LockRemaining(ctx context.Context, key string) (time.Duration, error) {
 	d.fmu.Lock()
 	defer d.fmu.Unlock()
 	return max(time.Until(d.until[key]), 0), nil
 }
 
-func (d *lockDB) RecordFailure(key string, free int, base, maxLock time.Duration) error {
+func (d *lockDB) RecordFailure(ctx context.Context, key string, free int, base, maxLock time.Duration) error {
 	d.fmu.Lock()
 	defer d.fmu.Unlock()
 	d.counts[key]++
@@ -38,7 +39,7 @@ func (d *lockDB) RecordFailure(key string, free int, base, maxLock time.Duration
 	return nil
 }
 
-func (d *lockDB) ClearFailures(key string) error {
+func (d *lockDB) ClearFailures(ctx context.Context, key string) error {
 	d.fmu.Lock()
 	defer d.fmu.Unlock()
 	delete(d.counts, key)
@@ -73,12 +74,12 @@ func TestSharedLoginLockoutAcrossReplicas(t *testing.T) {
 			replica = b
 		}
 		src := "10.0.0." + string(rune('1'+i)) // у каждой попытки свой адрес: блокировка по адресу не сработает
-		if _, err := replica.NewSession(src).Login("admin", "wrong-password"); !errors.Is(err, ErrInvalidCredentials) {
+		if _, err := replica.NewSession(src).Login(t.Context(), "admin", "wrong-password"); !errors.Is(err, ErrInvalidCredentials) {
 			t.Fatalf("attempt %d: %v", i, err)
 		}
 	}
 	for name, replica := range map[string]*Service{"A": a, "B": b} {
-		_, err := replica.NewSession("10.9.9.9").Login("admin", pw) // правильный пароль до проверки пароля не доходит
+		_, err := replica.NewSession("10.9.9.9").Login(t.Context(), "admin", pw) // правильный пароль до проверки пароля не доходит
 		var locked *LockedError
 		if !errors.As(err, &locked) || locked.RetryAfter <= 0 {
 			t.Errorf("replica %s must refuse the login while the shared lockout is active: %v", name, err)
@@ -94,9 +95,9 @@ func TestSharedLoginLockoutForUnknownUser(t *testing.T) {
 		if i%2 == 1 {
 			replica = b
 		}
-		_, _ = replica.NewSession("10.1.0."+string(rune('1'+i))).Login("ghost", "whatever-1")
+		_, _ = replica.NewSession("10.1.0."+string(rune('1'+i))).Login(t.Context(), "ghost", "whatever-1")
 	}
-	_, err := b.NewSession("10.2.0.1").Login("ghost", "whatever-1")
+	_, err := b.NewSession("10.2.0.1").Login(t.Context(), "ghost", "whatever-1")
 	var locked *LockedError
 	if !errors.As(err, &locked) {
 		t.Fatalf("an unknown login must be locked out like a real one: %v", err)
@@ -107,9 +108,9 @@ func TestSharedLoginLockoutForUnknownUser(t *testing.T) {
 func TestSharedLoginSuccessClearsFailures(t *testing.T) {
 	a, b, db := twoReplicasWithLocks(t)
 	for i := 0; i < freeAttempts-1; i++ {
-		_, _ = a.NewSession("10.3.0."+string(rune('1'+i))).Login("admin", "wrong-password")
+		_, _ = a.NewSession("10.3.0."+string(rune('1'+i))).Login(t.Context(), "admin", "wrong-password")
 	}
-	if _, err := b.NewSession("10.3.1.1").Login("admin", pw); err != nil {
+	if _, err := b.NewSession("10.3.1.1").Login(t.Context(), "admin", pw); err != nil {
 		t.Fatal(err)
 	}
 	db.fmu.Lock()
@@ -124,13 +125,13 @@ func TestSharedLoginSuccessClearsFailures(t *testing.T) {
 func TestLoginLockoutInMemoryWithoutSharedCounters(t *testing.T) {
 	a, b, _ := twoReplicas(t) // sharedDB не реализует FailureBackend
 	for i := 0; i < freeAttempts; i++ {
-		_, _ = a.NewSession("10.4.0."+string(rune('1'+i))).Login("admin", "wrong-password")
+		_, _ = a.NewSession("10.4.0."+string(rune('1'+i))).Login(t.Context(), "admin", "wrong-password")
 	}
 	var locked *LockedError
-	if _, err := a.NewSession("10.4.9.9").Login("admin", pw); !errors.As(err, &locked) {
+	if _, err := a.NewSession("10.4.9.9").Login(t.Context(), "admin", pw); !errors.As(err, &locked) {
 		t.Fatalf("the local lockout must still work: %v", err)
 	}
-	if _, err := b.NewSession("10.4.9.8").Login("admin", pw); err != nil {
+	if _, err := b.NewSession("10.4.9.8").Login(t.Context(), "admin", pw); err != nil {
 		t.Fatalf("without shared counters another replica is not affected: %v", err)
 	}
 }

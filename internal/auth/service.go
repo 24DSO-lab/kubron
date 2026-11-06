@@ -4,18 +4,17 @@
 package auth
 
 import (
-	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+
 	"fmt"
 	"log/slog"
+
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"github.com/24DSO-labs/kubron/internal/audit"
 )
 
 // Ошибки отдаются во фронтенд как текст (Wails), поэтому сообщения — на языке интерфейса.
@@ -37,14 +36,6 @@ var (
 	ErrWeakPassword           = errors.New("password must not match the username")
 	ErrInvalidIdleTimeout     = errors.New("idle timeout must be 0 (disabled) or between 1 and 1440 minutes")
 )
-
-// LockedError — вход временно заблокирован после серии неудачных попыток.
-type LockedError struct{ RetryAfter time.Duration }
-
-func (e *LockedError) Error() string {
-	secs := int((e.RetryAfter + time.Second - 1) / time.Second)
-	return fmt.Sprintf("too many failed login attempts, try again in %d s", secs)
-}
 
 const (
 	// DefaultIdleTimeoutMinutes — автовыход по бездействию, пока администратор не задал своё значение.
@@ -90,41 +81,16 @@ type Status struct {
 	IdleTimeoutMinutes int `json:"idleTimeoutMinutes"`
 }
 
-type failure struct {
-	count       int
-	lockedUntil time.Time
-	last        time.Time // последняя неудача (для забывания счётчика по адресу)
-}
-
-// Recorder принимает события журнала аудита. Реализация (audit.Logger) не должна
-// вызывать методы Service: события пишутся под его блокировкой.
-type Recorder interface{ Record(audit.Event) }
-
-// Actor — кто выполняет действие (для журнала аудита).
-type Actor struct {
-	Username string
-	Role     Role
-	Source   string // адрес клиента сессии (веб); пусто в десктопе
-	// Контекст проверки в сервисном режиме: кластер и команда, к которым относится действие (для журнала).
-	ClusterID string
-	TeamID    string
-}
-
 // shared — состояние, общее для всех сессий: хранилище пользователей, счётчики неудачных входов,
 // журнал аудита и реестр сессий. Всё защищено одним мьютексом mu.
 type shared struct {
 	mu       sync.Mutex
 	st       *store
-	failures map[string]*failure // счётчики по адресу (и по логину, если нет общего хранилища fail)
-	fail     FailureBackend      // не nil: блокировки по логину общие для всех реплик
+	lockouts // блокировки входа; под тем же mu (см. lockouts)
 	now      func() time.Time
 	rec      Recorder
 	access   Access                // nil — прежняя модель: глобальная роль пользователя
 	sessions map[*Service]struct{} // живые сессии, включая неявную сессию десктопа
-
-	// Счётчики для метрик (только числа, без имён пользователей и адресов).
-	loginBlocked    atomic.Int64 // попытки входа, отклонённые из-за действующей блокировки
-	lockoutsStarted atomic.Int64 // сколько раз серия неудач привела к блокировке
 
 	missAt atomic.Int64 // когда последний раз перечитывали пользователей из-за неизвестного логина (UnixNano)
 
@@ -158,90 +124,13 @@ func NewServiceWithBackend(b Backend) (*Service, error) {
 	if err != nil {
 		return nil, err
 	}
-	sh := &shared{st: st, failures: map[string]*failure{}, now: time.Now, sessions: map[*Service]struct{}{}}
-	sh.fail, _ = b.(FailureBackend)
+	sh := &shared{st: st, now: time.Now, sessions: map[*Service]struct{}{}}
+	fail, _ := b.(FailureBackend)
+	// Часы читаются при каждом вызове: подмена sh.now (в тестах) действует и на блокировки.
+	sh.initLockouts(func() time.Time { return sh.now() }, fail)
 	svc := &Service{shared: sh}
 	sh.sessions[svc] = struct{}{}
 	return svc, nil
-}
-
-// NewSession создаёт новую независимую сессию (вид) поверх того же хранилища. source — адрес
-// клиента для блокировки перебора (может быть пустым). Освободить: Release.
-func (s *Service) NewSession(source string) *Service {
-	v := &Service{shared: s.shared, source: source}
-	s.mu.Lock()
-	s.sessions[v] = struct{}{}
-	s.mu.Unlock()
-	return v
-}
-
-// Release завершает сессию (с очисткой её ресурсов, если пользователь был вошёл) и убирает её
-// из реестра. Вызывается, когда браузерная сессия закончилась.
-func (s *Service) Release() {
-	s.mu.Lock()
-	had := s.sessionID != ""
-	s.sessionID = ""
-	hook := s.onLogout
-	delete(s.sessions, s)
-	s.mu.Unlock()
-	if had && hook != nil {
-		hook()
-	}
-}
-
-// endUserSessionsLocked сбрасывает все сессии пользователя userID, кроме except, и возвращает их
-// обработчики очистки — вызвать после снятия блокировки.
-func (s *Service) endUserSessionsLocked(userID string, except *Service, action string) []func() {
-	var hooks []func()
-	for v := range s.sessions {
-		if v == except || v.sessionID != userID {
-			continue
-		}
-		s.recordFrom(v.source, s.st.findByID(userID), "SessionEnd", audit.ResultOK, "reason: "+action)
-		v.sessionID = ""
-		if v.onLogout != nil {
-			hooks = append(hooks, v.onLogout)
-		}
-	}
-	return hooks
-}
-
-func runAll(hooks []func()) {
-	for _, h := range hooks {
-		h()
-	}
-}
-
-// SetOnLogout задаёт обработчик, вызываемый при завершении сессии
-// (закрыть терминалы, остановить port-forward и т.п.).
-func (s *Service) SetOnLogout(fn func()) {
-	s.mu.Lock()
-	s.onLogout = fn
-	s.mu.Unlock()
-}
-
-// SetAuditor подключает журнал аудита.
-func (s *Service) SetAuditor(r Recorder) {
-	s.mu.Lock()
-	s.rec = r
-	s.mu.Unlock()
-}
-
-// record пишет событие в журнал. Вызывается под s.mu; actor может быть nil.
-func (s *Service) record(actor *UserRecord, action, result, detail string) {
-	s.recordFrom(s.source, actor, action, result, detail)
-}
-
-// recordFrom — то же, что record, но с адресом клиента той сессии, о которой событие.
-func (s *Service) recordFrom(source string, actor *UserRecord, action, result, detail string) {
-	if s.rec == nil {
-		return
-	}
-	e := audit.Event{Time: s.now(), Action: action, Result: result, Detail: detail, Source: source}
-	if actor != nil {
-		e.User, e.Role = actor.Username, string(actor.Role)
-	}
-	s.rec.Record(e)
 }
 
 func normalizeUsername(u string) string { return strings.ToLower(strings.TrimSpace(u)) }
@@ -271,204 +160,6 @@ func toInfo(u *UserRecord) *UserInfo {
 	return info
 }
 
-// ─── Сессия ────────────────────────────────────────────────
-
-// sessionUserLocked возвращает пользователя текущей сессии. Если его удалили или отключили —
-// сессия сбрасывается.
-func (s *Service) sessionUserLocked() *UserRecord {
-	if s.sessionID == "" {
-		return nil
-	}
-	u := s.st.findByID(s.sessionID)
-	if u == nil || u.Disabled {
-		s.sessionID = ""
-		if hook := s.onLogout; hook != nil {
-			go hook() // ресурсы сессии нельзя оставлять работать без пользователя
-		}
-		return nil
-	}
-	if s.idleExpiredLocked() {
-		s.expireLocked(u)
-		return nil
-	}
-	return u
-}
-
-// ─── Автовыход по бездействию ──────────────────────────────
-
-func (s *Service) idleMinutesLocked() int {
-	if m := s.st.settings.IdleTimeoutMinutes; m != nil {
-		return *m
-	}
-	return DefaultIdleTimeoutMinutes
-}
-
-// wall отбрасывает монотонные часы: время сна компьютера должно считаться бездействием.
-func (s *Service) wall() time.Time { return s.now().Round(0) }
-
-func (s *Service) touchLocked() { s.lastActive = s.wall() }
-
-func (s *Service) idleExpiredLocked() bool {
-	m := s.idleMinutesLocked()
-	if m <= 0 {
-		return false
-	}
-	return s.wall().Sub(s.lastActive) > time.Duration(m)*time.Minute+idleGrace
-}
-
-// expireLocked завершает сессию из-за бездействия и запускает очистку (терминалы, port-forward).
-// Очистка идёт в отдельной горутине: она не должна выполняться под блокировкой Service.
-func (s *Service) expireLocked(u *UserRecord) {
-	s.record(u, "SessionTimeout", audit.ResultOK, fmt.Sprintf("inactive for more than %d min", s.idleMinutesLocked()))
-	s.sessionID = ""
-	if hook := s.onLogout; hook != nil {
-		go hook()
-	}
-}
-
-// Active — у этого вида есть действующая сессия пользователя (не вышел, не завершена простоем
-// или администратором). Нужен серверу, чтобы закрыть веб-сессию, у которой ядро уже сессию закончило.
-func (s *Service) Active() bool {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.sessionID != ""
-}
-
-// ReportActivity сообщает, что пользователь работает с интерфейсом, и продлевает сессию.
-// Обычные вызовы API сессию не продлевают: интерфейс сам опрашивает кластер по таймеру,
-// и иначе сессия не истекла бы никогда.
-func (s *Service) ReportActivity() error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.sessionUserLocked() == nil {
-		return ErrNotAuthenticated
-	}
-	s.touchLocked()
-	return nil
-}
-
-// ExpireIdle завершает сессию, если она простаивала дольше допустимого. Возвращает true, если завершила.
-func (s *Service) ExpireIdle() bool {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.sessionID == "" {
-		return false
-	}
-	return s.sessionUserLocked() == nil
-}
-
-// ExpireAllIdle завершает все сессии, простаивавшие дольше допустимого; возвращает их число.
-func (s *Service) ExpireAllIdle() int {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	n := 0
-	for v := range s.sessions {
-		if v.sessionID != "" && v.sessionUserLocked() == nil {
-			n++
-		}
-	}
-	return n
-}
-
-// RunIdleWatcher периодически завершает простаивающие сессии (всех видов), чтобы терминалы и
-// port-forward закрывались вовремя, даже если интерфейс больше ничего не вызывает. Возвращается при отмене ctx.
-func (s *Service) RunIdleWatcher(ctx context.Context, every time.Duration) {
-	t := time.NewTicker(every)
-	defer t.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-t.C:
-			s.ExpireAllIdle()
-		}
-	}
-}
-
-// SetIdleTimeout задаёт время автовыхода в минутах (0 — выключить) и возвращает сохранённое значение.
-func (s *Service) SetIdleTimeout(minutes int) (int, error) {
-	if minutes < 0 || minutes > MaxIdleTimeoutMinutes {
-		return 0, ErrInvalidIdleTimeout
-	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.refreshLocked()
-	actor, err := s.authorizeLocked(PermUsersManage)
-	if err != nil {
-		return 0, err
-	}
-	prev := s.st.settings
-	was := s.idleMinutesLocked()
-	s.st.settings.IdleTimeoutMinutes = &minutes
-	if err := s.st.saveSettings(); err != nil {
-		s.st.settings = prev
-		s.record(actor, "SetIdleTimeout", audit.ResultFailed, err.Error())
-		return 0, fmt.Errorf("failed to save setting: %w", err)
-	}
-	s.record(actor, "SetIdleTimeout", audit.ResultOK, fmt.Sprintf("minutes=%d→%d", was, minutes))
-	return minutes, nil
-}
-
-func (s *Service) authorizeLocked(p Permission) (*UserRecord, error) {
-	return s.authorizeScopedLocked(p, "")
-}
-
-// authorizeScopedLocked — проверка права; clusterID задаёт кластер, к которому относится действие (пусто — вне кластера).
-func (s *Service) authorizeScopedLocked(p Permission, clusterID string) (*UserRecord, error) {
-	u := s.sessionUserLocked()
-	if u == nil {
-		return nil, ErrNotAuthenticated
-	}
-	if u.MustChangePassword {
-		return nil, ErrPasswordChangeRequired
-	}
-	if s.access != nil {
-		_, err := s.accessLocked(u, p, clusterID)
-		return u, err
-	}
-	if !u.Role.Has(p) {
-		return u, ErrForbidden
-	}
-	return u, nil
-}
-
-// checkLocked — Check для заданного кластера; под s.mu.
-func (s *Service) checkLocked(p Permission, clusterID string) (Actor, error) {
-	u, err := s.authorizeScopedLocked(p, clusterID)
-	if u == nil {
-		if cu := s.sessionUserLocked(); cu != nil {
-			return Actor{Username: cu.Username, Role: cu.Role, Source: s.source}, err
-		}
-		return Actor{Source: s.source}, err
-	}
-	role := u.Role
-	team := ""
-	if s.access != nil && clusterID != "" {
-		if tm, ok := s.access.ClusterTeam(clusterID); ok {
-			// Команда попадает в контекст только если пользователь её член: чужая остаётся «не найдена».
-			if r, ok := s.access.TeamRole(u.ID, tm); ok {
-				role, team = r, tm
-			}
-		}
-	}
-	return Actor{Username: u.Username, Role: role, Source: s.source, ClusterID: clusterID, TeamID: team}, err
-}
-
-// Authorize проверяет, что есть вошедший пользователь и у него есть право p.
-// Это единственная точка проверки прав для всех защищённых методов приложения.
-func (s *Service) Authorize(p Permission) error {
-	_, err := s.Check(p)
-	return err
-}
-
-// Check — то же, что Authorize, но возвращает ещё и действующего пользователя для журнала аудита.
-// При ErrForbidden пользователь возвращается тоже: отказ записывается от его имени.
-func (s *Service) Check(p Permission) (Actor, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.checkLocked(p, "")
-}
-
 // Status возвращает состояние для стартового экрана.
 func (s *Service) Status() Status {
 	s.mu.Lock()
@@ -490,6 +181,7 @@ func (s *Service) Current() (*UserInfo, error) {
 	}
 	return toInfo(u), nil
 }
+
 
 // ─── Вход / выход ──────────────────────────────────────────
 
@@ -1206,10 +898,23 @@ func validateCredentialsPassword(username, password string) error {
 // началось с запуска процесса. Только числа: ни логинов, ни адресов.
 type Stats struct{ LoginBlocked, LockoutsStarted int64 }
 
+// missRefreshEvery — не чаще одного внеочередного чтения при неизвестном логине (защита хранилища от перебора).
+const missRefreshEvery = time.Second
+
+// Stats — счётчики защиты входа для метрик: сколько попыток отклонено блокировкой, сколько блокировок
+// началось с запуска процесса и сколько проверок и записей неудач прошло без общего хранилища (режим деградации,
+// по росту этого счётчика настраивается оповещение). Только числа: ни логинов, ни адресов.
+type Stats struct{ LoginBlocked, LockoutsStarted, SharedDegraded int64 }
+
+
 // Stats возвращает счётчики общего состояния; безопасно вызывать из любого вида.
 func (s *Service) Stats() Stats {
 	if s == nil || s.shared == nil {
 		return Stats{}
 	}
-	return Stats{LoginBlocked: s.loginBlocked.Load(), LockoutsStarted: s.lockoutsStarted.Load()}
+	return Stats{
+		LoginBlocked:    s.loginBlocked.Load(),
+		LockoutsStarted: s.lockoutsStarted.Load(),
+		SharedDegraded:  s.sharedDegraded.Load(),
+	}
 }

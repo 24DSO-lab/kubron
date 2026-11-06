@@ -87,11 +87,21 @@ func EnforceAccess(v *App) bool {
 		return false
 	}
 	id := v.k8sMgr.GetActiveContext()
-	if id == "" || v.auth.CanSeeCluster(id) {
-		return false
+	if id == "" {
+		return v.applyRevocations()
 	}
-	v.endSessionResources()
-	v.k8sMgr.Detach()
-	v.k8sMgr.Notify(EventClusterAccessRevoked, id)
-	return true
+	// Сначала проверяем членство: исключение из команды одновременно отзывает личные credentials,
+	// но для активного кластера это потеря доступа, а не просто необходимость повторного входа.
+	if !v.auth.CanSeeCluster(id) {
+		v.endSessionResources()
+		v.k8sMgr.Detach()
+		v.k8sMgr.Notify(EventClusterAccessRevoked, id)
+		return true
+	}
+	// Если доступ к команде остался, но отозван личный вход (смена пароля, выход, «отключиться»),
+	// отключаем ресурсы и просим пройти авторизацию заново.
+	if v.applyRevocations() {
+		return true
+	}
+	return false
 }
