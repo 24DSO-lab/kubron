@@ -41,8 +41,8 @@ type lockouts struct {
 	lockoutsStarted atomic.Int64 // сколько раз серия неудач привела к блокировке
 }
 
-// init задаёт часы и общее хранилище; вызывается один раз при создании shared (структуру с atomic-счётчиками не копируют).
-func (l *lockouts) init(clock func() time.Time, fail FailureBackend) {
+// initLockouts задаёт часы и общее хранилище; вызывается один раз при создании shared (структуру с atomic-счётчиками не копируют).
+func (l *lockouts) initLockouts(clock func() time.Time, fail FailureBackend) {
 	l.failures, l.fail, l.clock = map[string]*failure{}, fail, clock
 }
 

@@ -123,7 +123,7 @@ func NewServiceWithBackend(b Backend) (*Service, error) {
 	sh := &shared{st: st, now: time.Now, sessions: map[*Service]struct{}{}}
 	fail, _ := b.(FailureBackend)
 	// Часы читаются при каждом вызове: подмена sh.now (в тестах) действует и на блокировки.
-	sh.lockouts.init(func() time.Time { return sh.now() }, fail)
+	sh.initLockouts(func() time.Time { return sh.now() }, fail)
 	svc := &Service{shared: sh}
 	sh.sessions[svc] = struct{}{}
 	return svc, nil

@@ -10,7 +10,7 @@ import (
 
 func newTestLockouts(now *time.Time) *lockouts {
 	l := &lockouts{}
-	l.init(func() time.Time { return *now }, nil)
+	l.initLockouts(func() time.Time { return *now }, nil)
 	return l
 }
 
@@ -56,7 +56,7 @@ func TestLockoutsFollowTheServiceClock(t *testing.T) {
 	// часы читаются при каждом вызове: подмена shared.now действует и на блокировки
 	now := time.Unix(1_700_000_000, 0)
 	sh := &shared{now: func() time.Time { return now }}
-	sh.lockouts.init(func() time.Time { return sh.now() }, nil)
+	sh.initLockouts(func() time.Time { return sh.now() }, nil)
 
 	for i := 0; i < freeAttempts; i++ {
 		sh.recordFailureLocked("alice", freeAttempts)
