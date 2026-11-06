@@ -41,6 +41,7 @@
 | `kubron_http_rate_limited_total` | counter | | Ответы `429` (ограничение запросов без сессии) |
 | `kubron_login_blocked_total` | counter | | Попытки входа, отклонённые блокировкой после неудач |
 | `kubron_login_lockouts_total` | counter | | Сколько блокировок началось |
+| `kubron_login_lockout_degraded_total` | counter | | Проверки и записи неудач входа без общего хранилища (PostgreSQL недоступна, работает локальная защита). Рост — повод для оповещения |
 | `kubron_sessions_active` | gauge | | Активные веб-сессии реплики |
 | `kubron_ws_connections` | gauge | | WebSocket-подключения событий |
 | `kubron_terminals_active` | gauge | | Открытые терминалы |

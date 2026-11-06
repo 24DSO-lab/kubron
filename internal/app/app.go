@@ -14,6 +14,7 @@ import (
 	"github.com/24DSO-labs/kubron/internal/k8s"
 	"github.com/24DSO-labs/kubron/internal/pfproxy"
 	"github.com/24DSO-labs/kubron/internal/replicaevents"
+	"github.com/24DSO-labs/kubron/internal/signin"
 	"github.com/24DSO-labs/kubron/internal/store"
 )
 
@@ -47,7 +48,7 @@ type App struct {
 	// собран запущенный broker.
 	gkeOAuth       *GKEOAuthStore
 	gkeOAuthActive string
-	conn           *connectState
+	conn           *signin.State
 	rev            *revocations // отозванные личные входы реплики; общий для всех видов
 	// limitUser и limitIDP ограничивают попытки AnswerChallenge на пользователя и на провайдера входа; nil — без лимита.
 	limitUser, limitIDP AttemptLimiter
@@ -74,7 +75,7 @@ func NewApp(p Platform) *App {
 		platform: p,
 		k8sMgr:   mgr,
 		pfMgr:    k8s.NewPortForwardManager(mgr),
-		conn:     newConnectState(),
+		conn:     signin.NewState(),
 		rev:      &revocations{},
 	}
 	a.pfMgr.SetObserver(a.portForwardObserver())

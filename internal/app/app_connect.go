@@ -7,92 +7,24 @@ import (
 	"context"
 	"errors"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/24DSO-labs/kubron/internal/audit"
 	"github.com/24DSO-labs/kubron/internal/auth"
 	"github.com/24DSO-labs/kubron/internal/credential"
-	"github.com/24DSO-labs/kubron/internal/credential/providers/oidc"
 	"github.com/24DSO-labs/kubron/internal/k8s"
+	"github.com/24DSO-labs/kubron/internal/signin"
 	"github.com/24DSO-labs/kubron/internal/store"
 )
 
 // Events sent to the session that owns the sign-in (ADR-0018). The payloads carry identifiers only.
 const (
-	EventAuthCompleted = "cluster:auth-completed"
-	EventAuthRequired  = "cluster:auth-required"
+	EventAuthCompleted = signin.EventAuthCompleted
+	EventAuthRequired  = signin.EventAuthRequired
 )
 
-const authRequiredEvery = 5 * time.Second
-
 // ErrSignInUnavailable is returned by the new sign-in methods when no broker is configured.
-var ErrSignInUnavailable = errors.New("sign-in is not available")
-
-// connectState is the per-session bookkeeping of the sign-in flow. It is a pointer in App so that session views
-// (which copy App) do not copy the mutex and do not share state.
-type connectState struct {
-	mu       sync.Mutex
-	pending  map[string]pendingChallenge // challenge id -> where it belongs, only for challenges this session started
-	notified map[string]time.Time        // cluster id -> when cluster:auth-required was last sent
-	seenSeq  uint64                      // how far of the replica's revocations this view has applied
-}
-
-func (s *connectState) seen() uint64 {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.seenSeq
-}
-
-func (s *connectState) markSeen(n uint64) {
-	s.mu.Lock()
-	if n > s.seenSeq {
-		s.seenSeq = n
-	}
-	s.mu.Unlock()
-}
-
-func newConnectState() *connectState {
-	return &connectState{pending: map[string]pendingChallenge{}, notified: map[string]time.Time{}}
-}
-
-// authRequiredDue reports whether cluster:auth-required may be sent now: a dead sign-in fails every request of
-// the cluster, and the client needs the event once, not once per request.
-func (s *connectState) authRequiredDue(clusterID string, now time.Time) bool {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if last, ok := s.notified[clusterID]; ok && now.Sub(last) < authRequiredEvery {
-		return false
-	}
-	s.notified[clusterID] = now
-	return true
-}
-
-// pendingChallenge is what a session remembers about an open challenge: its cluster and the key of the identity
-// provider it talks to (for the attempt limiter).
-type pendingChallenge struct {
-	cluster, idp string
-	sub          credential.Subject // the subject the challenge was issued for: team or user
-}
-
-func (s *connectState) remember(challengeID string, p pendingChallenge) {
-	s.mu.Lock()
-	s.pending[challengeID] = p
-	s.mu.Unlock()
-}
-
-func (s *connectState) cluster(challengeID string) (pendingChallenge, bool) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	p, ok := s.pending[challengeID]
-	return p, ok
-}
-
-func (s *connectState) forget(challengeID string) {
-	s.mu.Lock()
-	delete(s.pending, challengeID)
-	s.mu.Unlock()
-}
+var ErrSignInUnavailable = signin.ErrUnavailable
 
 // SetBroker sets the sign-in broker; called before OnStartup. A function of the package, not a method of App:
 // it must not appear in the Wails bindings or the RPC.
@@ -107,37 +39,6 @@ func SetWebOIDCRedirectURL(a *App, publicURL string) {
 		return
 	}
 	a.webOIDCRedirectURL = strings.TrimRight(publicURL, "/") + "/auth/cluster/callback"
-}
-
-// withWebOIDCParams removes any web-only overrides that could have come from cluster input, then injects
-// the administrator-controlled values for this web request. The public client applies only to the
-// authorization-code flow and only to the identity provider it is registered at: a cluster with another
-// grant (password, device code, legacy refresh) or another issuer keeps the client of its kubeconfig.
-// A setting without an issuer (the first form of it) is never applied.
-func withWebOIDCParams(d credential.Descriptor, web store.WebOIDC, redirectURL string) credential.Descriptor {
-	p := make(map[string]string, len(d.Params)+3)
-	for k, v := range d.Params {
-		if k != "web.client-id" && k != "web.redirect-url" && k != "web.issuer-url" {
-			p[k] = v
-		}
-	}
-	// The callback is usable only when the administrator-configured public client, its issuer and the
-	// server's validated public URL are all present. Otherwise the paste-redirect flow stays.
-	if web.ClientID != "" && web.IssuerURL != "" && redirectURL != "" &&
-		webClientGrant(d.Params["grant"]) && oidc.SameIssuer(d.Params["issuer-url"], web.IssuerURL) {
-		p["web.client-id"] = web.ClientID
-		p["web.redirect-url"] = redirectURL
-		p["web.issuer-url"] = web.IssuerURL
-	}
-	d.Params = p
-	return d
-}
-
-// webClientGrant reports whether the grant of the kubeconfig is the authorization-code flow (the default
-// when the kubeconfig names none).
-func webClientGrant(grant string) bool {
-	g := strings.TrimSpace(grant)
-	return g == "" || g == "authcode"
 }
 
 // emit sends an event to the owner of this view: to the web session if there is one, otherwise to the shell.
@@ -165,7 +66,7 @@ func (a *App) bindAuthSession() {
 			s.UserID = u.ID
 		}
 		s.OnAuthRequired = func(clusterID string) {
-			if a.conn != nil && a.conn.authRequiredDue(clusterID, time.Now()) {
+			if a.conn != nil && a.conn.AuthRequiredDue(clusterID, time.Now()) {
 				a.emit(EventAuthRequired, authEventData{ClusterID: clusterID})
 			}
 		}
@@ -214,7 +115,7 @@ func (a *App) connect(ctx context.Context, clusterID string) (credential.Connect
 				return credential.ConnectResult{}, err
 			}
 		}
-		plan.Desc = withWebOIDCParams(plan.Desc, web, a.webOIDCRedirectURL)
+		plan.Desc = signin.WithWebOIDCParams(plan.Desc, web, a.webOIDCRedirectURL)
 	}
 	res, err := a.broker.Acquire(ctx, plan.Subject, plan.Desc)
 	if err != nil {
@@ -226,7 +127,7 @@ func (a *App) connect(ctx context.Context, clusterID string) (credential.Connect
 		cctx, cancel := a.detachedCtx(storeTimeout)
 		defer cancel()
 		_ = a.broker.Cancel(cctx, plan.Subject, res.Challenge.ID)
-		return credential.ConnectResult{}, errSharedAccountNotSignedIn{}
+		return credential.ConnectResult{}, signin.SharedAccountNotSignedIn{}
 	}
 	return a.connectResultOf(clusterID, plan, res)
 }
@@ -235,12 +136,12 @@ func (a *App) connect(ctx context.Context, clusterID string) (credential.Connect
 // nothing, for static credentials) connects the cluster.
 func (a *App) connectResultOf(clusterID string, plan k8s.ConnPlan, res credential.Result) (credential.ConnectResult, error) {
 	if res.Challenge != nil {
-		a.conn.remember(res.Challenge.ID, pendingChallenge{cluster: clusterID, idp: idpKey(plan.Desc, clusterID), sub: plan.Subject})
+		a.conn.Remember(res.Challenge.ID, signin.Pending{Cluster: clusterID, IdP: signin.IDPKey(plan.Desc, clusterID), Sub: plan.Subject})
 		a.recordAuthEvent(auditAuthChallenge, audit.ResultOK, clusterID, "", "kind", string(res.Challenge.Kind))
 		return credential.ConnectResult{Status: "challenge", Challenge: res.Challenge}, nil
 	}
 	if plan.Desc.Kind != credential.KindStatic { // static credentials involve no sign-in
-		a.recordAuthEvent(auditAuthSuccess, audit.ResultOK, clusterID, principalOf(res))
+		a.recordAuthEvent(auditAuthSuccess, audit.ResultOK, clusterID, signin.PrincipalOf(res))
 	}
 	if err := a.finishConnect(clusterID); err != nil {
 		return credential.ConnectResult{}, err
@@ -261,36 +162,36 @@ func (a *App) ConnectCluster(clusterID string) (credential.ConnectResult, error)
 // advance runs Answer or Poll for a challenge that belongs to this session and finishes the connection when the
 // sign-in completes.
 func (a *App) advance(challengeID string, run func(credential.Subject) (credential.Result, error)) (credential.ConnectResult, error) {
-	pc, ok := a.conn.cluster(challengeID)
+	pc, ok := a.conn.Lookup(challengeID)
 	if !ok {
 		return credential.ConnectResult{}, credential.ErrChallengeExpired
 	}
-	clusterID := pc.cluster
+	clusterID := pc.Cluster
 	need := auth.PermRead
-	if pc.sub.Scope == credential.ScopeTeam {
+	if pc.Sub.Scope == credential.ScopeTeam {
 		need = auth.PermClusterManage // the shared account of a team
 	}
 	if err := a.authzCluster(need, clusterID); err != nil {
 		return credential.ConnectResult{}, err
 	}
-	res, err := run(pc.sub)
+	res, err := run(pc.Sub)
 	if err != nil {
 		if errors.Is(err, credential.ErrChallengeExpired) {
-			a.conn.forget(challengeID)
+			a.conn.Forget(challengeID)
 		}
 		a.recordAuthEvent(auditAuthFailure, audit.ResultFailed, clusterID, "", "reason", authFailureReason(err))
 		return credential.ConnectResult{}, err
 	}
 	if res.Challenge != nil {
 		if res.Challenge.ID != challengeID { // a new challenge (a fallback), not the same one still waiting
-			a.conn.forget(challengeID)
+			a.conn.Forget(challengeID)
 			a.recordAuthEvent(auditAuthChallenge, audit.ResultOK, clusterID, "", "kind", string(res.Challenge.Kind))
 		}
-		a.conn.remember(res.Challenge.ID, pc)
+		a.conn.Remember(res.Challenge.ID, pc)
 		return credential.ConnectResult{Status: "challenge", Challenge: res.Challenge}, nil
 	}
-	a.conn.forget(challengeID)
-	a.recordAuthEvent(auditAuthSuccess, audit.ResultOK, clusterID, principalOf(res))
+	a.conn.Forget(challengeID)
+	a.recordAuthEvent(auditAuthSuccess, audit.ResultOK, clusterID, signin.PrincipalOf(res))
 	if err := a.finishConnect(clusterID); err != nil {
 		return credential.ConnectResult{}, err
 	}
@@ -352,7 +253,7 @@ func CompleteWebOIDCCallback(ctx context.Context, a *App, state, redirectURL str
 	if err := a.authzCluster(need, sub.ClusterID); err != nil {
 		return err
 	}
-	if err := a.limitCallback(idpKey(desc, sub.ClusterID)); err != nil {
+	if err := a.limitCallback(signin.IDPKey(desc, sub.ClusterID)); err != nil {
 		return err
 	}
 	res, err := cb.AnswerCallback(ctx, sub, state, redirectURL)
@@ -363,8 +264,8 @@ func CompleteWebOIDCCallback(ctx context.Context, a *App, state, redirectURL str
 	if res.Token == nil || res.Challenge != nil {
 		return credential.ErrChallengeExpired
 	}
-	a.conn.forget(state)
-	a.recordAuthEvent(auditAuthSuccess, audit.ResultOK, sub.ClusterID, principalOf(res))
+	a.conn.Forget(state)
+	a.recordAuthEvent(auditAuthSuccess, audit.ResultOK, sub.ClusterID, signin.PrincipalOf(res))
 	if err := a.finishConnect(sub.ClusterID); err != nil {
 		return err
 	}
@@ -395,14 +296,14 @@ func (a *App) CancelChallenge(challengeID string) error {
 	if a.broker == nil {
 		return ErrSignInUnavailable
 	}
-	pc, ok := a.conn.cluster(challengeID)
+	pc, ok := a.conn.Lookup(challengeID)
 	if !ok {
 		return credential.ErrChallengeExpired
 	}
-	a.conn.forget(challengeID)
+	a.conn.Forget(challengeID)
 	ctx, cancel := a.detachedCtx(storeTimeout) // the request is withdrawn even if the view is being released
 	defer cancel()
-	return a.broker.Cancel(ctx, pc.sub, challengeID)
+	return a.broker.Cancel(ctx, pc.Sub, challengeID)
 }
 
 // ListMyConnections lists the sign-ins the current user has saved (no secrets).
@@ -445,28 +346,8 @@ func (a *App) DisconnectCluster(clusterID string) error {
 	return nil
 }
 
-// principalOf is the Kubernetes subject of a completed sign-in; empty if the provider gave none.
-func principalOf(res credential.Result) string {
-	if res.Token != nil {
-		return res.Token.Principal
-	}
-	return ""
-}
-
 // canManageCluster tells whether the user of this view administers the cluster (its team).
 func (a *App) canManageCluster(clusterID string) bool {
 	_, err := a.auth.CheckCluster(auth.PermClusterManage, clusterID)
 	return err == nil
-}
-
-// errSharedAccountNotSignedIn: the shared account of the team has no saved sign-in, and only a cluster administrator
-// can enter it. It is still ErrChallengeRequired for callers that test for it.
-type errSharedAccountNotSignedIn struct{}
-
-func (errSharedAccountNotSignedIn) Error() string {
-	return "the shared account of this cluster is not signed in: ask a cluster administrator"
-}
-
-func (errSharedAccountNotSignedIn) Is(target error) bool {
-	return target == credential.ErrChallengeRequired
 }

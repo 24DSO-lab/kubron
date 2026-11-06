@@ -119,8 +119,8 @@ func (a *App) applyRevocations() bool {
 	if owner == "" {
 		return false
 	}
-	clusters, last := a.rev.pending(owner, a.conn.seen())
-	a.conn.markSeen(last)
+	clusters, last := a.rev.pending(owner, a.conn.Seen())
+	a.conn.MarkSeen(last)
 	active := a.k8sMgr.GetActiveContext()
 	if active == "" {
 		return false

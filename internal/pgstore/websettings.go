@@ -43,7 +43,7 @@ func (s *Store) WebOIDC() (WebOIDC, error) {
 	if err := json.Unmarshal(raw, &cfg); err != nil {
 		return WebOIDC{}, err
 	}
-	return WebOIDC{ClientID: cfg.ClientID, IssuerURL: cfg.IssuerURL}, nil
+	return WebOIDC(cfg), nil
 }
 
 // SetWebOIDC saves the web sign-in client; empty values remove the setting.
@@ -57,7 +57,7 @@ func (s *Store) SetWebOIDC(v WebOIDC) error {
 		_, err := s.pool.Exec(ctx, `DELETE FROM settings WHERE key = $1`, settingsKeyWebOIDC)
 		return err
 	}
-	raw, err := json.Marshal(webOIDCSettings{ClientID: v.ClientID, IssuerURL: v.IssuerURL})
+	raw, err := json.Marshal(webOIDCSettings(v))
 	if err != nil {
 		return err
 	}
