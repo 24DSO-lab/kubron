@@ -82,7 +82,7 @@ func (m *Manager) GetCRDs() ([]CRDInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	ctx, cancel := context.WithTimeout(m.baseCtx(), 20*time.Second)
 	defer cancel()
 	return listCRDs(ctx, conn.DynamicClient)
 }
@@ -242,7 +242,7 @@ func (m *Manager) GetCustomResources(group, version, plural string, namespaces [
 		if err != nil {
 			return nil, err
 		}
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		ctx, cancel := context.WithTimeout(m.baseCtx(), 10*time.Second)
 		ki, _, err := customKindFor(ctx, conn.DynamicClient, group, version, plural)
 		cancel()
 		if err != nil {

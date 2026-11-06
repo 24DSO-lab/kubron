@@ -104,6 +104,27 @@ type Manager struct {
 	build func(ConnPlan) (*ClusterConnection, error)
 
 	helmActor atomic.Pointer[string] // пользователь вида: created_by репозиториев Helm (сервис)
+
+	// base — контекст жизни вида: запросы к API кластера, начатые методами вида, обрываются при Close (конец сессии).
+	// nil — без отмены (десктоп, тесты). Задаётся только при создании вида.
+	base      context.Context
+	closeBase context.CancelFunc
+}
+
+// baseCtx — родитель контекстов запросов этого вида. Запрос ограничивается ещё и своим таймаутом.
+func (m *Manager) baseCtx() context.Context {
+	if m.base != nil {
+		return m.base
+	}
+	return context.Background()
+}
+
+// Close обрывает незавершённые запросы этого вида к API кластеров (при освобождении сессии). Подключения, кэши и
+// informers общие для всех видов и не затрагиваются; повторный вызов безопасен.
+func (m *Manager) Close() {
+	if m.closeBase != nil {
+		m.closeBase()
+	}
 }
 
 // Limits — ограничения на ресурсы одного вида (пользователя). 0 — без ограничения.
@@ -208,7 +229,10 @@ func NewManager() *Manager {
 // ForSession возвращает новый вид на тот же пул подключений: свой активный кластер,
 // свои терминалы, логи и notifier. Методы Manager работают с видом без изменений.
 func (m *Manager) ForSession() *Manager {
+	base, cancel := context.WithCancel(m.baseCtx())
 	return &Manager{
+		base:             base,
+		closeBase:        cancel,
 		pool:             m.pool,
 		health:           m.health,
 		terminalSessions: NewTerminalSessionManager(),
@@ -346,7 +370,7 @@ func (m *Manager) TestConnection() error {
 	if err != nil {
 		return err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(m.baseCtx(), 5*time.Second)
 	defer cancel()
 
 	_, err = conn.Client.CoreV1().Namespaces().List(ctx, metav1.ListOptions{Limit: 1})

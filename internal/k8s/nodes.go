@@ -37,7 +37,7 @@ func (m *Manager) GetNodes() ([]NodeInfo, error) {
 		return nil, err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(m.baseCtx(), 10*time.Second)
 	defer cancel()
 
 	nodeList, err := conn.Client.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
@@ -185,7 +185,7 @@ func (m *Manager) GetNodeDetail(name string) (*NodeDetail, error) {
 		return nil, err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(m.baseCtx(), 10*time.Second)
 	defer cancel()
 
 	node, err := conn.Client.CoreV1().Nodes().Get(ctx, name, metav1.GetOptions{})

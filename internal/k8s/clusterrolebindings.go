@@ -15,7 +15,7 @@ func (m *Manager) GetClusterRoleBindings() (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(m.baseCtx(), 10*time.Second)
 	defer cancel()
 
 	list, err := conn.Client.RbacV1().ClusterRoleBindings().List(ctx, metav1.ListOptions{})

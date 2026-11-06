@@ -170,6 +170,7 @@ func ReleaseView(v *App) {
 	if v.cancel != nil {
 		v.cancel() // незавершённые обращения вида к провайдерам входа не должны пережить сессию
 	}
+	v.k8sMgr.Close() // и запросы вида к API кластеров
 	v.endSessionResources()
 	v.k8sMgr.Detach()
 	if v.auth != nil {

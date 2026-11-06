@@ -29,7 +29,7 @@ func (m *Manager) RestartDeployment(namespace, name string) error {
 		return err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(m.baseCtx(), 10*time.Second)
 	defer cancel()
 
 	// Патчим аннотацию чтобы триггернуть рестарт
@@ -55,7 +55,7 @@ func (m *Manager) GetDeploymentRevisions(namespace, name string) ([]RevisionInfo
 		return nil, err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(m.baseCtx(), 10*time.Second)
 	defer cancel()
 
 	// Получаем deployment для selector
@@ -107,7 +107,7 @@ func (m *Manager) RollbackDeployment(namespace, name string, revision int64) err
 		return err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(m.baseCtx(), 10*time.Second)
 	defer cancel()
 
 	// Находим ReplicaSet с нужной ревизией
