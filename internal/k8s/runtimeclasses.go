@@ -33,7 +33,7 @@ func (m *Manager) GetRuntimeClasses() ([]RuntimeClassInfo, error) {
 		return nil, err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	ctx, cancel := context.WithTimeout(m.baseCtx(), 15*time.Second)
 	defer cancel()
 
 	list, err := conn.Client.NodeV1().RuntimeClasses().List(ctx, metav1.ListOptions{})

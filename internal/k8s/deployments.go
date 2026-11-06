@@ -185,7 +185,7 @@ func (m *Manager) ScaleDeployment(namespace, name string, replicas int32) error 
 		return err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(m.baseCtx(), 10*time.Second)
 	defer cancel()
 
 	scale, err := conn.Client.AppsV1().Deployments(namespace).GetScale(ctx, name, metav1.GetOptions{})

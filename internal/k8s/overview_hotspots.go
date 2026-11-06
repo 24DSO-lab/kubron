@@ -185,7 +185,7 @@ func (m *Manager) GetOverviewHotspots(withMetrics bool) (*OverviewHotspots, erro
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		ctx, cancel := context.WithTimeout(m.baseCtx(), 10*time.Second)
 		defer cancel()
 		if l, err := conn.Client.CoreV1().PersistentVolumeClaims("").List(ctx, metav1.ListOptions{}); err == nil {
 			for i := range l.Items {

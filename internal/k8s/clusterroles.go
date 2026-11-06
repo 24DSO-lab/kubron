@@ -15,7 +15,7 @@ func (m *Manager) GetClusterRoles() (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(m.baseCtx(), 10*time.Second)
 	defer cancel()
 
 	list, err := conn.Client.RbacV1().ClusterRoles().List(ctx, metav1.ListOptions{})

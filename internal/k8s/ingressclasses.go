@@ -46,7 +46,7 @@ func (m *Manager) SetDefaultIngressClass(name string, makeDefault bool) error {
 	if err != nil {
 		return err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	ctx, cancel := context.WithTimeout(m.baseCtx(), 15*time.Second)
 	defer cancel()
 
 	ics := conn.Client.NetworkingV1().IngressClasses()
@@ -93,7 +93,7 @@ func (m *Manager) GetIngressClasses() ([]IngressClassInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	ctx, cancel := context.WithTimeout(m.baseCtx(), 15*time.Second)
 	defer cancel()
 
 	list, err := conn.Client.NetworkingV1().IngressClasses().List(ctx, metav1.ListOptions{})

@@ -65,7 +65,7 @@ func (m *Manager) SyncArgoApplication(apps []ArgoAppRef, opts ArgoSyncOptions) (
 	if err != nil {
 		return nil, err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), argoActionTimeout)
+	ctx, cancel := context.WithTimeout(m.baseCtx(), argoActionTimeout)
 	defer cancel()
 	return syncArgoApps(ctx, conn.DynamicClient, apps, opts)
 }
@@ -76,7 +76,7 @@ func (m *Manager) RefreshArgoApplication(apps []ArgoAppRef, hard bool) ([]ArgoAc
 	if err != nil {
 		return nil, err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), argoActionTimeout)
+	ctx, cancel := context.WithTimeout(m.baseCtx(), argoActionTimeout)
 	defer cancel()
 	return refreshArgoApps(ctx, conn.DynamicClient, apps, hard)
 }
@@ -86,7 +86,7 @@ func (m *Manager) TerminateArgoOperation(apps []ArgoAppRef) ([]ArgoActionResult,
 	if err != nil {
 		return nil, err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), argoActionTimeout)
+	ctx, cancel := context.WithTimeout(m.baseCtx(), argoActionTimeout)
 	defer cancel()
 	return terminateArgoApps(ctx, conn.DynamicClient, apps)
 }
@@ -97,7 +97,7 @@ func (m *Manager) RollbackArgoApplication(namespace, name string, id int64, prun
 	if err != nil {
 		return err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), argoActionTimeout)
+	ctx, cancel := context.WithTimeout(m.baseCtx(), argoActionTimeout)
 	defer cancel()
 	ref := ArgoAppRef{Namespace: strings.TrimSpace(namespace), Name: strings.TrimSpace(name)}
 	if ref.Namespace == "" || ref.Name == "" {
@@ -334,7 +334,7 @@ func (m *Manager) SuspendArgoAutoSync(apps []ArgoAppRef) ([]ArgoActionResult, er
 	if err != nil {
 		return nil, err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), argoActionTimeout)
+	ctx, cancel := context.WithTimeout(m.baseCtx(), argoActionTimeout)
 	defer cancel()
 	return forEachArgoApp(conn.DynamicClient, apps, func(ri dynamic.ResourceInterface, ref ArgoAppRef) error {
 		return updateArgoApp(ctx, ri, ref.Name, applySuspendAutoSync)
@@ -347,7 +347,7 @@ func (m *Manager) ResumeArgoAutoSync(apps []ArgoAppRef) ([]ArgoActionResult, err
 	if err != nil {
 		return nil, err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), argoActionTimeout)
+	ctx, cancel := context.WithTimeout(m.baseCtx(), argoActionTimeout)
 	defer cancel()
 	return forEachArgoApp(conn.DynamicClient, apps, func(ri dynamic.ResourceInterface, ref ArgoAppRef) error {
 		return updateArgoApp(ctx, ri, ref.Name, applyResumeAutoSync)
@@ -365,7 +365,7 @@ func (m *Manager) DeleteArgoApplication(namespace, name string, cascade bool) er
 	if namespace == "" || name == "" {
 		return errors.New("no application specified")
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), argoActionTimeout)
+	ctx, cancel := context.WithTimeout(m.baseCtx(), argoActionTimeout)
 	defer cancel()
 	ri := conn.DynamicClient.Resource(kindTable["application"].gvr).Namespace(namespace)
 	if err := updateArgoApp(ctx, ri, name, func(obj *unstructured.Unstructured) error {

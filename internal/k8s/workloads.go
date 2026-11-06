@@ -212,7 +212,7 @@ func (m *Manager) RestartStatefulSet(namespace, name string) error {
 	if err != nil {
 		return err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(m.baseCtx(), 10*time.Second)
 	defer cancel()
 
 	sts, err := conn.Client.AppsV1().StatefulSets(namespace).Get(ctx, name, metav1.GetOptions{})
@@ -578,7 +578,7 @@ func (m *Manager) RestartDaemonSet(namespace, name string) error {
 	if err != nil {
 		return err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(m.baseCtx(), 10*time.Second)
 	defer cancel()
 
 	ds, err := conn.Client.AppsV1().DaemonSets(namespace).Get(ctx, name, metav1.GetOptions{})
@@ -603,7 +603,7 @@ func (m *Manager) RetryJob(namespace, jobName string) error {
 		return err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	ctx, cancel := context.WithTimeout(m.baseCtx(), 20*time.Second)
 	defer cancel()
 
 	job, err := conn.Client.BatchV1().Jobs(namespace).Get(ctx, jobName, metav1.GetOptions{})
@@ -714,7 +714,7 @@ func (m *Manager) GetCronJobJobs(namespace, cronJobName string) ([]JobInfo, erro
 		return nil, err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	ctx, cancel := context.WithTimeout(m.baseCtx(), 15*time.Second)
 	defer cancel()
 
 	list, err := conn.Client.BatchV1().Jobs(namespace).List(ctx, metav1.ListOptions{})
@@ -799,7 +799,7 @@ func (m *Manager) ScaleStatefulSet(namespace, name string, replicas int32) error
 		return err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(m.baseCtx(), 10*time.Second)
 	defer cancel()
 
 	scale, err := conn.Client.AppsV1().StatefulSets(namespace).GetScale(ctx, name, metav1.GetOptions{})
