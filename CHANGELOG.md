@@ -45,6 +45,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 
 - **Manual Kubernetes tokens:** an unverified JWT `sub` is no longer presented as an authenticated Kubernetes principal in audit or connection details. The API server remains the authority for token validation; the unverified `exp` is used only as a cache hint.
+- **Login lockout when the shared store is unavailable:** if PostgreSQL cannot be reached, the per-login lockout (sign-in and password change) no longer switches off. Failures are counted in the memory of the replica, a lockout already reported by PostgreSQL is kept in memory and survives the outage, and PostgreSQL is not queried for 5 seconds after an error so attempts do not wait for a database timeout. While the store is healthy no local per-login counter is kept, so there are no false lockouts between replicas. Sign-in is not refused when the store is down (that would lock out administrators too). In degraded mode the limit is up to 5 failures per replica instead of 5 in total. New metric `kubron_login_lockout_degraded_total` shows these events; the log line about the outage is written at most every 30 seconds.
+- **Clients without an address:** a web request whose client address cannot be determined (empty `RemoteAddr`) now shares one rate-limit key instead of bypassing the per-address lockout.
 
 ## [1.0.0] - 2026-11-03
 

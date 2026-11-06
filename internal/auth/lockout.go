@@ -25,20 +25,40 @@ type failure struct {
 	last        time.Time // последняя неудача (для забывания счётчика по адресу)
 }
 
+const (
+	// sharedRetryAfter — пауза в обращениях к общему хранилищу после сбоя (размыкатель): пока она идёт, вход
+	// не ждёт таймаута БД на каждой попытке и работает на локальной защите.
+	sharedRetryAfter = 5 * time.Second
+	// sharedLogEvery — не чаще одной записи в журнал о недоступности общего хранилища за этот интервал.
+	sharedLogEvery = 30 * time.Second
+)
+
 // lockouts — политика блокировок входа: счётчики неудач по логину и по адресу клиента, их лимиты и забывание, общее
 // хранилище счётчиков для реплик и метрики.
 //
 // Компонент не имеет своего мьютекса: его состояние защищено shared.mu, и методы *Locked вызываются под ним —
 // проверка блокировки и учёт неудачи в Login остаются одной атомарной секцией, как и прежде. Методы shared*
 // ходят во внешнее хранилище и вызываются без shared.mu.
+//
+// Режим деградации. Блокировка по логину общая, пока отвечает хранилище fail. Если оно недоступно, защита от подбора
+// по логину не отключается, а переходит на память процесса: неудачи этой реплики считаются локально (с лимитами
+// того же размера), а блокировка, которую хранилище успело сообщить, зеркалируется в память и не пропадает вместе
+// с ним. Без сбоев локальный счётчик по логину не ведётся — иначе вход на другой реплике не снимал бы его и
+// возникали бы ложные блокировки. Цена деградации: до freeAttempts неудач на каждую реплику за окно вместо общих
+// freeAttempts; после восстановления хранилища общая блокировка снова действует, накопленное локально остаётся
+// только до истечения собственных блокировок.
 type lockouts struct {
-	failures map[string]*failure // счётчики по адресу (и по логину, если нет общего хранилища fail)
+	failures map[string]*failure // счётчики по адресу, а по логину — без общего хранилища, в деградации и как зеркало блокировки
 	fail     FailureBackend      // не nil: блокировки по логину общие для всех реплик
 	clock    func() time.Time    // часы сервиса: тесты подменяют их в shared.now
+
+	sharedDownUntil atomic.Int64 // UnixNano: до этого момента хранилище не опрашивается (после сбоя)
+	sharedLoggedAt  atomic.Int64 // UnixNano последней записи в журнал о сбое хранилища
 
 	// Счётчики для метрик (только числа, без имён пользователей и адресов).
 	loginBlocked    atomic.Int64 // попытки входа, отклонённые из-за действующей блокировки
 	lockoutsStarted atomic.Int64 // сколько раз серия неудач привела к блокировке
+	sharedDegraded  atomic.Int64 // проверки и записи неудач, выполненные без общего хранилища (сбой или пауза после него)
 }
 
 // initLockouts задаёт часы и общее хранилище; вызывается один раз при создании shared (структуру с atomic-счётчиками не копируют).
@@ -57,38 +77,111 @@ func (l *lockouts) lockRemainingLocked(key string) time.Duration {
 	return 0
 }
 
-// sharedLockRemaining — остаток блокировки логина в общем хранилище (0 — блокировки нет или хранилища нет).
-// Если хранилище недоступно, блокировка не проверяется (ошибка в журнал): сессию без него всё равно не открыть.
+// sharedReady — можно ли обращаться к общему хранилищу: оно есть и не в паузе после сбоя.
+func (l *lockouts) sharedReady() bool {
+	return l.fail != nil && l.clock().UnixNano() >= l.sharedDownUntil.Load()
+}
+
+// sharedFailed фиксирует сбой хранилища: открывает размыкатель, считает метрику и пишет в журнал не чаще
+// sharedLogEvery (иначе при падении БД журнал заполнится по строке на каждую попытку входа).
+func (l *lockouts) sharedFailed(op string, err error) {
+	now := l.clock().UnixNano()
+	l.sharedDegraded.Add(1)
+	l.sharedDownUntil.Store(now + int64(sharedRetryAfter))
+	if last := l.sharedLoggedAt.Load(); now-last >= int64(sharedLogEvery) && l.sharedLoggedAt.CompareAndSwap(last, now) {
+		log.Printf("auth: shared login lockout store is unavailable, falling back to local lockouts (%s): %v", op, err)
+	}
+}
+
+// sharedLockRemaining — остаток блокировки логина в общем хранилище. ok=false: проверить не удалось (сбой или
+// пауза после него), и вызывающий обязан перейти на локальную защиту; нет хранилища вообще — ok=true, 0.
 // Вызывать без s.mu.
-func (l *lockouts) sharedLockRemaining(key string) time.Duration {
+func (l *lockouts) sharedLockRemaining(key string) (d time.Duration, ok bool) {
 	if l.fail == nil {
-		return 0
+		return 0, true
+	}
+	if !l.sharedReady() {
+		l.sharedDegraded.Add(1)
+		return 0, false
 	}
 	d, err := l.fail.LockRemaining(key)
 	if err != nil {
-		log.Printf("auth: login lockout is not checked: %v", err)
-		return 0
+		l.sharedFailed("lock check", err)
+		return 0, false
 	}
-	return d
+	return d, true
 }
 
-// sharedRecordFailure учитывает неудачу в общем хранилище (без s.mu; нет хранилища — ничего не делает).
-func (l *lockouts) sharedRecordFailure(key string) {
+// sharedRecordFailure учитывает неудачу в общем хранилище. false — записать не удалось (сбой или пауза после
+// него): неудача должна быть учтена локально. Нет хранилища — true, ничего не делает. Вызывать без s.mu.
+func (l *lockouts) sharedRecordFailure(key string) bool {
 	if l.fail == nil {
-		return
+		return true
+	}
+	if !l.sharedReady() {
+		l.sharedDegraded.Add(1)
+		return false
 	}
 	if err := l.fail.RecordFailure(key, freeAttempts, baseLockout, maxLockout); err != nil {
-		log.Printf("auth: failed login is not counted: %v", err)
+		l.sharedFailed("failure record", err)
+		return false
 	}
+	return true
 }
 
-// sharedClearFailures забывает счётчик в общем хранилище (без s.mu).
+// sharedClearFailures забывает счётчик в общем хранилище (без s.mu). Не удалось — счётчик остаётся: это
+// строже, но не слабее защиты. Во время паузы после сбоя хранилище не опрашивается.
 func (l *lockouts) sharedClearFailures(key string) {
-	if l.fail == nil {
+	if !l.sharedReady() {
 		return
 	}
 	if err := l.fail.ClearFailures(key); err != nil {
-		log.Printf("auth: failure counter is not cleared: %v", err)
+		l.sharedFailed("counter clear", err)
+	}
+}
+
+// mirrorSharedLockLocked запоминает в памяти блокировку, которую сообщило общее хранилище (d > 0): если оно
+// выйдет из строя, эта блокировка не должна исчезнуть. Блокировка не укорачивается, а счётчик поднимается до
+// порога, как в хранилище, где после истечения блокировки счёт остаётся и следующая неудача блокирует снова.
+// Если места нет (все записи — действующие блокировки), ничего не запоминается: текущая попытка всё равно
+// отклоняется по ответу хранилища.
+func (l *lockouts) mirrorSharedLockLocked(key string, d time.Duration) {
+	if d <= 0 {
+		return
+	}
+	if l.failures[key] == nil && !l.makeRoomLocked(key) {
+		return
+	}
+	f := l.failures[key]
+	if f == nil {
+		f = &failure{}
+		l.failures[key] = f
+	}
+	now := l.clock()
+	f.count = max(f.count, freeAttempts)
+	f.last = now
+	if until := now.Add(d); until.After(f.lockedUntil) {
+		f.lockedUntil = until
+	}
+}
+
+// recordKeyFailureLocked учитывает неудачу по логину (ключу «pw:…» для смены пароля) в памяти процесса, когда
+// общей защиты нет: хранилища нет вовсе либо оно не ответило (degraded). Пока хранилище отвечает, его счётчика
+// достаточно, а локальный не ведётся (см. описание lockouts).
+func (l *lockouts) recordKeyFailureLocked(key string, degraded bool) {
+	if l.fail != nil {
+		if !degraded {
+			return
+		}
+		l.forgetStaleLocked(key) // давняя серия неудач до сбоя не должна ускорять блокировку
+	}
+	l.recordFailureLocked(key, freeAttempts)
+}
+
+// forgetStaleLocked забывает счётчик ключа, если последняя неудача старше sourceWindow и блокировки уже нет.
+func (l *lockouts) forgetStaleLocked(key string) {
+	if f := l.failures[key]; f != nil && l.clock().Sub(f.last) > sourceWindow && f.lockedUntil.Before(l.clock()) {
+		delete(l.failures, key)
 	}
 }
 
@@ -98,9 +191,7 @@ func (l *lockouts) recordSourceFailureLocked(key string) {
 	if key == "" {
 		return
 	}
-	if f := l.failures[key]; f != nil && l.clock().Sub(f.last) > sourceWindow && f.lockedUntil.Before(l.clock()) {
-		delete(l.failures, key)
-	}
+	l.forgetStaleLocked(key)
 	l.recordFailureLocked(key, sourceFreeAttempts)
 }
 

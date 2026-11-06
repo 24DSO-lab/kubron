@@ -58,7 +58,7 @@ func (s *Service) dummy() string {
 func (s *Service) Login(username, password string) (*UserInfo, error) {
 	key := normalizeUsername(username)
 
-	shared := s.sharedLockRemaining(key) // общее хранилище: вне блокировки, до проверки пароля
+	shared, checkOK := s.sharedLockRemaining(key) // общее хранилище: вне блокировки, до проверки пароля
 	s.mu.Lock()
 	if len(s.st.users) == 0 {
 		s.mu.Unlock()
@@ -66,6 +66,7 @@ func (s *Service) Login(username, password string) (*UserInfo, error) {
 	}
 
 	ipKey := s.ipKey()
+	s.mirrorSharedLockLocked(key, shared) // блокировка из общего хранилища переживёт его сбой
 	if remaining := max(s.lockRemainingLocked(key), shared, s.lockRemainingLocked(ipKey)); remaining > 0 {
 		s.loginBlocked.Add(1)
 		s.record(&UserRecord{Username: username}, "Login", audit.ResultDenied, "login temporarily blocked after failed attempts")
@@ -101,15 +102,18 @@ func (s *Service) Login(username, password string) (*UserInfo, error) {
 		newHash, _ = hashPassword(password)
 	}
 
+	failed := !ok || snapshot == nil
+	degraded := !checkOK                       // общее хранилище не ответило на проверку блокировки
+	if failed && !s.sharedRecordFailure(key) { // вне s.mu: ходит во внешнее хранилище
+		degraded = true
+	}
+
 	s.mu.Lock()
-	if !ok || snapshot == nil {
-		if s.fail == nil {
-			s.recordFailureLocked(key, freeAttempts)
-		}
+	if failed {
+		s.recordKeyFailureLocked(key, degraded)
 		s.recordSourceFailureLocked(ipKey)
 		s.record(&UserRecord{Username: username}, "Login", audit.ResultFailed, ErrInvalidCredentials.Error())
 		s.mu.Unlock()
-		s.sharedRecordFailure(key)
 		return nil, ErrInvalidCredentials
 	}
 	rec := s.st.findByID(snapshot.ID)
@@ -159,8 +163,9 @@ func (s *Service) ChangePassword(oldPassword, newPassword string) error {
 	// Подбор старого пароля (украденная сессия) ограничивается так же, как вход: по логину и по адресу
 	pwKey, ipKey := "pw:"+normalizeUsername(username), s.ipKey()
 	s.mu.Unlock()
-	shared := s.sharedLockRemaining(pwKey)
+	shared, checkOK := s.sharedLockRemaining(pwKey)
 	s.mu.Lock()
+	s.mirrorSharedLockLocked(pwKey, shared) // блокировка из общего хранилища переживёт его сбой
 	if remaining := max(s.lockRemainingLocked(pwKey), shared, s.lockRemainingLocked(ipKey)); remaining > 0 {
 		s.record(u, "ChangePassword", audit.ResultDenied, "password change temporarily blocked after failed attempts")
 		s.mu.Unlock()
@@ -172,14 +177,15 @@ func (s *Service) ChangePassword(oldPassword, newPassword string) error {
 		return err
 	}
 	if ok, _ := verifyPassword(oldPassword, oldHash); !ok {
-		s.mu.Lock()
-		if s.fail == nil {
-			s.recordFailureLocked(pwKey, freeAttempts)
+		degraded := !checkOK
+		if !s.sharedRecordFailure(pwKey) { // вне s.mu: ходит во внешнее хранилище
+			degraded = true
 		}
+		s.mu.Lock()
+		s.recordKeyFailureLocked(pwKey, degraded)
 		s.recordSourceFailureLocked(ipKey)
 		s.record(s.st.findByID(id), "ChangePassword", audit.ResultFailed, ErrWrongPassword.Error())
 		s.mu.Unlock()
-		s.sharedRecordFailure(pwKey)
 		return ErrWrongPassword
 	}
 	if oldPassword == newPassword {
