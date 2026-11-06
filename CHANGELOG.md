@@ -36,7 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Cluster dialogs:** the login and password fields for `oidc-login` are removed; sign-in happens in the sign-in dialog.
 - **Cluster authentication network policy:** native AKS sign-in now uses the shared IdP HTTP client, enforcing `KUBRON_CLUSTER_ADDR_POLICY` on Azure authority connections and redirects, with HTTPS-only web requests, bounded responses/timeouts and no environment proxy.
 - **Cluster authentication docs:** updated the English and Russian user guides to describe the implemented credential broker, OIDC and AKS sign-in modes, Desktop exec confirmation, Web manual-token fallback and unsupported Azure modes. The Russian sign-in guide (`docs/cluster-sign-in.md`) now also covers AKS, EKS and the shared team account.
-- **Documentation:** `docs/README.md` is now a map of all documents; closed stage tickets, the original plan and the static analysis moved to `docs/archive/`. Retrospective ADR-0019…0022 record password hashing, HTTP security, the release supply chain and logging with metrics. The decisions in `docs/decisions/` are accepted. Links to files that never existed were removed.
+- **Documentation:** `docs/README.md` is now a map of all documents; closed stage tickets, the original plan and the static analysis were removed (they stay in the git history). Retrospective ADR-0019…0022 record password hashing, HTTP security, the release supply chain and logging with metrics. The decisions in `docs/decisions/` are accepted. Links to files that never existed were removed.
 
 ### Removed
 
