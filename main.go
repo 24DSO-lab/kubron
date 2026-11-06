@@ -48,7 +48,7 @@ func main() {
 		OnStartup: func(ctx context.Context) {
 			platform.SetContext(ctx)
 			if err := k8s.InitKubronDir(); err != nil {
-				println("Error:", err.Error())
+				slog.Error("app: не удалось подготовить каталог Kubron", "error", err)
 			}
 			setupDesktopBroker(ctx, a.App, platform)
 			app.OnStartup(a.App)(ctx)

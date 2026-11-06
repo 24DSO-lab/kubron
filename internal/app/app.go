@@ -5,13 +5,7 @@ package app
 
 import (
 	"context"
-
-	"errors"
-	"fmt"
 	"log/slog"
-	"net"
-	"strings"
-
 	"time"
 
 	"github.com/24DSO-labs/kubron/internal/audit"
