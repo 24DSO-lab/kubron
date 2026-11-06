@@ -181,14 +181,19 @@ func (s *Service) Current() (*UserInfo, error) {
 // missRefreshEvery — не чаще одного внеочередного чтения при неизвестном логине (защита хранилища от перебора).
 const missRefreshEvery = time.Second
 
-// Stats — счётчики защиты входа для метрик: сколько попыток отклонено блокировкой и сколько блокировок
-// началось с запуска процесса. Только числа: ни логинов, ни адресов.
-type Stats struct{ LoginBlocked, LockoutsStarted int64 }
+// Stats — счётчики защиты входа для метрик: сколько попыток отклонено блокировкой, сколько блокировок
+// началось с запуска процесса и сколько проверок и записей неудач прошло без общего хранилища (режим деградации,
+// по росту этого счётчика настраивается оповещение). Только числа: ни логинов, ни адресов.
+type Stats struct{ LoginBlocked, LockoutsStarted, SharedDegraded int64 }
 
 // Stats возвращает счётчики общего состояния; безопасно вызывать из любого вида.
 func (s *Service) Stats() Stats {
 	if s == nil || s.shared == nil {
 		return Stats{}
 	}
-	return Stats{LoginBlocked: s.loginBlocked.Load(), LockoutsStarted: s.lockoutsStarted.Load()}
+	return Stats{
+		LoginBlocked:    s.loginBlocked.Load(),
+		LockoutsStarted: s.lockoutsStarted.Load(),
+		SharedDegraded:  s.sharedDegraded.Load(),
+	}
 }
