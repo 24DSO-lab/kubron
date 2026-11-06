@@ -95,6 +95,18 @@ Deploy Kubron in your own infrastructure and access it through a browser. Web ad
 - **Argo CD integration** — applications, ApplicationSets, projects, sync controls, live-vs-desired diff and resource graph.
 - **Optional metrics** — charts for pods, workloads, nodes, PVCs and ingresses when the metrics stack is installed.
 
+## Why teams choose Kubron
+
+- **Light and native.** Go plus the system webview: no bundled browser engine, quick to start, easy on memory.
+- **Private by design.** No telemetry, no mandatory account, and on Desktop your kubeconfig stays on your machine.
+- **Safe to operate.** Environment tags, a mandatory diff before saving YAML, and bulk actions that report failures instead of stopping.
+- **Works with restricted access.** Restricted RBAC is a first-class case: no cluster-wide `list` required.
+- **Signs in to your clusters.** OIDC, Azure AKS, AWS EKS and Google GKE are handled natively, and the Web server never runs commands from an uploaded kubeconfig.
+- **Verifiable.** Release checksums and provenance, plus signed server images and chart with SBOMs.
+- **Open and multilingual.** Apache-2.0, a public extension API, and an interface in English, Русский and 中文.
+
+[What is Kubron? →](/guide/what-is-kubron)
+
 ## Built with Go, Wails and Vue
 
 
@@ -114,7 +126,8 @@ Desktop does not require an account, sends no telemetry and keeps your kubeconfi
 Ready to connect a cluster?
 
 - [Download the latest release](https://github.com/24DSO-labs/kubron/releases)
-- [Follow the getting-started guide](/guide/getting-started)
+- [Choose Desktop or Web](/guide/getting-started)
+- [Requirements and verification](/guide/installation)
 - [Explore all features](/features/)
 - [Read the source and contribute](https://github.com/24DSO-labs/kubron)
 

@@ -20,7 +20,7 @@ In PostgreSQL-backed Web team mode, a cluster belongs to one team and the user's
 
 ## Authentication and session protection
 
-- Passwords are stored using PBKDF2-SHA256 password hashing (600,000 iterations).
+- Passwords are stored as Argon2id hashes (19 MiB of memory, 2 iterations, 1 thread, a random 16-byte salt). A password must be 8 to 256 bytes long. Hashes created by earlier versions (PBKDF2-SHA256) are still accepted and are upgraded automatically at the next successful sign-in, so no password reset is needed.
 - Failed login attempts trigger a temporary lockout.
 - Inactivity can end a session automatically; interactive resources such as terminals and port-forwards are closed with the session.
 - Web sessions use protected cookies, CSRF validation and Origin checks. On HTTPS deployments, the session cookie is HttpOnly, Secure and SameSite=Lax.

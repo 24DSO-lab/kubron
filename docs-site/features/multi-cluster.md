@@ -25,6 +25,6 @@ When PostgreSQL-backed team mode is enabled, each cluster belongs to one team. U
 
 ## Authentication depends on the edition
 
-Desktop connects from your computer and can use local kubeconfig exec plugins. Web connects from the server, so it rejects local file references and arbitrary exec commands. Static kubeconfig credentials and the currently supported OIDC password flow are available in Web; see [Connecting to Kubernetes](/features/cluster-auth) for the exact scope.
+Desktop connects from your computer and can run local kubeconfig `exec` plugins after you confirm them. Web connects from the server, so it rejects local file references and never runs arbitrary commands. Static credentials, OIDC (password, browser and device code), Azure AKS, AWS EKS and Google GKE sign-in are available in Web through a sign-in dialog; see [Connecting to Kubernetes](/features/cluster-auth) for the exact scope.
 
 [Learn about teams and shared access](/features/teams).
