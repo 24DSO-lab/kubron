@@ -82,16 +82,11 @@ type Status struct {
 type shared struct {
 	mu       sync.Mutex
 	st       *store
-	failures map[string]*failure // счётчики по адресу (и по логину, если нет общего хранилища fail)
-	fail     FailureBackend      // не nil: блокировки по логину общие для всех реплик
+	lockouts // блокировки входа; под тем же mu (см. lockouts)
 	now      func() time.Time
 	rec      Recorder
 	access   Access                // nil — прежняя модель: глобальная роль пользователя
 	sessions map[*Service]struct{} // живые сессии, включая неявную сессию десктопа
-
-	// Счётчики для метрик (только числа, без имён пользователей и адресов).
-	loginBlocked    atomic.Int64 // попытки входа, отклонённые из-за действующей блокировки
-	lockoutsStarted atomic.Int64 // сколько раз серия неудач привела к блокировке
 
 	missAt atomic.Int64 // когда последний раз перечитывали пользователей из-за неизвестного логина (UnixNano)
 
@@ -125,8 +120,10 @@ func NewServiceWithBackend(b Backend) (*Service, error) {
 	if err != nil {
 		return nil, err
 	}
-	sh := &shared{st: st, failures: map[string]*failure{}, now: time.Now, sessions: map[*Service]struct{}{}}
-	sh.fail, _ = b.(FailureBackend)
+	sh := &shared{st: st, now: time.Now, sessions: map[*Service]struct{}{}}
+	fail, _ := b.(FailureBackend)
+	// Часы читаются при каждом вызове: подмена sh.now (в тестах) действует и на блокировки.
+	sh.initLockouts(func() time.Time { return sh.now() }, fail)
 	svc := &Service{shared: sh}
 	sh.sessions[svc] = struct{}{}
 	return svc, nil
