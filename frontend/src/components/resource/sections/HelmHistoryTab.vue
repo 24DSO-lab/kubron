@@ -52,6 +52,7 @@ import { badgeClass } from '../../../resources/status'
 import { callApp } from '../../../resources/wails'
 import { runHelmOp } from '../../../composables/useHelmOps'
 import { askConfirm } from '../../../resources/confirm'
+import { withFluxWarning } from './HelmFluxGuard'
 import { reloadActive } from '../../../resources/store'
 import { itemName, itemNs } from '../../../resources/utils'
 import { can } from '../../../composables/useAuth'
@@ -72,7 +73,8 @@ const name = computed(() => itemName(props.resource))
 const busy = ref(false)
 
 async function rollback(revision: number) {
-  if (!(await askConfirm(t('helm.history.confirmRollback', { name: name.value, revision })))) return
+  const message = withFluxWarning('rollback', props.resource, name.value, t('helm.history.confirmRollback', { name: name.value, revision }))
+  if (!(await askConfirm(message))) return
   busy.value = true
   try {
     await runHelmOp({ op: 'rollback', namespace: ns.value, release: name.value }, id =>

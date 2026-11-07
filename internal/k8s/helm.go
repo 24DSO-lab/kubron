@@ -34,6 +34,9 @@ type HelmReleaseInfo struct {
 	LatestVersion    string `json:"latestVersion"`
 	LatestRepo       string `json:"latestRepo"`
 	LatestDeprecated bool   `json:"latestDeprecated"`
+
+	// FluxManagedBy — HelmRelease Flux, который управляет релизом (вид, namespace и имя); nil — не под управлением Flux.
+	FluxManagedBy *FluxRef `json:"fluxManagedBy"`
 }
 
 // HelmChartInfo — агрегация установленных релизов по chart-у
@@ -125,6 +128,8 @@ func (m *Manager) GetHelmReleases() ([]HelmReleaseInfo, error) {
 		}
 		releases = append(releases, info)
 	}
+
+	m.markFluxManagedHelm(releases)
 
 	sort.Slice(releases, func(i, j int) bool {
 		if releases[i].Namespace != releases[j].Namespace {
