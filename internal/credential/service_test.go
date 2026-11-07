@@ -7,7 +7,9 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -129,6 +131,61 @@ func answer(user, pw string) credential.Answer {
 	return credential.Answer{"username": user, "password": pw}
 }
 
+type browserCallbackProvider struct{}
+
+func (browserCallbackProvider) Kind() credential.Kind { return credential.KindOIDC }
+func (browserCallbackProvider) Begin(context.Context, credential.Env, credential.Request) (credential.Result, error) {
+	return credential.Result{Challenge: &credential.Challenge{
+		Kind: credential.ChallengeBrowserCallback, URL: "https://idp.example/auth?state=provisional", Poll: true,
+	}}, nil
+}
+func (browserCallbackProvider) Continue(_ context.Context, _ credential.Env, req credential.Request) (credential.Result, error) {
+	if req.Answer["redirectUrl"] == "" {
+		return credential.Result{Challenge: &req.Challenge, Pending: req.Pending}, nil
+	}
+	return credential.Result{Token: &credential.Token{Value: "callback-token", Principal: "alice"}}, nil
+}
+
+func TestWebCallbackIsBoundToUserAndSessionAndConsumedOnce(t *testing.T) {
+	r := newRig(t)
+	r.svc = r.newService(browserCallbackProvider{})
+	res, err := r.svc.Acquire(bg, subj, credential.Descriptor{Kind: credential.KindOIDC})
+	if err != nil || res.Challenge == nil || res.Challenge.Kind != credential.ChallengeBrowserCallback {
+		t.Fatalf("Acquire = %+v, %v", res, err)
+	}
+	u, err := url.Parse(res.Challenge.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	state := u.Query().Get("state")
+	if state == "" || state != res.Challenge.ID {
+		t.Fatalf("callback state must be broker challenge ID: id=%q state=%q", res.Challenge.ID, state)
+	}
+	if _, _, err := r.svc.CallbackSubject(bg, "other-session", state); !errors.Is(err, credential.ErrChallengeExpired) {
+		t.Fatalf("foreign session: %v", err)
+	}
+	// A second Service instance shares only the challenge store and envelope, as another server replica would.
+	replica := r.newService(browserCallbackProvider{})
+	poll, err := replica.Poll(bg, subj, state)
+	if err != nil || poll.Challenge == nil || poll.Challenge.ID != state {
+		t.Fatalf("browser callback poll = %+v, %v", poll, err)
+	}
+	got, desc, err := replica.CallbackSubject(bg, subj.SessionID, state)
+	if err != nil || got != subj || desc.Kind != credential.KindOIDC {
+		t.Fatalf("callback subject = %+v, %v", got, err)
+	}
+	done, err := replica.AnswerCallback(bg, got, state, "https://kubron.example/auth/cluster/callback?code=CANARY-code&state="+state)
+	if err != nil || done.Token == nil {
+		t.Fatalf("callback answer = %+v, %v", done, err)
+	}
+	if _, err := replica.AnswerCallback(bg, got, state, "https://kubron.example/auth/cluster/callback?code=CANARY-code&state="+state); !errors.Is(err, credential.ErrChallengeExpired) {
+		t.Fatalf("replay: %v", err)
+	}
+	if strings.Contains(r.logs.String(), state) || strings.Contains(r.logs.String(), "CANARY-code") {
+		t.Fatalf("OAuth state or code leaked into logs: %s", r.logs.String())
+	}
+}
+
 func TestMemoryChallengeStoreContract(t *testing.T) {
 	credtest.ChallengeStoreContract(t, func(t *testing.T) credtest.ChallengeHarness {
 		st := credential.NewMemoryChallengeStore()
@@ -234,6 +291,132 @@ func TestFourWrongThenRightStillWorks(t *testing.T) {
 	}
 	if res, err := r.svc.Answer(bg, subj, ch.ID, answer("alice", pwCanary)); err != nil || res.Token == nil {
 		t.Fatalf("right answer = %+v, %v", res, err)
+	}
+}
+
+type declinedPollProvider struct{}
+
+func (*declinedPollProvider) Kind() credential.Kind { return credential.KindOIDC }
+func (*declinedPollProvider) Begin(context.Context, credential.Env, credential.Request) (credential.Result, error) {
+	return credential.Result{Challenge: &credential.Challenge{Kind: credential.ChallengeDeviceCode, Poll: true}}, nil
+}
+func (*declinedPollProvider) Continue(context.Context, credential.Env, credential.Request) (credential.Result, error) {
+	return credential.Result{}, credential.ErrAnswerRejected
+}
+
+func TestDeclinedDevicePollsDoNotConsumeAnswerAttempts(t *testing.T) {
+	r := newRig(t)
+	svc := r.newService(&declinedPollProvider{})
+	for i := 0; i < credential.MaxUserAnswerFailures; i++ {
+		res, err := svc.Acquire(bg, subj, desc)
+		if err != nil || res.Challenge == nil {
+			t.Fatalf("Acquire %d = %+v, %v", i, res, err)
+		}
+		if _, err := svc.Poll(bg, subj, res.Challenge.ID); !errors.Is(err, credential.ErrAnswerRejected) {
+			t.Fatalf("Poll %d = %v", i, err)
+		}
+	}
+	res, err := svc.Acquire(bg, subj, desc)
+	if err != nil || res.Challenge == nil {
+		t.Fatalf("Acquire after declined polls = %+v, %v", res, err)
+	}
+	if _, err := svc.Answer(bg, subj, res.Challenge.ID, answer("alice", "wrong")); !errors.Is(err, credential.ErrAnswerRejected) {
+		t.Fatalf("the polls consumed answer attempts: %v", err)
+	}
+}
+
+func TestWrongAnswersAreLimitedAcrossChallengesForOneUser(t *testing.T) {
+	r := newRig(t)
+	for challenge := 0; challenge < 2; challenge++ {
+		ch := r.login()
+		for attempt := 0; attempt < credential.MaxAnswerAttempts; attempt++ {
+			_, err := r.svc.Answer(bg, subj, ch.ID, answer("alice", "wrong"))
+			if challenge == 1 && attempt == credential.MaxAnswerAttempts-1 {
+				var limited *credential.RateLimitedError
+				if !errors.As(err, &limited) || limited.RetryAfterSeconds() != int(credential.AttemptLockout/time.Second) {
+					t.Fatalf("last answer: %v, want rate limit", err)
+				}
+			} else if !errors.Is(err, credential.ErrAnswerRejected) {
+				t.Fatalf("challenge %d attempt %d: %v", challenge, attempt, err)
+			}
+		}
+	}
+
+	// A new challenge cannot bypass the user-wide lockout. Polling remains available.
+	ch := r.login()
+	if res, err := r.svc.Poll(bg, subj, ch.ID); err != nil || res.Challenge == nil {
+		t.Fatalf("Poll while locked = %+v, %v", res, err)
+	}
+	var limited *credential.RateLimitedError
+	if _, err := r.svc.Answer(bg, subj, ch.ID, answer("alice", pwCanary)); !errors.As(err, &limited) {
+		t.Fatalf("answer while locked: %v", err)
+	}
+
+	r.clk.Advance(credential.AttemptLockout)
+	if res, err := r.svc.Answer(bg, subj, ch.ID, answer("alice", pwCanary)); err != nil || res.Token == nil {
+		t.Fatalf("answer after lockout = %+v, %v", res, err)
+	}
+}
+
+func TestUserFailureCounterSpansIdentityProviders(t *testing.T) {
+	r := newRig(t)
+	for i, issuer := range []string{"https://idp-one.example.test", "https://idp-two.example.test"} {
+		d := credential.Descriptor{Kind: credential.KindOIDC, Params: map[string]string{
+			"grant": "password", "issuer-url": issuer,
+		}}
+		res, err := r.svc.Acquire(bg, subj, d)
+		if err != nil || res.Challenge == nil {
+			t.Fatalf("Acquire %d = %+v, %v", i, res, err)
+		}
+		for attempt := 0; attempt < credential.MaxAnswerAttempts; attempt++ {
+			_, err := r.svc.Answer(bg, subj, res.Challenge.ID, answer("alice", "wrong"))
+			if i == 1 && attempt == credential.MaxAnswerAttempts-1 {
+				var limited *credential.RateLimitedError
+				if !errors.As(err, &limited) {
+					t.Fatalf("last answer across IdPs: %v, want rate limit", err)
+				}
+			} else if !errors.Is(err, credential.ErrAnswerRejected) {
+				t.Fatalf("IdP %d attempt %d: %v", i, attempt, err)
+			}
+		}
+	}
+}
+
+func TestWrongAnswersAreLimitedAcrossUsersForOneIDP(t *testing.T) {
+	r := newRig(t)
+	d := credential.Descriptor{Kind: credential.KindOIDC, Params: map[string]string{
+		"grant": "password", "issuer-url": "https://login.example.test/tenant",
+	}}
+	for user := 0; user < credential.MaxIDPAnswerFailures/credential.MaxAnswerAttempts; user++ {
+		sub := credential.Subject{ClusterID: "c1", Scope: credential.ScopeUser, OwnerID: fmt.Sprintf("u-%d", user), SessionID: fmt.Sprintf("s-%d", user)}
+		res, err := r.svc.Acquire(bg, sub, d)
+		if err != nil || res.Challenge == nil {
+			t.Fatalf("Acquire user %d = %+v, %v", user, res, err)
+		}
+		for attempt := 0; attempt < credential.MaxAnswerAttempts; attempt++ {
+			_, err := r.svc.Answer(bg, sub, res.Challenge.ID, answer("alice", "wrong"))
+			if user == credential.MaxIDPAnswerFailures/credential.MaxAnswerAttempts-1 && attempt == credential.MaxAnswerAttempts-1 {
+				var limited *credential.RateLimitedError
+				if !errors.As(err, &limited) {
+					t.Fatalf("last IdP answer: %v, want rate limit", err)
+				}
+			} else if !errors.Is(err, credential.ErrAnswerRejected) {
+				t.Fatalf("user %d attempt %d: %v", user, attempt, err)
+			}
+		}
+	}
+
+	sub := credential.Subject{ClusterID: "c1", Scope: credential.ScopeUser, OwnerID: "another-user", SessionID: "another-session"}
+	res, err := r.svc.Acquire(bg, sub, d)
+	if err != nil || res.Challenge == nil {
+		t.Fatalf("Acquire after IdP limit = %+v, %v", res, err)
+	}
+	var limited *credential.RateLimitedError
+	if _, err := r.svc.Answer(bg, sub, res.Challenge.ID, answer("alice", pwCanary)); !errors.As(err, &limited) {
+		t.Fatalf("answer after IdP limit: %v, want rate limit", err)
+	}
+	if strings.Contains(limited.Error(), "login.example.test") || strings.Contains(limited.Error(), "another-user") {
+		t.Fatalf("rate-limit error leaked identity data: %v", limited)
 	}
 }
 
@@ -492,6 +675,69 @@ func TestConfirmExecChallengeHidesEnvValues(t *testing.T) {
 	}
 }
 
+func TestUnsupportedNativeProviderFallsBackToExecAndKeepsRoute(t *testing.T) {
+	r := newRig(t)
+	native := &credtest.FakeProvider{KindValue: credential.KindAKS,
+		OnBegin: func(context.Context, credential.Env, credential.Request) (credential.Result, error) {
+			return credential.Result{}, credential.ErrUnsupported
+		}}
+	execProvider := &credtest.FakeProvider{KindValue: credential.KindExec,
+		OnBegin: func(_ context.Context, _ credential.Env, req credential.Request) (credential.Result, error) {
+			if req.Descriptor.Kind != credential.KindExec {
+				t.Fatalf("fallback descriptor kind = %q", req.Descriptor.Kind)
+			}
+			return credential.Result{Challenge: &credential.Challenge{Kind: credential.ChallengeManualToken,
+				Fields: []credential.Field{{Name: "token", Secret: true}}}}, nil
+		},
+		OnContinue: func(_ context.Context, _ credential.Env, req credential.Request) (credential.Result, error) {
+			if req.Descriptor.Kind != credential.KindExec {
+				t.Fatalf("continued descriptor kind = %q", req.Descriptor.Kind)
+			}
+			return credential.Result{Token: &credential.Token{Value: req.Answer["token"]}}, nil
+		}}
+	reg := credential.NewRegistry(false)
+	for _, p := range []credential.Provider{native, execProvider} {
+		if err := reg.Register(p); err != nil {
+			t.Fatal(err)
+		}
+	}
+	svc, err := credential.NewService(credential.Config{Registry: reg, Store: r.store, Challenges: r.chal,
+		Envelope: r.env, Now: r.clk.Now})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	d := credential.Descriptor{Kind: credential.KindAKS, Exec: &credential.ExecSpec{Command: "kubelogin"}}
+	res, err := svc.Acquire(bg, subj, d)
+	if err != nil || res.Challenge == nil || res.Challenge.Kind != credential.ChallengeManualToken {
+		t.Fatalf("Acquire fallback = %+v, %v", res, err)
+	}
+	done, err := svc.Answer(bg, subj, res.Challenge.ID, credential.Answer{"token": "manual-token"})
+	if err != nil || done.Token == nil || done.Token.Value != "manual-token" {
+		t.Fatalf("Answer fallback = %+v, %v", done, err)
+	}
+}
+
+func TestUnsupportedNativeProviderWithoutExecDoesNotFallback(t *testing.T) {
+	r := newRig(t)
+	native := &credtest.FakeProvider{KindValue: credential.KindAKS,
+		OnBegin: func(context.Context, credential.Env, credential.Request) (credential.Result, error) {
+			return credential.Result{}, credential.ErrUnsupported
+		}}
+	reg := credential.NewRegistry(false)
+	if err := reg.Register(native); err != nil {
+		t.Fatal(err)
+	}
+	svc, err := credential.NewService(credential.Config{Registry: reg, Store: r.store, Challenges: r.chal, Envelope: r.env})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = svc.Acquire(bg, subj, credential.Descriptor{Kind: credential.KindAKS})
+	if !errors.Is(err, credential.ErrUnsupported) {
+		t.Fatalf("Acquire error = %v", err)
+	}
+}
+
 func TestRegistryRouting(t *testing.T) {
 	mk := func(k credential.Kind) *credtest.FakeProvider { return &credtest.FakeProvider{KindValue: k} }
 	native, execP := mk(credential.KindEKS), mk(credential.KindExec)
@@ -593,5 +839,253 @@ func TestSecretsNeverLeak(t *testing.T) {
 	}
 	if r.logs.Len() == 0 {
 		t.Fatal("no logs were produced: the check proves nothing")
+	}
+}
+
+// A value that cannot be used at all (ErrInvalidAnswer) is not a wrong guess: it uses up no attempt, the request
+// stays open, and the caller gets the same sentinel (not a reworded text, not ErrAnswerRejected).
+func TestInvalidAnswerKeepsTheRequestOpenAndUsesNoAttempt(t *testing.T) {
+	r := newRig(t)
+	bad := &credtest.FakeProvider{KindValue: credential.KindOIDC,
+		OnBegin: func(context.Context, credential.Env, credential.Request) (credential.Result, error) {
+			return credential.Result{Challenge: &credential.Challenge{Kind: credential.ChallengeManualToken, Fields: []credential.Field{{Name: "token", Secret: true}}}}, nil
+		},
+		OnContinue: func(_ context.Context, _ credential.Env, req credential.Request) (credential.Result, error) {
+			if req.Answer["token"] == "" {
+				return credential.Result{}, credential.ErrInvalidAnswer
+			}
+			return credential.Result{Token: &credential.Token{Value: "t", Expiry: r.clk.Now().Add(time.Hour)}}, nil
+		}}
+	svc := r.newService(bad)
+	res, err := svc.Acquire(bg, subj, desc)
+	if err != nil || res.Challenge == nil {
+		t.Fatalf("Acquire = %+v, %v", res, err)
+	}
+	// Far more empty answers than MaxAnswerAttempts: the request must survive all of them.
+	for i := 0; i < credential.MaxAnswerAttempts*3; i++ {
+		_, err := svc.Answer(bg, subj, res.Challenge.ID, answer("", ""))
+		if !errors.Is(err, credential.ErrInvalidAnswer) || errors.Is(err, credential.ErrAnswerRejected) {
+			t.Fatalf("answer %d: err = %v, want ErrInvalidAnswer", i, err)
+		}
+		if err.Error() != "the value could not be used" {
+			t.Fatalf("the text of the sentinel was changed: %q", err.Error())
+		}
+	}
+	done, err := svc.Answer(bg, subj, res.Challenge.ID, credential.Answer{"token": "abc"})
+	if err != nil || done.Token == nil {
+		t.Fatalf("the request was destroyed by invalid answers: %+v, %v", done, err)
+	}
+}
+
+// Wrong credentials still use up attempts: the new sentinel does not weaken the limit.
+func TestRejectedAnswersStillUseUpAttempts(t *testing.T) {
+	r := newRig(t)
+	svc := r.newService(credtest.NewPasswordProvider(credential.KindOIDC, r.idp))
+	res, _ := svc.Acquire(bg, subj, desc)
+	for i := 0; i < credential.MaxAnswerAttempts; i++ {
+		if _, err := svc.Answer(bg, subj, res.Challenge.ID, answer("alice", "wrong-password")); !errors.Is(err, credential.ErrAnswerRejected) {
+			t.Fatalf("answer %d: %v", i, err)
+		}
+	}
+	if _, err := svc.Answer(bg, subj, res.Challenge.ID, answer("alice", pwCanary)); !errors.Is(err, credential.ErrChallengeExpired) {
+		t.Fatalf("the request must be destroyed after %d wrong answers: %v", credential.MaxAnswerAttempts, err)
+	}
+}
+
+// An unreachable identity provider is "the service is unavailable", never "wrong credentials": the request stays open
+// and no attempt is used up.
+func TestServiceUnavailableIsNotARejection(t *testing.T) {
+	r := newRig(t)
+	down := &credtest.FakeProvider{KindValue: credential.KindOIDC,
+		OnBegin: func(context.Context, credential.Env, credential.Request) (credential.Result, error) {
+			return credential.Result{Challenge: &credential.Challenge{Kind: credential.ChallengeCredentials}}, nil
+		},
+		OnContinue: func(_ context.Context, _ credential.Env, req credential.Request) (credential.Result, error) {
+			// the provider wraps the sentinel into its own error with a detail that must not survive
+			return credential.Result{}, fmt.Errorf("dial tcp 10.1.2.3:443 (%s): %w", req.Answer["password"], credential.ErrServiceUnavailable)
+		}}
+	svc := r.newService(down)
+	res, _ := svc.Acquire(bg, subj, desc)
+	for i := 0; i < credential.MaxAnswerAttempts*2; i++ {
+		_, err := svc.Answer(bg, subj, res.Challenge.ID, answer("alice", pwCanary))
+		if !errors.Is(err, credential.ErrServiceUnavailable) || errors.Is(err, credential.ErrAnswerRejected) {
+			t.Fatalf("answer %d: err = %v", i, err)
+		}
+		if strings.Contains(err.Error(), pwCanary) || strings.Contains(err.Error(), "10.1.2.3") {
+			t.Fatalf("a detail leaked: %v", err)
+		}
+	}
+	// The identity provider is back: the same request completes.
+	down.OnContinue = func(context.Context, credential.Env, credential.Request) (credential.Result, error) {
+		return credential.Result{Token: &credential.Token{Value: "t", Expiry: r.clk.Now().Add(time.Hour)}}, nil
+	}
+	if done, err := svc.Answer(bg, subj, res.Challenge.ID, answer("alice", pwCanary)); err != nil || done.Token == nil {
+		t.Fatalf("the request did not survive the outage: %+v, %v", done, err)
+	}
+}
+
+// During token refresh an outage is not a reason to ask the user to sign in again.
+func TestServiceUnavailableDuringRefreshIsNotASignInRequest(t *testing.T) {
+	r := newRig(t)
+	down := &credtest.FakeProvider{KindValue: credential.KindOIDC,
+		OnBegin: func(context.Context, credential.Env, credential.Request) (credential.Result, error) {
+			return credential.Result{}, fmt.Errorf("lookup idp.example: %w", credential.ErrServiceUnavailable)
+		}}
+	svc := r.newService(down)
+	_, err := svc.Token(bg, subj, desc)
+	if !errors.Is(err, credential.ErrServiceUnavailable) || errors.Is(err, credential.ErrChallengeRequired) {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestAcquireFallsBackToExecWhenNativeBeginIsUnsupported(t *testing.T) {
+	r := newRig(t)
+	native := &credtest.FakeProvider{KindValue: credential.KindOIDC,
+		OnBegin: func(context.Context, credential.Env, credential.Request) (credential.Result, error) {
+			return credential.Result{}, credential.ErrUnsupported
+		}}
+	execProvider := &credtest.FakeProvider{KindValue: credential.KindExec,
+		OnBegin: func(context.Context, credential.Env, credential.Request) (credential.Result, error) {
+			return credential.Result{Challenge: &credential.Challenge{Kind: credential.ChallengeManualToken}}, nil
+		}}
+	reg := credential.NewRegistry(false)
+	if err := reg.Register(native); err != nil {
+		t.Fatal(err)
+	}
+	if err := reg.Register(execProvider); err != nil {
+		t.Fatal(err)
+	}
+	svc, err := credential.NewService(credential.Config{Registry: reg, Store: r.store, Challenges: r.chal, Envelope: r.env, Now: r.clk.Now})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	d := desc
+	d.Exec = &credential.ExecSpec{Command: "kubectl-something"}
+	res, err := svc.Acquire(bg, subj, d)
+	if err != nil || res.Challenge == nil || res.Challenge.Kind != credential.ChallengeManualToken {
+		t.Fatalf("Acquire = %+v, %v", res, err)
+	}
+	if begins, _ := native.Calls(); begins != 1 {
+		t.Fatalf("native Begin calls = %d", begins)
+	}
+	if begins, _ := execProvider.Calls(); begins != 1 {
+		t.Fatalf("exec Begin calls = %d", begins)
+	}
+	if got := execProvider.LastRequest().Descriptor; got.Kind != credential.KindExec ||
+		got.Exec == nil || got.Exec.Command != d.Exec.Command ||
+		got.Params["grant"] != d.Params["grant"] ||
+		got.Params["client-secret"] != d.Params["client-secret"] {
+		t.Fatalf("fallback request descriptor = %+v", got)
+	}
+}
+
+func TestAcquireDoesNotFallbackForOtherNativeErrors(t *testing.T) {
+	r := newRig(t)
+	native := &credtest.FakeProvider{KindValue: credential.KindOIDC,
+		OnBegin: func(context.Context, credential.Env, credential.Request) (credential.Result, error) {
+			return credential.Result{}, context.Canceled
+		}}
+	execProvider := &credtest.FakeProvider{KindValue: credential.KindExec}
+	reg := credential.NewRegistry(false)
+	if err := reg.Register(native); err != nil {
+		t.Fatal(err)
+	}
+	if err := reg.Register(execProvider); err != nil {
+		t.Fatal(err)
+	}
+	svc, err := credential.NewService(credential.Config{Registry: reg, Store: r.store, Challenges: r.chal, Envelope: r.env})
+	if err != nil {
+		t.Fatal(err)
+	}
+	d := desc
+	d.Exec = &credential.ExecSpec{Command: "kubectl-something"}
+	if _, err := svc.Acquire(bg, subj, d); !errors.Is(err, context.Canceled) {
+		t.Fatalf("Acquire error = %v", err)
+	}
+	if begins, _ := execProvider.Calls(); begins != 0 {
+		t.Fatalf("exec Begin calls = %d", begins)
+	}
+}
+
+func TestExecProviderUnsupportedDoesNotRecurse(t *testing.T) {
+	r := newRig(t)
+	execProvider := &credtest.FakeProvider{KindValue: credential.KindExec,
+		OnBegin: func(context.Context, credential.Env, credential.Request) (credential.Result, error) {
+			return credential.Result{}, credential.ErrUnsupported
+		}}
+	reg := credential.NewRegistry(false)
+	if err := reg.Register(execProvider); err != nil {
+		t.Fatal(err)
+	}
+	svc, err := credential.NewService(credential.Config{Registry: reg, Store: r.store, Challenges: r.chal, Envelope: r.env})
+	if err != nil {
+		t.Fatal(err)
+	}
+	d := credential.Descriptor{Kind: credential.KindExec, Exec: &credential.ExecSpec{Command: "kubectl-something"}}
+	if _, err := svc.Acquire(bg, subj, d); !errors.Is(err, credential.ErrUnsupported) {
+		t.Fatalf("Acquire error = %v", err)
+	}
+	if begins, _ := execProvider.Calls(); begins != 1 {
+		t.Fatalf("exec Begin calls = %d", begins)
+	}
+}
+
+func TestContinueUnsupportedDoesNotFallback(t *testing.T) {
+	r := newRig(t)
+	native := &credtest.FakeProvider{KindValue: credential.KindOIDC,
+		OnBegin: func(context.Context, credential.Env, credential.Request) (credential.Result, error) {
+			return credential.Result{Challenge: &credential.Challenge{Kind: credential.ChallengeCredentials}}, nil
+		},
+		OnContinue: func(context.Context, credential.Env, credential.Request) (credential.Result, error) {
+			return credential.Result{}, credential.ErrUnsupported
+		}}
+	execProvider := &credtest.FakeProvider{KindValue: credential.KindExec}
+	reg := credential.NewRegistry(false)
+	if err := reg.Register(native); err != nil {
+		t.Fatal(err)
+	}
+	if err := reg.Register(execProvider); err != nil {
+		t.Fatal(err)
+	}
+	svc, err := credential.NewService(credential.Config{Registry: reg, Store: r.store, Challenges: r.chal, Envelope: r.env})
+	if err != nil {
+		t.Fatal(err)
+	}
+	d := desc
+	d.Exec = &credential.ExecSpec{Command: "kubectl-something"}
+	res, err := svc.Acquire(bg, subj, d)
+	if err != nil || res.Challenge == nil {
+		t.Fatalf("Acquire = %+v, %v", res, err)
+	}
+	if _, err := svc.Answer(bg, subj, res.Challenge.ID, credential.Answer{"username": "alice"}); !errors.Is(err, credential.ErrUnsupported) {
+		t.Fatalf("Answer error = %v", err)
+	}
+	if _, calls := execProvider.Calls(); calls != 0 {
+		t.Fatalf("exec Continue calls = %d", calls)
+	}
+}
+
+func TestAcquireKeepsUnsupportedWhenExecFallbackIsUnavailable(t *testing.T) {
+	r := newRig(t)
+	native := &credtest.FakeProvider{KindValue: credential.KindOIDC,
+		OnBegin: func(context.Context, credential.Env, credential.Request) (credential.Result, error) {
+			return credential.Result{}, credential.ErrUnsupported
+		}}
+	reg := credential.NewRegistry(false)
+	if err := reg.Register(native); err != nil {
+		t.Fatal(err)
+	}
+	svc, err := credential.NewService(credential.Config{Registry: reg, Store: r.store, Challenges: r.chal, Envelope: r.env})
+	if err != nil {
+		t.Fatal(err)
+	}
+	d := desc
+	d.Exec = &credential.ExecSpec{Command: "kubectl-something"}
+	if _, err := svc.Acquire(bg, subj, d); !errors.Is(err, credential.ErrUnsupported) {
+		t.Fatalf("Acquire error = %v", err)
+	}
+	if begins, _ := native.Calls(); begins != 1 {
+		t.Fatalf("native Begin calls = %d", begins)
 	}
 }

@@ -1,41 +1,32 @@
-# Getting Started
+# Getting started
 
-Kubron is a lightweight, open-source Kubernetes desktop IDE built with **Go** and **Wails**.
+Kubron is a Kubernetes Operations Workspace available in two editions. Both editions provide the Kubron interface for working with clusters, workloads, Helm and GitOps. Choose the way that fits your workflow:
 
-No telemetry, no mandatory account — your kubeconfig stays on your machine.
 
-## 1. Download
+New here? Read [What is Kubron](/guide/what-is-kubron) first.
 
-Grab the latest release for your platform from the [Releases](https://github.com/24DSO-labs/kubron/releases) page:
+## Desktop
 
-| Platform | File |
-|---|---|
-| Windows (x64) | `Kubron_<version>_windows-amd64.zip` |
-| Linux (x64) | `Kubron_<version>_linux-amd64.tar.gz` |
-| Linux (Debian/Ubuntu) | `kubron_<version>_amd64.deb` |
-| macOS (Apple Silicon + Intel) | `Kubron_<version>_macos-universal.zip` |
+Run Kubron as a native desktop application on your own computer. It is the simplest way to get started as an individual operator: no server to deploy, no mandatory account and no telemetry. Your kubeconfig remains on your machine.
 
-Checksums are in `SHA256SUMS.txt`. Releases also carry build provenance:
+[Download and set up Desktop](/guide/desktop).
 
-```bash
-gh attestation verify <file> --repo 24DSO-labs/kubron
-```
+## Web
 
-::: tip
-Builds are not code-signed yet. On Windows SmartScreen may warn you. On macOS right-click → Open, or run:
+Run Kubron as a self-hosted web application and access it through a browser. This edition is designed for shared environments with multiple users, local accounts, roles, an audit log and centrally stored configuration.
 
-```bash
-xattr -dr com.apple.quarantine Kubron.app
-```
-:::
+You or your team must deploy and operate the Kubron server. Kubron is not a hosted SaaS service.
 
-## 2. Run
+[Get started with Web](/guide/web).
 
-Unzip / install and start the app. On first launch Kubron will ask you to import a kubeconfig (or pick the default `~/.kube/config`).
+## Explore Kubron
 
-## 3. Next steps
-
-- [Installation details](/guide/installation) — system dependencies, build from source
+- [See the product capabilities](/features/)
 - [Add your first cluster](/guide/first-cluster)
+- [Requirements and download verification](/guide/installation)
+- [Build from source](/guide/build-from-source)
+
 - [Features overview](/features/)
-- [Server mode](/server/) (experimental multi-user)
+- [Server mode](/server/) (multi-user)
+- [Keyboard shortcuts](/guide/shortcuts)
+

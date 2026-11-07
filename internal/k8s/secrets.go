@@ -71,7 +71,7 @@ func (m *Manager) GetSecretValue(namespace, name, key string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(m.baseCtx(), 10*time.Second)
 	defer cancel()
 
 	sec, err := conn.Client.CoreV1().Secrets(namespace).Get(ctx, name, metav1.GetOptions{})
@@ -92,7 +92,7 @@ func (m *Manager) GetSecretBase64Value(namespace, name, key string) (string, err
 	if err != nil {
 		return "", err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(m.baseCtx(), 10*time.Second)
 	defer cancel()
 
 	sec, err := conn.Client.CoreV1().Secrets(namespace).Get(ctx, name, metav1.GetOptions{})
@@ -115,7 +115,7 @@ func (m *Manager) UpdateSecret(namespace, name string, data map[string]string) e
 	if err != nil {
 		return err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(m.baseCtx(), 10*time.Second)
 	defer cancel()
 
 	sec, err := conn.Client.CoreV1().Secrets(namespace).Get(ctx, name, metav1.GetOptions{})

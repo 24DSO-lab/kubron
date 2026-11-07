@@ -1,0 +1,1 @@
+GOFLAGS=-tags=webkit2_41 go mod vendor

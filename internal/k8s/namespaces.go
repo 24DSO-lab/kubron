@@ -25,7 +25,7 @@ func (m *Manager) GetNamespaces() ([]NamespaceInfo, error) {
 		return nil, err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(m.baseCtx(), 10*time.Second)
 	defer cancel()
 
 	nsList, err := conn.Client.CoreV1().Namespaces().List(ctx, metav1.ListOptions{})

@@ -42,10 +42,10 @@ func setupWithUser(t *testing.T) (*Service, *UserInfo) {
 		t.Fatal(err)
 	}
 	s.Logout()
-	if _, err := s.Login("bob", "temp-pass-1"); err != nil {
+	if _, err := s.Login(t.Context(), "bob", "temp-pass-1"); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.ChangePassword("temp-pass-1", "bobs-own-pass"); err != nil {
+	if err := s.ChangePassword(t.Context(), "temp-pass-1", "bobs-own-pass"); err != nil {
 		t.Fatal(err)
 	}
 	s.Logout()
@@ -55,7 +55,7 @@ func setupWithUser(t *testing.T) (*Service, *UserInfo) {
 func loginAdmin(t *testing.T, s *Service) {
 	t.Helper()
 	s.Logout()
-	if _, err := s.Login("admin", goodPass); err != nil {
+	if _, err := s.Login(t.Context(), "admin", goodPass); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -66,7 +66,7 @@ func TestFirstRunNeedsSetup(t *testing.T) {
 	if !st.NeedsSetup || st.User != nil {
 		t.Fatalf("expected initial setup, got %+v", st)
 	}
-	if _, err := s.Login("admin", goodPass); !errors.Is(err, ErrSetupRequired) {
+	if _, err := s.Login(t.Context(), "admin", goodPass); !errors.Is(err, ErrSetupRequired) {
 		t.Fatalf("login before setup: %v", err)
 	}
 	if err := s.Authorize(PermRead); !errors.Is(err, ErrNotAuthenticated) {
@@ -112,7 +112,7 @@ func TestSetupValidation(t *testing.T) {
 
 func TestLoginLogout(t *testing.T) {
 	s, _ := setupWithUser(t)
-	if _, err := s.Login("BOB", "bobs-own-pass"); err != nil { // логин регистронезависим
+	if _, err := s.Login(t.Context(), "BOB", "bobs-own-pass"); err != nil { // логин регистронезависим
 		t.Fatalf("login: %v", err)
 	}
 	if err := s.Authorize(PermRead); err != nil {
@@ -126,8 +126,8 @@ func TestLoginLogout(t *testing.T) {
 
 func TestLoginErrorsDoNotRevealUser(t *testing.T) {
 	s, _ := setupWithUser(t)
-	_, e1 := s.Login("bob", "wrong-password")
-	_, e2 := s.Login("nobody", "wrong-password")
+	_, e1 := s.Login(t.Context(), "bob", "wrong-password")
+	_, e2 := s.Login(t.Context(), "nobody", "wrong-password")
 	if !errors.Is(e1, ErrInvalidCredentials) || !errors.Is(e2, ErrInvalidCredentials) {
 		t.Fatalf("expected the same error: %v / %v", e1, e2)
 	}
@@ -135,7 +135,7 @@ func TestLoginErrorsDoNotRevealUser(t *testing.T) {
 
 func TestUserRoleEnforcement(t *testing.T) {
 	s, _ := setupWithUser(t)
-	if _, err := s.Login("bob", "bobs-own-pass"); err != nil {
+	if _, err := s.Login(t.Context(), "bob", "bobs-own-pass"); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.Authorize(PermRead); err != nil {
@@ -175,7 +175,7 @@ func TestNewUserMustChangePassword(t *testing.T) {
 		t.Fatal(err)
 	}
 	s.Logout()
-	u, err := s.Login("bob", "temp-pass-1")
+	u, err := s.Login(t.Context(), "bob", "temp-pass-1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -185,23 +185,23 @@ func TestNewUserMustChangePassword(t *testing.T) {
 	if err := s.Authorize(PermRead); !errors.Is(err, ErrPasswordChangeRequired) {
 		t.Fatalf("access is denied before the password change: %v", err)
 	}
-	if err := s.ChangePassword("temp-pass-1", "temp-pass-1"); err == nil {
+	if err := s.ChangePassword(t.Context(), "temp-pass-1", "temp-pass-1"); err == nil {
 		t.Fatal("the new password must not match the old one")
 	}
-	if err := s.ChangePassword("nope-nope-1", "fresh-pass-1"); !errors.Is(err, ErrWrongPassword) {
+	if err := s.ChangePassword(t.Context(), "nope-nope-1", "fresh-pass-1"); !errors.Is(err, ErrWrongPassword) {
 		t.Fatalf("wrong current password: %v", err)
 	}
-	if err := s.ChangePassword("temp-pass-1", "fresh-pass-1"); err != nil {
+	if err := s.ChangePassword(t.Context(), "temp-pass-1", "fresh-pass-1"); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.Authorize(PermRead); err != nil {
 		t.Fatalf("access is open after the password change: %v", err)
 	}
 	s.Logout()
-	if _, err := s.Login("bob", "temp-pass-1"); !errors.Is(err, ErrInvalidCredentials) {
+	if _, err := s.Login(t.Context(), "bob", "temp-pass-1"); !errors.Is(err, ErrInvalidCredentials) {
 		t.Fatal("the old password must stop working")
 	}
-	if _, err := s.Login("bob", "fresh-pass-1"); err != nil {
+	if _, err := s.Login(t.Context(), "bob", "fresh-pass-1"); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -212,11 +212,11 @@ func TestLockoutAfterRepeatedFailures(t *testing.T) {
 	s.now = func() time.Time { return clock }
 
 	for i := 0; i < freeAttempts; i++ {
-		if _, err := s.Login("bob", "wrong-password"); !errors.Is(err, ErrInvalidCredentials) {
+		if _, err := s.Login(t.Context(), "bob", "wrong-password"); !errors.Is(err, ErrInvalidCredentials) {
 			t.Fatalf("attempt %d: %v", i, err)
 		}
 	}
-	_, err := s.Login("bob", "bobs-own-pass") // даже верный пароль во время блокировки
+	_, err := s.Login(t.Context(), "bob", "bobs-own-pass") // даже верный пароль во время блокировки
 	var locked *LockedError
 	if !errors.As(err, &locked) {
 		t.Fatalf("expected a lockout, got %v", err)
@@ -226,15 +226,15 @@ func TestLockoutAfterRepeatedFailures(t *testing.T) {
 	}
 
 	clock = clock.Add(baseLockout + time.Second)
-	if _, err := s.Login("bob", "bobs-own-pass"); err != nil {
+	if _, err := s.Login(t.Context(), "bob", "bobs-own-pass"); err != nil {
 		t.Fatalf("login must work after the lockout ends: %v", err)
 	}
 	// успешный вход сбрасывает счётчик
 	s.Logout()
 	for i := 0; i < freeAttempts-1; i++ {
-		_, _ = s.Login("bob", "wrong-password")
+		_, _ = s.Login(t.Context(), "bob", "wrong-password")
 	}
-	if _, err := s.Login("bob", "bobs-own-pass"); err != nil {
+	if _, err := s.Login(t.Context(), "bob", "bobs-own-pass"); err != nil {
 		t.Fatalf("the counter must have been reset: %v", err)
 	}
 }
@@ -300,7 +300,7 @@ func TestAdminCannotChangeOwnRoleEvenWithOtherAdmin(t *testing.T) {
 func TestRoleChangeAppliesImmediately(t *testing.T) {
 	s, bob := setupWithUser(t)
 	// bob входит, затем админ (под другим процессом/сессией быть не может), поэтому моделируем напрямую
-	if _, err := s.Login("bob", "bobs-own-pass"); err != nil {
+	if _, err := s.Login(t.Context(), "bob", "bobs-own-pass"); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.Authorize(PermWrite); !errors.Is(err, ErrForbidden) {
@@ -327,7 +327,7 @@ func TestDisabledUserCannotLogin(t *testing.T) {
 		t.Fatal(err)
 	}
 	s.Logout()
-	if _, err := s.Login("bob", "bobs-own-pass"); !errors.Is(err, ErrAccountDisabled) {
+	if _, err := s.Login(t.Context(), "bob", "bobs-own-pass"); !errors.Is(err, ErrAccountDisabled) {
 		t.Fatalf("disabled login: %v", err)
 	}
 	loginAdmin(t, s)
@@ -335,7 +335,7 @@ func TestDisabledUserCannotLogin(t *testing.T) {
 		t.Fatal(err)
 	}
 	s.Logout()
-	if _, err := s.Login("bob", "bobs-own-pass"); err != nil {
+	if _, err := s.Login(t.Context(), "bob", "bobs-own-pass"); err != nil {
 		t.Fatalf("login is possible after enabling: %v", err)
 	}
 }
@@ -347,10 +347,10 @@ func TestAdminResetPassword(t *testing.T) {
 		t.Fatal(err)
 	}
 	s.Logout()
-	if _, err := s.Login("bob", "bobs-own-pass"); !errors.Is(err, ErrInvalidCredentials) {
+	if _, err := s.Login(t.Context(), "bob", "bobs-own-pass"); !errors.Is(err, ErrInvalidCredentials) {
 		t.Fatal("the old password must be invalid")
 	}
-	u, err := s.Login("bob", "reset-pass-9")
+	u, err := s.Login(t.Context(), "bob", "reset-pass-9")
 	if err != nil || !u.MustChangePassword {
 		t.Fatalf("a mandatory password change is required after reset: %v %+v", err, u)
 	}
@@ -375,7 +375,7 @@ func TestDeleteUser(t *testing.T) {
 		t.Errorf("repeated delete: %v", err)
 	}
 	s.Logout()
-	if _, err := s.Login("bob", "bobs-own-pass"); !errors.Is(err, ErrInvalidCredentials) {
+	if _, err := s.Login(t.Context(), "bob", "bobs-own-pass"); !errors.Is(err, ErrInvalidCredentials) {
 		t.Errorf("a deleted user cannot log in: %v", err)
 	}
 }
@@ -423,7 +423,7 @@ func TestPersistenceAndFileSafety(t *testing.T) {
 	if st.NeedsSetup || st.User != nil {
 		t.Fatalf("login is required after restart: %+v", st)
 	}
-	if _, err := s2.Login("admin", goodPass); err != nil {
+	if _, err := s2.Login(t.Context(), "admin", goodPass); err != nil {
 		t.Fatal(err)
 	}
 }

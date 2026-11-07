@@ -50,7 +50,7 @@ func (m *Manager) GetRecentChanges(windowMinutes int) ([]ChangeEvent, error) {
 	since := time.Now().Add(-time.Duration(windowMinutes) * time.Minute)
 	out := []ChangeEvent{}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	ctx, cancel := context.WithTimeout(m.baseCtx(), 15*time.Second)
 	defer cancel()
 	if rss, err := conn.Client.AppsV1().ReplicaSets("").List(ctx, metav1.ListOptions{}); err == nil {
 		out = append(out, rolloutChanges(rss.Items, since)...)

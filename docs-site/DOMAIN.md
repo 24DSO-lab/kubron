@@ -1,31 +1,30 @@
 # Documentation hosting
 
-The repository already contains the GitHub Pages workflow at `.github/workflows/docs.yml`. It builds `docs-site/` and publishes the static site.
+The production documentation site is hosted on Cloudflare Pages:
 
-## GitHub Pages
+- URL: https://kubron.pages.dev/
+- Cloudflare Pages project: `kubron`
+- Production branch: `refactor`
 
-1. Open **Settings → Pages** in the repository.
-2. Set **Build and deployment → Source** to **GitHub Actions**.
-3. Push changes to `docs-site/**` on `master` or run the workflow manually.
-4. The project site is served at `https://24dso-labs.github.io/kubron/`.
+## Deployment through GitHub Actions
 
-The workflow sets `DOCS_BASE=/kubron/`, which is required for a project Pages URL.
+The canonical deployment workflow is `.github/workflows/docs.yml`.
 
-## Custom domain
+1. In Cloudflare Pages, set `refactor` as the production branch.
+2. Disable Cloudflare Git integration builds/deployments. GitHub Actions is the only deployment controller.
+3. Add `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` as GitHub Actions repository secrets.
+4. The workflow runs the VitePress build for pull requests targeting `refactor`.
+5. A push to `refactor` deploys the already-built artifact using Wrangler.
 
-For a custom domain such as `docs.example.com`:
+The workflow uses `DOCS_BASE=/`, which is required for the root path on `kubron.pages.dev`.
 
-1. Configure the domain in **Settings → Pages → Custom domain**.
-2. Add the DNS records GitHub provides and wait for HTTPS provisioning.
-3. Change `DOCS_BASE` to `/` in `.github/workflows/docs.yml`.
-4. Commit and deploy the change.
+## Local build
 
-## Alternative: Cloudflare Pages
+```bash
+cd docs-site
+npm ci
+DOCS_BASE=/ npm run docs:build
+npm run docs:preview
+```
 
-Cloudflare Pages can also deploy this repository:
-
-- Build command: `cd docs-site && npm ci && npm run docs:build`
-- Output directory: `docs-site/.vitepress/dist`
-- Environment variable: `DOCS_BASE=/`
-
-Use the GitHub Pages workflow as the canonical deployment path unless there is a specific reason to host the site elsewhere.
+The static output is generated in `.vitepress/dist`.

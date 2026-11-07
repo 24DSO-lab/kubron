@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"runtime"
 	"strings"
 	"time"
@@ -14,6 +15,7 @@ import (
 	"github.com/24DSO-labs/kubron/internal/audit"
 	"github.com/24DSO-labs/kubron/internal/auth"
 	"github.com/24DSO-labs/kubron/internal/k8s"
+	"github.com/24DSO-labs/kubron/internal/signin"
 	"github.com/24DSO-labs/kubron/internal/store"
 )
 
@@ -25,6 +27,7 @@ func (a *App) initAuth(dir string) {
 
 // initAuthWith подключает хранилища: пользователи, журнал аудита, токены Argo CD.
 func (a *App) initAuthWith(st store.Store) {
+	a.store = st
 	k8s.SetTokenStore(st.ArgoTokens())
 	k8s.SetClusterStore(st.Clusters())
 	// Состояние Helm в сервисе — в БД по командам (ADR-0015); без этого метода Helm остаётся на файлах.
@@ -66,8 +69,11 @@ func NewSessionView(root *App, source string) *App {
 	// Свой вид менеджеров: активный кластер, терминалы, логи и port-forward принадлежат сессии;
 	// пул подключений (informers) общий.
 	v.k8sMgr = root.k8sMgr.ForSession()
-	v.k8sMgr.SetNotifier(nil) // события пойдут владельцу после BindView; до входа адресата нет
+	v.conn = signin.NewState() // входы принадлежат сессии
+	v.k8sMgr.SetNotifier(nil)  // события пойдут владельцу после BindView; до входа адресата нет
 	v.pfMgr = k8s.NewSessionPortForwardManager(v.k8sMgr)
+	// Своя граница отмены: операции вида кончаются с его освобождением (ReleaseView) или остановкой ядра.
+	v.base, v.cancel = context.WithCancel(root.baseContext())
 	v.configureTerminals()
 	v.configurePortForward() // владелец потоков пока неизвестен: режим proxy включается в BindView
 	if root.auth == nil {
@@ -150,6 +156,7 @@ func RestoreActiveCluster(v *App, clusterID string) error {
 	if err := v.authzCluster(auth.PermRead, clusterID); err != nil {
 		return err
 	}
+	v.bindAuthSession()
 	return v.k8sMgr.ConnectToCluster(clusterID)
 }
 
@@ -162,6 +169,10 @@ func ReleaseView(v *App) {
 	if v == nil {
 		return
 	}
+	if v.cancel != nil {
+		v.cancel() // незавершённые обращения вида к провайдерам входа не должны пережить сессию
+	}
+	v.k8sMgr.Close() // и запросы вида к API кластеров
 	v.endSessionResources()
 	v.k8sMgr.Detach()
 	if v.auth != nil {
@@ -356,12 +367,14 @@ func (a *App) Login(username, password string) (*auth.UserInfo, error) {
 	if a.auth == nil {
 		return nil, a.authUnavailable()
 	}
-	return a.auth.Login(username, password)
+	return a.auth.Login(a.baseContext(), username, password)
 }
 
 // Logout закрывает сессию.
 func (a *App) Logout() {
 	if a.auth != nil {
+		// Отзыв до выхода: журнал ещё знает пользователя. Сбой отзыва не мешает выйти.
+		_ = a.revokePersonal(a.currentUserID(), "", "logout")
 		a.auth.Logout()
 	}
 }
@@ -388,7 +401,12 @@ func (a *App) ChangePassword(oldPassword, newPassword string) error {
 	if a.auth == nil {
 		return a.authUnavailable()
 	}
-	return a.auth.ChangePassword(oldPassword, newPassword)
+	uid := a.currentUserID()
+	err := a.auth.ChangePassword(a.baseContext(), oldPassword, newPassword)
+	if err == nil {
+		err = a.revokePersonal(uid, "", "password-change")
+	}
+	return err
 }
 
 // ─── Управление пользователями (users.manage) ──────────────
@@ -426,21 +444,78 @@ func (a *App) SetUserDisabled(id string, disabled bool) (*auth.UserInfo, error) 
 	if err := a.authz(auth.PermUsersManage); err != nil {
 		return nil, err
 	}
-	return a.auth.SetDisabled(id, disabled)
+	u, err := a.auth.SetDisabled(id, disabled)
+	if err == nil && disabled {
+		err = a.revokePersonal(id, "", "disabled")
+	}
+	return u, err
 }
 
 func (a *App) ResetUserPassword(id, newPassword string) (*auth.UserInfo, error) {
 	if err := a.authz(auth.PermUsersManage); err != nil {
 		return nil, err
 	}
-	return a.auth.ResetPassword(id, newPassword)
+	u, err := a.auth.ResetPassword(id, newPassword)
+	if err == nil {
+		err = a.revokePersonal(id, "", "password-reset")
+	}
+	return u, err
 }
 
 func (a *App) DeleteUser(id string) error {
 	if err := a.authz(auth.PermUsersManage); err != nil {
 		return err
 	}
-	return a.auth.DeleteUser(id)
+	err := a.auth.DeleteUser(id)
+	if err == nil {
+		err = a.revokePersonal(id, "", "user-deleted")
+	}
+	return err
+}
+
+// GetWebOIDCClient returns the public OIDC client of the web sign-in and the issuer it is registered at.
+// Only organization administrators may read it.
+func (a *App) GetWebOIDCClient() (store.WebOIDC, error) {
+	if err := a.authz(auth.PermUsersManage); err != nil {
+		return store.WebOIDC{}, err
+	}
+	if a.store == nil {
+		return store.WebOIDC{}, nil
+	}
+	return a.store.WebOIDC()
+}
+
+// SetWebOIDCClient configures the public OIDC client used by the browser sign-in of the web server and the issuer
+// it is registered at: the client is applied only to clusters of that issuer that sign in with the authorization
+// code. Both values are required together; both empty clear the setting.
+func (a *App) SetWebOIDCClient(clientID, issuerURL string) error {
+	if err := a.authz(auth.PermUsersManage); err != nil {
+		return err
+	}
+	clientID, issuerURL = strings.TrimSpace(clientID), strings.TrimSpace(issuerURL)
+	if len(clientID) > 256 || strings.IndexFunc(clientID, func(r rune) bool { return r < 0x20 || r == 0x7f }) >= 0 {
+		return errors.New("web OIDC client id must be at most 256 bytes and contain no control characters")
+	}
+	if (clientID == "") != (issuerURL == "") {
+		return errors.New("web OIDC client id and issuer URL must be set together")
+	}
+	if issuerURL != "" && !validWebOIDCIssuer(issuerURL) {
+		return errors.New("web OIDC issuer URL must be an https URL without query, fragment or user information")
+	}
+	if a.store == nil {
+		return errors.New("application settings store is unavailable")
+	}
+	return a.store.SetWebOIDC(store.WebOIDC{ClientID: clientID, IssuerURL: issuerURL})
+}
+
+// validWebOIDCIssuer accepts an https URL of at most 512 bytes: an issuer has no query, fragment or user
+// information, and the web server talks to identity providers over https only.
+func validWebOIDCIssuer(s string) bool {
+	if len(s) > 512 || strings.IndexFunc(s, func(r rune) bool { return r < 0x20 || r == 0x7f }) >= 0 {
+		return false
+	}
+	u, err := url.Parse(s)
+	return err == nil && u.Scheme == "https" && u.Host != "" && u.User == nil && u.RawQuery == "" && !u.ForceQuery && u.Fragment == ""
 }
 
 // ─── Журнал аудита (audit.read) ────────────────────────────

@@ -89,6 +89,9 @@ type CredentialStore interface {
 	Put(ctx context.Context, r Record, expected int64) (Meta, error)
 	// Delete removes the record; a missing record is not an error.
 	Delete(ctx context.Context, k Key) error
+	// DeleteIfVersion removes a record only if it still has expectedVersion. A mismatch, including a missing
+	// record, returns ErrVersionConflict. This prevents a stale refresh failure from deleting a newer rotation.
+	DeleteIfVersion(ctx context.Context, k Key, expectedVersion int64) error
 	// List returns the records of an owner (any scope) without decrypting them, ordered by cluster id.
 	List(ctx context.Context, ownerID string) ([]Meta, error)
 	// Revoke deletes all records matching the filter (empty fields match anything) and returns their number.

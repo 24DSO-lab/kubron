@@ -78,19 +78,16 @@
 
           <ClusterConnectionFields v-if="probe.info.value" v-model:context="contextName" v-model:namespace="namespace"
             :info="probe.info.value" :namespace-valid="namespaceValid" :check="probe.check.value"
-            :checking="probe.checking.value" :can-test="!probe.inspecting.value && requirement === 'none'" @test="runTest" />
+            :checking="probe.checking.value" :can-test="!probe.inspecting.value" @test="runTest" />
 
-          <!-- kubeconfig с oidc-login: в вебе токен получает сам сервер, ему нужны логин и пароль -->
-          <div v-if="requirement === 'credentials'" class="cl-field" data-testid="oidc-credentials">
-            <p class="cl-hint">{{ $t('cluster.dialog.oidcHint') }}</p>
-            <label :for="`${uid}-oidc-user`" class="cl-label">{{ $t('cluster.dialog.oidcUser') }}</label>
-            <input :id="`${uid}-oidc-user`" v-model="oidcUser" class="cl-input" autocomplete="off" spellcheck="false" />
-            <label :for="`${uid}-oidc-pass`" class="cl-label">{{ $t('cluster.dialog.oidcPassword') }}</label>
-            <input :id="`${uid}-oidc-pass`" v-model="oidcPassword" type="password" class="cl-input" autocomplete="new-password" />
-            <p class="cl-hint">{{ $t('cluster.dialog.oidcStored') }}</p>
+          <!-- Вход через провайдера (oidc, облачный плагин): личный у каждого или общий у команды -->
+          <div v-if="shareable" class="cl-field" data-testid="shared-account">
+            <label class="cl-check">
+              <input v-model="sharedAccount" type="checkbox" data-testid="shared-account-checkbox" />
+              {{ $t('cluster.dialog.sharedAccount') }}
+            </label>
+            <p class="cl-hint">{{ $t(sharedAccount ? 'cluster.dialog.sharedAccountOn' : 'cluster.dialog.sharedAccountOff') }}</p>
           </div>
-          <p v-else-if="requirement === 'authcode'" class="cl-hint is-error" role="alert">{{ $t('cluster.dialog.authCodeUnsupported') }}</p>
-          <p v-else-if="requirement === 'exec'" class="cl-hint is-error" role="alert">{{ $t('cluster.dialog.execForbidden') }}</p>
         </section>
 
         <section class="cl-section">
@@ -121,7 +118,7 @@ import type { AddClusterPayload, ClusterSettings, KubeconfigSource } from '../ty
 import { NO_KUBECONFIG_SOURCE, pickContextName, useKubeconfigProbe } from '../composables/useKubeconfigProbe'
 import { useCapabilities } from '../composables/useCapabilities'
 import { useTeams } from '../composables/useTeams'
-import { authReady, authRequirement } from '../composables/clusterAuth'
+import { canShareAccount } from '../composables/clusterAuth'
 import { can } from '../composables/useAuth'
 import { Perm } from '../types/auth'
 import { pickTextFile } from '../platform/files'
@@ -166,8 +163,7 @@ const canInCluster = computed(() => capabilities.value.inCluster && can(Perm.Use
 const method = ref<'file' | 'text' | 'in-cluster'>(capabilities.value.fileDialog ? 'file' : 'text')
 const filePath = ref('')
 const text = ref('')
-const oidcUser = ref('')
-const oidcPassword = ref('')
+const sharedAccount = ref(false)
 
 const saving = ref(false)
 const error = ref('')
@@ -185,16 +181,15 @@ const source = computed<KubeconfigSource>(() =>
 )
 
 const namespaceValid = computed(() => isValidNamespace(namespace.value))
-// Что требует выбранный контекст: логин и пароль для oidc-login, либо объяснение, почему в вебе он не подойдёт
-const requirement = computed(() => {
-  if (method.value === 'in-cluster') return 'none'
+// Общую учётную запись можно выбрать, когда кластер идёт в команду и входит через провайдера
+const shareable = computed(() => {
+  if (method.value !== 'text' || !capabilities.value.teams || !teamId.value) return false
   const ctx = probe.info.value?.contexts.find(c => c.name === contextName.value)
-  return authRequirement(ctx?.auth, !capabilities.value.localKubeconfig)
+  return canShareAccount(ctx?.auth, true)
 })
 
 const kubeconfigReady = computed(() =>
-  hasSource.value && !probe.inspecting.value && !probe.inspectError.value && !!probe.info.value &&
-  authReady(requirement.value, oidcUser.value, oidcPassword.value),
+  hasSource.value && !probe.inspecting.value && !probe.inspectError.value && !!probe.info.value,
 )
 
 const canSubmit = computed(() =>
@@ -272,18 +267,17 @@ async function submit() {
     defaultNamespace: namespace.value,
     contextName: contextName.value,
     argoUrl: '',
+    sharedAccount: shareable.value && sharedAccount.value,
   }
   const teamOwner = capabilities.value.teams ? teamId.value : undefined
   let payload: AddClusterPayload
   if (method.value === 'in-cluster') payload = { kind: 'in-cluster', settings, teamId: teamId.value }
   else if (method.value === 'file') payload = { kind: 'file', path: filePath.value, settings }
   else {
-    const oidc = requirement.value === 'credentials' ? { username: oidcUser.value.trim(), password: oidcPassword.value } : undefined
-    payload = { kind: 'text', text: text.value, settings, teamId: teamOwner, oidc }
+    payload = { kind: 'text', text: text.value, settings, teamId: teamOwner }
   }
   const err = await props.submit(payload)
   saving.value = false
-  oidcPassword.value = '' // пароль не должен жить в форме дольше отправки
   if (err) error.value = err
 }
 

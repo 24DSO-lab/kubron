@@ -80,7 +80,7 @@ func TestLoginUpgradesLegacyPBKDF2Hash(t *testing.T) {
 	s.st.findByName("admin").PasswordHash = legacy
 	s.mu.Unlock()
 
-	if _, err := s.Login("admin", goodPass); err != nil {
+	if _, err := s.Login(t.Context(), "admin", goodPass); err != nil {
 		t.Fatalf("legacy login failed: %v", err)
 	}
 	s.mu.Lock()

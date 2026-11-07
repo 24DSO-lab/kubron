@@ -5,7 +5,8 @@ package app
 
 import (
 	"context"
-	"log"
+	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/24DSO-labs/kubron/internal/clusterhealth"
@@ -31,7 +32,10 @@ func StartHealthMonitor(ctx context.Context, root *App, interval time.Duration) 
 	}
 	mon := root.k8sMgr.NewHealthMonitor()
 	mon.Interval = interval
-	mon.Logf = log.Printf
+	// Logf монитора — printf-style; пересылаем в slog, чтобы записи шли тем же структурированным потоком.
+	mon.Logf = func(format string, args ...any) {
+		slog.Warn(fmt.Sprintf(format, args...), "component", "clusterhealth")
+	}
 	if hs, ok := root.store.(interface{ HealthSink() clusterhealth.Sink }); ok {
 		mon.Sink = hs.HealthSink()
 	}
@@ -83,11 +87,21 @@ func EnforceAccess(v *App) bool {
 		return false
 	}
 	id := v.k8sMgr.GetActiveContext()
-	if id == "" || v.auth.CanSeeCluster(id) {
-		return false
+	if id == "" {
+		return v.applyRevocations()
 	}
-	v.endSessionResources()
-	v.k8sMgr.Detach()
-	v.k8sMgr.Notify(EventClusterAccessRevoked, id)
-	return true
+	// Сначала проверяем членство: исключение из команды одновременно отзывает личные credentials,
+	// но для активного кластера это потеря доступа, а не просто необходимость повторного входа.
+	if !v.auth.CanSeeCluster(id) {
+		v.endSessionResources()
+		v.k8sMgr.Detach()
+		v.k8sMgr.Notify(EventClusterAccessRevoked, id)
+		return true
+	}
+	// Если доступ к команде остался, но отозван личный вход (смена пароля, выход, «отключиться»),
+	// отключаем ресурсы и просим пройти авторизацию заново.
+	if v.applyRevocations() {
+		return true
+	}
+	return false
 }

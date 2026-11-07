@@ -43,7 +43,7 @@ type Snapshot struct {
 	ClusterStates                                          map[string]int
 	HealthLeader                                           bool
 	Draining                                               bool
-	LoginBlocked, LockoutsStarted                          int64
+	LoginBlocked, LockoutsStarted, LoginSharedDegraded     int64
 	DB                                                     *DBPool
 }
 
@@ -135,6 +135,7 @@ func newSnapshotCollector(version string, snap func() Snapshot) *snapshotCollect
 		"draining":        desc("draining", "1 if this replica is shutting down (readiness reports 503)."),
 		"login_blocked":   desc("login_blocked_total", "Login attempts rejected by a lockout."),
 		"lockouts":        desc("login_lockouts_total", "Lockouts started after repeated failures."),
+		"degraded":        desc("login_lockout_degraded_total", "Login lockout checks and failure records done without the shared store (store unavailable, local lockouts only)."),
 		"db_acquired":     desc("db_pool_acquired_connections", "Connections in use."),
 		"db_idle":         desc("db_pool_idle_connections", "Idle connections."),
 		"db_total":        desc("db_pool_total_connections", "Connections in the pool."),
@@ -180,6 +181,7 @@ func (c *snapshotCollector) Collect(ch chan<- prometheus.Metric) {
 	g("draining", b(s.Draining))
 	ct("login_blocked", float64(s.LoginBlocked))
 	ct("lockouts", float64(s.LockoutsStarted))
+	ct("degraded", float64(s.LoginSharedDegraded))
 	if d := s.DB; d != nil {
 		g("db_acquired", float64(d.Acquired))
 		g("db_idle", float64(d.Idle))

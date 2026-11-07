@@ -1,34 +1,29 @@
 // Copyright 2026 The Kubron Authors
 // SPDX-License-Identifier: Apache-2.0
 
-import type { KubeconfigAuth } from '../types'
+import type { ClusterMeta } from '../types'
+
+/** Значение ClusterMeta.mode общей учётной записи команды (k8s.ModeTeamAccount; строка осталась прежней в хранилище) */
+export const TEAM_ACCOUNT_MODE = 'oidc-password'
 
 /**
- * Что нужно сделать с kubeconfig, прежде чем добавлять кластер.
- * none — ничего; credentials — спросить логин и пароль (oidc-login с паролем: токен получит сервер);
- * authcode и exec — в вебе не подойдёт, объяснить.
+ * Получает ли контекст учётные данные входом (oidc, облачный плагин, другой exec), а не статически.
+ * auth — credential.Kind из InspectKubeconfig: static, oidc, cloud-eks, cloud-gke, cloud-aks, exec.
+ * У старых ответов поля нет: считаем, что входа нет.
  */
-export type AuthRequirement = 'none' | 'credentials' | 'authcode' | 'exec'
-
-/**
- * Требование к kubeconfig по способу получения учётных данных. В десктопе (webMode = false) kubectl-плагины
- * работают как обычно и ничего не требуется.
- */
-export function authRequirement(auth: string | undefined, webMode: boolean): AuthRequirement {
-  if (!webMode) return 'none'
-  switch (auth) {
-    case 'oidc-password': return 'credentials'
-    case 'oidc-authcode': return 'authcode'
-    case 'exec': return 'exec'
-    default: return 'none'
-  }
+export function signsIn(auth: string | undefined): boolean {
+  return !!auth && auth !== 'static'
 }
 
-/** Можно ли отправлять форму: для oidc-login нужны логин и пароль, для невозможных вариантов отправка закрыта. */
-export function authReady(req: AuthRequirement, username: string, password: string): boolean {
-  switch (req) {
-    case 'none': return true
-    case 'credentials': return username.trim().length > 0 && password.length > 0
-    default: return false
-  }
+/**
+ * Можно ли предложить «общую учётную запись команды»: кластер принадлежит команде и входит через провайдера.
+ * Вход под общей записью вводит администратор кластера; вызывающий уже выбрал команду, где он администратор.
+ */
+export function canShareAccount(auth: string | undefined, hasTeam: boolean): boolean {
+  return hasTeam && signsIn(auth)
+}
+
+/** Кластер входит под общей учётной записью команды */
+export function isSharedAccount(cluster: Pick<ClusterMeta, 'mode'>): boolean {
+  return cluster.mode === TEAM_ACCOUNT_MODE
 }

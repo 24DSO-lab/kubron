@@ -103,7 +103,7 @@ func (m *Manager) GetClusterOverview() (*ClusterOverview, error) {
 		return nil, err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	ctx, cancel := context.WithTimeout(m.baseCtx(), 20*time.Second)
 	defer cancel()
 
 	var (
@@ -129,7 +129,7 @@ func (m *Manager) GetClusterOverview() (*ClusterOverview, error) {
 	}
 
 	// Из локального кеша informers (если он уже синхронизирован), иначе прямым запросом к API
-	oc := conn.overviewCache(func() { m.emitCluster(EventClusterChanged, conn.Name) })
+	oc := conn.overviewCache(func() { m.emitCluster(EventClusterChanged, conn) })
 
 	run(func() {
 		if l, ok := oc.nodeList(); ok {

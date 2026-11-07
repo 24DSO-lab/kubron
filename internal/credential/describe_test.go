@@ -326,3 +326,31 @@ func FuzzDescribe(f *testing.F) {
 }
 
 func sprint(format string, v any) string { return fmt.Sprintf(format, v) }
+
+func TestDescribeExecProvideClusterInfo(t *testing.T) {
+	kc := func(field string) []byte {
+		return []byte("current-context: x\nclusters:\n- {name: c, cluster: {server: 'https://k8s.example.com:6443'}}\n" +
+			"contexts:\n- {name: x, context: {cluster: c, user: u}}\nusers:\n- name: u\n  user:\n    exec:\n" +
+			"      apiVersion: client.authentication.k8s.io/v1\n      command: some-plugin\n" + field)
+	}
+	for name, tc := range map[string]struct {
+		field string
+		want  string // "" means the parameter is absent
+	}{
+		"true":   {"      provideClusterInfo: true\n", "true"},
+		"false":  {"      provideClusterInfo: false\n", "false"},
+		"absent": {"", ""},
+	} {
+		d, err := Describe(kc(tc.field), "")
+		if err != nil || d.Kind != KindExec {
+			t.Fatalf("%s: %+v, %v", name, d, err)
+		}
+		got, ok := d.Params[ParamExecProvideClusterInfo]
+		if got != tc.want || ok != (tc.want != "") {
+			t.Errorf("%s: Params[%s] = %q (present %v), want %q", name, ParamExecProvideClusterInfo, got, ok, tc.want)
+		}
+		if _, leaked := d.Params["cluster.server"]; !leaked {
+			t.Errorf("%s: the public cluster data is missing", name)
+		}
+	}
+}

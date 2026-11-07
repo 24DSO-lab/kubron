@@ -28,6 +28,12 @@ jobs:
   # paths-ignore на уровне workflow, где проверка не отчитывается и PR не вливается).
   # !cancelled() нужен, чтобы сбой этого job запускал остальные, а не «проходил» их пропуском.
   #
+  # Документация здесь: docs/, docs-site/, *.md, шаблоны issue и CODEOWNERS. Если изменены только такие файлы,
+  # code=false и пропускаются все проверки кода. Исключение: манифесты зависимостей сайта документации
+  # (docs-site/package.json и package-lock.json). Их проверяют deps-audit и osv-scanner, и именно их обновляет
+  # Dependabot, поэтому при их правке запускается только deps-audit (deps=true), остальное пропускается.
+  # DCO и «License headers» (в том числе проверка формата CHANGELOG.md) идут всегда.
+  #
   # Помимо этого job решает, что можно не гонять заново без потери качества:
   #  - verified: для точно такого же содержимого (tree hash) полный прогон уже был зелёным. Merge-коммит PR,
   #    коммит после слияния и повышение refactor -> dev -> master различаются SHA, но не содержимым, поэтому
@@ -47,6 +53,7 @@ jobs:
     outputs:
       code: ${{ steps.diff.outputs.code }}
       go: ${{ steps.diff.outputs.go }}
+      deps: ${{ steps.diff.outputs.deps }}
       tree: ${{ steps.verified.outputs.tree }}
       verified: ${{ steps.verified.outputs.verified }}
       record: ${{ steps.verified.outputs.record }}
@@ -71,7 +78,10 @@ jobs:
           REF: ${{ github.ref }}
           BEFORE: ${{ github.event.before }}
         run: |
-          docs_only='^(docs/|\.github/ISSUE_TEMPLATE/)|\.md$'
+          # Файлы, не влияющие на работу кода: документация, сайт документации, шаблоны и владельцы репозитория
+          docs_only='^(docs|docs-site)/|^\.github/(ISSUE_TEMPLATE/|CODEOWNERS$)|\.md$'
+          # Манифесты зависимостей сайта документации остаются на аудите зависимостей (deps-audit)
+          docs_deps='^docs-site/package(-lock)?\.json$'
           # Каталоги, чьи файлы (кроме *.go) не влияют на Go-проверки
           no_go='^(frontend|docs-site)/'
           base=
@@ -84,11 +94,16 @@ jobs:
           # Теги, вызов из release.yml, ручной запуск и всё, что нельзя сравнить, гоняют всё
           code=true
           go=true
+          deps=true
           changed=
-          if [[ -n $base ]] && changed=$(git diff --no-renames --name-only "$base" HEAD) &&
+          # quotepath=off: иначе git берёт в кавычки и экранирует имена с не-ASCII символами
+          # (docs/Kubron план…md), и они не совпадают с шаблонами выше
+          if [[ -n $base ]] && changed=$(git -c core.quotepath=off diff --no-renames --name-only "$base" HEAD) &&
             [[ -n $changed ]]; then
             if ! grep -qvE "$docs_only" <<<"$changed"; then
               code=false
+              # Аудит зависимостей нужен, только если среди правок есть манифест docs-site
+              grep -qE "$docs_deps" <<<"$changed" || deps=false
             elif [[ $EVENT == pull_request ]] &&
               ! grep -qvE "$docs_only|$no_go" <<<"$changed" && ! grep -qE '\.go$' <<<"$changed"; then
               go=false
@@ -97,6 +112,7 @@ jobs:
           printf '%s\n' "$changed"
           echo "code=$code" | tee -a "$GITHUB_OUTPUT"
           echo "go=$go" | tee -a "$GITHUB_OUTPUT"
+          echo "deps=$deps" | tee -a "$GITHUB_OUTPUT"
 
   dco:
     name: DCO (Signed-off-by)
@@ -194,7 +210,13 @@ jobs:
           scope: test
 
       - name: gofmt
-        run: test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
+        run: |
+          files="$(gofmt -l .)"
+          if [ -n "$files" ]; then
+            printf '%s\n' "$files"
+            gofmt -d $files
+            exit 1
+          fi
 
       - run: go vet -tags $GO_TAGS ./...
       - run: go build -tags $GO_TAGS ./...
@@ -383,7 +405,7 @@ jobs:
   deps-audit:
     name: Dependencies (npm audit, osv-scanner)
     needs: changes
-    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
+    if: ${{ !cancelled() && needs.changes.outputs.deps != 'false' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
@@ -588,7 +610,7 @@ jobs:
           kubectl run e2e-shell --image=busybox:1.36 --restart=Never -- sleep 3600
           kubectl wait --for=condition=Ready pod/e2e-shell --timeout=120s
           # Под, который пишет в stdout: нужен тесту «события и логи доходят только владельцу»
-          kubectl run e2e-logs --image=busybox:1.36 --restart=Never -- sh -c 'while true; do echo tick; sleep 1; done'
+          kubectl run e2e-logs --image=busybox:1.36 --restart=Never --command -- /bin/sh -c 'while :; do printf "tick\\n"; sleep 1; done'
           kubectl wait --for=condition=Ready pod/e2e-logs --timeout=120s
           # HTTP-приложение для теста port-forward через прокси потоков (этап 5)
           kubectl run e2e-http --image=busybox:1.36 --restart=Never -- sh -c 'mkdir -p /www && echo kubron-pf-ok > /www/index.html && httpd -f -p 8080 -h /www'
@@ -894,7 +916,7 @@ jobs:
           [[ $TREE =~ ^[0-9a-f]{40,64}$ ]] || { echo "unexpected tree hash: $TREE"; exit 1; }
           printf '%s\n' "$TREE" >verified-tree.txt
 
-      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ci-verified-${{ needs.changes.outputs.tree }}
           path: verified-tree.txt

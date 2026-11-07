@@ -49,17 +49,14 @@
     "noAdminTeams": "您不是任何团队的管理员，因此无法添加集群。请联系组织管理员。",
     "methodInCluster": "本服务器所在的集群",
     "inClusterHint": "添加 Kubron 服务器自身运行的集群。访问使用服务器的 ServiceAccount，因此团队中拥有角色的所有人都会获得相应权限。",
-    "oidcHint": "此 kubeconfig 通过 oidc-login 登录。服务器无法运行它，因此将使用下方的登录名和密码自行向身份提供商登录，并自动续订令牌。",
-    "oidcUser": "登录名",
-    "oidcPassword": "密码",
-    "oidcStored": "密码以加密方式存储，之后不再显示。您可以稍后在集群设置中更改。",
-    "authCodeUnsupported": "此 kubeconfig 通过浏览器登录（oidc-login、authcode）。这在服务器上无法工作。请使用带 password 授权、令牌或客户端证书的 kubeconfig。",
-    "execForbidden": "此 kubeconfig 通过外部命令获取凭证（exec）。服务器不允许此操作。请使用令牌或客户端证书。",
     "sectionArgo": "Argo CD",
     "argoUrl": "Argo CD 地址",
     "argoUrlPlaceholder": "https://argocd.example.com",
     "argoUrlHint": "Argo CD 的发布地址（例如 Ingress）。设置后 Kubron 将直接打开该地址，而不转发端口。留空则通过集群 API 打开 Argo CD。",
-    "argoUrlInvalid": "请输入不含凭据、查询参数和片段的 http 或 https 地址。"
+    "argoUrlInvalid": "请输入不含凭据、查询参数和片段的 http 或 https 地址。",
+    "sharedAccount": "团队共享账户",
+    "sharedAccountOn": "团队所有成员使用同一个账户连接。集群管理员在连接时登录一次；其他成员会被提示联系管理员。",
+    "sharedAccountOff": "每位用户使用自己的账户登录集群。"
   },
   "edit": {
     "kubeconfig": "Kubeconfig",
@@ -74,10 +71,10 @@
     "stateText": "正在编辑文本：尚无更改",
     "stateKeep": "已存储在 Kubron 中",
     "deleteCluster": "删除集群",
-    "oidcTitle": "登录身份提供商",
-    "oidcHint": "服务器使用此登录名和密码向身份提供商登录。如果密码已在提供商处更改，请输入新密码：保存前会进行验证。",
-    "oidcUpdate": "更新登录名和密码",
-    "oidcUpdated": "登录名和密码已更新。"
+    "accountTitle": "集群账户",
+    "accountChangeWarning": "该集群已保存的登录信息将被清除，所有人需要重新登录。",
+    "accountReset": "清除共享登录",
+    "accountResetDone": "共享登录已清除。下次连接时将要求集群管理员重新登录。"
   },
   "appearance": {
     "environment": "环境",

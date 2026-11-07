@@ -115,7 +115,7 @@ test('кластер: добавление kubeconfig текстом и чтен
   const cluster = list.result.find((c: { displayName: string }) => c.displayName === 'e2e-kind')
   expect(cluster, 'добавленный кластер в списке').toBeTruthy()
 
-  const connect = await rpc(page, 'ConnectToCluster', [cluster.id], csrf)
+  const connect = await rpc(page, 'ConnectCluster', [cluster.id], csrf)
   expect((await connect.json()).error).toBeUndefined()
   const ns = await (await rpc(page, 'GetNamespaces', [], csrf)).json()
   expect(JSON.stringify(ns.result)).toContain('kube-system')
@@ -133,7 +133,7 @@ test('терминал: OpenTerminal и бинарный WebSocket выполн�
   const list = await (await rpc(page, 'GetClusterStatuses', [], csrf)).json()
   const cluster = list.result.find((c: { displayName: string }) => c.displayName === 'e2e-kind')
   expect(cluster, 'кластер добавлен предыдущим тестом').toBeTruthy()
-  expect((await (await rpc(page, 'ConnectToCluster', [cluster.id], csrf)).json()).error).toBeUndefined()
+  expect((await (await rpc(page, 'ConnectCluster', [cluster.id], csrf)).json()).error).toBeUndefined()
 
   // Старые методы с id от клиента закрыты в вебе
   expect((await rpc(page, 'StartTerminalSession', ['mine', namespace, pod, container, '/bin/sh', 80, 24], csrf)).status()).toBe(403)

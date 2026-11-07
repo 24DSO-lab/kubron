@@ -127,7 +127,7 @@ func TestSharedUserCreatedOnAIsKnownToB(t *testing.T) {
 		t.Fatal(err)
 	}
 	// B стартовала до создания пользователя, но вход по паролю на B работает сразу (чтение при неизвестном логине)
-	if _, err := b.NewSession("").Login("bob", "bob-password-1"); err != nil {
+	if _, err := b.NewSession("").Login(t.Context(), "bob", "bob-password-1"); err != nil {
 		t.Fatalf("a user created on replica A must be able to log in on B: %v", err)
 	}
 }
@@ -136,7 +136,7 @@ func TestSharedMissRefreshIsRateLimited(t *testing.T) {
 	_, b, db := twoReplicas(t)
 	before := db.loads
 	for i := 0; i < 20; i++ {
-		_, _ = b.NewSession("").Login("nobody", "whatever-1")
+		_, _ = b.NewSession("").Login(t.Context(), "nobody", "whatever-1")
 	}
 	if n := db.loads - before; n > 1 {
 		t.Errorf("unknown logins must not hammer the store: %d reads", n)
@@ -146,10 +146,10 @@ func TestSharedMissRefreshIsRateLimited(t *testing.T) {
 func TestSharedWritesDoNotClobberOtherReplicas(t *testing.T) {
 	a, b, db := twoReplicas(t)
 	sa, sb := a.NewSession(""), b.NewSession("")
-	if _, err := sa.Login("admin", pw); err != nil {
+	if _, err := sa.Login(t.Context(), "admin", pw); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := sb.Login("admin", pw); err != nil {
+	if _, err := sb.Login(t.Context(), "admin", pw); err != nil {
 		t.Fatal(err)
 	}
 	// Оба создают по пользователю: прежний Save затёр бы одного из них.
@@ -172,7 +172,7 @@ func TestSharedWritesDoNotClobberOtherReplicas(t *testing.T) {
 	if _, err := sa.UpdateRole(alice.ID, RoleOperator); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := b.NewSession("").Login("alice", "alice-password-1"); err != nil {
+	if _, err := b.NewSession("").Login(t.Context(), "alice", "alice-password-1"); err != nil {
 		t.Fatalf("login on B: %v", err)
 	}
 	if got := db.find("alice"); got.Role != RoleOperator || got.LastLoginAt == nil {
@@ -183,14 +183,14 @@ func TestSharedWritesDoNotClobberOtherReplicas(t *testing.T) {
 func TestSharedDisabledOnAIsSeenOnB(t *testing.T) {
 	a, b, db := twoReplicas(t)
 	sa := a.NewSession("")
-	if _, err := sa.Login("admin", pw); err != nil {
+	if _, err := sa.Login(t.Context(), "admin", pw); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := sa.CreateUser("bob", "bob-password-1", RoleUser); err != nil {
 		t.Fatal(err)
 	}
 	bob := db.find("bob")
-	if _, err := b.NewSession("").Login("bob", "bob-password-1"); err != nil {
+	if _, err := b.NewSession("").Login(t.Context(), "bob", "bob-password-1"); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := sa.SetDisabled(bob.ID, true); err != nil {
@@ -199,7 +199,7 @@ func TestSharedDisabledOnAIsSeenOnB(t *testing.T) {
 	if err := b.refresh(); err != nil { // то же делает фоновое перечитывание
 		t.Fatal(err)
 	}
-	if _, err := b.NewSession("").Login("bob", "bob-password-1"); !errors.Is(err, ErrAccountDisabled) {
+	if _, err := b.NewSession("").Login(t.Context(), "bob", "bob-password-1"); !errors.Is(err, ErrAccountDisabled) {
 		t.Errorf("a user disabled on A must be refused on B: %v", err)
 	}
 	// удаление тоже доходит
@@ -209,7 +209,7 @@ func TestSharedDisabledOnAIsSeenOnB(t *testing.T) {
 	if err := b.refresh(); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := b.NewSession("").Login("bob", "bob-password-1"); !errors.Is(err, ErrInvalidCredentials) {
+	if _, err := b.NewSession("").Login(t.Context(), "bob", "bob-password-1"); !errors.Is(err, ErrInvalidCredentials) {
 		t.Errorf("a user deleted on A: %v", err)
 	}
 }
@@ -217,7 +217,7 @@ func TestSharedDisabledOnAIsSeenOnB(t *testing.T) {
 func TestSharedRefreshDoesNotOverwriteNewerLocalChange(t *testing.T) {
 	a, _, db := twoReplicas(t)
 	sa := a.NewSession("")
-	if _, err := sa.Login("admin", pw); err != nil {
+	if _, err := sa.Login(t.Context(), "admin", pw); err != nil {
 		t.Fatal(err)
 	}
 	// чтение началось до локального изменения и вернулось после него: устаревший результат отбрасывается
@@ -248,7 +248,7 @@ func TestSharedRefreshDoesNotOverwriteNewerLocalChange(t *testing.T) {
 func TestSharedResumeFindsUserOfAnotherReplica(t *testing.T) {
 	a, b, db := twoReplicas(t)
 	sa := a.NewSession("")
-	if _, err := sa.Login("admin", pw); err != nil {
+	if _, err := sa.Login(t.Context(), "admin", pw); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := sa.CreateUser("erin", "erin-password-1", RoleUser); err != nil {
@@ -263,7 +263,7 @@ func TestSharedResumeFindsUserOfAnotherReplica(t *testing.T) {
 func TestSharedRunRefresherStopsAndPicksUpChanges(t *testing.T) {
 	a, b, _ := twoReplicas(t)
 	sa := a.NewSession("")
-	if _, err := sa.Login("admin", pw); err != nil {
+	if _, err := sa.Login(t.Context(), "admin", pw); err != nil {
 		t.Fatal(err)
 	}
 	ctx, cancel := context.WithCancel(context.Background())
@@ -297,7 +297,7 @@ func TestSharedRunRefresherStopsAndPicksUpChanges(t *testing.T) {
 func TestSharedRefreshNowDeliversChangesImmediately(t *testing.T) {
 	a, b, _ := twoReplicas(t)
 	sa := a.NewSession("")
-	if _, err := sa.Login("admin", pw); err != nil {
+	if _, err := sa.Login(t.Context(), "admin", pw); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := sa.CreateUser("gina", "gina-password-1", RoleUser); err != nil {

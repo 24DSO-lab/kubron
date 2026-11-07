@@ -8,6 +8,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 )
@@ -245,5 +246,67 @@ func TestLoadConfigMetricsListen(t *testing.T) {
 	}
 	if _, err := LoadConfig([]string{"--metrics-listen", "not-an-address"}, env(nil), io.Discard); err == nil {
 		t.Error("a metrics address without a port must be rejected")
+	}
+}
+
+func TestLoadConfigPublicURL(t *testing.T) {
+	if cfg, err := LoadConfig(nil, env(nil), io.Discard); err != nil || cfg.PublicURL != "" {
+		t.Fatalf("empty public URL should disable browser callbacks: %+v %v", cfg, err)
+	}
+
+	for _, value := range []string{
+		"https://kubron.example.com",
+		"https://kubron.example.com/",
+		"http://localhost:8080",
+		"http://dev.localhost:8080",
+		"http://127.0.0.1:8080",
+		"http://[::1]:8080",
+	} {
+		cfg, err := LoadConfig(nil, env(map[string]string{"KUBRON_PUBLIC_URL": value}), io.Discard)
+		if err != nil || cfg.PublicURL != value {
+			t.Errorf("KUBRON_PUBLIC_URL=%q: cfg=%+v err=%v", value, cfg, err)
+		}
+	}
+
+	for _, value := range []string{
+		"kubron.example.com",
+		"https://",
+		"ftp://kubron.example.com",
+		"http://kubron.example.com",
+		"http://192.0.2.10",
+		"https://user:password@kubron.example.com",
+		"https://kubron.example.com?next=/",
+		"https://kubron.example.com#callback",
+		"https://kubron.example.com/prefix",
+		"https://kubron.example.com:bad",
+		"https://kubron.example.com:0",
+		"https://kubron.example.com:65536",
+		"https://kubron.example.com#",
+	} {
+		if _, err := LoadConfig(nil, env(map[string]string{"KUBRON_PUBLIC_URL": value}), io.Discard); err == nil {
+			t.Errorf("KUBRON_PUBLIC_URL=%q: expected validation error", value)
+		}
+	}
+}
+
+func TestLoadConfigGKEOAuth(t *testing.T) {
+	cfg, err := LoadConfig(nil, env(nil), io.Discard)
+	if err != nil || cfg.GKEOAuthClientID != "" || cfg.GKEOAuthClientSecret != "" {
+		t.Fatalf("default: %+v %v", cfg, err)
+	}
+	cfg, err = LoadConfig(nil, env(map[string]string{
+		"KUBRON_GKE_OAUTH_CLIENT_ID": " id.apps.googleusercontent.com ", "KUBRON_GKE_OAUTH_CLIENT_SECRET": " s3cret\n",
+	}), io.Discard)
+	if err != nil || cfg.GKEOAuthClientID != "id.apps.googleusercontent.com" || cfg.GKEOAuthClientSecret != "s3cret" {
+		t.Fatalf("set: %+v %v", cfg, err)
+	}
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("id and secret: %v", err)
+	}
+	// A secret without an id is a mistake of the deployment, and the error must not repeat the secret.
+	cfg.GKEOAuthClientID = ""
+	err = cfg.Validate()
+	if err == nil || strings.Contains(err.Error(), "s3cret") {
+		t.Fatalf("secret without id: %v", err)
 	}
 }

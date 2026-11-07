@@ -84,7 +84,7 @@ func (m *Manager) GetPersistentVolumes() ([]PVInfo, error) {
 		return nil, err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	ctx, cancel := context.WithTimeout(m.baseCtx(), 15*time.Second)
 	defer cancel()
 
 	list, err := conn.Client.CoreV1().PersistentVolumes().List(ctx, metav1.ListOptions{})
@@ -331,7 +331,7 @@ func (m *Manager) GetStorageClasses() ([]StorageClassInfo, error) {
 		return nil, err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	ctx, cancel := context.WithTimeout(m.baseCtx(), 15*time.Second)
 	defer cancel()
 
 	list, err := conn.Client.StorageV1().StorageClasses().List(ctx, metav1.ListOptions{})

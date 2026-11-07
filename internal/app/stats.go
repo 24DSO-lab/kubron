@@ -11,6 +11,7 @@ type RuntimeStats struct {
 	HealthLeader    bool           // эта реплика проверяет кластеры
 	LoginBlocked    int64
 	LockoutsStarted int64
+	SharedDegraded  int64 // проверки и записи неудач входа без общего хранилища (оно недоступно)
 }
 
 // CollectStats собирает числа по корневому виду и видам веб-сессий (sessions.Views()). Это функция
@@ -40,7 +41,7 @@ func CollectStats(root *App, views []any) RuntimeStats {
 	}
 	if root.auth != nil {
 		a := root.auth.Stats()
-		st.LoginBlocked, st.LockoutsStarted = a.LoginBlocked, a.LockoutsStarted
+		st.LoginBlocked, st.LockoutsStarted, st.SharedDegraded = a.LoginBlocked, a.LockoutsStarted, a.SharedDegraded
 	}
 	return st
 }

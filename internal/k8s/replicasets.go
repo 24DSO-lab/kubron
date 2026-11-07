@@ -107,7 +107,7 @@ func (m *Manager) GetReplicaSet(namespace, name string) (*appsv1.ReplicaSet, err
 		return nil, err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(m.baseCtx(), 10*time.Second)
 	defer cancel()
 
 	return conn.Client.AppsV1().ReplicaSets(namespace).Get(ctx, name, metav1.GetOptions{})
@@ -119,7 +119,7 @@ func (m *Manager) ScaleReplicaSet(namespace, name string, replicas int32) error 
 		return err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(m.baseCtx(), 10*time.Second)
 	defer cancel()
 
 	scale, err := conn.Client.AppsV1().ReplicaSets(namespace).GetScale(ctx, name, metav1.GetOptions{})

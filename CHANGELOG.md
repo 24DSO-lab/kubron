@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Cloud cluster sign-in:** connect to AWS EKS with IAM access keys, temporary credentials or IAM Identity Center; to Azure AKS with device code, service-principal credentials or username/password; and to Google GKE with a service-account key or a Google account.
+- **Google sign-in on Desktop:** configure a Google OAuth client in Settings and sign in to GKE through your browser.
+- **Shared team sign-in:** team administrators can configure one identity-provider sign-in for a team cluster so that team members can use it without entering separate credentials.
+
+### Changed
+
+- **Cluster sign-in:** sign-in is handled through Kubron's sign-in flow. On Desktop, supported local Kubernetes credential plugins can be reviewed and approved before they run. In Web mode, unsupported plugins are not run on the server; Kubron explains how to obtain and provide a token manually.
+- **Cluster dialogs:** identity-provider credentials are entered in the sign-in flow rather than in the cluster's connection settings.
+
+### Fixed
+
+- **Web sessions:** the last active cluster is now kept separately for each signed-in user, so activity in one session no longer changes the active cluster in another.
+- **Kubernetes connections:** improved connection shutdown and reuse when clusters are switched, removed or signed out, avoiding delays and stale connections.
+- **Code editor:** fixed loading of the editor and its workers in supported browser builds.
+
 ## [1.0.0] - 2026-11-03
 
 ### Security
@@ -90,9 +107,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Docs:** README, the roadmap and `docs/tickets/stage-1.md` no longer describe the image as unpublished, the server as
+- **Docs:** README, the roadmap and `docs/archive/tickets/stage-1.md` no longer describe the image as unpublished, the server as
   single-replica or `SetupAdmin` as open; stale "PR n" and branch notes were removed from `docs/ha.md` and
-  `docs/ha-sessions.md`; `docs/tickets/stage-4-5.md` records the status of stages 4-6 and what is still open.
+  `docs/ha-sessions.md`; `docs/archive/tickets/stage-4-5.md` records the status of stages 4-6 and what is still open.
 - **Release:** `publish.yml` is called by `release.yml` after CI instead of reacting to the tag on its own, so SBOMs reach the
   immutable GitHub Release and the image is never published from an untested commit. A published image or chart version is
   never overwritten. `Chart.yaml` holds `0.0.0-dev` placeholders; the version comes from the tag.
@@ -246,7 +263,7 @@ First public release.
 - Local users with `admin` / `operator` / `user` roles, audit log with rotation and client
   address, auto-logout on inactivity.
 - Public extension API (`pkg/ext`) for external modules.
-- Experimental web mode (`cmd/kubron-server`): several concurrent sessions, per-session
+- Web mode (`cmd/kubron-server`): several concurrent sessions, per-session
   cluster managers with per-user resource limits, idle informers released after a TTL.
 
 [Unreleased]: https://github.com/24DSO-labs/kubron/compare/v1.0.0...HEAD
