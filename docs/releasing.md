@@ -8,7 +8,7 @@ SBOM, подписи, описание релиза, публикация) де�
 Один тег `vX.Y.Z` задаёт версию всего: десктопных файлов, образа `ghcr.io/24dso-labs/kubron:X.Y.Z`, чарта
 `oci://ghcr.io/24dso-labs/charts/kubron` версии `X.Y.Z` (его `appVersion` тоже `X.Y.Z`) и имён файлов SBOM.
 
-- Источник правды — `wails.json` (`info.productVersion`) и `frontend/package.json`: `scripts/release.sh` обновляет их сам, а
+- Источник правды — `wails.json` (`info.productVersion`) и `frontend/package.json`: `scripts/release.sh --prepare` обновляет их сам, а
   workflow'ы `release.yml` и `publish.yml` отказываются работать, если тег с ними не совпадает (для `-rc.N` сравнивается база
   без суффикса).
 - `deploy/helm/kubron/Chart.yaml` хранит заглушку `0.0.0-dev`: версию чарта и `appVersion` подставляет `publish.yml` из тега
@@ -31,15 +31,23 @@ GitHub — основной репозиторий. GitLab (`origin`) — вто
 1. **Коммит в `refactor`** из IDE, затем `git push github refactor`. Для внешних PR из fork CI отдельно проверяет DCO.
 2. **CHANGELOG.** Если изменение заметно пользователю, добавьте строку в `CHANGELOG.md` в раздел
    `## [Unreleased]` (Added / Changed / Fixed / Removed / Security). Эти строки станут описанием релиза.
-3. **В `dev`.** Когда всё готово к выпуску: слейте `refactor` в `dev` (в IDE: Merge, либо
+3. **Подготовка релиза в `refactor`.** Когда всё готово к выпуску, в `refactor` с чистым деревом:
+   ```bash
+   scripts/release.sh 0.2.0 --prepare   # [Unreleased] -> [0.2.0], версии в файлах, один коммит; ничего не пушит
+   git push github refactor
+   ```
+   Дождитесь зелёного `refactor`. Подготовка делается **до** слияния в `dev`: так в `dev` уже лежит всё, что
+   войдёт в тег, и после выпуска скрипту не нужно добавлять в `dev` новых коммитов.
+4. **В `dev`.** Слейте `refactor` в `dev` (в IDE: Merge, либо
    `git checkout dev && git merge refactor && git push github dev`). На push в `dev` запускается CI:
    дождитесь зелёного.
-4. **Выпуск.** Из `dev`, с чистым рабочим деревом:
+5. **Выпуск.** Из `dev`, с чистым рабочим деревом:
    ```bash
    scripts/release.sh 0.2.0 --dry-run   # проверки и предпросмотр описания, ничего не меняется
    scripts/release.sh 0.2.0             # сам выпуск (--watch: дождаться релизного workflow)
    ```
-5. **Готово.** Через 10-20 минут релиз опубликован: `https://github.com/24DSO-labs/kubron/releases`.
+   Если шаг 3 пропущен, скрипт остановится и подскажет выполнить `--prepare`.
+6. **Готово.** Через 10-20 минут релиз опубликован: `https://github.com/24DSO-labs/kubron/releases`.
    После выпуска `refactor` уже равна `master`: продолжайте работу с `git checkout refactor && git pull`.
 
 ## Чек-лист перед тегом
@@ -99,9 +107,17 @@ merge-коммит PR, коммит после слияния и повышен�
 
 ## Что делает `scripts/release.sh`
 
-1. Проверяет: вы в `dev`, дерево чистое, `dev` совпадает с GitHub, тега нет.
-2. Переносит `[Unreleased]` в раздел `## [X.Y.Z] - дата`, обновляет ссылки внизу CHANGELOG и версии
-   в `wails.json` и `frontend/package*.json`; коммит `chore(release): vX.Y.Z`, push в `dev`.
+**С `--prepare` (в `refactor`):** переносит `[Unreleased]` в раздел `## [X.Y.Z] - дата`, обновляет ссылки внизу
+CHANGELOG и версии в `wails.json` и `frontend/package*.json`, делает коммит `chore(release): vX.Y.Z` (с `-s`).
+Ничего не отправляет. Повторный запуск, когда всё уже подготовлено, ничего не делает. В `dev` и `master`
+`--prepare` не работает.
+
+**Без `--prepare` (в `dev`):**
+
+1. Проверяет: вы в `dev`, дерево чистое, `dev` совпадает с GitHub, тега нет, в `dev` уже есть раздел `[X.Y.Z]`
+   в CHANGELOG и версии `X.Y.Z` в `wails.json` и `frontend/package.json` (иначе останавливается и просит `--prepare`).
+2. Ничего не коммитит и не пушит в `dev`: в `master` уходит ровно проверенное содержимое. Поэтому на выпуск не запускаются
+   повторные прогоны CI, Deploy и CodeQL, которые раньше давал коммит `chore(release)`.
 3. Создаёт pull request `dev` → `master`, ждёт зелёных проверок, сливает его (merge commit).
 4. Ставит аннотированный тег `vX.Y.Z` на `master` и отправляет его.
 5. Продвигает `dev` и рабочую ветку `refactor` до `master` (быстрая перемотка), чтобы в `refactor`
@@ -112,9 +128,9 @@ merge-коммит PR, коммит после слияния и повышен�
    строки, а то, что уже свёрнуто в `[X.Y.Z]`, возьмите из `master`.
 
 Если скрипт остановился (красная проверка, обрыв сети), исправьте причину (для проверок:
-коммит в `dev` и push) и запустите **ту же команду** снова: готовые шаги пропускаются.
+коммит в `refactor`, слияние в `dev` и push) и запустите **ту же команду** снова: готовые шаги пропускаются.
 
-Предрелиз: `scripts/release.sh 0.3.0-rc.1`. CHANGELOG при этом не переносится, описание берётся из
+Предрелиз: `scripts/release.sh 0.3.0-rc.1 --prepare`, затем так же через `dev`. CHANGELOG при этом не переносится, описание берётся из
 `[Unreleased]`, в файлах версия `0.3.0`, релиз помечается как pre-release.
 
 ## Что делает workflow `Release` (запускается на тег `v*.*.*`)
