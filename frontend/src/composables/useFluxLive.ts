@@ -2,14 +2,27 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { ref } from 'vue'
+import { onEvent } from '../platform/events'
+
+/** Событие бэкенда: объект Flux создан, изменён или удалён (informer, internal/k8s, EventFluxChanged) */
+const FLUX_CHANGED = 'flux:changed'
 
 /**
- * Заглушка задачи 0.2: подписку на событие flux:changed (internal/k8s, EventFluxChanged) заполняет задача U.2.
- * Определения ресурсов подписываются на счётчик через `refreshOn`, дашборд — через watch.
+ * Счётчик изменений Flux. Определения ресурсов подписываются на него через `refreshOn`,
+ * дашборд — через watch: сам список перезагружается существующим механизмом, без новых каналов.
+ * Таймер autoRefresh остаётся страховкой: informer может не стартовать (нет прав на list/watch).
  */
 export const fluxLiveTick = ref(0)
 
-/** Подписка идемпотентна: повторный вызов (смена кластера) не плодит обработчики */
-export function startFluxLive() {}
+let off: (() => void) | null = null
 
-export function stopFluxLive() {}
+/** Подписка идемпотентна: повторный вызов (смена кластера) не плодит обработчики */
+export function startFluxLive() {
+  if (off) return
+  off = onEvent(FLUX_CHANGED, () => { fluxLiveTick.value++ })
+}
+
+export function stopFluxLive() {
+  off?.()
+  off = null
+}
