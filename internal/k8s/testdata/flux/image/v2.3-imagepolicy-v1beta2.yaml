@@ -1,0 +1,29 @@
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImagePolicy
+metadata:
+  name: podinfo
+  namespace: flux-system
+  creationTimestamp: "2024-06-12T07:00:00Z"
+  generation: 1
+  uid: 9c1c6e52-9d0e-4b56-8d0e-1a0f3d1c9b44
+  labels:
+    app.kubernetes.io/part-of: platform
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: '{"spec":{"git":{"commit":{"author":{"email":"S3CRET-LASTAPPLIED"}}}}}'
+    team: platform
+spec:
+  imageRepositoryRef:
+    name: podinfo
+  policy:
+    semver:
+      range: 6.x
+status:
+  observedGeneration: 1
+  conditions:
+  - type: Ready
+    status: "True"
+    reason: Succeeded
+    message: 'Latest image tag resolved to 6.5.3'
+    lastTransitionTime: "2024-06-12T07:05:00Z"
+    observedGeneration: 1
+  latestImage: ghcr.io/stefanprodan/podinfo:6.5.3
