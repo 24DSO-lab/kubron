@@ -21,6 +21,10 @@ concurrency:
 env:
   # Wails на Linux собирается с webkit2gtk 4.1
   GO_TAGS: webkit2_41
+  # Flux для e2e (шаг «Flux» в job e2e): версия 2.8.x и sha256 файла install.yaml этого релиза, меняются только вместе
+  FLUX_VERSION: 2.8.8
+  FLUX_INSTALL_SHA256: cc23846dc86bec37c060d860c1188447e896a93fa1d9e1e3aca4e25726c1ae61
+  FLUX_E2E_NAMESPACE: flux-e2e
 
 jobs:
   # Правки только в документации пропускают тяжёлые job'ы. Job, пропущенный по `if`,
@@ -646,6 +650,94 @@ jobs:
               namespace: default
           EOF
 
+      # Настоящий Flux для flux.spec.ts (ADR-0023, раздел 10; E2E_FLUX=1). Версия и sha256 install.yaml закреплены
+      # в env workflow (FLUX_VERSION, FLUX_INSTALL_SHA256): при обновлении меняются вместе, сумма считается по файлу
+      # релиза (sha256sum install.yaml). Установка Flux обязательна и валит job, если не прошла. Источники тестовых
+      # объектов внешние (GitHub, GitHub Pages), поэтому их Ready ждём с таймаутом и только с предупреждением:
+      # e2e проверяет списки и действия, а не загрузку репозитория и чарта.
+      # Объекты (namespace $FLUX_E2E_NAMESPACE): GitRepository, Kustomization, HelmRepository, HelmRelease, все с именем e2e-podinfo.
+      - name: Flux
+        run: |
+          curl -fsSL --retry 3 --retry-all-errors -o "$RUNNER_TEMP/flux-install.yaml" \
+            "https://github.com/fluxcd/flux2/releases/download/v${FLUX_VERSION}/install.yaml"
+          echo "${FLUX_INSTALL_SHA256}  $RUNNER_TEMP/flux-install.yaml" | sha256sum -c -
+          kubectl apply --server-side --force-conflicts -f "$RUNNER_TEMP/flux-install.yaml"
+          # Нужны только три контроллера; остальные (образы, уведомления) доустанавливаются в фоне и не ожидаются
+          for d in source-controller kustomize-controller helm-controller; do
+            kubectl -n flux-system rollout status "deploy/$d" --timeout=300s
+          done
+          for crd in gitrepositories.source.toolkit.fluxcd.io helmrepositories.source.toolkit.fluxcd.io \
+                     kustomizations.kustomize.toolkit.fluxcd.io helmreleases.helm.toolkit.fluxcd.io; do
+            kubectl wait --for=condition=Established "crd/$crd" --timeout=60s
+          done
+          kubectl create namespace "$FLUX_E2E_NAMESPACE"
+          # interval большой намеренно: lastHandledReconcileAt в тесте должен меняться только от действия Reconcile
+          kubectl apply -f - <<EOF
+          apiVersion: source.toolkit.fluxcd.io/v1
+          kind: GitRepository
+          metadata:
+            name: e2e-podinfo
+            namespace: ${FLUX_E2E_NAMESPACE}
+          spec:
+            interval: 10m
+            url: https://github.com/stefanprodan/podinfo
+            ref:
+              tag: 6.7.1
+          ---
+          apiVersion: kustomize.toolkit.fluxcd.io/v1
+          kind: Kustomization
+          metadata:
+            name: e2e-podinfo
+            namespace: ${FLUX_E2E_NAMESPACE}
+          spec:
+            interval: 10m
+            path: ./kustomize
+            prune: true
+            targetNamespace: ${FLUX_E2E_NAMESPACE}
+            sourceRef:
+              kind: GitRepository
+              name: e2e-podinfo
+          ---
+          apiVersion: source.toolkit.fluxcd.io/v1
+          kind: HelmRepository
+          metadata:
+            name: e2e-podinfo
+            namespace: ${FLUX_E2E_NAMESPACE}
+          spec:
+            interval: 10m
+            url: https://stefanprodan.github.io/podinfo
+          ---
+          apiVersion: helm.toolkit.fluxcd.io/v2
+          kind: HelmRelease
+          metadata:
+            name: e2e-podinfo
+            namespace: ${FLUX_E2E_NAMESPACE}
+          spec:
+            interval: 10m
+            releaseName: e2e-podinfo-helm
+            targetNamespace: ${FLUX_E2E_NAMESPACE}
+            install:
+              timeout: 2m
+            chart:
+              spec:
+                chart: podinfo
+                version: 6.7.1
+                sourceRef:
+                  kind: HelmRepository
+                  name: e2e-podinfo
+          EOF
+          # Ready ждём параллельно, общий потолок 120 с; сбой источника не валит job
+          pids=()
+          for res in gitrepositories.source.toolkit.fluxcd.io kustomizations.kustomize.toolkit.fluxcd.io \
+                     helmrepositories.source.toolkit.fluxcd.io helmreleases.helm.toolkit.fluxcd.io; do
+            kubectl -n "$FLUX_E2E_NAMESPACE" wait "$res/e2e-podinfo" --for=condition=Ready --timeout=120s &
+            pids+=("$!")
+          done
+          for pid in "${pids[@]}"; do
+            wait "$pid" || echo "::warning::Flux: объект не достиг Ready за 120 с (сеть источника?), e2e проверяет списки и действия"
+          done
+          echo "Flux: установка и тестовые объекты заняли ${SECONDS} с" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Export kubeconfig
         run: kind export kubeconfig --name kubron-e2e --kubeconfig "$RUNNER_TEMP/kind.kubeconfig"
 
@@ -688,6 +780,8 @@ jobs:
           E2E_LOG_POD: default/e2e-logs/e2e-logs
           E2E_HTTP_POD: default/e2e-http
           E2E_ARGO_PASSWORD_FILE: ${{ runner.temp }}/argo-password
+          E2E_FLUX: "1"
+          E2E_FLUX_NAMESPACE: ${{ env.FLUX_E2E_NAMESPACE }}
           E2E_PF_URL: http://localhost:8081
           E2E_LOCKED_URL: http://127.0.0.1:8082
 
