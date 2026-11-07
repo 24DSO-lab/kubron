@@ -8,7 +8,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/http/httputil"
@@ -292,7 +292,8 @@ func (s *Service) proxyFor(t Target) *streamProxy {
 		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
 			// В журнал — только метод, путь без query и текст ошибки: в query могут быть токены приложения.
 			// Путь — в экранированном виде (EscapedPath): декодированный путь мог содержать управляющие символы (%0A).
-			log.Printf("port-forward %s: %s %s: %v", id[:8], r.Method, r.URL.EscapedPath(), err)
+			slog.Warn("port-forward: ошибка проксирования",
+				"stream", id[:8], "method", r.Method, "path", r.URL.EscapedPath(), "error", err)
 			http.Error(w, "bad gateway", http.StatusBadGateway)
 		},
 	}

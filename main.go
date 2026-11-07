@@ -6,6 +6,8 @@ package main
 import (
 	"context"
 	"embed"
+	"log/slog"
+	"os"
 
 	"github.com/24DSO-labs/kubron/internal/app"
 	"github.com/24DSO-labs/kubron/internal/k8s"
@@ -46,7 +48,7 @@ func main() {
 		OnStartup: func(ctx context.Context) {
 			platform.SetContext(ctx)
 			if err := k8s.InitKubronDir(); err != nil {
-				println("Error:", err.Error())
+				slog.Error("app: не удалось подготовить каталог Kubron", "error", err)
 			}
 			setupDesktopBroker(ctx, a.App, platform)
 			app.OnStartup(a.App)(ctx)
@@ -63,6 +65,7 @@ func main() {
 	})
 
 	if err != nil {
-		println("Error:", err.Error())
+		slog.Error("wails: приложение завершилось с ошибкой", "error", err)
+		os.Exit(1)
 	}
 }

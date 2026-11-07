@@ -5,6 +5,7 @@ package app
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
 	"github.com/24DSO-labs/kubron/internal/audit"
@@ -97,7 +98,7 @@ func (a *App) startup(ctx context.Context) {
 	// Бэкенд сообщает фронтенду об изменениях кластера (informers) вместо постоянного опроса
 	a.k8sMgr.SetNotifier(a.platform.Emit)
 	if err := k8s.InitKubronDir(); err != nil {
-		println("Error:", err.Error())
+		slog.Error("app: не удалось подготовить каталог Kubron", "error", err)
 	}
 	if a.store != nil {
 		a.initAuthWith(a.store)
