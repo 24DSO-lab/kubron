@@ -1,0 +1,83 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: podinfo
+  namespace: apps
+  creationTimestamp: "2024-06-12T07:00:00Z"
+  generation: 2
+  uid: 0b5c1d3e-71a4-4f0b-8f0e-5d2a6c9e1a77
+  labels:
+    helm.toolkit.fluxcd.io/name: podinfo
+    helm.toolkit.fluxcd.io/namespace: apps
+    app.kubernetes.io/part-of: platform
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: '{"apiVersion":"helm.toolkit.fluxcd.io/v2","kind":"HelmRelease","metadata":{"name":"podinfo","namespace":"apps"},"spec":{"values":{"adminPassword":"S3CRET-LASTAPPLIED"}}}'
+    team: platform
+spec:
+  interval: 15m0s
+  targetNamespace: podinfo
+  chart:
+    spec:
+      chart: podinfo
+      version: 6.x
+      interval: 5m0s
+      sourceRef:
+        kind: HelmRepository
+        name: podinfo
+        namespace: flux-system
+  values:
+    adminPassword: S3CRET-VALUES
+    ingress:
+      tls:
+        key: S3CRET-VALUES-TLSKEY
+  valuesFrom:
+  - kind: Secret
+    name: podinfo-values-S3CRET-VALUESFROM
+    valuesKey: S3CRET-VALUESKEY
+    targetPath: auth.password
+  - kind: ConfigMap
+    name: podinfo-config
+status:
+  observedGeneration: 2
+  helmChart: flux-system/apps-podinfo
+  conditions:
+  - type: Ready
+    status: "True"
+    reason: UpgradeSucceeded
+    message: 'Helm upgrade succeeded for release podinfo/podinfo-podinfo.v3 with chart podinfo@6.5.4'
+    lastTransitionTime: "2024-06-12T07:05:00Z"
+    observedGeneration: 2
+  - type: Released
+    status: "True"
+    reason: UpgradeSucceeded
+    message: 'Helm upgrade succeeded for release podinfo/podinfo-podinfo.v3 with chart podinfo@6.5.4'
+    lastTransitionTime: "2024-06-12T07:05:00Z"
+    observedGeneration: 2
+  lastAppliedRevision: 6.5.3
+  lastAttemptedRevision: 6.5.3
+  lastReleaseRevision: 2
+  history:
+  - appVersion: 6.5.4
+    chartName: podinfo
+    chartVersion: 6.5.4
+    configDigest: sha256:0000000000000000000000000000000000000000000000000000000000000015
+    digest: sha256:0000000000000000000000000000000000000000000000000000000000000021
+    firstDeployed: "2026-02-10T08:20:00Z"
+    lastDeployed: "2026-11-05T09:00:03Z"
+    name: podinfo-podinfo
+    namespace: podinfo
+    ociDigest: sha256:0000000000000000000000000000000000000000000000000000000000000027
+    status: deployed
+    version: 3
+  - appVersion: 6.5.3
+    chartName: podinfo
+    chartVersion: 6.5.3
+    configDigest: sha256:000000000000000000000000000000000000000000000000000000000000000e
+    digest: sha256:0000000000000000000000000000000000000000000000000000000000000016
+    firstDeployed: "2026-02-10T08:20:00Z"
+    lastDeployed: "2026-08-01T09:00:03Z"
+    name: podinfo-podinfo
+    namespace: podinfo
+    ociDigest: sha256:000000000000000000000000000000000000000000000000000000000000001a
+    status: superseded
+    version: 2
