@@ -352,6 +352,7 @@ func TestCRDRegistryRetryAtIsPerKey(t *testing.T) {
 			return false, nil, nil
 		})
 		conn := &ClusterConnection{DynamicClient: dyn}
+		defer conn.Close()
 		var builds atomic.Int32
 
 		// Отказ по widgets: nil, пауза; повторная проба до истечения паузы не допускается.
@@ -389,7 +390,6 @@ func TestCRDRegistryRetryAtIsPerKey(t *testing.T) {
 		if got := widgetLists.Load(); got != 3 { // две пробы RBAC + начальный LIST informer
 			t.Fatalf("expected two permission probes and one informer LIST, got %d", got)
 		}
-		conn.Close()
 	})
 }
 
