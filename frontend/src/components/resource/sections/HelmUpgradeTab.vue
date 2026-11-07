@@ -47,6 +47,7 @@ import MonacoDiff from '../MonacoDiff.vue'
 import { callApp } from '../../../resources/wails'
 import { runHelmOp } from '../../../composables/useHelmOps'
 import { askConfirm } from '../../../resources/confirm'
+import { withFluxWarning } from './HelmFluxGuard'
 import { reloadActive } from '../../../resources/store'
 import { itemName, itemNs } from '../../../resources/utils'
 import { can } from '../../../composables/useAuth'
@@ -119,7 +120,8 @@ async function preview() {
 }
 
 async function apply() {
-  if (!(await askConfirm(t('helm.upgrade.confirmUpgrade', { name: name.value })))) return
+  const message = withFluxWarning('upgrade', props.resource, name.value, t('helm.upgrade.confirmUpgrade', { name: name.value }))
+  if (!(await askConfirm(message))) return
   busy.value = true
   error.value = ''
   try {
