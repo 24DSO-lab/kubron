@@ -9,49 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **AWS EKS sign-in:** for kubeconfigs that use `aws eks get-token` or `aws-iam-authenticator`, Kubron issues the EKS
-  token itself instead of running the plugin: permanent access keys, temporary session keys, an optional role
-  (`role-arn`, through `AssumeRole`) and IAM Identity Center (device code). Keys are saved encrypted in the user's
-  scope and checked with STS about every 14 minutes. The credentials of the server (environment, `~/.aws`, profiles,
-  IMDS) are never used.
-- **Azure AKS sign-in:** for kubeconfigs that use `kubelogin`, Kubron signs in itself with device code, a service
-  principal secret or username/password (ROPC). Managed identity, Azure CLI, `azd` and workload identity are not supported.
-- **GKE sign-in with a Google account:** when `KUBRON_GKE_OAUTH_CLIENT_ID` (and `KUBRON_GKE_OAUTH_CLIENT_SECRET`) are
-  set, a new GKE sign-in uses the authorization-code flow with PKCE (browser callback on the server, or a pasted
-  address). The refresh token is saved encrypted and bound to the OAuth client. Without these variables nothing changes.
-- **GKE sign-in with a service account key:** a kubeconfig that uses `gke-gcloud-auth-plugin` now asks for a service
-  account key (JSON) instead of showing a manual-token command. The key is exchanged for a token with the JWT-bearer
-  grant at the fixed Google address and is saved encrypted. The credentials of the server (Application Default
-  Credentials, the metadata server) are never used, and `token_uri` from the key file is ignored.
-- **Desktop sign-in with a Google account for GKE:** a listener on `127.0.0.1` (one per sign-in, closed after the answer,
-  on cancel or after 10 minutes) receives the redirect of the browser. The Google OAuth client is set in Settings
-  ("Google sign-in for GKE"); the secret is stored encrypted and is never shown again. A change takes effect after a restart.
-- **Shared team account:** an administrator of a team cluster can choose a shared account in the add/edit dialog. The sign-in is verified by the credential broker (team scope), stored encrypted and used by the whole team; other members are told to ask a cluster administrator. New `ResetClusterSharedAccount` forgets the saved shared sign-in.
-- **OIDC integration coverage:** CI exercises password, refresh-token rotation, authorization code + PKCE through paste-redirect and desktop loopback, device authorization, and a real Keycloak-backed kind API server with two isolated Kubernetes RBAC identities.
-- **Credential guidance:** documented per-user refresh-token storage, explicit team-scope password storage, IdP egress/TLS requirements and the actual OIDC redirect flags.
+- **Cloud cluster sign-in:** connect to AWS EKS with IAM access keys, temporary credentials or IAM Identity Center; to Azure AKS with device code, service-principal credentials or username/password; and to Google GKE with a service-account key or a Google account.
+- **Google sign-in on Desktop:** configure a Google OAuth client in Settings and sign in to GKE through your browser.
+- **Shared team sign-in:** team administrators can configure one identity-provider sign-in for a team cluster so that team members can use it without entering separate credentials.
 
 ### Changed
 
-- **Cluster sign-in:** all connections go through the credential broker. Without a broker only clusters with static credentials and the in-cluster mode connect. The `exec` block of a kubeconfig is never run by the connection code. The test connection of a kubeconfig that signs in through a plugin checks only the address and TLS.
-- **Cluster dialogs:** the login and password fields for `oidc-login` are removed; sign-in happens in the sign-in dialog.
-- **Cluster authentication network policy:** native AKS sign-in now uses the shared IdP HTTP client, enforcing `KUBRON_CLUSTER_ADDR_POLICY` on Azure authority connections and redirects, with HTTPS-only web requests, bounded responses/timeouts and no environment proxy.
-- **Cluster authentication docs:** updated the English and Russian user guides to describe the implemented credential broker, OIDC and AKS sign-in modes, Desktop exec confirmation, Web manual-token fallback and unsupported Azure modes. The Russian sign-in guide (`docs/cluster-sign-in.md`) now also covers AKS, EKS and the shared team account.
-- **Documentation:** `docs/README.md` is now a map of all documents; closed stage tickets, the original plan and the static analysis were removed (they stay in the git history). Retrospective ADR-0019…0022 record password hashing, HTTP security, the release supply chain and logging with metrics. The decisions in `docs/decisions/` are accepted. Links to files that never existed were removed.
-
-### Removed
-
-- `internal/oidcpassword`, `cmd/oidc-spike`, `App.ConnectToCluster`, `AddOIDCClusterToTeam`, `SetClusterOIDCCredentials` (and their RPC methods) and the error messages that belonged to them. Clusters saved in the old mode keep working: the stored mode value `oidc-password` now means the shared team account, and `MigrateLegacyOIDC` is unchanged. The `secret_enc` column is kept.
+- **Cluster sign-in:** sign-in is handled through Kubron's sign-in flow. On Desktop, supported local Kubernetes credential plugins can be reviewed and approved before they run. In Web mode, unsupported plugins are not run on the server; Kubron explains how to obtain and provide a token manually.
+- **Cluster dialogs:** identity-provider credentials are entered in the sign-in flow rather than in the cluster's connection settings.
 
 ### Fixed
 
-- **Kubernetes connection pool:** informers of a cluster were stopped while the pool mutex was held, so one slow stop (on release, on the idle timer, or when clusters were removed or a personal sign-in was revoked) blocked every other pool operation. Stopping now happens outside the lock. A connection is only marked or taken out of the registry under the mutex; a repeated activation waits for the stop in progress instead of starting informers that the late stop would tear down, a stop is never run twice, a panic in the stop no longer leaves waiters hanging, and a stale idle timer can no longer close a connection earlier than its own delay.
-- **Web sign-in client:** the public OIDC client of the web server replaced the client of every OIDC cluster, for every grant and every identity provider, as soon as it was configured. It now applies only to the authorization-code flow of the issuer it is registered for; password, device-code and legacy-refresh sign-ins and clusters of other issuers keep the client of their kubeconfig. The setting takes an issuer (`GetWebOIDCClient`/`SetWebOIDCClient` replace `GetWebOIDCClientID`/`SetWebOIDCClientID`); a setting without an issuer is not applied until one is entered.
-
-### Security
-
-- **Manual Kubernetes tokens:** an unverified JWT `sub` is no longer presented as an authenticated Kubernetes principal in audit or connection details. The API server remains the authority for token validation; the unverified `exp` is used only as a cache hint.
-- **Login lockout when the shared store is unavailable:** if PostgreSQL cannot be reached, the per-login lockout (sign-in and password change) no longer switches off. Failures are counted in the memory of the replica, a lockout already reported by PostgreSQL is kept in memory and survives the outage, and PostgreSQL is not queried for 5 seconds after an error so attempts do not wait for a database timeout. While the store is healthy no local per-login counter is kept, so there are no false lockouts between replicas. Sign-in is not refused when the store is down (that would lock out administrators too). In degraded mode the limit is up to 5 failures per replica instead of 5 in total. New metric `kubron_login_lockout_degraded_total` shows these events; the log line about the outage is written at most every 30 seconds.
-- **Clients without an address:** a web request whose client address cannot be determined (empty `RemoteAddr`) now shares one rate-limit key instead of bypassing the per-address lockout.
+- **Web sessions:** the last active cluster is now kept separately for each signed-in user, so activity in one session no longer changes the active cluster in another.
+- **Kubernetes connections:** improved connection shutdown and reuse when clusters are switched, removed or signed out, avoiding delays and stale connections.
+- **Code editor:** fixed loading of the editor and its workers in supported browser builds.
 
 ## [1.0.0] - 2026-11-03
 
