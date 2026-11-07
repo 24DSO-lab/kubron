@@ -33,3 +33,5 @@ ADR-0023 принят 2026-11-07 (Vadim).
 | [0021](0021-release-supply-chain.md) | Выпуск и цепочка поставки: один тег, подписанные образ и чарт, сканеры в CI |
 | [0022](0022-logging-and-metrics.md) | Наблюдаемость: журнал процесса, аудит в stdout, метрики на отдельном порту |
 | [0023](0023-flux-support.md) | Поддержка Flux CD рядом с Argo CD |
+| [0024](0024-kubron-intelligence.md) | Kubron Intelligence: диагностика и расследование инцидентов Kubernetes |
+| [0025](0025-kubron-lifecycle.md) | Kubron Lifecycle: оценка готовности и контроль изменений Kubernetes |
