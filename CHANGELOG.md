@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-11-07
+
 ### Added
 
 - **Cloud cluster sign-in:** connect to AWS EKS with IAM access keys, temporary credentials or IAM Identity Center; to Azure AKS with device code, service-principal credentials or username/password; and to Google GKE with a service-account key or a Google account.
@@ -266,7 +268,8 @@ First public release.
 - Web mode (`cmd/kubron-server`): several concurrent sessions, per-session
   cluster managers with per-user resource limits, idle informers released after a TTL.
 
-[Unreleased]: https://github.com/24DSO-labs/kubron/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/24DSO-labs/kubron/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/24DSO-labs/kubron/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/24DSO-labs/kubron/compare/v0.6.0...v1.0.0
 [0.6.0]: https://github.com/24DSO-labs/kubron/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/24DSO-labs/kubron/compare/v0.4.0...v0.5.0
