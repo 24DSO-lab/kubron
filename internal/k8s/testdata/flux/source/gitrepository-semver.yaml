@@ -1,0 +1,40 @@
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: releases
+  namespace: team-a
+  creationTimestamp: "2026-02-10T08:12:03Z"
+  generation: 2
+  uid: 3a1c6e52-9d0e-4b56-8d0e-1a0f3d1c9b22
+  labels:
+    app.kubernetes.io/part-of: platform
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: '{"spec":{"secretRef":{"name":"S3CRET-LASTAPPLIED"}}}'
+    team: platform
+spec:
+  interval: 5m0s
+  url: https://github.com/acme/releases.git
+  ref:
+    semver: '>=1.0.0 <2.0.0'
+status:
+  observedGeneration: 2
+  conditions:
+  - type: Ready
+    status: "True"
+    reason: Succeeded
+    message: 'stored artifact for revision ''v1.9.0@sha1:bb22'''
+    lastTransitionTime: "2026-11-05T09:00:03Z"
+    observedGeneration: 2
+  - type: ArtifactInStorage
+    status: "True"
+    reason: Succeeded
+    message: 'stored artifact for revision'
+    lastTransitionTime: "2026-11-05T09:00:03Z"
+    observedGeneration: 2
+  artifact:
+    digest: sha256:00006db14c61ffce0ad04f572a2ea9556c35abb2e85e670d3214918e0a06f561
+    lastUpdateTime: "2026-11-05T09:00:03Z"
+    path: gitrepository/team-a/releases/artifact.tar.gz
+    revision: v1.9.0@sha1:bb22cc33dd44ee55ff66aa11bb22cc33dd44ee55
+    size: 20480
+    url: http://source-controller.flux-system.svc.cluster.local./gitrepository/team-a/releases/artifact.tar.gz
