@@ -1,0 +1,53 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: api
+  namespace: fleet
+  creationTimestamp: "2024-06-12T07:00:00Z"
+  generation: 2
+  uid: 0b5c1d3e-71a4-4f0b-8f0e-5d2a6c9e1a77
+  labels:
+    helm.toolkit.fluxcd.io/name: api
+    helm.toolkit.fluxcd.io/namespace: fleet
+    app.kubernetes.io/part-of: platform
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: '{"apiVersion":"helm.toolkit.fluxcd.io/v2","kind":"HelmRelease","metadata":{"name":"api","namespace":"fleet"},"spec":{"values":{"adminPassword":"S3CRET-LASTAPPLIED"}}}'
+    team: platform
+spec:
+  interval: 15m0s
+  targetNamespace: team-a
+  chart:
+    spec:
+      chart: podinfo
+      version: 6.x
+      interval: 5m0s
+      sourceRef:
+        kind: HelmRepository
+        name: podinfo
+        namespace: flux-system
+  values:
+    adminPassword: S3CRET-VALUES
+    ingress:
+      tls:
+        key: S3CRET-VALUES-TLSKEY
+  valuesFrom:
+  - kind: Secret
+    name: podinfo-values-S3CRET-VALUESFROM
+    valuesKey: S3CRET-VALUESKEY
+    targetPath: auth.password
+  - kind: ConfigMap
+    name: podinfo-config
+  kubeConfig:
+    secretRef:
+      name: remote-kubeconfig-S3CRET-KUBECONFIG
+      key: value
+status:
+  observedGeneration: 2
+  helmChart: flux-system/fleet-api
+  conditions:
+  - type: Ready
+    status: "Unknown"
+    reason: Progressing
+    message: 'Reconciliation in progress'
+    lastTransitionTime: "2024-06-12T07:00:10Z"
+    observedGeneration: 2
