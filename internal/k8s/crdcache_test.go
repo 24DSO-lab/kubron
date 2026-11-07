@@ -380,8 +380,14 @@ func TestCRDRegistryRetryAtIsPerKey(t *testing.T) {
 		time.Sleep(time.Second)
 		forbidden.Store(false)
 		w, ok := acquireCRDCache(&conn.crdCaches, dyn, widgetGVR, buildWidgetCache(conn, &builds))
-		if !ok || w == nil || widgetLists.Load() != 2 || builds.Load() != 1 {
+		if !ok || w == nil || builds.Load() != 1 {
 			t.Fatalf("after the pause the probe repeats: ok=%v LIST=%d builds=%d", ok, widgetLists.Load(), builds.Load())
+		}
+		// После успешной проверки прав informer делает собственный начальный LIST.
+		// Дожидаемся его, чтобы отличать пробу RBAC от синхронизации кэша.
+		synctest.Wait()
+		if got := widgetLists.Load(); got != 3 { // две пробы RBAC + начальный LIST informer
+			t.Fatalf("expected two permission probes and one informer LIST, got %d", got)
 		}
 		conn.Close()
 	})
