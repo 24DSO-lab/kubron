@@ -42,9 +42,8 @@ type ClusterConnection struct {
 	cacheMu  sync.Mutex
 	overview *overviewCache
 
-	argoMu      sync.Mutex
-	argo        *argoCache
-	argoRetryAt time.Time
+	// crdCaches — informer-кэши CRD (Argo CD, Flux) по GVR: ленивый старт, пауза проб на ключ, остановка в Close.
+	crdCaches crdRegistry
 
 	helmMu      sync.Mutex
 	helm        *helmCache
@@ -66,7 +65,7 @@ func (c *ClusterConnection) overviewCache(onChange func()) *overviewCache {
 
 // Close останавливает фоновые informers подключения.
 func (c *ClusterConnection) Close() {
-	c.closeArgoCache()
+	c.crdCaches.stopAll()
 	c.closeHelmCache()
 	c.cacheMu.Lock()
 	defer c.cacheMu.Unlock()
