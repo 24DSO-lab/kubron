@@ -1,0 +1,27 @@
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImagePolicy
+metadata:
+  name: noorder
+  namespace: team-a
+  creationTimestamp: "2026-02-10T08:12:03Z"
+  generation: 1
+  uid: 9c1c6e52-9d0e-4b56-8d0e-1a0f3d1c9b44
+  labels:
+    app.kubernetes.io/part-of: platform
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: '{"spec":{"git":{"commit":{"author":{"email":"S3CRET-LASTAPPLIED"}}}}}'
+    team: platform
+spec:
+  imageRepositoryRef:
+    name: private
+  policy:
+    numerical: {}
+status:
+  observedGeneration: 1
+  conditions:
+  - type: Ready
+    status: "True"
+    reason: Succeeded
+    message: 'resolved'
+    lastTransitionTime: "2026-11-05T09:00:03Z"
+    observedGeneration: 1
