@@ -35,3 +35,4 @@ ADR-0023 принят 2026-11-07 (Vadim).
 | [0023](0023-flux-support.md) | Поддержка Flux CD рядом с Argo CD |
 | [0024](0024-kubron-intelligence.md) | Kubron Intelligence: диагностика и расследование инцидентов Kubernetes |
 | [0025](0025-kubron-lifecycle.md) | Kubron Lifecycle: оценка готовности и контроль изменений Kubernetes |
+| [0026](0026-shared-platform-foundation.md) | Общая платформа для операционных модулей Kubron |
