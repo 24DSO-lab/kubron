@@ -5,6 +5,7 @@
 
 import { ref, computed, type Ref } from 'vue'
 import { useArgo } from './useArgo'
+import { useFlux } from './useFlux'
 import { useNotifications } from './useNotifications'
 import { errorText } from './errorText'
 import { AuthCancelledError } from './useClusterAuth'
@@ -45,6 +46,7 @@ export function useClusterConnection(deps: {
   } = deps
 
   const { refreshArgo, resetArgo } = useArgo()
+  const { refreshFlux, resetFlux } = useFlux()
   const notifications = useNotifications()
   const connecting = ref(false)
   const showAddCluster = ref(false)
@@ -79,6 +81,7 @@ export function useClusterConnection(deps: {
        resetCustomResources()
       void loadCustomResources()
       void refreshArgo()
+      void refreshFlux()
       await refreshData()
     } catch (e: any) {
       if (!(e instanceof AuthCancelledError)) notifications.notifyError(t('cluster.connectionError', { message: errorText(e) }))
@@ -134,6 +137,7 @@ export function useClusterConnection(deps: {
   function disconnect() {
     k8sDisconnect()
     resetArgo()
+    resetFlux()
     resetCustomResources()
     activeClusterId.value = ''
     loadClusters()
@@ -147,6 +151,7 @@ export function useClusterConnection(deps: {
       applyDefaultNamespace(activeClusterId.value)
       currentView.value = 'overview'
       void refreshArgo()
+      void refreshFlux()
       void loadCustomResources()
       await refreshData()
     }

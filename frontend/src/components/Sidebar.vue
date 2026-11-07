@@ -81,12 +81,14 @@
 import { computed, reactive, onBeforeUnmount } from 'vue'
 import type { NamespaceInfo } from '../types'
 import type { NavGroupId } from '../resources/types'
-import { NAV_GROUPS, buildNav } from '../resources/navigation'
+import { NAV_GROUPS, buildNav, type NavEntry } from '../resources/navigation'
 import { tl } from '../i18n'
 import NavGroupNode from './nav/NavGroupNode.vue'
 import NamespaceSelect from './NamespaceSelect.vue'
 import { useListFailures } from '../composables/useListFailures'
 import { useArgo } from '../composables/useArgo'
+import { useFlux } from '../composables/useFlux'
+import type { FluxControllers } from '../types/flux'
 import { can } from '../composables/useAuth'
 import { useCapabilities } from '../composables/useCapabilities'
 import { Perm } from '../types/auth'
@@ -151,11 +153,37 @@ const { failedNamespaces } = useListFailures()
 
 const navEntries = buildNav()
 
-// Условия `requires` у групп меню: сейчас только наличие Argo CD в кластере
+// Условия `requires` у групп меню: наличие Argo CD и Flux в кластере
 const { argoInstalled } = useArgo()
-const available = computed(() => new Set<string>(argoInstalled.value ? ['argocd'] : []))
+const { fluxInstalled, fluxStatus } = useFlux()
+const available = computed(() => {
+  const set = new Set<string>()
+  if (argoInstalled.value) set.add('argocd')
+  if (fluxInstalled.value) set.add('flux')
+  return set
+})
+
+/** Подгруппа Flux показывается, только если в кластере есть её контроллер (Flux можно поставить частично) */
+const FLUX_SUBGROUP_CONTROLLER: Partial<Record<NavGroupId, keyof FluxControllers>> = {
+  'flux-sources': 'source',
+  'flux-notifications': 'notification',
+  'flux-images': 'image',
+}
+const withFluxControllers = (entry: NavEntry): NavEntry =>
+  entry.type === 'group' && entry.id === 'flux'
+    ? {
+        ...entry,
+        children: entry.children.filter(c => {
+          const need = FLUX_SUBGROUP_CONTROLLER[c.id]
+          return !need || fluxStatus.value.controllers[need]
+        }),
+      }
+    : entry
+
 const visibleEntries = computed(() =>
-  navEntries.filter(e => e.type === 'item' || !e.requires || available.value.has(e.requires)),
+  navEntries
+    .filter(e => e.type === 'item' || !e.requires || available.value.has(e.requires))
+    .map(withFluxControllers),
 )
 
 const expanded = reactive(

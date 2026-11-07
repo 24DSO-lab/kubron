@@ -27,6 +27,13 @@
     @deleted="resourceActions.closeDetail()"
   />
 
+  <FluxDeleteDialog
+    v-if="pendingFluxDelete"
+    :object="pendingFluxDelete"
+    @close="closeFluxDelete()"
+    @deleted="resourceActions.closeDetail()"
+  />
+
   <!-- Подтверждение действий (ctx.confirm): Restart, Evict, Rollback ... -->
   <ConfirmationDialog
     :model-value="!!pendingConfirm"
@@ -78,6 +85,8 @@ import SyncDialog from '../panels/SyncDialog.vue'
 import { pendingArgoSync, closeArgoSync } from '../../resources/argoActions'
 import DeleteAppDialog from '../panels/DeleteAppDialog.vue'
 import { pendingArgoDelete, closeArgoDelete } from '../../resources/argoActions'
+import FluxDeleteDialog from '../panels/FluxDeleteDialog.vue'
+import { pendingFluxDelete, closeFluxDelete } from '../../resources/fluxActions'
 
 const { t } = useI18n()
 

@@ -17,13 +17,18 @@
     "helm": "Helm",
     "access": "访问控制",
     "argocd": "Argo CD",
-    "argocdSettings": "设置"
+    "argocdSettings": "设置",
+    "flux": "Flux CD",
+    "fluxSources": "源",
+    "fluxNotifications": "通知",
+    "fluxImages": "镜像自动化"
   },
   "views": {
     "argoDashboard": "仪表盘",
     "helmRepos": "仓库",
     "helmCatalog": "目录",
-    "helmOps": "操作"
+    "helmOps": "操作",
+    "fluxDashboard": "Dashboard"
   },
   "teams": "团队"
 }

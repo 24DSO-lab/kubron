@@ -35,6 +35,9 @@ const ALLOWED_LITERALS = new Set([
   'Pod', 'Pods', 'Deployment', 'Deployments', 'StatefulSet', 'DaemonSet', 'ReplicaSet', 'Job', 'CronJob',
   'Service', 'Services', 'Ingress', 'ConfigMap', 'Secret', 'Secrets', 'Node', 'Nodes', 'Namespace',
   'CPU', 'RAM', 'OK', 'URL', 'ID', 'UID', 'IP', 'TCP', 'UDP', 'HTTP', 'HTTPS', 'TLS', 'SSO', 'OIDC',
+  // Flux CD: бренд и имена объектов (ADR-0023)
+  'Flux', 'Flux CD', 'Kustomization', 'HelmRelease', 'GitRepository', 'OCIRepository', 'HelmRepository', 'HelmChart',
+  'Bucket', 'Alert', 'Provider', 'Receiver', 'ImageRepository', 'ImagePolicy', 'ImageUpdateAutomation',
 ])
 
 const errors = []

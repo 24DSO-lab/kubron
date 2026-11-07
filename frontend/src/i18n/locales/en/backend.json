@@ -712,5 +712,14 @@
   "theClusterDoesNotUseASharedTeamAccount": "the cluster does not use a shared team account",
   "aSharedAccountIsAvailableOnlyForClustersOfATeam": "a shared account is available only for clusters of a team",
   "aSharedAccountIsMeaningfulOnlyForAKubeconfigThatSignsIn": "a shared account is meaningful only for a kubeconfig that signs in through an identity provider or a plugin",
-  "thisClusterNeedsASignInButNoSignInBrokerIsConfigured": "this cluster needs a sign-in, but no sign-in broker is configured"
+  "thisClusterNeedsASignInButNoSignInBrokerIsConfigured": "this cluster needs a sign-in, but no sign-in broker is configured",
+  "fluxNotImplementedYet": "not implemented yet",
+  "fluxIsNotInstalledInThisCluster": "Flux is not installed in this cluster",
+  "fluxActionNotSupportedForKind": "this action is not supported for the kind of the object",
+  "fluxInvalidObjectReference": "invalid reference to a Flux object",
+  "fluxNoObjectsSelected": "no objects selected",
+  "fluxTooManyObjectsInOneCall": "too many objects in one call: the maximum is 200",
+  "fluxApiVersionNotSupported": "the Flux API version is not supported: update Flux to 2.3 or newer",
+  "fluxObjectIsBeingDeleted": "the object is being deleted",
+  "fluxObjectIsSuspended": "the object is suspended: resume it first"
 }
