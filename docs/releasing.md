@@ -20,7 +20,7 @@ SBOM, подписи, описание релиза, публикация) де�
 | Ветка | Назначение | Защита на GitHub |
 |---|---|---|
 | `refactor` (или feature-ветки) | рабочая: коммиты из IDE | нет |
-| `dev` | готово к выпуску; CI запускается на каждый push | запрет удаления и force-push |
+| `dev` | готово к выпуску; сюда `refactor` попадает только через PR | только PR, те же обязательные проверки, что на `master`, включая Code scanning results (CodeQL, high и выше), запрет удаления и force-push |
 | `master` | выпущенное; на нём ставятся теги `vX.Y.Z` | только PR, 7 обязательных проверок, запрет force-push |
 
 GitHub — основной репозиторий. GitLab (`origin`) — вторичный: туда только отправляем
@@ -38,9 +38,9 @@ GitHub — основной репозиторий. GitLab (`origin`) — вто
    ```
    Дождитесь зелёного `refactor`. Подготовка делается **до** слияния в `dev`: так в `dev` уже лежит всё, что
    войдёт в тег, и после выпуска скрипту не нужно добавлять в `dev` новых коммитов.
-4. **В `dev`.** Слейте `refactor` в `dev` (в IDE: Merge, либо
-   `git checkout dev && git merge refactor && git push github dev`). На push в `dev` запускается CI:
-   дождитесь зелёного.
+4. **В `dev`.** Откройте pull request `refactor` → `dev` и дождитесь зелёных проверок, **включая CodeQL**: алерт уровня
+   high блокирует слияние (проверка «CodeQL» от GitHub Advanced Security, это не job из `codeql.yml`, а результат анализа).
+   Слейте PR (merge commit). После слияния на push в `dev` CI запускается ещё раз: дождитесь зелёного.
 5. **Выпуск.** Из `dev`, с чистым рабочим деревом:
    ```bash
    scripts/release.sh 0.2.0 --dry-run   # проверки и предпросмотр описания, ничего не меняется
@@ -157,16 +157,20 @@ CHANGELOG и версии в `wails.json` и `frontend/package*.json`, дела�
 ## Разовая настройка
 
 1. **GitHub CLI:** `winget install GitHub.cli`, затем `gh auth login`.
-2. **Защита `dev`:** в ruleset `protect-main-branches` оставьте целью только `master`; создайте
-   ruleset `protect-dev` (Branch, цель `dev`) с правилами Restrict deletions и Block force pushes.
-   Обязательный PR и проверки для `dev` не включайте: тогда слияние в IDE работает как в GitLab.
+2. **Защита `dev`:** создайте ruleset `protect-dev` (Branch, цель `dev`) с правилами Restrict deletions,
+   Block force pushes, Require a pull request и теми же Require status checks, что в защите `master`. Обязательно
+   добавьте Require code scanning results: инструмент CodeQL, Security alerts «High or higher». Без этого правила красный
+   CodeQL пропускает PR `refactor` → `dev` и останавливает релиз только на PR `dev` → `master`. Ruleset
+   `protect-main-branches` остаётся для `master`.
 3. **Защита `master`** остаётся как есть. Скрипт выпускает PR с merge commit.
 4. **Не выключайте rulesets и не делайте force-push в `master`/`dev`**, в том числе `git push --all --force`
    и `--mirror`: это уже один раз откатило `master` назад.
 
 ## Если что-то пошло не так
 
-- **Проверки PR красные:** исправьте в `dev`, `git push github dev`, запустите команду снова.
+- **Проверки PR `dev` → `master` красные:** исправьте в `refactor`, слейте через PR в `dev`, дождитесь зелёного
+  и запустите команду снова. Если красный только CodeQL, откройте алерты в Security → Code scanning: high блокирует слияние.
+  Упавший e2e без изменений в коде сначала перезапустите («Re-run failed jobs»); тот же тест красный повторно: это не флейк.
 - **Упал workflow Release:** на странице запуска «Re-run failed jobs». Если упал после создания
   черновика: удалите черновик в Releases и перезапустите запуск.
 - **Упала публикация сервера (`server`) посреди работы** (образ уже в ghcr.io, а чарт нет, или наоборот): повторный запуск
