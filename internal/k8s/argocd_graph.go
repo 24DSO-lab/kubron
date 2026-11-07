@@ -102,7 +102,7 @@ func buildArgoGraph(ctx context.Context, c kubernetes.Interface, refs []ArgoReso
 		g.Nodes[i] = an
 	}
 	for i, e := range rg.Edges {
-		g.Edges[i] = ArgoGraphEdge{From: e.From, To: e.To, Type: e.Type}
+		g.Edges[i] = ArgoGraphEdge(e) // типы различаются только json-тегами (staticcheck S1016)
 	}
 	return g
 }
