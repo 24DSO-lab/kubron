@@ -2,6 +2,7 @@
 
 Цель: раздел GitOps получает Flux рядом с Argo CD. Решение, объём и обоснование: [ADR-0023](../adr/0023-flux-support.md).
 Документ делит работу на задачи так, чтобы программисты и агенты работали параллельно и не правили одни и те же файлы.
+Готовые тексты задач для исполнителей: [flux-prompts.md](flux-prompts.md).
 
 Оценки в человеко-днях (ч-д) ориентировочные. Сумма около 82 ч-д, критический путь около 16 ч-д
 (0.2 → U.3 → U.4 → Q.2 → Q.4): при 5–6 исполнителях рабочий срок определяется критическим путём и ревью,
@@ -41,9 +42,11 @@
    имя файла — первый сегмент ключа. Файлы подхватываются автоматически (`import.meta.glob`), регистрировать их нигде
    не нужно. Общие `nav.json`, `audit.json`, `backend.json` правит только 0.2. Правила — [docs/i18n.md](../i18n.md).
 8. **Без новых зависимостей.** `go.mod`, `go.sum`, `package.json` и vendor не меняются (ADR-0023, раздел 2).
-9. **Проверки перед PR** (CONTRIBUTING): `gofmt -l .`, `go vet ./... && go test ./...`; в `frontend/` — `npm test`,
+9. **Уникальные идентификаторы.** `id` и `view` ресурсов Flux начинаются с `flux-`: реестр резолвит определения по `id`,
+   дубликат молча перекрывает чужое определение (см. комментарий в `definitions/application.ts`).
+10. **Проверки перед PR** (CONTRIBUTING): `gofmt -l .`, `go vet ./... && go test ./...`; в `frontend/` — `npm test`,
    `npm run i18n:check`, `npx vue-tsc --noEmit`; для новых файлов — `python3 scripts/license-headers.py --fix`.
-10. **Сборка.** Go 1.27.3 из `.test/go1.27.3.linux-amd64.tar.gz`, vendor из `.test/vendor.tar.gz`
+11. **Сборка.** Go 1.27.3 из `.test/go1.27.3.linux-amd64.tar.gz`, vendor из `.test/vendor.tar.gz`
     (команда сборки vendor записана в `.test/build vendor`). UI-задачам нужны привязки `wailsjs`: они генерируются
     из Go (`wails generate module`) и в репозитории не хранятся, поэтому UI-задача стартует после слияния 0.2.
 
@@ -52,14 +55,14 @@
 | Область | Файлы |
 |---|---|
 | RPC и права | `internal/server/methods.go` (`allowedMethods`), `internal/auth/policy_test.go` (`exactPermission`), `internal/app/app_flux.go` |
-| Контракт Go | `internal/k8s/flux_types.go`, `flux_errors.go`, `flux_common.go` (+ тест) |
-| Меню и регистрации | `frontend/src/resources/navigation.ts`, `resources/registry.ts`, `components/Sidebar.vue`, `composables/useViewRegistry.ts`, `composables/useClusterConnection.ts`, `App.vue` |
+| Контракт Go | `internal/k8s/flux_types.go`, `flux_errors.go`, `flux_common.go` (+ тест), `flux_kinds.go` (таблица видов: группа, plural, допустимые версии по порядку предпочтения) |
+| Меню и регистрации | `frontend/src/resources/navigation.ts`, `resources/types.ts` (`NavGroupId`), `resources/registry.ts`, `components/Sidebar.vue`, `components/resource/ResourceHost.vue` (рисует диалог удаления), `composables/useViewRegistry.ts`, `composables/useClusterConnection.ts`, `App.vue` |
 | Контракт TS | `frontend/src/types/flux.ts` |
 | Общие переводы | `locales/{en,ru,cn}/nav.json`, `audit.json`, `backend.json`; список литералов в `scripts/i18n-check.mjs` (`Flux`, `Flux CD`, `Kustomization`, `HelmRelease` и т. д.) |
 
-Два файла правятся последовательно двумя задачами, а не параллельно: `internal/k8s/client.go` — сначала 0.1, затем B.7;
-`internal/k8s/flux_list.go` — создаёт 0.2 (только API, без кэша), внутренности заменяет B.7. Задачи B.2–B.6 вызывают
-`fluxList` и сам файл не меняют.
+`internal/k8s/client.go` правит только 0.1: он вводит реестр informer-кэшей по GVR в `ClusterConnection`, и Flux (B.7)
+подключает свои кэши через него без правок `client.go`. `internal/k8s/flux_list.go` создаёт 0.2 (только API, без
+кэша), внутренности заменяет B.7; задачи B.2–B.6 вызывают `fluxList` и сам файл не меняют.
 
 ## Контракт (что фиксирует 0.2)
 
@@ -78,7 +81,7 @@
 | `SuspendFlux(refs)`, `ResumeFlux(refs)`, `DeleteFlux(ref)` | `write` |
 
 **Общие функции** (`flux_common.go`): вычисление `FluxState` из conditions и `spec.suspend`, разбор conditions, очистка URL
-от userinfo, редактор текстов сообщений. **`fluxList`** — единая точка чтения списка (сигнатура фиксируется в 0.2);
+от userinfo, редактор текстов сообщений. **`fluxList`** — единая точка чтения списка (сигнатура фиксируется в 0.2); GVR вида строится из `flux_kinds.go` и версий, которые отдаёт `fluxServedVersions` (заглушка в `flux_status.go`, настоящую реализацию даёт B.1);
 **ошибки** — все Flux-ошибки Go объявлены в `flux_errors.go` сразу, с шаблонами в `backend.json` трёх языков.
 
 **YAML и правка объекта Flux** идут через существующие `cr:group/version/plural`-виды (версию подбирает `customKindFor`
@@ -92,7 +95,7 @@
 
 | № | Тикет | Результат (критерий приёмки) | Оценка, ч-д | Зависит |
 | --- | --- | --- | --- | --- |
-| 0.1 | Обобщённый informer-кэш и общий граф | `argoCache` стал экземпляром `crdCache[T]` (generics: GVR, функция разбора, колбэк); построитель графа из `argocd_graph.go` вынесен в функцию над списком ссылок на ресурсы; поведение Argo не изменилось: `argocd_cache_test.go` и golden-тесты графа проходят без правок; тесты debounce переведены на `testing/synctest`; `ClusterConnection` держит кэши через `crdCache` | 3 | — |
+| 0.1 | Обобщённый informer-кэш и общий граф | `argoCache` стал экземпляром `crdCache[T]` (generics: GVR, функция разбора, колбэк); построитель графа из `argocd_graph.go` вынесен в функцию над списком ссылок на ресурсы; поведение Argo не изменилось: `argocd_cache_test.go` и golden-тесты графа проходят без правок; тесты debounce переведены на `testing/synctest`; `ClusterConnection` держит кэши через реестр по GVR (мьютекс, `retryAt` на ключ), `Close` останавливает все; после 0.1 `client.go` другим задачам не нужен | 3 | — |
 | 0.2 | Контракт и каркас | всё из раздела «Контракт»: DTO, `app_flux.go`, `allowedMethods`, `policy_test`, `flux_errors.go` + `backend.json`, `flux_common.go` с таблицей тестов на `FluxState`, `fluxList` (API без кэша), заглушки Go и UI, пункты меню, ключи `nav`/`audit`; `TestEveryAppMethodIsClassified`, политики прав и `i18n:check` проходят; меню Flux не видно, приложение работает как раньше | 3 | — |
 
 0.1 и 0.2 идут параллельно: общих файлов нет (0.1 правит `argocd_*.go`, `client.go`, новые `crdcache.go`, `graphbuild.go`).
@@ -110,11 +113,11 @@
 | B.4 | Источники: чтение | `GetFluxSources` для `GitRepository`, `OCIRepository`, `HelmRepository`, `HelmChart`, `Bucket`; версия `OCIRepository`/`Bucket` по allowlist из `FluxStatus`; URL без userinfo, из `secretRef` только имя; артефакт (`revision`, `digest`) | 2 | 0.2 |
 | B.5 | Notification: чтение | `GetFluxNotifications` (`Provider`, `Alert`, `Receiver`); у `Provider` адрес только схема и хост; `status.webhookPath` у `Receiver` и путь вебхука нигде не возвращаются (тест с контрольной строкой); версии `v1beta3` и `v1` по allowlist | 2 | 0.2 |
 | B.6 | Image automation: чтение | `GetFluxImageAutomation` (`ImageRepository`, `ImagePolicy`, `ImageUpdateAutomation`); версии `v1`/`v1beta2` по allowlist; без вызовов реестра образов | 2 | 0.2 |
-| B.7 | Informer-кэш Flux и `flux:changed` | `fluxList` использует `crdCache`: informer на `Kustomization` и `HelmRelease` стартует лениво, источники, Notification и Image — при первом обращении; проба права `list`, повтор через 30 с, debounce 1 с, остановка в `ClusterConnection.Close`; событие `flux:changed` адресовано подключению (ADR-0009); `SetTransform` удаляет `managedFields` и `spec.values` у `HelmRelease` (тест: значений нет в кэше); тесты на `synctest` и на гонки (`go test -race`); замер памяти на 2000 объектов записан в описание PR | 4 | 0.1, 0.2 |
+| B.7 | Informer-кэш Flux и `flux:changed` | `fluxList` использует `crdCache` и реестр из 0.1 (`client.go` не меняется): informer на `Kustomization` и `HelmRelease` стартует лениво, источники, Notification и Image — при первом обращении; проба права `list`, повтор через 30 с, debounce 1 с, остановка в `ClusterConnection.Close`; событие `flux:changed` адресовано подключению (ADR-0009); `SetTransform` удаляет `managedFields` и `spec.values` у `HelmRelease` (тест: значений нет в кэше); тесты на `synctest` и на гонки (`go test -race`); замер памяти на 2000 объектов записан в описание PR | 4 | 0.1, 0.2 |
 | B.8 | Действия: reconcile, suspend, resume | `ReconcileFlux`, `SuspendFlux`, `ResumeFlux` через merge-patch с `FieldManager: "kubron"`; allowlist видов для каждого действия (ADR-0023, раздел 6); не более 200 объектов, таймаут 60 с; результат по каждому объекту, одна ошибка не отменяет остальные; `withSource` патчит источник с тем же временем; resume ставит `requestedAt`; чужой вид или namespace отклоняются; аргументы аудита без секретов; тесты на fake dynamic client | 3 | 0.2 |
-| B.9 | Удаление | `DeleteFlux` только для `Kustomization` и `HelmRelease`, один объект, обычный DELETE; данные для подтверждения (`prune`, число записей inventory) UI берёт из уже загруженного DTO, отдельного вызова нет; аргументы `authz`: вид, namespace, имя, `prune`; тесты: чужой вид и чужой namespace отклоняются, отсутствующий объект даёт понятную ошибку | 2 | 0.2 |
+| B.9 | Удаление | `DeleteFlux` только для `Kustomization` и `HelmRelease`, один объект, обычный DELETE; данные для подтверждения (`prune`, число записей inventory) UI берёт из уже загруженного DTO, отдельного вызова нет; аргументы `authz`: вид, namespace, имя (`prune` в аудит не попадает, потому что `authz` вызывается до чтения объекта; значение пишется в журнал процесса через `slog`); тесты: чужой вид и чужой namespace отклоняются, отсутствующий объект даёт понятную ошибку | 2 | 0.2 |
 | B.10 | Граф и цепочка | `GetFluxGraph`: записи `status.inventory.entries[]` (`id` вида `namespace_name_group_Kind`, `v`) разбираются терпимо, неизвестный формат пропускается (fuzz-тест); общий построитель из 0.1 даёт владение, Service → Pod, Ingress → Service; поверх — рёбра `sourceRef` и `dependsOn`; `Remote=true` — ресурсы не резолвятся локально; для `HelmRelease` без inventory ответ «недоступно» | 4 | 0.1, 0.2 |
-| B.11 | `managedBy` и Overview | `managedByOf` (Go, `configmeta.go`) и его копия на фронтенде (`definitions/common.ts`) распознают метки `kustomize.toolkit.fluxcd.io/name\|namespace` и `helm.toolkit.fluxcd.io/name\|namespace`, возвращают `Kustomization/<name>` и `HelmRelease/<name>`; значения для Argo и Helm не изменились; общий набор случаев для Go и TS в одной таблице тестов; `GetRecentChanges` получает источник «Flux» по `Ready`-condition | 2 | 0.2 |
+| B.11 | `managedBy` и Overview | `managedByOf` (Go, `configmeta.go`) и его копия на фронтенде (`definitions/common.ts`) распознают метки `kustomize.toolkit.fluxcd.io/name\|namespace` и `helm.toolkit.fluxcd.io/name\|namespace`, возвращают `Kustomization/<name>` и `HelmRelease/<name>`; значения для Argo и Helm не изменились; общий набор случаев для Go и TS в одной таблице тестов; `GetRecentChanges` получает источник «Flux» по `Ready`-condition; на фронтенде тип записи `'Flux'` добавлен в `types/insights.ts`, у карточки «Последние изменения» свой цвет | 2 | 0.2 |
 
 ## Фаза U. Интерфейс
 
@@ -176,7 +179,7 @@ UI-задачи разрабатываются на фикстурах и тип
 
 ## Паспорт задачи для агента
 
-Каждая задача выдаётся агенту в таком виде (подставляются значения из таблиц выше):
+Готовые промпты по каждой задаче лежат в [flux-prompts.md](flux-prompts.md); ниже — общий шаблон паспорта, по которому они составлены:
 
 ```
 Задача: <номер> — <название>
@@ -199,27 +202,27 @@ UI-задачи разрабатываются на фикстурах и тип
 | № | Файлы |
 |---|---|
 | 0.1 | `argocd_cache.go`, `argocd_graph.go`, `client.go`, новые `crdcache.go`, `graphbuild.go` и их тесты, `argocd_cache_test.go` (только перенос на `synctest`) |
-| 0.2 | все общие файлы из таблицы «Общие файлы»; `flux_types.go`, `flux_errors.go`, `flux_common.go`, `flux_list.go`; `internal/app/app_flux.go`; заглушки: Go — `flux_status.go`, `flux_kustomization.go`, `flux_helmrelease.go`, `flux_sources.go`, `flux_notification.go`, `flux_image.go`, `flux_actions.go`, `flux_delete.go`, `flux_graph.go`; UI — все файлы из строк U.\* ниже |
+| 0.2 | все общие файлы из таблицы «Общие файлы»; `flux_types.go`, `flux_errors.go`, `flux_common.go`, `flux_kinds.go`, `flux_list.go`; `internal/app/app_flux.go`; заглушки: Go — `flux_status.go`, `flux_kustomization.go`, `flux_helmrelease.go`, `flux_sources.go`, `flux_notification.go`, `flux_image.go`, `flux_actions.go`, `flux_delete.go`, `flux_graph.go`; UI — все файлы из строк U.\* ниже |
 | B.1 | `flux_status.go`, `flux_status_test.go` |
 | B.2 | `flux_kustomization.go` (+ тест), `testdata/flux/kustomization/` |
 | B.3 | `flux_helmrelease.go` (+ тест), `testdata/flux/helmrelease/` |
 | B.4 | `flux_sources.go` (+ тест), `testdata/flux/source/` |
 | B.5 | `flux_notification.go` (+ тест), `testdata/flux/notification/` |
 | B.6 | `flux_image.go` (+ тест), `testdata/flux/image/` |
-| B.7 | `flux_list.go` (+ тест), `flux_cache.go` (+ тест), `client.go` (только поле кэша Flux, после 0.1) |
+| B.7 | `flux_list.go` (+ тест), `flux_cache.go` (+ тест) |
 | B.8 | `flux_actions.go` (+ тест) |
 | B.9 | `flux_delete.go` (+ тест) |
 | B.10 | `flux_graph.go`, `flux_inventory.go` (+ тесты), `testdata/flux/inventory/` |
-| B.11 | `configmeta.go`, `overview_changes.go` (+ тесты); `resources/definitions/common.ts` (+ тест) |
+| B.11 | `configmeta.go`, `overview_changes.go` (+ тесты); `resources/definitions/common.ts` (+ тест); `types/insights.ts`, `components/overview/RecentChangesCard.vue` |
 | U.1 | `resources/flux.ts`, `resources/flux.test.ts` |
 | U.2 | `composables/useFlux.ts`, `composables/useFluxLive.ts` (+ тесты) |
 | U.3 | `components/resource/sections/FluxStateBadge.vue`, `FluxConditionsSection.vue`, `FluxInventoryTab.vue`, `FluxSourceRefSection.vue`; `locales/flux.json` |
 | U.4 | `resources/definitions/flux/kustomization.ts`; `locales/fluxKustomization.json` |
 | U.5 | `resources/definitions/flux/helmrelease.ts`; `components/resource/sections/FluxHistoryTab.vue`; `locales/fluxHelm.json` |
-| U.6 | `resources/definitions/flux/source-gitrepository.ts`, `source-ocirepository.ts`, `source-helmrepository.ts`, `source-helmchart.ts`, `source-bucket.ts`; `locales/fluxSources.json` |
+| U.6 | `resources/definitions/flux/source-gitrepository.ts`, `source-ocirepository.ts`, `source-helmrepository.ts`, `source-helmchart.ts`, `source-bucket.ts`, новый `sourceCommon.ts` в том же каталоге; `locales/fluxSources.json` |
 | U.7 | `resources/definitions/flux/alert.ts`, `provider.ts`, `receiver.ts`; `locales/fluxNotify.json` |
 | U.8 | `resources/definitions/flux/imagerepository.ts`, `imagepolicy.ts`, `imageupdateautomation.ts`; `locales/fluxImages.json` |
-| U.9 | `components/views/FluxDashboardView.vue`; `locales/fluxDash.json` |
+| U.9 | `components/views/FluxDashboardView.vue`, новый `composables/useFluxObjects.ts` (+ тест); `locales/fluxDash.json` |
 | U.10 | `resources/fluxActions.ts`; `components/panels/FluxDeleteDialog.vue`; `locales/fluxActions.json` |
 | U.11 | `components/resource/sections/FluxGraphTab.vue`; `resources/fluxGraph.ts`; `locales/fluxGraph.json` |
 | Q.1 | `.github/workflows/ci.yml` (только шаг Flux и переменные его теста), `scripts/` при необходимости |
@@ -235,7 +238,7 @@ UI-задачи разрабатываются на фикстурах и тип
 | Несколько задач добавляют методы в `allowedMethods` и `policy_test.go` | все методы и права вносит 0.2 один раз |
 | Несколько UI-задач правят `registry.ts`, `navigation.ts`, `Sidebar.vue` | всё регистрируется в 0.2 заглушками; задачи заполняют только свой файл |
 | Общие `nav.json`, `audit.json`, `backend.json` | ключи и ошибки заведены в 0.2; остальное — файл переводов на задачу |
-| `client.go` меняют 0.1 и B.7 | строго последовательно: B.7 зависит от 0.1 |
+| `client.go` нужен и Argo, и Flux | реестр кэшей по GVR вводит 0.1, дальше файл никто не правит |
 | B.2–B.6 и B.7 оба касаются чтения списков | B.2–B.6 вызывают `fluxList`, B.7 меняет только его внутренности |
 | `managedByOf` дублируется на Go и TS | обе копии и общий набор тестов в одной задаче B.11 |
 | Изменение DTO посреди работы | контрактный PR владельца 0.2 и ребейз остальных; своими силами поле не добавляется |
