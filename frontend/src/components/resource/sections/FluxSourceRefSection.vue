@@ -34,41 +34,10 @@
   </div>
 </template>
 
-<script lang="ts">
-import type { FluxRef } from '../../../types/flux'
-
-export interface FluxOpenTarget { id: string; ns: string; name: string }
-
-/** Идентификатор определения ресурса Flux в реестре: flux-<kind в нижнем регистре> (ADR-0023, раздел 9) */
-export const fluxResourceId = (kind: string): string => `flux-${kind.toLowerCase()}`
-
-/** Подпись ссылки: Kind namespace/name; у dependsOn вид не указывается — тогда namespace/name */
-export function refLabel(ref: FluxRef): string {
-  const path = ref.namespace ? `${ref.namespace}/${ref.name}` : ref.name
-  return ref.kind ? `${ref.kind} ${path}` : path
-}
-
-/**
- * Цель перехода. У dependsOn вид и namespace не заданы: зависимость того же вида и, если namespace пуст,
- * из того же namespace, что и сам объект. `isKnown` — есть ли у вида определение в приложении.
- */
-export function refTarget(
-  ref: FluxRef,
-  self: { kind?: string; namespace?: string },
-  isKnown: (id: string) => boolean,
-): FluxOpenTarget | null {
-  const kind = ref.kind || self.kind || ''
-  const name = ref.name
-  const ns = ref.namespace || self.namespace || ''
-  if (!kind || !name || !ns) return null
-  const id = fluxResourceId(kind)
-  return isKnown(id) ? { id, ns, name } : null
-}
-</script>
-
 <script lang="ts" setup>
 import { computed } from 'vue'
 import { getResourceById } from '../../../resources/registry'
+import { refLabel, refTarget } from './fluxSourceRef'
 import type { FluxObjectInfo } from '../../../types/flux'
 
 // sourceRef и dependsOn объекта: переход к объекту, если такой вид открывается в приложении

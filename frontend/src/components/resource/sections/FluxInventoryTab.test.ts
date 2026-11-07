@@ -20,7 +20,8 @@ vi.mock('../../../resources/wails', async (importOriginal) => ({
 
 import { i18n } from '../../../i18n'
 import type { FluxGraph, FluxGraphNode, FluxObjectInfo } from '../../../types/flux'
-import FluxInventoryTab, { inventoryMode, resourceNodes, splitInventory } from './FluxInventoryTab.vue'
+import FluxInventoryTab from './FluxInventoryTab.vue'
+import { inventoryMode, resourceNodes, splitInventory } from './fluxInventory'
 
 const node = (p: Partial<FluxGraphNode>): FluxGraphNode => ({
   id: `apps/Deployment/ns/${p.name ?? 'x'}`, kind: 'Deployment', group: 'apps', version: 'v1', namespace: 'ns', name: 'x', role: 'resource', state: 'Healthy', ...p,

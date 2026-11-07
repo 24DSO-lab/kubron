@@ -13,7 +13,8 @@ vi.mock('monaco-editor/editor/editor.worker?worker', () => ({ default: class {} 
 
 import { i18n } from '../../../i18n'
 import type { FluxObjectInfo, FluxRef } from '../../../types/flux'
-import FluxSourceRefSection, { fluxResourceId, refLabel, refTarget } from './FluxSourceRefSection.vue'
+import FluxSourceRefSection from './FluxSourceRefSection.vue'
+import { fluxResourceId, refLabel, refTarget } from './fluxSourceRef'
 
 const ref = (p: Partial<FluxRef>): FluxRef => ({ kind: 'GitRepository', namespace: 'flux-system', name: 'repo', ...p })
 const render = (resource: Partial<FluxObjectInfo>) =>
