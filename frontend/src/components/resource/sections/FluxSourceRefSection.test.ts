@@ -3,7 +3,14 @@
 
 import { createSSRApp, h } from 'vue'
 import { renderToString } from 'vue/server-renderer'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+
+// Registry imports resource definitions that transitively load Monaco Editor.
+// Keep these SSR tests in Node without evaluating Monaco's browser-only modules.
+vi.mock('monaco-editor', () => ({ editor: {} }))
+vi.mock('monaco-editor/editor/editor.api', () => ({ editor: {}, KeyMod: {}, KeyCode: {} }))
+vi.mock('monaco-editor/editor/editor.worker?worker', () => ({ default: class {} }))
+
 import { i18n } from '../../../i18n'
 import type { FluxObjectInfo, FluxRef } from '../../../types/flux'
 import FluxSourceRefSection, { fluxResourceId, refLabel, refTarget } from './FluxSourceRefSection.vue'
