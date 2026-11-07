@@ -130,7 +130,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, useId, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { Challenge, ChallengeValues } from '../../types/credential'
 import {
@@ -154,7 +154,7 @@ const emit = defineEmits<{
 }>()
 
 const { t, te } = useI18n()
-const uid = `ch-${Math.random().toString(36).slice(2, 8)}`
+const uid = `ch-${useId()}`
 const titleId = `${uid}-title`
 const descId = `${uid}-desc`
 const dialogEl = ref<HTMLElement | null>(null)

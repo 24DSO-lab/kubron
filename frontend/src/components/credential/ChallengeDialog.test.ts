@@ -22,7 +22,7 @@ describe('ChallengeDialog: рисует вызов по kind', () => {
     const html = await render(ch({}))
     expect(html).toContain('role="dialog"')
     expect(html).toContain('aria-modal="true"')
-    expect(html).toMatch(/aria-labelledby="ch-[a-z0-9]+-title"/)
+    expect(html).toMatch(/aria-labelledby="ch-[\w-]+-title"/)
   })
 
   it('credentials: логин, скрытый пароль, кнопка показать', async () => {
