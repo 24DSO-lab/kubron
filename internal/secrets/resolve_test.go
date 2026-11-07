@@ -40,7 +40,7 @@ func TestResolveServerPGBadEnvKeyFails(t *testing.T) {
 	}
 }
 
-// D-02: a server without PostgreSQL creates the key file once and then keeps using it.
+// ADR-0018, section 6: a server without PostgreSQL creates the key file once and then keeps using it.
 func TestResolveServerLocalAutogenerates(t *testing.T) {
 	dir := t.TempDir()
 	var logs bytes.Buffer

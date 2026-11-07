@@ -114,7 +114,7 @@ kubron:
   # Исключения из политики (KUBRON_CLUSTER_ADDR_ALLOW_CIDRS): CIDR или адреса. Снимают запрет с loopback и link-local
   # (например, 127.0.0.0/8 для kind), а при strict ещё и с частных сетей, но не с адресов метаданных облака.
   clusterAddrAllowCidrs: []
-  # Дополнительные переменные окружения (список как в container.env)
+  # Дополнительные переменные окружения (список как в container.env). Например, KUBRON_PUBLIC_URL для OIDC browser-callback.
   extraEnv: []
 
 # ── Port-forward в браузере (ADR-0017) ───────────────────────────────────────

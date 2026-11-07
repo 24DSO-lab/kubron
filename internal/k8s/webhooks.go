@@ -64,7 +64,7 @@ func (m *Manager) GetMutatingWebhookConfigurations() ([]WebhookConfigurationInfo
 		return nil, err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	ctx, cancel := context.WithTimeout(m.baseCtx(), 15*time.Second)
 	defer cancel()
 
 	list, err := conn.Client.AdmissionregistrationV1().MutatingWebhookConfigurations().List(ctx, metav1.ListOptions{})
@@ -94,7 +94,7 @@ func (m *Manager) GetValidatingWebhookConfigurations() ([]WebhookConfigurationIn
 		return nil, err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	ctx, cancel := context.WithTimeout(m.baseCtx(), 15*time.Second)
 	defer cancel()
 
 	list, err := conn.Client.AdmissionregistrationV1().ValidatingWebhookConfigurations().List(ctx, metav1.ListOptions{})

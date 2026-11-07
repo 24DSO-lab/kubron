@@ -133,6 +133,24 @@ func (c *Credentials) Delete(ctx context.Context, k credential.Key) error {
 	return err
 }
 
+// DeleteIfVersion implements credential.CredentialStore. The version predicate makes invalidation safe
+// against a refresh-token rotation committed by another replica.
+func (c *Credentials) DeleteIfVersion(ctx context.Context, k credential.Key, expectedVersion int64) error {
+	if err := k.Validate(); err != nil {
+		return err
+	}
+	tag, err := c.s.pool.Exec(ctx, `DELETE FROM cluster_credentials
+		WHERE cluster_id=$1 AND owner_kind=$2 AND owner_id=$3 AND version=$4`,
+		k.ClusterID, string(k.Scope), k.OwnerID, expectedVersion)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() != 1 {
+		return credential.ErrVersionConflict
+	}
+	return nil
+}
+
 // List implements credential.CredentialStore.
 func (c *Credentials) List(ctx context.Context, ownerID string) ([]credential.Meta, error) {
 	rows, err := c.s.pool.Query(ctx, `SELECT cluster_id, owner_kind, `+credColumns+`
@@ -281,4 +299,26 @@ func (c *Credentials) RekeyCredentials(ctx context.Context) (credential.RekeyRep
 		return rep, credential.ErrRekeyIncomplete
 	}
 	return rep, nil
+}
+
+// dropOwnerCredentials removes the saved sign-in data and the pending sign-in requests of one owner
+// (a user or a team). cluster_credentials.owner_id has no foreign key because it points at either table,
+// so deleting the owner has to clean up explicitly, in the same transaction.
+func dropOwnerCredentials(ctx context.Context, tx pgx.Tx, ownerKind, ownerID string) error {
+	if _, err := tx.Exec(ctx, `DELETE FROM cluster_credentials WHERE owner_kind = $1 AND owner_id = $2`, ownerKind, ownerID); err != nil {
+		return err
+	}
+	_, err := tx.Exec(ctx, `DELETE FROM credential_challenges WHERE owner_kind = $1 AND owner_id = $2`, ownerKind, ownerID)
+	return err
+}
+
+// dropRemovedUsersCredentials does the same for every user of the organization that is not in keep (the
+// users that a full directory save is about to delete).
+func dropRemovedUsersCredentials(ctx context.Context, tx pgx.Tx, orgID string, keep []string) error {
+	const gone = `owner_kind = 'user' AND owner_id IN (SELECT id FROM users WHERE org_id = $1 AND id <> ALL($2))`
+	if _, err := tx.Exec(ctx, `DELETE FROM cluster_credentials WHERE `+gone, orgID, keep); err != nil {
+		return err
+	}
+	_, err := tx.Exec(ctx, `DELETE FROM credential_challenges WHERE `+gone, orgID, keep)
+	return err
 }

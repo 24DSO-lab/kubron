@@ -95,7 +95,7 @@ test('активный кластер у каждого свой', async () => {
   // Общая настройка LastActiveCluster не должна автоматически подключать кластер в новой веб-сессии.
   expect(await result<string>(bob, 'GetLastActiveCluster')).toBe('')
   expect(await result<string>(bob, 'GetActiveContext')).toBe('')
-  await result(admin, 'ConnectToCluster', [cluster!.id])
+  await result(admin, 'ConnectCluster', [cluster!.id])
   expect(await result<string>(admin, 'GetActiveContext')).toBe(cluster!.id)
   // Подключение администратора не сделало кластер активным у bob
   expect(await result<string>(bob, 'GetActiveContext')).toBe('')
@@ -152,18 +152,19 @@ test('события и логи доходят только владельцу'
   )
   await Promise.all([listen(admin), listen(bob)])
 
+  const logDataCount = (c: Client) => c.page.evaluate(
+    () => (window as unknown as { __ev: string[] }).__ev.filter(e => e.startsWith('logs:data:')).length,
+  )
+
   await result(admin, 'StartLogStream', [streamId, namespace, pod, container, 10])
-  await expect.poll(() => admin.page.evaluate(() => (window as unknown as { __ev: string[] }).__ev.length),
-    { timeout: 20000 }).toBeGreaterThan(0)
+  await expect.poll(() => logDataCount(admin), { timeout: 20000 }).toBeGreaterThan(0)
   await bob.page.waitForTimeout(3000)
   expect(await bob.page.evaluate(() => (window as unknown as { __ev: string[] }).__ev.length)).toBe(0)
 
   // Остановить поток чужой сессии нельзя: у bob своих потоков нет, у администратора поток продолжает работать
   await call(bob, 'StopLogStream', [streamId])
-  const before = await admin.page.evaluate(() => (window as unknown as { __ev: string[] }).__ev.length)
-  await admin.page.waitForTimeout(3000)
-  const after = await admin.page.evaluate(() => (window as unknown as { __ev: string[] }).__ev.length)
-  expect(after).toBeGreaterThan(before)
+  const before = await logDataCount(admin)
+  await expect.poll(() => logDataCount(admin), { timeout: 10000, intervals: [250] }).toBeGreaterThan(before)
   await call(admin, 'StopLogStream', [streamId])
 })
 

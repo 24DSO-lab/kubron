@@ -29,7 +29,7 @@ func mustActivate(t *testing.T, m *Manager, id string) {
 	t.Helper()
 	m.viewMu.Lock()
 	defer m.viewMu.Unlock()
-	if err := m.activateLocked(id); err != nil {
+	if err := m.activateLocked(id, id); err != nil {
 		t.Fatalf("activate %s: %v", id, err)
 	}
 }
@@ -125,7 +125,7 @@ func TestActivateUnknownClusterKeepsPreviousActive(t *testing.T) {
 	mustActivate(t, v, "a")
 
 	v.viewMu.Lock()
-	err := v.activateLocked("missing")
+	err := v.activateLocked("missing", "missing")
 	v.viewMu.Unlock()
 	if err == nil {
 		t.Fatal("expected an error for a cluster that is not connected")
@@ -173,7 +173,7 @@ func TestManyViewsConcurrentSwitching(t *testing.T) {
 			for j := 0; j < 200; j++ {
 				id := ids[(i+j)%len(ids)]
 				v.viewMu.Lock()
-				_ = v.activateLocked(id)
+				_ = v.activateLocked(id, id)
 				v.viewMu.Unlock()
 				if _, err := v.GetActiveConnection(); err != nil {
 					t.Errorf("view %d: %v", i, err)
@@ -213,7 +213,7 @@ func TestClusterEventsGoToEveryViewHoldingCluster(t *testing.T) {
 	mustActivate(t, v3, "b")
 
 	// Событие инициирует любой вид, получают все, у кого кластер активен, и только они.
-	v1.emitCluster(EventClusterChanged, "a")
+	v1.emitCluster(EventClusterChanged, &ClusterConnection{Name: "a"})
 	mu.Lock()
 	if len(got["v1"]) != 1 || len(got["v2"]) != 1 || len(got["v3"]) != 0 {
 		t.Errorf("receivers: %v", got)
@@ -222,7 +222,7 @@ func TestClusterEventsGoToEveryViewHoldingCluster(t *testing.T) {
 
 	// После выхода вида из кластера события ему больше не идут.
 	v2.Detach()
-	v1.emitCluster(EventClusterChanged, "a")
+	v1.emitCluster(EventClusterChanged, &ClusterConnection{Name: "a"})
 	mu.Lock()
 	defer mu.Unlock()
 	if len(got["v1"]) != 2 || len(got["v2"]) != 1 {

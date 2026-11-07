@@ -33,7 +33,7 @@ func (m *Manager) GetResourceYAML(namespace, kind, name string, clean bool) (str
 		return "", err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(m.baseCtx(), 10*time.Second)
 	defer cancel()
 
 	obj, err := ri.Get(ctx, name, metav1.GetOptions{})

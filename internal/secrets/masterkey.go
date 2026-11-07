@@ -69,7 +69,7 @@ func (s EnvStore) Load(context.Context) (*secretbox.Keyring, error) {
 func (EnvStore) Save(context.Context, secretbox.Key) error { return ErrReadOnlyKeyStore }
 
 // FileStore keeps one key in a file with mode 0600. It is the fallback on desktops without a system
-// keyring and the automatic key storage of a server without PostgreSQL (decision D-02).
+// keyring and the automatic key storage of a server without PostgreSQL (ADR-0018, section 6).
 type FileStore struct {
 	Path   string
 	Logger *slog.Logger

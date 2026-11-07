@@ -30,7 +30,7 @@ func (m *Manager) GetArgoApplications(namespaces []string) ([]ArgoApplicationInf
 		return nil, err
 	}
 	// После синхронизации informer список строится из памяти без LIST к API-серверу.
-	if ac := conn.argoCache(func() { m.emitCluster(EventArgoChanged, conn.Name) }); ac != nil {
+	if ac := conn.argoCache(func() { m.emitCluster(EventArgoChanged, conn) }); ac != nil {
 		if apps, ok := ac.list(scope); ok {
 			return apps, nil
 		}

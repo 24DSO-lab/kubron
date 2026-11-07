@@ -27,4 +27,16 @@ type Store interface {
 	ArgoTokens() k8s.TokenStore
 	// Clusters — кластеры: метаданные и kubeconfig (владение командой добавит этап 3).
 	Clusters() k8s.ClusterStore
+	// WebOIDC — публичный клиент веб-версии для входа через браузер и провайдер, для которого он зарегистрирован.
+	WebOIDC() (WebOIDC, error)
+	SetWebOIDC(WebOIDC) error
+}
+
+// WebOIDC — настройка входа через браузер в веб-версии: публичный client_id и издатель (issuer), у которого он
+// зарегистрирован. Клиент применяется вместо клиента из kubeconfig только для кластеров с этим издателем и
+// только при входе через authorization code; остальные кластеры и остальные виды входа не затрагиваются.
+// Запись без IssuerURL (прежний формат настройки) не применяется: без привязки клиент подошёл бы любому провайдеру.
+type WebOIDC struct {
+	ClientID  string `json:"clientId"`
+	IssuerURL string `json:"issuerUrl"`
 }

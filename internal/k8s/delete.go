@@ -24,7 +24,7 @@ func (m *Manager) DeleteResource(kind, namespace, name string) error {
 		return err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(m.baseCtx(), 10*time.Second)
 	defer cancel()
 
 	// Background: зависимые объекты (поды Deployment/Job и т.п.) удаляются сборщиком мусора.

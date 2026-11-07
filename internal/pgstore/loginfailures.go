@@ -28,8 +28,8 @@ func failureKey(key string) []byte {
 }
 
 // LockRemaining возвращает остаток блокировки ключа (0 — не заблокирован).
-func (f *LoginFailures) LockRemaining(key string) (time.Duration, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), opTimeout)
+func (f *LoginFailures) LockRemaining(ctx context.Context, key string) (time.Duration, error) {
+	ctx, cancel := context.WithTimeout(ctx, opTimeout)
 	defer cancel()
 	var secs float64
 	err := f.s.pool.QueryRow(ctx, `
@@ -43,8 +43,8 @@ func (f *LoginFailures) LockRemaining(key string) (time.Duration, error) {
 
 // RecordFailure учитывает неудачу. С free-й неудачи ключ блокируется на base·2^(n−free) секунд (показатель не
 // больше 6), но не дольше max — как счётчик в памяти.
-func (f *LoginFailures) RecordFailure(key string, free int, base, max time.Duration) error {
-	ctx, cancel := context.WithTimeout(context.Background(), opTimeout)
+func (f *LoginFailures) RecordFailure(ctx context.Context, key string, free int, base, max time.Duration) error {
+	ctx, cancel := context.WithTimeout(ctx, opTimeout)
 	defer cancel()
 	// $2 — число бесплатных попыток, $3 и $4 — базовая и предельная блокировка в секундах.
 	_, err := f.s.pool.Exec(ctx, `
@@ -65,8 +65,8 @@ func (f *LoginFailures) RecordFailure(key string, free int, base, max time.Durat
 }
 
 // ClearFailures забывает счётчик ключа.
-func (f *LoginFailures) ClearFailures(key string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), opTimeout)
+func (f *LoginFailures) ClearFailures(ctx context.Context, key string) error {
+	ctx, cancel := context.WithTimeout(ctx, opTimeout)
 	defer cancel()
 	_, err := f.s.pool.Exec(ctx, `DELETE FROM login_failures WHERE key = $1`, failureKey(key))
 	return err

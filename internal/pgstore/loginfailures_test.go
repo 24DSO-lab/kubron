@@ -5,6 +5,7 @@ package pgstore
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"testing"
 	"time"
@@ -19,30 +20,30 @@ const (
 func TestLoginFailuresLockAfterFreeAttempts(t *testing.T) {
 	f := newTestStore(t, keyString("k1")).LoginFailures()
 	for i := 1; i < testFree; i++ {
-		if err := f.RecordFailure("alice", testFree, testBase, testMax); err != nil {
+		if err := f.RecordFailure(t.Context(), "alice", testFree, testBase, testMax); err != nil {
 			t.Fatal(err)
 		}
-		if d, err := f.LockRemaining("alice"); err != nil || d != 0 {
+		if d, err := f.LockRemaining(t.Context(), "alice"); err != nil || d != 0 {
 			t.Fatalf("attempt %d must stay free: %v %v", i, d, err)
 		}
 	}
-	if err := f.RecordFailure("alice", testFree, testBase, testMax); err != nil {
+	if err := f.RecordFailure(t.Context(), "alice", testFree, testBase, testMax); err != nil {
 		t.Fatal(err)
 	}
-	if d, _ := f.LockRemaining("alice"); d < 10*time.Second || d > testBase {
+	if d, _ := f.LockRemaining(t.Context(), "alice"); d < 10*time.Second || d > testBase {
 		t.Fatalf("the 5th failure must lock for ~15s, got %v", d)
 	}
-	_ = f.RecordFailure("alice", testFree, testBase, testMax)
-	if d, _ := f.LockRemaining("alice"); d < 20*time.Second || d > 2*testBase {
+	_ = f.RecordFailure(t.Context(), "alice", testFree, testBase, testMax)
+	if d, _ := f.LockRemaining(t.Context(), "alice"); d < 20*time.Second || d > 2*testBase {
 		t.Fatalf("the 6th failure must double the lock (~30s), got %v", d)
 	}
 	for i := 0; i < 10; i++ {
-		_ = f.RecordFailure("alice", testFree, testBase, testMax)
+		_ = f.RecordFailure(t.Context(), "alice", testFree, testBase, testMax)
 	}
-	if d, _ := f.LockRemaining("alice"); d > testMax || d < testMax-10*time.Second {
+	if d, _ := f.LockRemaining(t.Context(), "alice"); d > testMax || d < testMax-10*time.Second {
 		t.Fatalf("the lock must be capped at %v, got %v", testMax, d)
 	}
-	if d, _ := f.LockRemaining("bob"); d != 0 {
+	if d, _ := f.LockRemaining(t.Context(), "bob"); d != 0 {
 		t.Fatalf("other keys are not affected: %v", d)
 	}
 }
@@ -50,15 +51,15 @@ func TestLoginFailuresLockAfterFreeAttempts(t *testing.T) {
 func TestLoginFailuresClear(t *testing.T) {
 	f := newTestStore(t, keyString("k1")).LoginFailures()
 	for i := 0; i < testFree; i++ {
-		_ = f.RecordFailure("alice", testFree, testBase, testMax)
+		_ = f.RecordFailure(t.Context(), "alice", testFree, testBase, testMax)
 	}
-	if d, _ := f.LockRemaining("alice"); d == 0 {
+	if d, _ := f.LockRemaining(t.Context(), "alice"); d == 0 {
 		t.Fatal("must be locked")
 	}
-	if err := f.ClearFailures("alice"); err != nil {
+	if err := f.ClearFailures(t.Context(), "alice"); err != nil {
 		t.Fatal(err)
 	}
-	if d, _ := f.LockRemaining("alice"); d != 0 {
+	if d, _ := f.LockRemaining(t.Context(), "alice"); d != 0 {
 		t.Fatalf("a cleared key must be free: %v", d)
 	}
 }
@@ -72,7 +73,7 @@ func TestLoginFailuresConcurrentRecordsAreNotLost(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			if err := f.RecordFailure("alice", 1000, testBase, testMax); err != nil {
+			if err := f.RecordFailure(t.Context(), "alice", 1000, testBase, testMax); err != nil {
 				t.Error(err)
 			}
 		}()
@@ -87,7 +88,7 @@ func TestLoginFailuresConcurrentRecordsAreNotLost(t *testing.T) {
 // Логин в таблице не хранится открыто.
 func TestLoginFailuresDoNotStoreTheLogin(t *testing.T) {
 	s := newTestStore(t, keyString("k1"))
-	_ = s.LoginFailures().RecordFailure("alice", testFree, testBase, testMax)
+	_ = s.LoginFailures().RecordFailure(t.Context(), "alice", testFree, testBase, testMax)
 	var n int
 	if err := s.pool.QueryRow(context.Background(), `SELECT count(*) FROM login_failures WHERE position('alice'::bytea in key) > 0`).Scan(&n); err != nil || n != 0 {
 		t.Fatalf("the key must be a hash: n=%d err=%v", n, err)
@@ -99,10 +100,10 @@ func TestLoginFailuresCleanupKeepsActiveLocks(t *testing.T) {
 	f := s.LoginFailures()
 	ctx := context.Background()
 	for i := 0; i < testFree; i++ {
-		_ = f.RecordFailure("locked", testFree, testBase, testMax)
+		_ = f.RecordFailure(t.Context(), "locked", testFree, testBase, testMax)
 	}
-	_ = f.RecordFailure("stale", testFree, testBase, testMax)
-	_ = f.RecordFailure("fresh", testFree, testBase, testMax)
+	_ = f.RecordFailure(t.Context(), "stale", testFree, testBase, testMax)
+	_ = f.RecordFailure(t.Context(), "fresh", testFree, testBase, testMax)
 	// «stale» и «locked» давно не обновлялись: блокировка действует, значит, «locked» удалять нельзя
 	if _, err := s.pool.Exec(ctx, `UPDATE login_failures SET last_at = now() - interval '1 hour'
 		WHERE key IN ($1, $2)`, failureKey("stale"), failureKey("locked")); err != nil {
@@ -112,7 +113,7 @@ func TestLoginFailuresCleanupKeepsActiveLocks(t *testing.T) {
 	if err != nil || n != 1 {
 		t.Fatalf("only the stale unlocked record must go: n=%d err=%v", n, err)
 	}
-	if d, _ := f.LockRemaining("locked"); d == 0 {
+	if d, _ := f.LockRemaining(t.Context(), "locked"); d == 0 {
 		t.Fatal("an active lock must survive the cleanup")
 	}
 }
@@ -168,4 +169,20 @@ func TestJobsKeyHasOneHolder(t *testing.T) {
 		t.Fatal("the lock must pass to another replica after release")
 	}
 	b.Release()
+}
+
+// Отмена контекста вызывающего слоя доходит до PostgreSQL: операция не ждёт собственного таймаута.
+func TestLoginFailuresHonorCallerCancellation(t *testing.T) {
+	f := newTestStore(t, keyString("k1")).LoginFailures()
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	if _, err := f.LockRemaining(ctx, "alice"); !errors.Is(err, context.Canceled) {
+		t.Fatalf("LockRemaining: want context.Canceled, got %v", err)
+	}
+	if err := f.RecordFailure(ctx, "alice", testFree, testBase, testMax); !errors.Is(err, context.Canceled) {
+		t.Fatalf("RecordFailure: want context.Canceled, got %v", err)
+	}
+	if err := f.ClearFailures(ctx, "alice"); !errors.Is(err, context.Canceled) {
+		t.Fatalf("ClearFailures: want context.Canceled, got %v", err)
+	}
 }

@@ -9,7 +9,16 @@ import (
 	"time"
 )
 
-var _ Broker = (*Service)(nil)
+var (
+	_ Broker      = (*Service)(nil)
+	_ Invalidator = (*Service)(nil)
+)
+
+// Invalidator is an optional interface of a Broker implementation. The transport calls it when the API server
+// answers 401, so that a cached token (above all one without expiry) is dropped and obtained again.
+type Invalidator interface {
+	Invalidate(k Key)
+}
 
 // maxRefreshRounds bounds the retries of one refresh when other replicas keep rotating the saved data.
 const maxRefreshRounds = 4
@@ -81,8 +90,15 @@ func (s *Service) refresh(ctx context.Context, sub Subject, d Descriptor) (Token
 		if len(saved) > 0 && s.savedChanged(ctx, key, base.Version) {
 			continue
 		}
-		if perr == nil && res.Save != nil && len(res.Save) == 0 {
-			if err := s.store.Delete(ctx, key); err != nil {
+		// An invalid refresh token (or a provider asking for an interactive challenge) invalidates the
+		// saved credential only if it is still the version we used. An unconditional Delete here can erase
+		// a newer refresh token written by another replica between savedChanged and the delete.
+		if base.Version > 0 && (errors.Is(perr, ErrInvalidGrant) || perr == nil && res.Save != nil && len(res.Save) == 0) {
+			err := s.store.DeleteIfVersion(ctx, key, base.Version)
+			if errors.Is(err, ErrVersionConflict) {
+				continue // another replica changed or removed the record; read its result before deciding
+			}
+			if err != nil {
 				return Token{}, err
 			}
 		}
@@ -118,9 +134,21 @@ func (s *Service) savedChanged(ctx context.Context, k Key, base int64) bool {
 	return false
 }
 
+// Invalidate implements Invalidator: the API server rejected the token (401), so the cached one is dropped and the
+// next Token call obtains a new one. Saved sign-in data is not touched.
+func (s *Service) Invalidate(k Key) {
+	s.cache.remove(k)
+}
+
 // Revoke implements Broker: it removes saved sign-in data and pending requests matching the filter and
 // forgets the cached tokens. Empty fields of the filter match anything.
 func (s *Service) Revoke(ctx context.Context, f RevokeFilter) error {
+	for _, r := range s.live.takeIf(func(r liveRequest) bool {
+		return (f.ClusterID == "" || r.key.ClusterID == f.ClusterID) && (f.OwnerID == "" || r.key.OwnerID == f.OwnerID) &&
+			(f.Scope == "" || r.key.Scope == f.Scope)
+	}) {
+		r.cancel()
+	}
 	s.cache.drop(func(k Key) bool {
 		return (f.ClusterID == "" || k.ClusterID == f.ClusterID) && (f.OwnerID == "" || k.OwnerID == f.OwnerID) &&
 			(f.Scope == "" || k.Scope == f.Scope)

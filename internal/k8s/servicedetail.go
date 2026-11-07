@@ -101,7 +101,7 @@ func (m *Manager) GetServiceDetail(namespace, name string) (*ServiceDetail, erro
 		return nil, err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(m.baseCtx(), 10*time.Second)
 	defer cancel()
 
 	svc, err := conn.Client.CoreV1().Services(namespace).Get(ctx, name, metav1.GetOptions{})

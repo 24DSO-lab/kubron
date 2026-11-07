@@ -67,7 +67,8 @@ func (m *Manager) helmConfigDriver(namespace string, h slog.Handler, storage str
 //   - всё остальное (кластеры из PostgreSQL в любом режиме: kubeconfig, in-cluster, oidc-password): rest.Config
 //     действующего подключения менеджера, без файлов и без выписывания учётных данных на диск.
 func (m *Manager) helmRESTClientGetter(id string, meta *ClusterMeta, namespace string) (genericclioptions.RESTClientGetter, error) {
-	if meta.Mode == "" || meta.Mode == ModeKubeconfig {
+	// Helm читает файл только на пути без брокера: файл содержит exec-блок, а токен выдаёт брокер.
+	if (meta.Mode == "" || meta.Mode == ModeKubeconfig) && m.AuthSessionOf().Broker == nil {
 		if kubeconfig := GetClusterKubeconfigPath(id); kubeconfig != "" {
 			flags := genericclioptions.NewConfigFlags(false)
 			flags.KubeConfig = &kubeconfig
@@ -79,7 +80,7 @@ func (m *Manager) helmRESTClientGetter(id string, meta *ClusterMeta, namespace s
 			return flags, nil
 		}
 	}
-	conn, ok := m.pool.get(id)
+	conn, ok := m.lookupConn(id)
 	if !ok {
 		return nil, errors.New("no active connection")
 	}

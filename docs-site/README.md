@@ -19,11 +19,25 @@ npm run docs:preview
 
 The static site is generated into `.vitepress/dist`.
 
-## GitHub Pages
+## Deployment
 
-The repository workflow is [.github/workflows/docs.yml](../.github/workflows/docs.yml). It builds the site from `docs-site/` and deploys the artifact to GitHub Pages. In repository settings, select **Settings → Pages → Build and deployment → GitHub Actions**.
+The production site is hosted on [Cloudflare Pages](https://kubron.pages.dev/). The GitHub Actions workflow at `.github/workflows/docs.yml` builds the site and deploys it with Wrangler.
 
-The workflow sets `DOCS_BASE=/kubron/` for the project Pages URL. For a custom domain, set `DOCS_BASE=/` and configure the domain in Pages settings.
+- Production branch: `refactor`
+- Build command: `npm ci && npm run docs:build` (from `docs-site/`)
+- Build output: `docs-site/.vitepress/dist`
+- VitePress base path: `/` (`DOCS_BASE=/`)
+
+Pull requests targeting `refactor` run the build but do not publish the site. Pushes to `refactor` deploy after a successful build. The Cloudflare Pages project must have `refactor` configured as its production branch; disable Cloudflare's Git integration builds so GitHub Actions remains the only deployment path.
+
+### GitHub repository secrets
+
+Configure these under **Settings → Secrets and variables → Actions**:
+
+- `CLOUDFLARE_API_TOKEN`: API token with Account → Cloudflare Pages → Edit.
+- `CLOUDFLARE_ACCOUNT_ID`: Cloudflare account ID.
+
+Do not store either value in the repository.
 
 ## Structure
 

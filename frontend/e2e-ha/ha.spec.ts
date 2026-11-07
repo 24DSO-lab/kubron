@@ -183,7 +183,7 @@ test('гибель реплики: сессия действует, термин
     const meta = await ok<{ id: string }>(admin, A, 'AddClusterFromText', [readFileSync(kubeconfig!, 'utf8'), {
       displayName: 'ha-kind', icon: '', color: '', environment: '', defaultNamespace: '', contextName: '',
     }])
-    await ok(admin, A, 'ConnectToCluster', [meta.id])
+    await ok(admin, A, 'ConnectCluster', [meta.id])
     params = target!.split('/') as [string, string, string]
     oldTerminal = await ok<string>(admin, A, 'OpenTerminal', [...params, '/bin/sh', 80, 24])
     expect(oldTerminal).toMatch(/^[\w-]+\.[0-9a-f]{32}$/)
@@ -203,7 +203,7 @@ test('гибель реплики: сессия действует, термин
     expect(stale.status()).toBe(409)
     expect(JSON.stringify(await stale.json())).toContain('stream_elsewhere')
 
-    await ok(admin, B, 'ConnectToCluster', [(await ok<{ id: string; displayName: string }[]>(admin, B, 'GetClusterStatuses')).find(c => c.displayName === 'ha-kind')!.id])
+    await ok(admin, B, 'ConnectCluster', [(await ok<{ id: string; displayName: string }[]>(admin, B, 'GetClusterStatuses')).find(c => c.displayName === 'ha-kind')!.id])
     const fresh = await ok<string>(admin, B, 'OpenTerminal', [...params, '/bin/sh', 80, 24])
     expect(fresh).toMatch(/^[\w-]+\.[0-9a-f]{32}$/)
     expect(fresh.split('.')[0]).not.toBe(oldTerminal.split('.')[0])

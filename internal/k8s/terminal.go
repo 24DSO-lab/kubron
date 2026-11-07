@@ -193,7 +193,7 @@ func (m *Manager) startTerminal(sessionID, namespace, pod, container, shell stri
 	tty, stdin := true, true // для exec
 	if attach {
 		tty, stdin = false, false
-		ctxP, cancelP := context.WithTimeout(context.Background(), 10*time.Second)
+		ctxP, cancelP := context.WithTimeout(m.baseCtx(), 10*time.Second)
 		p, perr := conn.Client.CoreV1().Pods(namespace).Get(ctxP, pod, metav1.GetOptions{})
 		cancelP()
 		if perr != nil {
@@ -506,7 +506,7 @@ func (m *Manager) execRaw(namespace, pod, container string, command []string) (s
 		return "", err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(m.baseCtx(), 10*time.Second)
 	defer cancel()
 
 	var stdout, stderr bytes.Buffer

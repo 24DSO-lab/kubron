@@ -137,6 +137,13 @@ type Provider interface {
 	Continue(ctx context.Context, env Env, req Request) (Result, error)
 }
 
+// WebCallbackBroker completes an OIDC browser redirect using the challenge ID carried in OAuth state.
+// Both methods bind the operation to the authenticated application user and web session.
+type WebCallbackBroker interface {
+	CallbackSubject(ctx context.Context, sessionID, challengeID string) (Subject, Descriptor, error)
+	AnswerCallback(ctx context.Context, sub Subject, challengeID, redirectURL string) (Result, error)
+}
+
 type RevokeFilter struct {
 	ClusterID string
 	OwnerID   string
@@ -159,8 +166,12 @@ var (
 	ErrChallengeRequired = errors.New("sign-in is required")
 	ErrChallengeExpired  = errors.New("the sign-in request has expired")
 	ErrAnswerRejected    = errors.New("the credentials were rejected")
-	ErrInvalidGrant      = errors.New("the saved sign-in is no longer valid")
-	ErrUnsupported       = errors.New("this sign-in method is not supported")
+	// ErrInvalidAnswer: the answer cannot be used at all (an empty field, a value that is not a token, a document
+	// that is not an ExecCredential). Unlike ErrAnswerRejected it is not a wrong guess: it does not use up an
+	// attempt, and the dialog stays open with the entered value.
+	ErrInvalidAnswer = errors.New("the value could not be used")
+	ErrInvalidGrant  = errors.New("the saved sign-in is no longer valid")
+	ErrUnsupported   = errors.New("this sign-in method is not supported")
 )
 
 // Провод RPC (JSON, camelCase). Методы: ConnectCluster(clusterId), AnswerChallenge(challengeId, values),

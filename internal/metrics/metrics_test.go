@@ -25,7 +25,7 @@ func full() Snapshot {
 	return Snapshot{
 		Sessions: 3, WSConns: 5, Terminals: 2, LogStreams: 4, PortForwards: 1,
 		ClusterStates: map[string]int{"ok": 2, "unreachable": 1},
-		HealthLeader:  true, LoginBlocked: 7, LockoutsStarted: 2,
+		HealthLeader:  true, LoginBlocked: 7, LockoutsStarted: 2, LoginSharedDegraded: 3,
 		DB: &DBPool{Acquired: 1, Idle: 3, Total: 4, Max: 10, AcquireCount: 100, EmptyAcquireCount: 5, CanceledCount: 1, AcquireSeconds: 0.5},
 	}
 }
@@ -46,6 +46,7 @@ func TestScrapeSnapshot(t *testing.T) {
 		`kubron_draining 0`,
 		`kubron_login_blocked_total 7`,
 		`kubron_login_lockouts_total 2`,
+		`kubron_login_lockout_degraded_total 3`,
 		`kubron_db_pool_max_connections 10`,
 		`kubron_db_pool_acquires_total 100`,
 		`version="v1.2.3"`,

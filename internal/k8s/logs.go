@@ -30,7 +30,7 @@ func (m *Manager) GetPodDetail(namespace, name string) (*PodDetail, error) {
 		return nil, err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(m.baseCtx(), 10*time.Second)
 	defer cancel()
 
 	pod, err := conn.Client.CoreV1().Pods(namespace).Get(ctx, name, metav1.GetOptions{})
@@ -58,7 +58,7 @@ func (m *Manager) GetPodLogs(namespace, name, container string, lines int64) (st
 		return "", err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	ctx, cancel := context.WithTimeout(m.baseCtx(), 15*time.Second)
 	defer cancel()
 
 	opts := &corev1.PodLogOptions{
@@ -91,7 +91,7 @@ func (m *Manager) EvictPod(namespace, name string) error {
 		return err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	ctx, cancel := context.WithTimeout(m.baseCtx(), 15*time.Second)
 	defer cancel()
 
 	deleteOptions := metav1.DeleteOptions{

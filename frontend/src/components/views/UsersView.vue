@@ -32,6 +32,26 @@
       </select>
     </section>
 
+    <!-- Web OIDC public client configuration -->
+    <section class="sec-card web-oidc-card">
+      <div>
+        <h4>{{ $t('users.webOIDC.title') }}</h4>
+        <p>{{ $t('users.webOIDC.description') }}</p>
+      </div>
+      <form class="web-oidc-form" @submit.prevent="saveWebOIDCClient">
+        <input v-model="webOIDCClientID" class="form-input" type="text" maxlength="256"
+          autocomplete="off" :aria-label="$t('users.webOIDC.clientID')" :placeholder="$t('users.webOIDC.clientID')" />
+        <input v-model="webOIDCIssuerURL" class="form-input" type="text" maxlength="512"
+          autocomplete="off" :aria-label="$t('users.webOIDC.issuerURL')" :placeholder="$t('users.webOIDC.issuerURL')" />
+        <button class="btn" type="submit" :disabled="savingWebOIDC || !webOIDCChanged">
+          {{ savingWebOIDC ? $t('users.webOIDC.saving') : $t('users.webOIDC.save') }}
+        </button>
+        <p v-if="webOIDCClientID.trim() && !webOIDCIssuerURL.trim()" class="form-error web-oidc-hint" role="alert">
+          {{ $t('users.webOIDC.issuerRequired') }}
+        </p>
+      </form>
+    </section>
+
     <p v-if="loadError" class="form-error">{{ loadError }}</p>
 
     <table v-if="users.length" class="users-table">
@@ -167,6 +187,13 @@ const firstInput = ref<HTMLInputElement | null>(null)
 
 const IDLE_PRESETS = [0, 5, 10, 15, 30, 60, 120]
 const savingIdle = ref(false)
+const webOIDCClientID = ref('')
+const savedWebOIDCClientID = ref('')
+const webOIDCIssuerURL = ref('')
+const savedWebOIDCIssuerURL = ref('')
+const webOIDCChanged = computed(() =>
+  webOIDCClientID.value.trim() !== savedWebOIDCClientID.value || webOIDCIssuerURL.value.trim() !== savedWebOIDCIssuerURL.value)
+const savingWebOIDC = ref(false)
 // Если на бэкенде задано нестандартное значение, оно тоже должно быть в списке
 const idleOptions = computed(() => {
   const cur = auth.idleTimeoutMinutes.value
@@ -205,14 +232,39 @@ function formatDate(iso: string): string {
 async function load() {
   loadError.value = ''
   try {
-    const [u, r] = await Promise.all([callApp('ListUsers'), callApp('ListRoles')])
+    const [u, r, web] = await Promise.all([
+      callApp('ListUsers'), callApp('ListRoles'), callApp('GetWebOIDCClient'),
+    ])
     users.value = (u ?? []) as UserInfo[]
     roles.value = (r ?? []) as RoleInfo[]
+    const w = (web ?? {}) as { clientId?: string; issuerUrl?: string }
+    webOIDCClientID.value = String(w.clientId ?? '')
+    webOIDCIssuerURL.value = String(w.issuerUrl ?? '')
+    savedWebOIDCClientID.value = webOIDCClientID.value
+    savedWebOIDCIssuerURL.value = webOIDCIssuerURL.value
     if (!roles.value.some(x => x.id === form.role) && roles.value.length) form.role = roles.value[roles.value.length - 1].id
   } catch (e) {
     loadError.value = errorText(e)
   } finally {
     loading.value = false
+  }
+}
+
+async function saveWebOIDCClient() {
+  savingWebOIDC.value = true
+  try {
+    const clientID = webOIDCClientID.value.trim()
+    const issuerURL = webOIDCIssuerURL.value.trim()
+    await callApp('SetWebOIDCClient', clientID, issuerURL)
+    webOIDCClientID.value = clientID
+    webOIDCIssuerURL.value = issuerURL
+    savedWebOIDCClientID.value = clientID
+    savedWebOIDCIssuerURL.value = issuerURL
+    notifications.notifySuccess(t('users.webOIDC.saved'))
+  } catch (e) {
+    notifications.notifyError(errorText(e))
+  } finally {
+    savingWebOIDC.value = false
   }
 }
 
@@ -330,6 +382,9 @@ onMounted(load)
 .sec-card h4 { margin: 0 0 4px; color: #cdd6f4; font-size: 14px; }
 .sec-card p { margin: 0; color: #a6adc8; font-size: 12px; line-height: 1.5; max-width: 620px; }
 .idle-select { width: auto; min-width: 150px; padding: 6px 8px; flex-shrink: 0; }
+.web-oidc-form { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; flex-shrink: 0; max-width: 560px; }
+.web-oidc-form .form-input { width: min(260px, 100%); }
+.web-oidc-hint { flex-basis: 100%; margin: 0; text-align: right; }
 
 .users-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .users-table th { text-align: left; padding: 8px 12px; color: #a6adc8; font-weight: 600; border-bottom: 1px solid #313244; }
