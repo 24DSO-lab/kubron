@@ -6,13 +6,13 @@
 
 **A fast, private Kubernetes Operations Workspace.**
 
-[![CI](https://github.com/24DSO-labs/kubron/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/24DSO-labs/kubron/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/24DSO-labs/kubron?include_prereleases)](https://github.com/24DSO-labs/kubron/releases)
+[![CI](https://github.com/24DSO-lab/kubron/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/24DSO-lab/kubron/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/24DSO-lab/kubron?include_prereleases)](https://github.com/24DSO-lab/kubron/releases)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
-[![Go](https://img.shields.io/github/go-mod/go-version/24DSO-labs/kubron)](go.mod)
+[![Go](https://img.shields.io/github/go-mod/go-version/24DSO-lab/kubron)](go.mod)
 [![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey)](#download)
-[![Downloads](https://img.shields.io/github/downloads/24DSO-labs/kubron/total)](https://github.com/24DSO-labs/kubron/releases)
-[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/24DSO-labs/kubron/badge)](https://scorecard.dev/viewer/?uri=github.com/24DSO-labs/kubron)
+[![Downloads](https://img.shields.io/github/downloads/24DSO-lab/kubron/total)](https://github.com/24DSO-lab/kubron/releases)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/24DSO-lab/kubron/badge)](https://scorecard.dev/viewer/?uri=github.com/24DSO-lab/kubron)
 
 [Download](#download) · [Features](#features) · [Documentation](#documentation) · [Build from source](#build-from-source) · [Server mode](#server-mode) · [Roadmap](#roadmap)
 
@@ -108,7 +108,7 @@ Kubron is an open-source **Kubernetes Operations Workspace** for desktop and web
 
 ### Download
 
-Grab the latest release for your platform on the [Releases](https://github.com/24DSO-labs/kubron/releases) page:
+Grab the latest release for your platform on the [Releases](https://github.com/24DSO-lab/kubron/releases) page:
 
 | Platform                        | File                                   |
 |---------------------------------|----------------------------------------|
@@ -120,7 +120,7 @@ Grab the latest release for your platform on the [Releases](https://github.com/2
 On Debian/Ubuntu: `sudo apt install ./kubron_<version>_amd64.deb`.
 
 Checksums are in `SHA256SUMS.txt`. Releases also carry build provenance, which you can verify with
-`gh attestation verify <file> --repo 24DSO-labs/kubron`.
+`gh attestation verify <file> --repo 24DSO-lab/kubron`.
 
 > The builds are not code-signed yet. On Windows, SmartScreen may warn you (More info → Run anyway). On macOS, right-click the app and choose Open, or run `xattr -dr com.apple.quarantine Kubron.app`. On Linux, GTK 3 and WebKitGTK 4.1 are required (on Ubuntu 24.04: `libwebkit2gtk-4.1-0`).
 
@@ -133,7 +133,7 @@ sudo apt install libgtk-3-dev libwebkit2gtk-4.1-dev   # Debian/Ubuntu
 ```
 
 ```sh
-git clone https://github.com/24DSO-labs/kubron.git
+git clone https://github.com/24DSO-lab/kubron.git
 cd kubron
 wails doctor                  # check that your environment is ready
 wails dev                     # run with hot reload
@@ -156,7 +156,7 @@ On Linux add `-tags webkit2_41` to `wails dev` / `wails build` (WebKitGTK 4.1, a
 
 Besides the desktop app, Kubron ships `kubron-server`: the same UI served over HTTP for teams. It stores users, clusters and the audit log in **PostgreSQL 14+**, encrypts kubeconfigs and GitOps integration tokens at rest (`KUBRON_SECRET_KEY`) and is meant to run behind a TLS-terminating reverse proxy.
 
-The container image (`ghcr.io/24dso-labs/kubron`) and the Helm chart (`oci://ghcr.io/24dso-labs/charts/kubron`) are published for every `vX.Y.Z` tag, signed with cosign and shipped with provenance and SBOM attestations. The chart source is in [`deploy/helm/kubron`](deploy/helm/kubron); it runs two replicas by default. To build the image yourself:
+The container image (`ghcr.io/24DSO-lab/kubron`) and the Helm chart (`oci://ghcr.io/24DSO-lab/charts/kubron`) are published for every `vX.Y.Z` tag, signed with cosign and shipped with provenance and SBOM attestations. The chart source is in [`deploy/helm/kubron`](deploy/helm/kubron); it runs two replicas by default. To build the image yourself:
 
 ```sh
 docker build -t kubron:dev .
@@ -190,7 +190,7 @@ go run ./cmd/kubron-server --listen 127.0.0.1:8080
 - [ ] Code-signed Windows and macOS builds
 - [ ] SSO/OIDC login for organizations
 
-Have an idea? Open a [feature request](https://github.com/24DSO-labs/kubron/issues/new/choose).
+Have an idea? Open a [feature request](https://github.com/24DSO-lab/kubron/issues/new/choose).
 
 ## License
 

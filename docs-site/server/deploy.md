@@ -1,6 +1,6 @@
 # Docker and Kubernetes deployment
 
-This is the step-by-step guide for running the Web edition (`kubron-server`) for a team: first with Docker, then on Kubernetes with the Helm chart. It follows the [full operations guide](https://github.com/24DSO-labs/kubron/blob/master/docs/deploy.md) in the repository, which remains the reference for advanced topics.
+This is the step-by-step guide for running the Web edition (`kubron-server`) for a team: first with Docker, then on Kubernetes with the Helm chart. It follows the [full operations guide](https://github.com/24DSO-lab/kubron/blob/master/docs/deploy.md) in the repository, which remains the reference for advanced topics.
 
 Want to try it on your laptop first? Use the [quick start](/server/quick-start).
 
@@ -16,7 +16,7 @@ Want to try it on your laptop first? Use the [quick start](/server/quick-start).
 | **A DNS name** | For example `kubron.example.com` |
 | **Kubernetes 1.27+ and Helm 3** | Only for the Helm installation |
 
-Plan for **two or more replicas** in production. All state is in PostgreSQL, so replicas are interchangeable (see [high availability](https://github.com/24DSO-labs/kubron/blob/master/docs/ha.md)).
+Plan for **two or more replicas** in production. All state is in PostgreSQL, so replicas are interchangeable (see [high availability](https://github.com/24DSO-lab/kubron/blob/master/docs/ha.md)).
 
 ## Step 1. Prepare PostgreSQL
 
@@ -38,7 +38,7 @@ postgres://kubron:PASSWORD@db.example.com:5432/kubron?sslmode=verify-full
 If you reach PostgreSQL through **PgBouncer in transaction mode**, also provide a direct address in `KUBRON_DB_LISTEN_URL`, because `LISTEN/NOTIFY` does not work through a transaction-mode pooler.
 
 ::: tip Backups
-Schedule PostgreSQL backups now. The key and the database must be backed up **separately** and stored in **different places**; see the [backup guide](https://github.com/24DSO-labs/kubron/blob/master/docs/backup.md).
+Schedule PostgreSQL backups now. The key and the database must be backed up **separately** and stored in **different places**; see the [backup guide](https://github.com/24DSO-lab/kubron/blob/master/docs/backup.md).
 :::
 
 ## Step 2. Generate and store the encryption key
@@ -66,7 +66,7 @@ docker run -d --name kubron --restart unless-stopped \
   -e KUBRON_SETUP_TOKEN='a-random-token-of-16-or-more-characters' \
   -e KUBRON_SECRET_KEY='k1:...' \
   -e KUBRON_DATABASE_URL='postgres://kubron:...@db.example.com:5432/kubron?sslmode=verify-full' \
-  ghcr.io/24dso-labs/kubron:1.0.0
+  ghcr.io/24DSO-lab/kubron:1.0.0
 ```
 
 What each part does:
@@ -149,7 +149,7 @@ Notes:
 ### Install
 
 ```bash
-helm install kubron oci://ghcr.io/24dso-labs/charts/kubron \
+helm install kubron oci://ghcr.io/24DSO-lab/charts/kubron \
   --version 1.0.0 -n kubron -f values.yaml
 ```
 
@@ -259,12 +259,12 @@ kubron:
 ## Upgrade
 
 ```bash
-helm upgrade kubron oci://ghcr.io/24dso-labs/charts/kubron \
+helm upgrade kubron oci://ghcr.io/24DSO-lab/charts/kubron \
   --version 1.1.0 -n kubron -f values.yaml
 ```
 
-- Replicas are replaced one by one with a rolling update. Database migrations run automatically on startup. Details for multi-replica operation are in the [HA guide](https://github.com/24DSO-labs/kubron/blob/master/docs/ha.md).
-- Read the [changelog](https://github.com/24DSO-labs/kubron/blob/master/CHANGELOG.md) first. It lists behaviour changes, for example roles and permissions.
+- Replicas are replaced one by one with a rolling update. Database migrations run automatically on startup. Details for multi-replica operation are in the [HA guide](https://github.com/24DSO-lab/kubron/blob/master/docs/ha.md).
+- Read the [changelog](https://github.com/24DSO-lab/kubron/blob/master/CHANGELOG.md) first. It lists behaviour changes, for example roles and permissions.
 - Take a database backup before every upgrade.
 - To roll back: `helm rollback kubron -n kubron`. A rollback cannot undo a database migration, so restore from backup if a release changed the schema and you need to go back further.
 
@@ -282,15 +282,15 @@ Every release image and chart is signed with cosign and carries provenance and S
 
 ```bash
 VERSION=1.0.0
-IMAGE=ghcr.io/24dso-labs/kubron
-CHART=ghcr.io/24dso-labs/charts/kubron
+IMAGE=ghcr.io/24DSO-lab/kubron
+CHART=ghcr.io/24DSO-lab/charts/kubron
 
 # Provenance: built by this repository's publish workflow
-gh attestation verify "oci://$IMAGE:$VERSION" --repo 24DSO-labs/kubron \
-  --signer-workflow 24DSO-labs/kubron/.github/workflows/publish.yml
+gh attestation verify "oci://$IMAGE:$VERSION" --repo 24DSO-lab/kubron \
+  --signer-workflow 24DSO-lab/kubron/.github/workflows/publish.yml
 
 # Signature (keyless)
-IDENTITY='^https://github\.com/24DSO-labs/kubron/\.github/workflows/publish\.yml@refs/tags/v[0-9].*$'
+IDENTITY='^https://github\.com/24DSO-lab/kubron/\.github/workflows/publish\.yml@refs/tags/v[0-9].*$'
 cosign verify "$IMAGE:$VERSION" \
   --certificate-identity-regexp "$IDENTITY" \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
@@ -299,7 +299,7 @@ cosign verify "$CHART:$VERSION" \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
 
-The full set of checks, including SBOM attestations and a Kyverno policy that blocks unsigned images, is in the [operations guide](https://github.com/24DSO-labs/kubron/blob/master/docs/deploy.md).
+The full set of checks, including SBOM attestations and a Kyverno policy that blocks unsigned images, is in the [operations guide](https://github.com/24DSO-lab/kubron/blob/master/docs/deploy.md).
 
 ## Hardening checklist
 
@@ -329,6 +329,6 @@ The full set of checks, including SBOM attestations and a Kyverno policy that bl
 ## Learn more
 
 - [Configuration reference](/server/configuration)
-- [High availability](https://github.com/24DSO-labs/kubron/blob/master/docs/ha.md)
-- [Prometheus metrics](https://github.com/24DSO-labs/kubron/blob/master/docs/metrics.md)
-- [Backup and restore](https://github.com/24DSO-labs/kubron/blob/master/docs/backup.md)
+- [High availability](https://github.com/24DSO-lab/kubron/blob/master/docs/ha.md)
+- [Prometheus metrics](https://github.com/24DSO-lab/kubron/blob/master/docs/metrics.md)
+- [Backup and restore](https://github.com/24DSO-lab/kubron/blob/master/docs/backup.md)

@@ -4,7 +4,7 @@ Kubron — быстрое, приватное open-source **рабочее пр�
 
 Приложение написано на **Go** и использует [Wails](https://wails.io) с интерфейсом на **Vue 3**. Desktop-версия — компактное нативное приложение поверх webview, который уже есть в операционной системе (WebView2 в Windows, WebKit в macOS и Linux). Она подключается к кластерам напрямую с вашей машины, используя уже имеющийся kubeconfig. Никакого «облака Kubron» посередине нет.
 
-![Обзор кластера в Kubron](https://raw.githubusercontent.com/24DSO-labs/kubron/master/docs/images/screenshots/overview.png)
+![Обзор кластера в Kubron](https://raw.githubusercontent.com/24DSO-lab/kubron/master/docs/images/screenshots/overview.png)
 
 ## Две версии
 

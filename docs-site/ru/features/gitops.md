@@ -27,4 +27,4 @@ Sync, refresh, прерывание операции и откат требую�
 
 В настройках кластера можно указать опубликованный URL Argo CD. Если он задан, Kubron открывает этот адрес напрямую; иначе интерфейс может использовать настроенный port-forward, если он доступен.
 
-Руководства: [English PDF](https://github.com/24DSO-labs/kubron/blob/master/docs/DOCS/EN/Kubron-ArgoCD-User-Guide-EN.pdf) · [Русский PDF](https://github.com/24DSO-labs/kubron/blob/master/docs/DOCS/RU/Kubron-ArgoCD-User-Guide.pdf)
+Руководства: [English PDF](https://github.com/24DSO-lab/kubron/blob/master/docs/DOCS/EN/Kubron-ArgoCD-User-Guide-EN.pdf) · [Русский PDF](https://github.com/24DSO-lab/kubron/blob/master/docs/DOCS/RU/Kubron-ArgoCD-User-Guide.pdf)

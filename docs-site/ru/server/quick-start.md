@@ -69,7 +69,7 @@ services:
       retries: 10
 
   kubron:
-    image: ghcr.io/24dso-labs/kubron:1.0.0
+    image: ghcr.io/24DSO-lab/kubron:1.0.0
     depends_on:
       db:
         condition: service_healthy
@@ -165,7 +165,7 @@ docker compose down -v      # остановить и удалить том ба
 | Сервер отказывается стартовать с другим ключом | Нужен тот ключ, которым зашифрованы существующие данные. Верните исходный ключ либо в пробе сбросьте данные: `docker compose down -v` |
 | `the setup token is missing or invalid` на экране приветствия | Токен должен точно совпадать с `KUBRON_SETUP_TOKEN`. Сама переменная должна быть не короче 16 символов, иначе сервер не запустится |
 | Добавление кластера не проходит из-за адреса | Адрес закрыт политикой адресов кластеров (loopback, link-local, метаданные облака). См. [справочник по конфигурации](/ru/server/configuration) |
-| `docker compose` не находит образ | Проверьте, что тег существует на [странице пакетов](https://github.com/orgs/24DSO-labs/packages) |
+| `docker compose` не находит образ | Проверьте, что тег существует на [странице пакетов](https://github.com/orgs/24DSO-lab/packages) |
 
 ## Дальше
 

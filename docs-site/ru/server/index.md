@@ -24,14 +24,14 @@ Web-версия запускает Kubron как самостоятельно �
 
 ## Развёртывание Web-версии
 
-- Образ: `ghcr.io/24dso-labs/kubron`.
-- OCI chart: `oci://ghcr.io/24dso-labs/charts/kubron`.
+- Образ: `ghcr.io/24DSO-lab/kubron`.
+- OCI chart: `oci://ghcr.io/24DSO-lab/charts/kubron`.
 - [Быстрый запуск](/ru/server/quick-start).
 - [Docker и Kubernetes](/ru/server/deploy).
 - [Конфигурация](/ru/server/configuration).
-- [Полное руководство по развёртыванию](https://github.com/24DSO-labs/kubron/blob/master/docs/deploy.md).
-- [Эксплуатация HA](https://github.com/24DSO-labs/kubron/blob/master/docs/ha.md).
-- [Метрики Prometheus](https://github.com/24DSO-labs/kubron/blob/master/docs/metrics.md).
+- [Полное руководство по развёртыванию](https://github.com/24DSO-lab/kubron/blob/master/docs/deploy.md).
+- [Эксплуатация HA](https://github.com/24DSO-lab/kubron/blob/master/docs/ha.md).
+- [Метрики Prometheus](https://github.com/24DSO-lab/kubron/blob/master/docs/metrics.md).
 
 ::: warning Безопасность
 Создайте и сохраните резервную копию `KUBRON_SECRET_KEY` до первого production-запуска. Потерянный ключ невозможно восстановить, а зашифрованные credentials станут недоступны. TLS должен завершаться на доверенном proxy; ограничьте прямой доступ к серверу и порту метрик.

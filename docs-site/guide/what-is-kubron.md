@@ -4,7 +4,7 @@ Kubron is a fast, private, open-source **Kubernetes Operations Workspace** for d
 
 It is written in **Go** and uses [Wails](https://wails.io) with a **Vue 3** interface. The Desktop edition is a compact native application on top of the webview that is already part of your operating system (WebView2 on Windows, WebKit on macOS and Linux). It connects to your clusters directly from your machine with the kubeconfig you already have. There is no Kubron cloud in between.
 
-![Kubron cluster overview](https://raw.githubusercontent.com/24DSO-labs/kubron/master/docs/images/screenshots/overview.png)
+![Kubron cluster overview](https://raw.githubusercontent.com/24DSO-lab/kubron/master/docs/images/screenshots/overview.png)
 
 ## Two editions
 

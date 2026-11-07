@@ -27,4 +27,4 @@ Syncing, refreshing, terminating an operation and rolling back need the Kubron `
 
 An optional published Argo CD URL can be configured in cluster settings. When present, Kubron can open that address directly; otherwise, the UI can use the configured port-forward path where available.
 
-User guides: [English PDF](https://github.com/24DSO-labs/kubron/blob/master/docs/DOCS/EN/Kubron-ArgoCD-User-Guide-EN.pdf) · [Русский PDF](https://github.com/24DSO-labs/kubron/blob/master/docs/DOCS/RU/Kubron-ArgoCD-User-Guide.pdf)
+User guides: [English PDF](https://github.com/24DSO-lab/kubron/blob/master/docs/DOCS/EN/Kubron-ArgoCD-User-Guide-EN.pdf) · [Русский PDF](https://github.com/24DSO-lab/kubron/blob/master/docs/DOCS/RU/Kubron-ArgoCD-User-Guide.pdf)

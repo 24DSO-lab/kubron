@@ -1,6 +1,6 @@
 # Contributing
 
-Please read the full [CONTRIBUTING.md](https://github.com/24DSO-labs/kubron/blob/master/CONTRIBUTING.md) in the repository. Short summary:
+Please read the full [CONTRIBUTING.md](https://github.com/24DSO-lab/kubron/blob/master/CONTRIBUTING.md) in the repository. Short summary:
 
 ## DCO for external contributions
 
@@ -37,4 +37,4 @@ go vet ./... && go test ./...
 cd frontend && npm test && npm run i18n:check
 ```
 
-Also follow the [Code of Conduct](https://github.com/24DSO-labs/kubron/blob/master/CODE_OF_CONDUCT.md).
+Also follow the [Code of Conduct](https://github.com/24DSO-lab/kubron/blob/master/CODE_OF_CONDUCT.md).

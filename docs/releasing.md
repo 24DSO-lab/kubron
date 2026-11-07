@@ -5,8 +5,8 @@ SBOM, подписи, описание релиза, публикация) де�
 
 ## Один номер версии
 
-Один тег `vX.Y.Z` задаёт версию всего: десктопных файлов, образа `ghcr.io/24dso-labs/kubron:X.Y.Z`, чарта
-`oci://ghcr.io/24dso-labs/charts/kubron` версии `X.Y.Z` (его `appVersion` тоже `X.Y.Z`) и имён файлов SBOM.
+Один тег `vX.Y.Z` задаёт версию всего: десктопных файлов, образа `ghcr.io/24DSO-lab/kubron:X.Y.Z`, чарта
+`oci://ghcr.io/24DSO-lab/charts/kubron` версии `X.Y.Z` (его `appVersion` тоже `X.Y.Z`) и имён файлов SBOM.
 
 - Источник правды — `wails.json` (`info.productVersion`) и `frontend/package.json`: `scripts/release.sh --prepare` обновляет их сам, а
   workflow'ы `release.yml` и `publish.yml` отказываются работать, если тег с ними не совпадает (для `-rc.N` сравнивается база
@@ -47,7 +47,7 @@ GitHub — основной репозиторий. GitLab (`origin`) — вто
    scripts/release.sh 0.2.0             # сам выпуск (--watch: дождаться релизного workflow)
    ```
    Если шаг 3 пропущен, скрипт остановится и подскажет выполнить `--prepare`.
-6. **Готово.** Через 10-20 минут релиз опубликован: `https://github.com/24DSO-labs/kubron/releases`.
+6. **Готово.** Через 10-20 минут релиз опубликован: `https://github.com/24DSO-lab/kubron/releases`.
    После выпуска `refactor` уже равна `master`: продолжайте работу с `git checkout refactor && git pull`.
 
 ## Чек-лист перед тегом

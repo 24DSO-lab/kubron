@@ -42,7 +42,7 @@ Release builds are produced and tested on Ubuntu 24.04. WebKitGTK 4.1 is also av
 
 ## Download
 
-All desktop builds are published on the [Releases page](https://github.com/24DSO-labs/kubron/releases).
+All desktop builds are published on the [Releases page](https://github.com/24DSO-lab/kubron/releases).
 
 | Platform | File | Contents |
 |---|---|---|
@@ -89,7 +89,7 @@ You should see `OK` next to your file name. If you see `FAILED`, delete the file
 Every desktop file carries a signed attestation that links it to the exact commit and the GitHub Actions run that built it. With the [GitHub CLI](https://cli.github.com/) installed:
 
 ```bash
-gh attestation verify Kubron_v1.0.0_linux-amd64.tar.gz --repo 24DSO-labs/kubron
+gh attestation verify Kubron_v1.0.0_linux-amd64.tar.gz --repo 24DSO-lab/kubron
 ```
 
 A successful run prints the workflow that produced the file. The same works for the `.deb` and for the Windows and macOS archives.

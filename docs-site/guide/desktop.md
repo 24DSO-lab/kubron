@@ -8,7 +8,7 @@ Check the [system requirements](/guide/installation#system-requirements) first, 
 
 ## Download
 
-Get the latest release from [GitHub Releases](https://github.com/24DSO-labs/kubron/releases):
+Get the latest release from [GitHub Releases](https://github.com/24DSO-lab/kubron/releases):
 
 | Platform | Package |
 |---|---|
@@ -28,7 +28,7 @@ Checksums are published in `SHA256SUMS.txt`, and release files include build pro
 
 ### Steps
 
-1. Download `Kubron_v<version>_windows-amd64.zip` from the [Releases page](https://github.com/24DSO-labs/kubron/releases).
+1. Download `Kubron_v<version>_windows-amd64.zip` from the [Releases page](https://github.com/24DSO-lab/kubron/releases).
 2. *(Recommended)* Verify the file: [checksum and provenance](/guide/installation#verify-your-download).
 3. Right-click the zip, open **Properties**, and tick **Unblock** if the option is shown. Or run in PowerShell:
 
@@ -205,7 +205,7 @@ Kubron creates the folder so only your user can enter it (`0700`) and writes its
 | **Update** | Replace `Kubron.exe` | Replace `Kubron.app` in Applications | `sudo apt install ./new.deb` | Replace the `Kubron` file |
 | **Uninstall** | Delete `Kubron.exe` | Drag `Kubron.app` to the Trash | `sudo apt remove kubron` | Delete the file |
 
-Your clusters and account stay in `~/.kubron` through updates. Delete that folder only if you also want to remove your data. See the [changelog](https://github.com/24DSO-labs/kubron/blob/master/CHANGELOG.md) before upgrading across major versions.
+Your clusters and account stay in `~/.kubron` through updates. Delete that folder only if you also want to remove your data. See the [changelog](https://github.com/24DSO-lab/kubron/blob/master/CHANGELOG.md) before upgrading across major versions.
 
 ## Troubleshooting
 
@@ -243,7 +243,7 @@ Kubron signs in to Azure AKS (`kubelogin`), AWS EKS and Google GKE on its own. F
 Kubron could not read `~/.kubron/users.json`, so it keeps the app closed rather than risk your data. Restore the file from a backup. See [Where Kubron keeps its data](#where-kubron-keeps-its-data).
 
 ### Still stuck?
-Search or open an issue on [GitHub](https://github.com/24DSO-labs/kubron/issues/new/choose). Include your OS version, the Kubron version and what you tried.
+Search or open an issue on [GitHub](https://github.com/24DSO-lab/kubron/issues/new/choose). Include your OS version, the Kubron version and what you tried.
 
 ## Connect a cluster
 

@@ -35,4 +35,4 @@ Desktop и Web с файловым хранилищем одного польз�
 
 Web применяет сетевую политику к исходящим запросам к chart repositories и OCI registry для снижения SSRF-риска. Для приватных или внутренних адресов репозиториев может потребоваться явный allowlist администратора; см. [конфигурацию сервера](/ru/server/configuration).
 
-Подробные руководства: [English PDF](https://github.com/24DSO-labs/kubron/blob/master/docs/DOCS/EN/Kubron-Helm-User-Guide-EN.pdf) · [Русский PDF](https://github.com/24DSO-labs/kubron/blob/master/docs/DOCS/RU/Kubron-Helm-User-Guide.pdf)
+Подробные руководства: [English PDF](https://github.com/24DSO-lab/kubron/blob/master/docs/DOCS/EN/Kubron-Helm-User-Guide-EN.pdf) · [Русский PDF](https://github.com/24DSO-lab/kubron/blob/master/docs/DOCS/RU/Kubron-Helm-User-Guide.pdf)

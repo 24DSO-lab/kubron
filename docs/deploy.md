@@ -130,14 +130,14 @@ kubectl -n kubron create secret generic kubron-secrets \
   --from-literal=KUBRON_SECRET_KEY='k1:…' \
   --from-literal=KUBRON_DATABASE_URL='postgres://kubron:…@db.example.com:5432/kubron?sslmode=verify-full'
 
-# 2. Установка (образ по умолчанию — ghcr.io/24dso-labs/kubron)
+# 2. Установка (образ по умолчанию — ghcr.io/24DSO-lab/kubron)
 helm install kubron deploy/helm/kubron -n kubron \
   --set secrets.existingSecret=kubron-secrets \
   --set image.tag=0.3.0
 ```
 
 При теге `vX.Y.Z` workflow `.github/workflows/publish.yml` публикует образ
-(`ghcr.io/24dso-labs/kubron`) и чарт (`oci://ghcr.io/24dso-labs/charts/kubron`) в ghcr.io — это и есть
+(`ghcr.io/24DSO-lab/kubron`) и чарт (`oci://ghcr.io/24DSO-lab/charts/kubron`) в ghcr.io — это и есть
 `image.repository` чарта по умолчанию. Для собственной сборки соберите образ из `Dockerfile`,
 загрузите в свой реестр и задайте `--set image.repository=…`.
 
@@ -450,21 +450,21 @@ Trivy (HIGH/CRITICAL с готовым исправлением останавл
 
 ```sh
 VERSION=0.7.0                       # версия без «v»
-IMAGE=ghcr.io/24dso-labs/kubron
-CHART=ghcr.io/24dso-labs/charts/kubron
+IMAGE=ghcr.io/24DSO-lab/kubron
+CHART=ghcr.io/24DSO-lab/charts/kubron
 
 # 1. Происхождение образа: собран workflow publish.yml этого репозитория
-gh attestation verify "oci://$IMAGE:$VERSION" --repo 24DSO-labs/kubron \
-  --signer-workflow 24DSO-labs/kubron/.github/workflows/publish.yml
+gh attestation verify "oci://$IMAGE:$VERSION" --repo 24DSO-lab/kubron \
+  --signer-workflow 24DSO-lab/kubron/.github/workflows/publish.yml
 
 # 2. SBOM образа (SPDX) и чарта (CycloneDX) как проверенные аттестации
-gh attestation verify "oci://$IMAGE:$VERSION" --repo 24DSO-labs/kubron \
+gh attestation verify "oci://$IMAGE:$VERSION" --repo 24DSO-lab/kubron \
   --predicate-type https://spdx.dev/Document/v2.3
-gh attestation verify "oci://$CHART:$VERSION" --repo 24DSO-labs/kubron \
+gh attestation verify "oci://$CHART:$VERSION" --repo 24DSO-lab/kubron \
   --predicate-type https://cyclonedx.org/bom
 
 # 3. Подпись cosign образа и чарта. Личность: workflow publish.yml на теге vX.Y.Z
-IDENTITY='^https://github\.com/24DSO-labs/kubron/\.github/workflows/publish\.yml@refs/tags/v[0-9].*$'
+IDENTITY='^https://github\.com/24DSO-lab/kubron/\.github/workflows/publish\.yml@refs/tags/v[0-9].*$'
 cosign verify "$IMAGE:$VERSION" \
   --certificate-identity-regexp "$IDENTITY" \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
@@ -497,14 +497,14 @@ spec:
               kinds: [Pod]
       verifyImages:
         - imageReferences:
-            - "ghcr.io/24dso-labs/kubron*"
+            - "ghcr.io/24DSO-lab/kubron*"
           failureAction: Enforce
           mutateDigest: true
           attestors:
             - entries:
                 - keyless:
                     issuer: https://token.actions.githubusercontent.com
-                    subjectRegExp: '^https://github\.com/24DSO-labs/kubron/\.github/workflows/publish\.yml@refs/tags/v[0-9].*$'
+                    subjectRegExp: '^https://github\.com/24DSO-lab/kubron/\.github/workflows/publish\.yml@refs/tags/v[0-9].*$'
                     rekor:
                       url: https://rekor.sigstore.dev
 ```

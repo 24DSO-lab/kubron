@@ -8,7 +8,7 @@ Desktop-версия запускает Kubron непосредственно н
 
 ## Скачать
 
-Откройте [GitHub Releases](https://github.com/24DSO-labs/kubron/releases) и скачайте сборку для своей операционной системы:
+Откройте [GitHub Releases](https://github.com/24DSO-lab/kubron/releases) и скачайте сборку для своей операционной системы:
 
 | Платформа | Пакет |
 |---|---|
@@ -28,7 +28,7 @@ Desktop-версия запускает Kubron непосредственно н
 
 ### Шаги
 
-1. Скачайте `Kubron_v<версия>_windows-amd64.zip` со страницы [Releases](https://github.com/24DSO-labs/kubron/releases).
+1. Скачайте `Kubron_v<версия>_windows-amd64.zip` со страницы [Releases](https://github.com/24DSO-lab/kubron/releases).
 2. *(Рекомендуется)* Проверьте файл: [контрольная сумма и происхождение](/ru/guide/installation#проверка-загрузки).
 3. Щёлкните zip правой кнопкой, откройте **Свойства** и, если есть такая опция, отметьте **Разблокировать**. Или выполните в PowerShell:
 
@@ -205,7 +205,7 @@ Kubron создаёт папку так, чтобы войти в неё мог 
 | **Обновление** | Заменить `Kubron.exe` | Заменить `Kubron.app` в Программах | `sudo apt install ./new.deb` | Заменить файл `Kubron` |
 | **Удаление** | Удалить `Kubron.exe` | Перетащить `Kubron.app` в Корзину | `sudo apt remove kubron` | Удалить файл |
 
-Кластеры и учётная запись остаются в `~/.kubron` при обновлениях. Удаляйте эту папку, только если хотите стереть и свои данные. Перед переходом между мажорными версиями прочитайте [журнал изменений](https://github.com/24DSO-labs/kubron/blob/master/CHANGELOG.md).
+Кластеры и учётная запись остаются в `~/.kubron` при обновлениях. Удаляйте эту папку, только если хотите стереть и свои данные. Перед переходом между мажорными версиями прочитайте [журнал изменений](https://github.com/24DSO-lab/kubron/blob/master/CHANGELOG.md).
 
 ## Если что-то не работает
 
@@ -243,7 +243,7 @@ WEBKIT_DISABLE_DMABUF_RENDERER=1 kubron
 Kubron не смог прочитать `~/.kubron/users.json` и остаётся закрытым, чтобы не рисковать вашими данными. Восстановите файл из резервной копии. См. [Где Kubron хранит данные](#где-kubron-хранит-данные).
 
 ### Остались вопросы?
-Откройте issue на [GitHub](https://github.com/24DSO-labs/kubron/issues/new/choose). Укажите версию ОС, версию Kubron и что вы уже пробовали.
+Откройте issue на [GitHub](https://github.com/24DSO-lab/kubron/issues/new/choose). Укажите версию ОС, версию Kubron и что вы уже пробовали.
 
 ## Подключение кластера
 

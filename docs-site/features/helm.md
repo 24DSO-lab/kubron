@@ -35,4 +35,4 @@ Desktop and single-user file-storage mode keep Helm configuration in the local K
 
 Web applies outbound network policy to chart repositories and OCI registries to reduce SSRF risk. Private or internal repository addresses may require an explicit operator allowlist; see [server configuration](/server/configuration).
 
-More detailed user guides: [English PDF](https://github.com/24DSO-labs/kubron/blob/master/docs/DOCS/EN/Kubron-Helm-User-Guide-EN.pdf) · [Русский PDF](https://github.com/24DSO-labs/kubron/blob/master/docs/DOCS/RU/Kubron-Helm-User-Guide.pdf)
+More detailed user guides: [English PDF](https://github.com/24DSO-lab/kubron/blob/master/docs/DOCS/EN/Kubron-Helm-User-Guide-EN.pdf) · [Русский PDF](https://github.com/24DSO-lab/kubron/blob/master/docs/DOCS/RU/Kubron-Helm-User-Guide.pdf)

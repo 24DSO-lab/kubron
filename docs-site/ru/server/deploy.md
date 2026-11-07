@@ -1,6 +1,6 @@
 # Развёртывание в Docker и Kubernetes
 
-Пошаговое руководство по запуску Web-версии (`kubron-server`) для команды: сначала в Docker, затем в Kubernetes через Helm-чарт. Оно следует [полному руководству по эксплуатации](https://github.com/24DSO-labs/kubron/blob/master/docs/deploy.md) в репозитории, которое остаётся первоисточником по продвинутым темам.
+Пошаговое руководство по запуску Web-версии (`kubron-server`) для команды: сначала в Docker, затем в Kubernetes через Helm-чарт. Оно следует [полному руководству по эксплуатации](https://github.com/24DSO-lab/kubron/blob/master/docs/deploy.md) в репозитории, которое остаётся первоисточником по продвинутым темам.
 
 Хотите сначала попробовать на ноутбуке? Используйте [быстрый запуск](/ru/server/quick-start).
 
@@ -16,7 +16,7 @@
 | **DNS-имя** | Например, `kubron.example.com` |
 | **Kubernetes 1.27+ и Helm 3** | Только для установки через Helm |
 
-В продакшне рассчитывайте на **две и более реплики**. Всё состояние лежит в PostgreSQL, поэтому реплики взаимозаменяемы (см. [высокую доступность](https://github.com/24DSO-labs/kubron/blob/master/docs/ha.md)).
+В продакшне рассчитывайте на **две и более реплики**. Всё состояние лежит в PostgreSQL, поэтому реплики взаимозаменяемы (см. [высокую доступность](https://github.com/24DSO-lab/kubron/blob/master/docs/ha.md)).
 
 ## Шаг 1. Подготовьте PostgreSQL
 
@@ -38,7 +38,7 @@ postgres://kubron:ПАРОЛЬ@db.example.com:5432/kubron?sslmode=verify-full
 Если вы подключаетесь к PostgreSQL через **PgBouncer в режиме transaction**, задайте ещё и прямой адрес в `KUBRON_DB_LISTEN_URL`: `LISTEN/NOTIFY` через пулер в этом режиме не работает.
 
 ::: tip Резервные копии
-Настройте резервное копирование PostgreSQL сразу. Ключ и базу нужно копировать **отдельно** и хранить **в разных местах**; см. [руководство по резервному копированию](https://github.com/24DSO-labs/kubron/blob/master/docs/backup.md).
+Настройте резервное копирование PostgreSQL сразу. Ключ и базу нужно копировать **отдельно** и хранить **в разных местах**; см. [руководство по резервному копированию](https://github.com/24DSO-lab/kubron/blob/master/docs/backup.md).
 :::
 
 ## Шаг 2. Сгенерируйте и сохраните ключ шифрования
@@ -66,7 +66,7 @@ docker run -d --name kubron --restart unless-stopped \
   -e KUBRON_SETUP_TOKEN='случайный-токен-не-короче-16-символов' \
   -e KUBRON_SECRET_KEY='k1:...' \
   -e KUBRON_DATABASE_URL='postgres://kubron:...@db.example.com:5432/kubron?sslmode=verify-full' \
-  ghcr.io/24dso-labs/kubron:1.0.0
+  ghcr.io/24DSO-lab/kubron:1.0.0
 ```
 
 Что делает каждая часть:
@@ -149,7 +149,7 @@ kubron:
 ### Установите
 
 ```bash
-helm install kubron oci://ghcr.io/24dso-labs/charts/kubron \
+helm install kubron oci://ghcr.io/24DSO-lab/charts/kubron \
   --version 1.0.0 -n kubron -f values.yaml
 ```
 
@@ -259,12 +259,12 @@ kubron:
 ## Обновление
 
 ```bash
-helm upgrade kubron oci://ghcr.io/24dso-labs/charts/kubron \
+helm upgrade kubron oci://ghcr.io/24DSO-lab/charts/kubron \
   --version 1.1.0 -n kubron -f values.yaml
 ```
 
-- Реплики заменяются по одной (rolling update). Миграции базы применяются автоматически при старте. Подробности работы нескольких реплик — в [руководстве по HA](https://github.com/24DSO-labs/kubron/blob/master/docs/ha.md).
-- Сначала прочитайте [журнал изменений](https://github.com/24DSO-labs/kubron/blob/master/CHANGELOG.md): в нём перечислены изменения поведения, например ролей и разрешений.
+- Реплики заменяются по одной (rolling update). Миграции базы применяются автоматически при старте. Подробности работы нескольких реплик — в [руководстве по HA](https://github.com/24DSO-lab/kubron/blob/master/docs/ha.md).
+- Сначала прочитайте [журнал изменений](https://github.com/24DSO-lab/kubron/blob/master/CHANGELOG.md): в нём перечислены изменения поведения, например ролей и разрешений.
 - Перед каждым обновлением делайте резервную копию базы.
 - Откат: `helm rollback kubron -n kubron`. Откат не отменяет миграцию базы, поэтому, если релиз менял схему и нужно вернуться дальше, восстанавливайте из резервной копии.
 
@@ -282,15 +282,15 @@ helm uninstall kubron -n kubron
 
 ```bash
 VERSION=1.0.0
-IMAGE=ghcr.io/24dso-labs/kubron
-CHART=ghcr.io/24dso-labs/charts/kubron
+IMAGE=ghcr.io/24DSO-lab/kubron
+CHART=ghcr.io/24DSO-lab/charts/kubron
 
 # Происхождение: собрано workflow publish этого репозитория
-gh attestation verify "oci://$IMAGE:$VERSION" --repo 24DSO-labs/kubron \
-  --signer-workflow 24DSO-labs/kubron/.github/workflows/publish.yml
+gh attestation verify "oci://$IMAGE:$VERSION" --repo 24DSO-lab/kubron \
+  --signer-workflow 24DSO-lab/kubron/.github/workflows/publish.yml
 
 # Подпись (keyless)
-IDENTITY='^https://github\.com/24DSO-labs/kubron/\.github/workflows/publish\.yml@refs/tags/v[0-9].*$'
+IDENTITY='^https://github\.com/24DSO-lab/kubron/\.github/workflows/publish\.yml@refs/tags/v[0-9].*$'
 cosign verify "$IMAGE:$VERSION" \
   --certificate-identity-regexp "$IDENTITY" \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
@@ -299,7 +299,7 @@ cosign verify "$CHART:$VERSION" \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
 
-Полный набор проверок, включая аттестации SBOM и политику Kyverno, запрещающую неподписанные образы, есть в [руководстве по эксплуатации](https://github.com/24DSO-labs/kubron/blob/master/docs/deploy.md).
+Полный набор проверок, включая аттестации SBOM и политику Kyverno, запрещающую неподписанные образы, есть в [руководстве по эксплуатации](https://github.com/24DSO-lab/kubron/blob/master/docs/deploy.md).
 
 ## Чек-лист усиления защиты
 
@@ -329,6 +329,6 @@ cosign verify "$CHART:$VERSION" \
 ## Подробнее
 
 - [Справочник по конфигурации](/ru/server/configuration)
-- [Высокая доступность](https://github.com/24DSO-labs/kubron/blob/master/docs/ha.md)
-- [Метрики Prometheus](https://github.com/24DSO-labs/kubron/blob/master/docs/metrics.md)
-- [Резервное копирование и восстановление](https://github.com/24DSO-labs/kubron/blob/master/docs/backup.md)
+- [Высокая доступность](https://github.com/24DSO-lab/kubron/blob/master/docs/ha.md)
+- [Метрики Prometheus](https://github.com/24DSO-lab/kubron/blob/master/docs/metrics.md)
+- [Резервное копирование и восстановление](https://github.com/24DSO-lab/kubron/blob/master/docs/backup.md)

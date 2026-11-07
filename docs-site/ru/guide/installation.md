@@ -42,7 +42,7 @@ Kubron выпускается в двух версиях: **Desktop** и **Web**
 
 ## Загрузка
 
-Все десктопные сборки публикуются на странице [Releases](https://github.com/24DSO-labs/kubron/releases).
+Все десктопные сборки публикуются на странице [Releases](https://github.com/24DSO-lab/kubron/releases).
 
 | Платформа | Файл | Содержимое |
 |---|---|---|
@@ -89,7 +89,7 @@ shasum -a 256 --check --ignore-missing SHA256SUMS.txt
 К каждому десктопному файлу прилагается подписанная аттестация, связывающая его с конкретным коммитом и запуском GitHub Actions, который его собрал. При установленном [GitHub CLI](https://cli.github.com/):
 
 ```bash
-gh attestation verify Kubron_v1.0.0_linux-amd64.tar.gz --repo 24DSO-labs/kubron
+gh attestation verify Kubron_v1.0.0_linux-amd64.tar.gz --repo 24DSO-lab/kubron
 ```
 
 Успешный запуск выведет workflow, создавший файл. То же работает для `.deb` и для архивов Windows и macOS.

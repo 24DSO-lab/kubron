@@ -1,6 +1,6 @@
 # Участие в разработке
 
-Перед отправкой изменений прочитайте [CONTRIBUTING.md](https://github.com/24DSO-labs/kubron/blob/master/CONTRIBUTING.md). Ниже — краткое резюме правил.
+Перед отправкой изменений прочитайте [CONTRIBUTING.md](https://github.com/24DSO-lab/kubron/blob/master/CONTRIBUTING.md). Ниже — краткое резюме правил.
 
 ## DCO
 
@@ -36,4 +36,4 @@ go vet ./... && go test ./...
 cd frontend && npm test && npm run i18n:check
 ```
 
-Также соблюдайте [Code of Conduct](https://github.com/24DSO-labs/kubron/blob/master/CODE_OF_CONDUCT.md).
+Также соблюдайте [Code of Conduct](https://github.com/24DSO-lab/kubron/blob/master/CODE_OF_CONDUCT.md).
