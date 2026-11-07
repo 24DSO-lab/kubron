@@ -123,7 +123,18 @@
       "start": "节点 Shell 已打开",
       "stop": "节点 Shell 已关闭"
     },
-    "ResetClusterSharedAccount": "已清除共享账户登录"
+    "ResetClusterSharedAccount": "已清除共享账户登录",
+    "GetFluxStatus": "Flux：查看状态",
+    "GetFluxKustomizations": "Flux：查看 Kustomization",
+    "GetFluxHelmReleases": "Flux：查看 HelmRelease",
+    "GetFluxSources": "Flux：查看源",
+    "GetFluxNotifications": "Flux：查看通知设置",
+    "GetFluxImageAutomation": "Flux：查看镜像自动化",
+    "GetFluxGraph": "Flux：查看关系图",
+    "ReconcileFlux": "Flux：reconcile",
+    "SuspendFlux": "Flux：暂停",
+    "ResumeFlux": "Flux：恢复",
+    "DeleteFlux": "Flux：对象已删除"
   },
   "export": {
     "csv": "导出 CSV",

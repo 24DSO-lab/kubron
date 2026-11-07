@@ -17,13 +17,18 @@
     "helm": "Helm",
     "access": "Access Control",
     "argocd": "Argo CD",
-    "argocdSettings": "Settings"
+    "argocdSettings": "Settings",
+    "flux": "Flux CD",
+    "fluxSources": "Sources",
+    "fluxNotifications": "Notifications",
+    "fluxImages": "Image automation"
   },
   "views": {
     "argoDashboard": "Dashboard",
     "helmRepos": "Repositories",
     "helmCatalog": "Catalog",
-    "helmOps": "Operations"
+    "helmOps": "Operations",
+    "fluxDashboard": "Dashboard"
   },
   "teams": "Teams"
 }

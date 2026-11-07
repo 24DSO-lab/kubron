@@ -14,6 +14,7 @@ const lazy = (path: string) => defineAsyncComponent(() => import(`../components/
  * Кастомные view, не вписывающиеся в каркас ресурсов (список + панель деталей):
  *  - overview — дашборд кластера с графиками
  *  - argo-dashboard — сводка по Argo CD Application
+ *  - flux-dashboard — сводка по объектам Flux CD
  *  - settings — форма настроек кластера
  *  - teams — команды, участники и кластеры по командам (только сервисный режим)
  *  - users — управление пользователями и ролями (только для users.manage)
@@ -27,6 +28,10 @@ export const viewRegistry: Record<string, ViewConfig> = {
   // Дашборд Argo CD (пункт группы Argo CD; видна только если в кластере есть Argo CD)
   'argo-dashboard': {
     component: lazy('ArgoDashboardView'),
+  },
+  // Дашборд Flux CD (пункт группы Flux CD; видна только если в кластере есть Flux)
+  'flux-dashboard': {
+    component: lazy('FluxDashboardView'),
   },
   'helm-repos': { component: lazy('HelmReposView') },
 'helm-catalog': { component: lazy('HelmCatalogView') },

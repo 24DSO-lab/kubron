@@ -10,8 +10,8 @@ export interface NavGroupMeta {
   expanded: boolean
   /** Группа вложена в другую (рисуется внутри неё, в NAV_ORDER не указывается) */
   parent?: NavGroupId
-  /** Группа показывается, только если выполнено условие (например, в кластере есть Argo CD) */
-  requires?: 'argocd'
+  /** Группа показывается, только если выполнено условие (например, в кластере есть Argo CD или Flux) */
+  requires?: 'argocd' | 'flux'
   /** Пункты-кастомные view (viewRegistry), которые стоят в группе перед пунктами ресурсов */
   views?: NavItem[]
 }
@@ -38,6 +38,16 @@ export const NAV_GROUPS: Record<NavGroupId, NavGroupMeta> = {
     views: [{ view: 'argo-dashboard', label: 'nav.views.argoDashboard' }],
   },
   'argocd-settings': { title: 'nav.groups.argocdSettings', expanded: false, parent: 'argocd' },
+  flux: {
+    title: 'nav.groups.flux',
+    expanded: true,
+    requires: 'flux',
+    views: [{ view: 'flux-dashboard', label: 'nav.views.fluxDashboard' }],
+  },
+  // Подгруппы показываются, только если в кластере есть соответствующий контроллер Flux (см. Sidebar.vue)
+  'flux-sources': { title: 'nav.groups.fluxSources', expanded: false, parent: 'flux', requires: 'flux' },
+  'flux-notifications': { title: 'nav.groups.fluxNotifications', expanded: false, parent: 'flux', requires: 'flux' },
+  'flux-images': { title: 'nav.groups.fluxImages', expanded: false, parent: 'flux', requires: 'flux' },
 }
 
 /**
@@ -50,7 +60,7 @@ const NAV_ORDER: string[] = [
   'namespaces',
   'workloads', 'config', 'network', 'storage',
   
-  'helm', 'access', 'argocd',
+  'helm', 'access', 'argocd', 'flux',
 ]
 
 export interface NavItem { view: string; label: string; icon?: string }
@@ -119,6 +129,10 @@ function groupIcon(id: NavGroupId): string {
     case 'access': return 'service-account'
     case 'argocd': return 'documentation'
     case 'argocd-settings': return 'documentation'
+    case 'flux': return 'documentation'
+    case 'flux-sources': return 'documentation'
+    case 'flux-notifications': return 'documentation'
+    case 'flux-images': return 'documentation'
     default: return ''
   }
 }

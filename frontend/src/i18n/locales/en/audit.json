@@ -123,7 +123,18 @@
       "start": "Node shell opened",
       "stop": "Node shell closed"
     },
-    "ResetClusterSharedAccount": "Shared account sign-in forgotten"
+    "ResetClusterSharedAccount": "Shared account sign-in forgotten",
+    "GetFluxStatus": "Flux: status viewed",
+    "GetFluxKustomizations": "Flux: Kustomizations viewed",
+    "GetFluxHelmReleases": "Flux: HelmReleases viewed",
+    "GetFluxSources": "Flux: sources viewed",
+    "GetFluxNotifications": "Flux: notification settings viewed",
+    "GetFluxImageAutomation": "Flux: image automation viewed",
+    "GetFluxGraph": "Flux: graph viewed",
+    "ReconcileFlux": "Flux: reconcile",
+    "SuspendFlux": "Flux: suspend",
+    "ResumeFlux": "Flux: resume",
+    "DeleteFlux": "Flux: object deleted"
   },
   "export": {
     "csv": "Export CSV",
