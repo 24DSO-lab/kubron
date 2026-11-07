@@ -1,9 +1,10 @@
 # Выпуск релизов
 
-Релизы выпускаются скриптом:
+Релиз выпускается в два шага:
 
 ```bash
-scripts/release.sh X.Y.Z
+scripts/release.sh X.Y.Z --prepare   # в рабочей ветке, до слияния в dev
+scripts/release.sh X.Y.Z             # из dev, когда dev зелёный
 ```
 
 Полный процесс, настройки GitHub и устранение неполадок описаны в [docs/releasing.md](https://github.com/24DSO-labs/kubron/blob/master/docs/releasing.md).
