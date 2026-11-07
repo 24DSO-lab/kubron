@@ -96,4 +96,4 @@ The encryption key format is `id:base64`, where the base64 value encodes exactly
 
 The server does not terminate TLS. Use a trusted reverse proxy or ingress, configure trusted proxy headers only when direct access to the pod is restricted, and keep the metrics listener off the public ingress.
 
-See the full [deployment guide](https://github.com/24DSO-lab/kubron/blob/master/docs/deploy.md) and [metrics reference](https://github.com/24DSO-lab/kubron/blob/master/docs/metrics.md).
+See the full [deployment guide](https://github.com/24DSO-lab/kubron/blob/master/docs/deploy.md) and [metrics reference](/server/observability).

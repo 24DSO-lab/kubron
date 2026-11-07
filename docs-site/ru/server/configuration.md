@@ -96,4 +96,4 @@ Web-версия (`kubron-server`) настраивается переменны
 
 Сервер не завершает TLS. Используйте доверенный reverse proxy или ingress. Доверяйте proxy-заголовкам только если прямой доступ к pod ограничен. Не публикуйте listener метрик через внешний ingress.
 
-Подробности — в [руководстве по развёртыванию](https://github.com/24DSO-lab/kubron/blob/master/docs/deploy.md) и [описании метрик](https://github.com/24DSO-lab/kubron/blob/master/docs/metrics.md).
+Подробности — в [руководстве по развёртыванию](https://github.com/24DSO-lab/kubron/blob/master/docs/deploy.md) и [описании метрик](/ru/server/observability).

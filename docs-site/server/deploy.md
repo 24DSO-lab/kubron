@@ -16,7 +16,7 @@ Want to try it on your laptop first? Use the [quick start](/server/quick-start).
 | **A DNS name** | For example `kubron.example.com` |
 | **Kubernetes 1.27+ and Helm 3** | Only for the Helm installation |
 
-Plan for **two or more replicas** in production. All state is in PostgreSQL, so replicas are interchangeable (see [high availability](https://github.com/24DSO-lab/kubron/blob/master/docs/ha.md)).
+Plan for **two or more replicas** in production. All state is in PostgreSQL, so replicas are interchangeable (see [high availability](/server/ha)).
 
 ## Step 1. Prepare PostgreSQL
 
@@ -38,7 +38,7 @@ postgres://kubron:PASSWORD@db.example.com:5432/kubron?sslmode=verify-full
 If you reach PostgreSQL through **PgBouncer in transaction mode**, also provide a direct address in `KUBRON_DB_LISTEN_URL`, because `LISTEN/NOTIFY` does not work through a transaction-mode pooler.
 
 ::: tip Backups
-Schedule PostgreSQL backups now. The key and the database must be backed up **separately** and stored in **different places**; see the [backup guide](https://github.com/24DSO-lab/kubron/blob/master/docs/backup.md).
+Schedule PostgreSQL backups now. The key and the database must be backed up **separately** and stored in **different places**; see the [backup guide](/server/backup).
 :::
 
 ## Step 2. Generate and store the encryption key
@@ -214,6 +214,9 @@ KUBRON_PUBLIC_URL=https://kubron.example.com
 - Production requires `https`. `http` is accepted only for local development on `localhost`, a `.localhost` name or a loopback IP.
 - It must be an absolute URL with no path, credentials, query or fragment. The server validates it at startup and refuses to start with an unsafe value.
 - Register `https://kubron.example.com/auth/cluster/callback` as a redirect URI on the identity provider's web client.
+- The organization administrator then enters that web client's public **client ID and its issuer** in the users section. Both are required: a client ID without an issuer is not applied.
+- The web client is used only for clusters whose kubeconfig names the same issuer and uses authorization-code sign-in. Other clusters and other sign-in kinds (`password`, `device-code`, `authcode-keyboard`, legacy refresh) keep the client from their own kubeconfig. One web client covers one identity provider.
+- Until both the public URL and the client are set, users complete browser sign-in by pasting the address the provider redirected to (`paste-redirect`). If you change or delete the client, users who signed in through it are asked to sign in again.
 - Make sure your proxy passes callback requests through without changing their query parameters.
 
 With Helm, use `kubron.extraEnv`:
@@ -263,7 +266,7 @@ helm upgrade kubron oci://ghcr.io/24DSO-lab/charts/kubron \
   --version 1.1.0 -n kubron -f values.yaml
 ```
 
-- Replicas are replaced one by one with a rolling update. Database migrations run automatically on startup. Details for multi-replica operation are in the [HA guide](https://github.com/24DSO-lab/kubron/blob/master/docs/ha.md).
+- Replicas are replaced one by one with a rolling update. Database migrations run automatically on startup. Details for multi-replica operation are in the [HA guide](/server/ha).
 - Read the [changelog](https://github.com/24DSO-lab/kubron/blob/master/CHANGELOG.md) first. It lists behaviour changes, for example roles and permissions.
 - Take a database backup before every upgrade.
 - To roll back: `helm rollback kubron -n kubron`. A rollback cannot undo a database migration, so restore from backup if a release changed the schema and you need to go back further.
@@ -329,6 +332,8 @@ The full set of checks, including SBOM attestations and a Kyverno policy that bl
 ## Learn more
 
 - [Configuration reference](/server/configuration)
-- [High availability](https://github.com/24DSO-lab/kubron/blob/master/docs/ha.md)
-- [Prometheus metrics](https://github.com/24DSO-lab/kubron/blob/master/docs/metrics.md)
-- [Backup and restore](https://github.com/24DSO-lab/kubron/blob/master/docs/backup.md)
+- [High availability](/server/ha)
+- [Logging, audit and metrics](/server/observability)
+- [Backup, restore and key rotation](/server/backup)
+- [HTTP security](/server/http-security)
+- [Command reference](/server/cli)

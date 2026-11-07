@@ -26,12 +26,18 @@ The server does not terminate TLS itself. Do not expose its HTTP listener direct
 
 The image is published as `ghcr.io/24DSO-lab/kubron`. The chart is available at `oci://ghcr.io/24DSO-lab/charts/kubron`.
 
-- [Quick start](/server/quick-start)
+- [Local quick start](/server/quick-start)
 - [Docker and Kubernetes deployment](/server/deploy)
 - [Configuration reference](/server/configuration)
-- [Full deployment and operations guide](https://github.com/24DSO-lab/kubron/blob/master/docs/deploy.md)
-- [High availability operations](https://github.com/24DSO-lab/kubron/blob/master/docs/ha.md)
-- [Prometheus metrics](https://github.com/24DSO-lab/kubron/blob/master/docs/metrics.md)
+
+## Operate it
+
+- [Backup, restore and key rotation](/server/backup)
+- [High availability](/server/ha)
+- [Logging, audit and metrics](/server/observability)
+- [HTTP security](/server/http-security)
+- [Command reference](/server/cli) (`create-admin`, `rekey`, `import-files`)
+- [Full deployment and operations guide](https://github.com/24DSO-lab/kubron/blob/master/docs/deploy.md) in the repository
 
 ::: warning Security
 Generate and back up `KUBRON_SECRET_KEY` before the first production start. Losing it makes encrypted credentials unrecoverable. Terminate TLS at a trusted proxy and restrict direct access to the server and metrics ports.

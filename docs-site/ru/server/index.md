@@ -26,12 +26,18 @@ Web-версия запускает Kubron как самостоятельно �
 
 - Образ: `ghcr.io/24DSO-lab/kubron`.
 - OCI chart: `oci://ghcr.io/24DSO-lab/charts/kubron`.
-- [Быстрый запуск](/ru/server/quick-start).
+- [Локальный быстрый запуск](/ru/server/quick-start).
 - [Docker и Kubernetes](/ru/server/deploy).
-- [Конфигурация](/ru/server/configuration).
-- [Полное руководство по развёртыванию](https://github.com/24DSO-lab/kubron/blob/master/docs/deploy.md).
-- [Эксплуатация HA](https://github.com/24DSO-lab/kubron/blob/master/docs/ha.md).
-- [Метрики Prometheus](https://github.com/24DSO-lab/kubron/blob/master/docs/metrics.md).
+- [Справочник по конфигурации](/ru/server/configuration).
+
+## Эксплуатация
+
+- [Резервное копирование, восстановление и ротация ключа](/ru/server/backup).
+- [Высокая доступность](/ru/server/ha).
+- [Журналы, аудит и метрики](/ru/server/observability).
+- [Безопасность HTTP](/ru/server/http-security).
+- [Справочник команд](/ru/server/cli) (`create-admin`, `rekey`, `import-files`).
+- [Полное руководство по развёртыванию и эксплуатации](https://github.com/24DSO-lab/kubron/blob/master/docs/deploy.md) в репозитории.
 
 ::: warning Безопасность
 Создайте и сохраните резервную копию `KUBRON_SECRET_KEY` до первого production-запуска. Потерянный ключ невозможно восстановить, а зашифрованные credentials станут недоступны. TLS должен завершаться на доверенном proxy; ограничьте прямой доступ к серверу и порту метрик.

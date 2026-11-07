@@ -13,6 +13,8 @@ export default defineConfig({
 
   lang: 'en-US',
   base,
+  // Hosting notes for maintainers are not part of the public site
+  srcExclude: ['README.md', 'DOMAIN.md'],
   appearance: 'dark',
   head: [
     ['link', { rel: 'icon', href: `${base}favicon.svg`, type: 'image/svg+xml' }],
@@ -63,7 +65,12 @@ export default defineConfig({
             { text: 'Overview', link: '/server/' },
             { text: 'Local quick start', link: '/server/quick-start' },
             { text: 'Docker & Kubernetes', link: '/server/deploy' },
-            { text: 'Configuration', link: '/server/configuration' }
+            { text: 'Configuration', link: '/server/configuration' },
+            { text: 'Backup & key rotation', link: '/server/backup' },
+            { text: 'High availability', link: '/server/ha' },
+            { text: 'Logging, audit & metrics', link: '/server/observability' },
+            { text: 'HTTP security', link: '/server/http-security' },
+            { text: 'Command reference', link: '/server/cli' }
           ]}],
           '/development/': [{ text: 'Development', items: [
             { text: 'Overview', link: '/development/' },
@@ -114,7 +121,12 @@ export default defineConfig({
             { text: 'Обзор', link: '/ru/server/' },
             { text: 'Локальный быстрый запуск', link: '/ru/server/quick-start' },
             { text: 'Docker и Kubernetes', link: '/ru/server/deploy' },
-            { text: 'Конфигурация', link: '/ru/server/configuration' }
+            { text: 'Конфигурация', link: '/ru/server/configuration' },
+            { text: 'Резервное копирование и ключи', link: '/ru/server/backup' },
+            { text: 'Высокая доступность', link: '/ru/server/ha' },
+            { text: 'Журналы, аудит и метрики', link: '/ru/server/observability' },
+            { text: 'Безопасность HTTP', link: '/ru/server/http-security' },
+            { text: 'Справочник команд', link: '/ru/server/cli' }
           ]}],
           '/ru/development/': [{ text: 'Разработка', items: [
             { text: 'Обзор', link: '/ru/development/' },

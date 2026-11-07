@@ -51,7 +51,7 @@ Kubron выпускается в двух версиях: **Desktop** и **Web**
 | Linux (x64) | `Kubron_v<версия>_linux-amd64.tar.gz` | Исполняемый файл `Kubron` |
 | Debian / Ubuntu (x64) | `kubron_<версия>_amd64.deb` | Пакет с пунктом меню и иконкой |
 | Все | `SHA256SUMS.txt` | Контрольные суммы всех файлов |
-| Все | `kubron-sbom_v<версия>_*.json` | Спецификации состава ПО (CycloneDX / SPDX) |
+| Все | `kubron-sbom_v<версия>_desktop.cdx.json`, `kubron-sbom_<версия>_image.spdx.json`, `kubron-sbom_<версия>_chart.cdx.json` | Спецификации состава ПО для десктопных файлов, образа сервера и Helm-чарта (`v` есть только в имени десктопного файла) |
 
 Например, версия 1.0.0 — это `Kubron_v1.0.0_windows-amd64.zip` и `kubron_1.0.0_amd64.deb`. Обратите внимание: в именах архивов есть `v` из тега релиза, а в имени `.deb` его нет.
 

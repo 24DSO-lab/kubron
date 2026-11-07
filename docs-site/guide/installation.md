@@ -51,7 +51,7 @@ All desktop builds are published on the [Releases page](https://github.com/24DSO
 | Linux (x64) | `Kubron_v<version>_linux-amd64.tar.gz` | `Kubron` executable |
 | Debian / Ubuntu (x64) | `kubron_<version>_amd64.deb` | Package with menu entry and icon |
 | All | `SHA256SUMS.txt` | Checksums of every file |
-| All | `kubron-sbom_v<version>_*.json` | Software bills of materials (CycloneDX / SPDX) |
+| All | `kubron-sbom_v<version>_desktop.cdx.json`, `kubron-sbom_<version>_image.spdx.json`, `kubron-sbom_<version>_chart.cdx.json` | Software bills of materials for the desktop files, the server image and the Helm chart (note that only the desktop file name has the `v`) |
 
 For example, version 1.0.0 is `Kubron_v1.0.0_windows-amd64.zip` and `kubron_1.0.0_amd64.deb`. Note that the archive names include the `v` from the release tag, while the `.deb` file does not.
 
