@@ -174,7 +174,7 @@ On the first start Kubron has no users yet, so it asks you to create the local a
 Afterwards Kubron shows a sign-in form when it starts. The account lives only on your computer; it is not an online account and nothing is sent anywhere.
 
 ::: tip Auto-logout
-For safety, Kubron signs you out after a period of inactivity (15 minutes by default; an administrator can change it or turn it off).
+For safety, Kubron signs you out after a period of inactivity (15 minutes by default; an administrator can change it or turn it off). When it happens, open terminals, port-forwards and log streams are closed too.
 :::
 
 Next, [add your first cluster](/guide/first-cluster).

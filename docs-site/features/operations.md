@@ -15,14 +15,14 @@ From resource details and workload views you can:
 - inspect Deployment rollout revisions and roll back to a previous revision;
 - retry Jobs, trigger CronJobs and change their suspended state.
 
-Actions that change cluster state are permission-checked by Kubron and Kubernetes.
+Scaling, restarting, rolling back, retrying Jobs and triggering or suspending CronJobs need the Kubron `operate` permission. Evicting a Pod needs the stronger `write` permission, and terminals need `exec`. Every action is also checked by Kubernetes RBAC. See the [permission reference](/features/security#permission-reference).
 
 ## Nodes
 
 Inspect node details and perform common maintenance actions:
 
-- cordon a node to stop scheduling new Pods;
-- drain a node to evict eligible workloads;
+- cordon a node to stop scheduling new Pods (`operate`);
+- drain a node to evict eligible workloads (`write`);
 - open a node shell when explicitly permitted.
 
 The node shell is a privileged operation: it uses a privileged helper Pod with access to the host. It has a separate Kubron permission (`nodeshell`); by default, only administrators receive it.

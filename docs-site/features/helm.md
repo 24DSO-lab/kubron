@@ -9,6 +9,10 @@ Kubron includes Helm workflows for managing releases and chart sources without l
 - Review revision history and compare two revisions.
 - Roll back to a previous revision or uninstall a release; optionally keep release history.
 
+## Permissions
+
+Installing, upgrading and uninstalling releases needs the Kubron `write` permission. Rolling back a release needs `operate`. Reading release values, manifests, revision diffs and upgrade previews needs `secrets.read`, because they can contain secrets. Adding or removing repositories and OCI registries needs `clusters.manage`. See the [permission reference](/features/security#permission-reference).
+
 ## Chart catalog and repositories
 
 - Add, update and remove HTTP chart repositories.
@@ -21,8 +25,8 @@ Kubron includes Helm workflows for managing releases and chart sources without l
 
 - Preview an installation or upgrade with a dry-run.
 - Review the rendered manifest diff before applying it.
-- Reuse existing values, edit them or upgrade only the chart version.
-- Follow operation progress and inspect the recent Helm operation journal.
+- Start from the release's current user-supplied values, edit them, or change only the chart version. Values you submit replace the previous ones as a whole, so a key you remove in the editor returns to the chart default.
+- Follow operation progress and inspect the recent Helm operation journal. An install or upgrade in progress can be cancelled; a rollback or an uninstall cannot.
 - Check whether a newer chart version is available for an installed release.
 
 ## Desktop and Web storage

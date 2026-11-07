@@ -6,6 +6,7 @@ Kubron предоставляет каталог стандартных объе
 
 Представления охватывают основные группы Kubernetes:
 
+- **Кластер:** Nodes, Namespaces и CustomResourceDefinitions.
 - **Workloads:** Pods, Deployments, StatefulSets, DaemonSets, ReplicaSets, Jobs и CronJobs.
 - **Сеть:** Services, Endpoints, EndpointSlices, Ingresses, IngressClasses и NetworkPolicies.
 - **Конфигурация:** ConfigMaps, Secrets и Events.

@@ -23,7 +23,7 @@ Bulk actions report their result per Application, so a failure on one item does 
 
 ## Access and permissions
 
-Argo CD actions are subject to Kubron permissions and Kubernetes RBAC. Changes made through Kubron are sent to the Argo CD resources in the cluster. Kubron does not replace Argo CD's own reconciliation engine or project policies.
+Syncing, refreshing, terminating an operation and rolling back need the Kubron `operate` permission. Suspending or resuming auto-sync and deleting an Application need `write`. All of them are also subject to Kubernetes RBAC; see the [permission reference](/features/security#permission-reference). Changes made through Kubron are sent to the Argo CD resources in the cluster. Kubron does not replace Argo CD's own reconciliation engine or project policies.
 
 An optional published Argo CD URL can be configured in cluster settings. When present, Kubron can open that address directly; otherwise, the UI can use the configured port-forward path where available.
 

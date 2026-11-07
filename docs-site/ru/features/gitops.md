@@ -23,7 +23,7 @@ Kubron включает интеграцию с Argo CD в рабочее про
 
 ## Доступ и разрешения
 
-Действия с Argo CD проверяются разрешениями Kubron и Kubernetes RBAC. Изменения, сделанные через Kubron, отправляются в ресурсы Argo CD в кластере. Kubron не заменяет собственный reconciliation engine и project policies Argo CD.
+Sync, refresh, прерывание операции и откат требуют права Kubron `operate`. Приостановка и возобновление auto-sync и удаление Application требуют `write`. Все они дополнительно проверяются Kubernetes RBAC; см. [справочник прав](/ru/features/security#справочник-прав). Изменения, сделанные через Kubron, отправляются в ресурсы Argo CD в кластере. Kubron не заменяет собственный reconciliation engine и project policies Argo CD.
 
 В настройках кластера можно указать опубликованный URL Argo CD. Если он задан, Kubron открывает этот адрес напрямую; иначе интерфейс может использовать настроенный port-forward, если он доступен.
 

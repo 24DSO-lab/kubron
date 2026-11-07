@@ -15,15 +15,15 @@ A team member can see and operate only the clusters owned by teams they belong t
 
 ## Manage teams
 
-Organization administrators can create, rename and delete teams, manage organization users, and assign team membership. Team administrators can manage their team's members and clusters.
+Organization administrators (those with the `users.manage` permission) can create, rename and delete teams, manage organization users, and assign team membership. A team administrator can also rename the team. Team administrators can manage their team's members and clusters.
 
 A team administrator can:
 
-- add a cluster to the team;
+- add a cluster to the team, including the cluster Kubron itself runs in (using the server's ServiceAccount);
 - update its connection and display settings;
 - manage membership and team roles, subject to the organization-level rules.
 
-A team cannot be deleted while it still owns clusters. Cluster transfers are explicit administrative operations.
+A team can be deleted only when it is empty: move or delete its clusters first. Moving a cluster to another team is an explicit operation that requires administrator rights in both the current and the new team.
 
 ## Roles within a team
 

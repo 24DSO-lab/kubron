@@ -6,6 +6,7 @@ Kubron provides a resource browser for common Kubernetes objects and dynamically
 
 Resource views cover the main Kubernetes areas:
 
+- **Cluster:** Nodes, Namespaces and CustomResourceDefinitions.
 - **Workloads:** Pods, Deployments, StatefulSets, DaemonSets, ReplicaSets, Jobs and CronJobs.
 - **Networking:** Services, Endpoints, EndpointSlices, Ingresses, IngressClasses and NetworkPolicies.
 - **Configuration:** ConfigMaps, Secrets and Events.

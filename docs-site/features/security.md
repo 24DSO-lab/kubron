@@ -14,6 +14,25 @@ Kubron has local user accounts and three built-in roles:
 
 Permissions are granular: resource read, `secrets.read`, `operate`, `write`, `exec`, `nodeshell`, `portforward`, cluster management, user management and audit access. For example, reading Secret values is separate from listing Secret objects.
 
+## Permission reference
+
+The backend checks one of these permissions for every protected operation. Roles are bundles of permissions: `user` has `read`; `operator` adds `secrets.read` and `operate`; `admin` has all of them.
+
+| Permission | What it allows | Roles |
+|---|---|---|
+| `read` | Browse resources, logs, events, YAML and metrics; list Helm releases, repositories and Argo CD objects | all |
+| `secrets.read` | Secret values; Helm release values, manifests and revision diffs, and upgrade previews; certificate expiry on the dashboard | `operator`, `admin` |
+| `operate` | Scale, restart and roll back workloads; retry Jobs, trigger and suspend CronJobs; cordon nodes; roll back Helm releases; sync, refresh, terminate and roll back Argo CD applications | `operator`, `admin` |
+| `write` | Apply, create and delete YAML; edit ConfigMaps and Secrets; evict Pods; drain nodes; install, upgrade and uninstall Helm releases; install or remove the metrics stack; suspend or resume Argo CD auto-sync and delete applications | `admin` |
+| `exec` | Pod terminals | `admin` |
+| `nodeshell` | Node shell (privileged host access) | `admin` |
+| `portforward` | Port-forward | `admin` |
+| `clusters.manage` | Add, change and remove clusters; manage Helm repositories and OCI registries | `admin` |
+| `users.manage` | Manage users, roles and teams | `admin` |
+| `audit.read` | View and export the audit log | `admin` |
+
+The list covers the main actions and is not exhaustive. Kubernetes RBAC applies on top: a Kubron permission never grants more than the cluster credentials allow.
+
 ## Web team isolation
 
 In PostgreSQL-backed Web team mode, a cluster belongs to one team and the user's role in that team determines the Kubron permissions for that cluster. An organization administrator can manage users and teams but does not automatically gain access to cluster data without team membership. Kubernetes RBAC remains an independent, additional restriction.
