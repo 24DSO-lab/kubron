@@ -18,7 +18,7 @@ const (
 	// fluxMaxActionObjects — предел объектов за один вызов reconcile, suspend и resume.
 	fluxMaxActionObjects = 200
 	// fluxActionTimeout — таймаут одного вызова действия.
-	fluxActionTimeout = 60 * time.Second
+	fluxActionTimeout = 60 * time.Second //nolint:unused // контракт: используется исполнителями действий (B.8, B.9)
 )
 
 // Группы API Flux.

@@ -74,17 +74,32 @@ func TestCRDCacheListNotSyncedAndFilterBeforeParse(t *testing.T) {
 			crdObj("Widget", "ns-a", "y", nil),
 			crdObj("Widget", "ns-b", "z", nil),
 		)
+		// Начальный LIST заблокирован до release: кэш гарантированно не синхронизирован. Полагаться на то, что
+		// горутины informer «ещё не успели» отработать, нельзя: в synctest они идут параллельно с тестом.
+		release := make(chan struct{})
+		dyn.PrependReactor("list", "widgets", func(clienttesting.Action) (bool, runtime.Object, error) {
+			<-release
+			return false, nil, nil
+		})
 		var parsed atomic.Int32
 		c := newWidgetCache(t, dyn, crdCacheConfig[widgetInfo]{
 			Parse: func(u *unstructured.Unstructured) widgetInfo { parsed.Add(1); return parseWidget(u) },
 		})
 		defer c.stop()
+		defer func() { // на пути t.Fatalf informer не должен остаться заблокированным
+			select {
+			case <-release:
+			default:
+				close(release)
+			}
+		}()
 
-		// Горутины informer в «пузыре» ещё не запускались: кэш гарантированно не синхронизирован.
+		synctest.Wait()
 		if got, ok := c.list(nsScope{}); ok || got != nil {
 			t.Fatalf("before sync the list must be (nil, false): ok=%v %+v", ok, got)
 		}
 
+		close(release)
 		synctest.Wait()
 		got, ok := c.list(nsScope{names: []string{"ns-a"}})
 		if !ok || len(got) != 2 {

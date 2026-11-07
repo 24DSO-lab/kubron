@@ -13,7 +13,7 @@ var (
 	errFluxNotImplemented = errors.New("not implemented yet")
 
 	// errFluxNotInstalled — Flux не найден в активном кластере (нет CRD или нет прав их увидеть).
-	errFluxNotInstalled = errors.New("Flux is not installed in this cluster")
+	errFluxNotInstalled = errors.New("Flux is not installed in this cluster") //nolint:unused // контракт: используется исполнителями действий (B.8, B.9)
 
 	// errFluxKindUnsupported — вид объекта не поддерживается для этого действия (таблица flux_kinds.go).
 	errFluxKindUnsupported = errors.New("this action is not supported for the kind of the object")
@@ -22,17 +22,17 @@ var (
 	errFluxInvalidRef = errors.New("invalid reference to a Flux object")
 
 	// errFluxNoObjects — действие вызвано с пустым списком объектов.
-	errFluxNoObjects = errors.New("no objects selected")
+	errFluxNoObjects = errors.New("no objects selected") //nolint:unused // контракт: используется исполнителями действий (B.8, B.9)
 
 	// errFluxTooManyObjects — в одном вызове больше fluxMaxActionObjects объектов.
-	errFluxTooManyObjects = errors.New("too many objects in one call: the maximum is 200")
+	errFluxTooManyObjects = errors.New("too many objects in one call: the maximum is 200") //nolint:unused // контракт: используется исполнителями действий (B.8, B.9)
 
 	// errFluxVersionUnsupported — CRD есть, но обслуживается только версия API вне списка поддерживаемых.
 	errFluxVersionUnsupported = errors.New("the Flux API version is not supported: update Flux to 2.3 or newer")
 
 	// errFluxDeleting — объект уже удаляется (deletionTimestamp).
-	errFluxDeleting = errors.New("the object is being deleted")
+	errFluxDeleting = errors.New("the object is being deleted") //nolint:unused // контракт: используется исполнителями действий (B.8, B.9)
 
 	// errFluxSuspended — объект приостановлен: действие не имеет эффекта, пока его не возобновят.
-	errFluxSuspended = errors.New("the object is suspended: resume it first")
+	errFluxSuspended = errors.New("the object is suspended: resume it first") //nolint:unused // контракт: используется исполнителями действий (B.8, B.9)
 )
