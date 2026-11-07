@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/24DSO-labs/kubron/internal/credential"
+	"github.com/24DSO-lab/kubron/internal/credential"
 )
 
 // AuthRequiredEvery — не чаще, чем раз в этот срок сессии отправляется событие «нужен вход» по одному кластеру:

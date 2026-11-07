@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/24DSO-labs/kubron/internal/credential"
+	"github.com/24DSO-lab/kubron/internal/credential"
 )
 
 // browser plays the user's browser for the desktop loopback flow: it follows the provider's redirect to the

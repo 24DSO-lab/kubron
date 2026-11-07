@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/24DSO-labs/kubron/internal/netpolicy"
+	"github.com/24DSO-lab/kubron/internal/netpolicy"
 )
 
 type fixedResolver map[string]netip.Addr

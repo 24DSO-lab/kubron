@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/24DSO-labs/kubron/internal/credential"
-	"github.com/24DSO-labs/kubron/internal/credential/credtest"
-	"github.com/24DSO-labs/kubron/internal/secrets"
+	"github.com/24DSO-lab/kubron/internal/credential"
+	"github.com/24DSO-lab/kubron/internal/credential/credtest"
+	"github.com/24DSO-lab/kubron/internal/secrets"
 )
 
 // Two credential.Service instances (replicas) over ONE PostgreSQL refresh the same subject over and over while

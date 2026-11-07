@@ -13,9 +13,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/24DSO-labs/kubron/internal/credential"
-	"github.com/24DSO-labs/kubron/internal/idpnet"
-	"github.com/24DSO-labs/kubron/internal/netpolicy"
+	"github.com/24DSO-lab/kubron/internal/credential"
+	"github.com/24DSO-lab/kubron/internal/idpnet"
+	"github.com/24DSO-lab/kubron/internal/netpolicy"
 )
 
 func signInWithPassword(t *testing.T, idp *fakeIdP, env credential.Env, extra map[string]string) (credential.Result, error) {

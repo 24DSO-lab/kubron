@@ -10,7 +10,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/24DSO-labs/kubron/internal/credential"
+	"github.com/24DSO-lab/kubron/internal/credential"
 )
 
 // FieldServiceAccountJSON is the name of the answer field (the UI label is credential.field.serviceAccountJson).

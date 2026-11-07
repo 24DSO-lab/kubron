@@ -12,7 +12,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/24DSO-labs/kubron/internal/auth"
+	"github.com/24DSO-lab/kubron/internal/auth"
 )
 
 // Первичная настройка в сервисном режиме. SetupAdmin анонимен (иначе первого администратора нечем создать), поэтому

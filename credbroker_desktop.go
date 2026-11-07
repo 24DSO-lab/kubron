@@ -8,12 +8,12 @@ import (
 	"log/slog"
 	"path/filepath"
 
-	"github.com/24DSO-labs/kubron/internal/app"
-	"github.com/24DSO-labs/kubron/internal/credential"
-	"github.com/24DSO-labs/kubron/internal/credential/filestore"
-	"github.com/24DSO-labs/kubron/internal/k8s"
-	wailsplatform "github.com/24DSO-labs/kubron/internal/platform/wails"
-	"github.com/24DSO-labs/kubron/internal/secrets"
+	"github.com/24DSO-lab/kubron/internal/app"
+	"github.com/24DSO-lab/kubron/internal/credential"
+	"github.com/24DSO-lab/kubron/internal/credential/filestore"
+	"github.com/24DSO-lab/kubron/internal/k8s"
+	wailsplatform "github.com/24DSO-lab/kubron/internal/platform/wails"
+	"github.com/24DSO-lab/kubron/internal/secrets"
 )
 
 // setupDesktopBroker builds the sign-in broker of the desktop: the master key is in the system keyring (or, with a

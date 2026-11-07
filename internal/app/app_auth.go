@@ -12,11 +12,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/24DSO-labs/kubron/internal/audit"
-	"github.com/24DSO-labs/kubron/internal/auth"
-	"github.com/24DSO-labs/kubron/internal/k8s"
-	"github.com/24DSO-labs/kubron/internal/signin"
-	"github.com/24DSO-labs/kubron/internal/store"
+	"github.com/24DSO-lab/kubron/internal/audit"
+	"github.com/24DSO-lab/kubron/internal/auth"
+	"github.com/24DSO-lab/kubron/internal/k8s"
+	"github.com/24DSO-lab/kubron/internal/signin"
+	"github.com/24DSO-lab/kubron/internal/store"
 )
 
 // initAuth открывает хранилище пользователей. Если файл повреждён, приложение остаётся

@@ -17,9 +17,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/24DSO-labs/kubron/internal/replicaevents"
-	"github.com/24DSO-labs/kubron/internal/termbuf"
-	"github.com/24DSO-labs/kubron/internal/websession"
+	"github.com/24DSO-lab/kubron/internal/replicaevents"
+	"github.com/24DSO-lab/kubron/internal/termbuf"
+	"github.com/24DSO-lab/kubron/internal/websession"
 )
 
 // Session — веб-сессия браузера: привязывает cookie к пользователю и CSRF-токену.

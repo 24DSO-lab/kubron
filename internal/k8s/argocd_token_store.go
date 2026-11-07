@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/24DSO-labs/kubron/pkg/ext"
+	"github.com/24DSO-lab/kubron/pkg/ext"
 )
 
 // TokenStore — хранилище токенов Argo CD API по идентификатору кластера (ADR-0007, ADR-0008).

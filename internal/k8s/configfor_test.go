@@ -19,7 +19,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/24DSO-labs/kubron/internal/credential"
+	"github.com/24DSO-lab/kubron/internal/credential"
 )
 
 const canary = "CANARY-7f3a9c-do-not-leak"

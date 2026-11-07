@@ -13,8 +13,8 @@ import (
 
 	"github.com/gorilla/websocket"
 
-	"github.com/24DSO-labs/kubron/internal/streamid"
-	"github.com/24DSO-labs/kubron/internal/termbuf"
+	"github.com/24DSO-lab/kubron/internal/streamid"
+	"github.com/24DSO-lab/kubron/internal/termbuf"
 )
 
 type termFixture struct {

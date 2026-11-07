@@ -4,8 +4,8 @@
 package app
 
 import (
-	"github.com/24DSO-labs/kubron/internal/auth"
-	"github.com/24DSO-labs/kubron/internal/k8s"
+	"github.com/24DSO-lab/kubron/internal/auth"
+	"github.com/24DSO-lab/kubron/internal/k8s"
 )
 
 // PreviewHelmUpgrade — dry-run апгрейда values; в ответе манифесты (Secret скрыты), нужен secrets.read.

@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/24DSO-labs/kubron/internal/pgstore"
+	"github.com/24DSO-lab/kubron/internal/pgstore"
 )
 
 type fakeLegacy struct {

@@ -8,7 +8,7 @@ import (
 	"io"
 	"sync"
 
-	"github.com/24DSO-labs/kubron/internal/logging"
+	"github.com/24DSO-lab/kubron/internal/logging"
 )
 
 // Зеркало: каждая запись, помимо хранилища, дублируется строкой JSON в поток (stdout сервера) для

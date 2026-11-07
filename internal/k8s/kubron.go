@@ -11,7 +11,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/24DSO-labs/kubron/internal/clusterhealth"
+	"github.com/24DSO-lab/kubron/internal/clusterhealth"
 )
 
 type KubronConfig struct {

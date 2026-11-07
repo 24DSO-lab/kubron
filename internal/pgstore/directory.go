@@ -10,7 +10,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/24DSO-labs/kubron/internal/auth"
+	"github.com/24DSO-lab/kubron/internal/auth"
 )
 
 // Directory — auth.Directory: команды, участники, передача кластеров. Права проверяет вызывающий.

@@ -7,16 +7,16 @@ import (
 	"errors"
 	"log/slog"
 
-	"github.com/24DSO-labs/kubron/internal/credential"
-	"github.com/24DSO-labs/kubron/internal/credential/providers/aks"
-	"github.com/24DSO-labs/kubron/internal/credential/providers/eks"
-	"github.com/24DSO-labs/kubron/internal/credential/providers/execplugin"
-	"github.com/24DSO-labs/kubron/internal/credential/providers/gke"
-	"github.com/24DSO-labs/kubron/internal/credential/providers/manual"
-	"github.com/24DSO-labs/kubron/internal/credential/providers/oidc"
-	"github.com/24DSO-labs/kubron/internal/idpnet"
-	"github.com/24DSO-labs/kubron/internal/secretbox"
-	"github.com/24DSO-labs/kubron/internal/secrets"
+	"github.com/24DSO-lab/kubron/internal/credential"
+	"github.com/24DSO-lab/kubron/internal/credential/providers/aks"
+	"github.com/24DSO-lab/kubron/internal/credential/providers/eks"
+	"github.com/24DSO-lab/kubron/internal/credential/providers/execplugin"
+	"github.com/24DSO-lab/kubron/internal/credential/providers/gke"
+	"github.com/24DSO-lab/kubron/internal/credential/providers/manual"
+	"github.com/24DSO-lab/kubron/internal/credential/providers/oidc"
+	"github.com/24DSO-lab/kubron/internal/idpnet"
+	"github.com/24DSO-lab/kubron/internal/secretbox"
+	"github.com/24DSO-lab/kubron/internal/secrets"
 )
 
 // BrokerOptions is what the shell supplies to build the sign-in broker (ADR-0018).

@@ -15,10 +15,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/24DSO-labs/kubron/internal/auth"
-	"github.com/24DSO-labs/kubron/internal/clusterhealth"
-	"github.com/24DSO-labs/kubron/internal/secretbox"
-	"github.com/24DSO-labs/kubron/pkg/ext"
+	"github.com/24DSO-lab/kubron/internal/auth"
+	"github.com/24DSO-lab/kubron/internal/clusterhealth"
+	"github.com/24DSO-lab/kubron/internal/secretbox"
+	"github.com/24DSO-lab/kubron/pkg/ext"
 )
 
 func keyString(id string) string {

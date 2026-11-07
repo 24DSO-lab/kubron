@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/24DSO-labs/kubron/internal/streamid"
+	"github.com/24DSO-lab/kubron/internal/streamid"
 	"github.com/gorilla/websocket"
 )
 

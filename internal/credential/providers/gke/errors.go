@@ -6,7 +6,7 @@ package gke
 import (
 	"errors"
 
-	"github.com/24DSO-labs/kubron/internal/credential"
+	"github.com/24DSO-lab/kubron/internal/credential"
 )
 
 // Errors of this provider. The texts are English, fixed and registered in backend.json (credGKE*). None of

@@ -6,7 +6,7 @@ package server
 import (
 	"net/http"
 
-	"github.com/24DSO-labs/kubron/internal/logging"
+	"github.com/24DSO-lab/kubron/internal/logging"
 )
 
 // requestIDHeader — заголовок идентификатора запроса (его ставят и прокси: ingress-nginx, Envoy).

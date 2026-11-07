@@ -13,9 +13,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/24DSO-labs/kubron/internal/k8s"
-	"github.com/24DSO-labs/kubron/internal/pgstore"
-	"github.com/24DSO-labs/kubron/internal/store"
+	"github.com/24DSO-lab/kubron/internal/k8s"
+	"github.com/24DSO-lab/kubron/internal/pgstore"
+	"github.com/24DSO-lab/kubron/internal/store"
 )
 
 func testKey() string { return "k1:" + base64.StdEncoding.EncodeToString(bytes.Repeat([]byte{7}, 32)) }

@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/24DSO-labs/kubron/internal/credential"
-	"github.com/24DSO-labs/kubron/internal/netpolicy"
+	"github.com/24DSO-lab/kubron/internal/credential"
+	"github.com/24DSO-lab/kubron/internal/netpolicy"
 )
 
 func TestUnsupportedModesDoNotUseHostCredentials(t *testing.T) {

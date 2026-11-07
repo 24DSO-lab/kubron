@@ -13,7 +13,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/24DSO-labs/kubron/internal/logging"
+	"github.com/24DSO-lab/kubron/internal/logging"
 )
 
 type leakyTarget struct{}

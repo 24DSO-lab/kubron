@@ -7,7 +7,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/24DSO-labs/kubron/internal/credential"
+	"github.com/24DSO-lab/kubron/internal/credential"
 )
 
 func putCred(t *testing.T, s *Store, cluster string, scope credential.Scope, owner string) {

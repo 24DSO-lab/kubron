@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/24DSO-labs/kubron/internal/netpolicy"
+	"github.com/24DSO-lab/kubron/internal/netpolicy"
 )
 
 // Защита от SSRF для запросов Helm (ADR-0015). Репозитории чартов, индексы, чарты и OCI-реестры задаёт пользователь,
