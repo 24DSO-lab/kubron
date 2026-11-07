@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Flux CD:** a GitOps section for clusters running Flux 2.3 or newer, next to Argo CD. See Kustomizations and HelmReleases with their state, revision, dependencies, managed resources and release history, plus sources, notifications and image automation (read-only), a dashboard and a source-to-resources chain. Reconcile, suspend, resume and delete (with a confirmation that shows the consequences) are available according to your permissions. There is no diff or rollback: roll back through Git.
+- **Flux CD access:** the in-cluster ServiceAccount profiles do not include Flux rules; the deployment guide has a ready-made `rbac.extraRules` fragment for read, reconcile, suspend, resume and delete.
+
 ## [1.1.0] - 2026-11-07
 
 ### Added

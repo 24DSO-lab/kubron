@@ -294,12 +294,71 @@ networkPolicy:
 - **Значения Secret.** По умолчанию ServiceAccount не читает `secrets`, поэтому значения Secret недоступны никому.
   `rbac.allowSecretsRead=true` добавляет `get/list/watch` на `secrets` кластера для любого профиля: после этого их увидят
   все, у кого в Kubron есть право `secrets.read` (роли `operator` и `admin`).
-- **Пользовательские ресурсы** (CRD, Argo CD `Application` и др.) в профили не входят: добавьте нужные группы в
-  `rbac.extraRules`.
+- **Пользовательские ресурсы** (CRD, Argo CD `Application`, объекты Flux и др.) в профили не входят: добавьте нужные
+  группы в `rbac.extraRules`. Готовый фрагмент для Flux — в разделе ниже.
 - **Существующая роль.** `rbac.profile=custom` и `rbac.existingClusterRole=view` привязывают ServiceAccount к встроенной
   роли `view` без собственной ClusterRole. Встроенная `view` не включает `secrets`, а `edit` и `admin` включают и дают запись:
   привязывайте их только когда это действительно нужно.
 - **Смена профиля** применяется сразу при `helm upgrade`; перезапуск подов не нужен, права проверяет API-сервер.
+
+#### Права для Flux CD
+
+Профили `rbac.profile` правил Flux не содержат (как и для Argo CD): объекты Flux читаются и меняются только если вы
+добавили правила в `rbac.extraRules`. Правила попадают в ClusterRole чарта; при `rbac.existingClusterRole` они не
+используются, и нужные права выдаются в самой привязанной роли. Фрагмент ниже разбит по уровням: оставьте только то,
+что нужно.
+
+```yaml
+rbac:
+  extraRules:
+    # Чтение (право Kubron `read`): списки, детали, дашборд, граф. Нужны все три глагола: список строится из informer'а.
+    - apiGroups: [kustomize.toolkit.fluxcd.io]
+      resources: [kustomizations]
+      verbs: [get, list, watch]
+    - apiGroups: [helm.toolkit.fluxcd.io]
+      resources: [helmreleases]
+      verbs: [get, list, watch]
+    - apiGroups: [source.toolkit.fluxcd.io]
+      resources: [gitrepositories, ocirepositories, helmrepositories, helmcharts, buckets]
+      verbs: [get, list, watch]
+    - apiGroups: [notification.toolkit.fluxcd.io]
+      resources: [alerts, providers, receivers]
+      verbs: [get, list, watch]
+    - apiGroups: [image.toolkit.fluxcd.io]
+      resources: [imagerepositories, imagepolicies, imageupdateautomations]
+      verbs: [get, list, watch]
+
+    # Reconcile (право Kubron `operate`), suspend и resume (право `write`): merge-patch аннотации и `spec.suspend`.
+    - apiGroups: [kustomize.toolkit.fluxcd.io]
+      resources: [kustomizations]
+      verbs: [patch]
+    - apiGroups: [helm.toolkit.fluxcd.io]
+      resources: [helmreleases]
+      verbs: [patch]
+    - apiGroups: [source.toolkit.fluxcd.io]
+      resources: [gitrepositories, ocirepositories, helmrepositories, helmcharts, buckets]
+      verbs: [patch]
+    - apiGroups: [image.toolkit.fluxcd.io]
+      resources: [imagerepositories, imageupdateautomations]
+      verbs: [patch]
+
+    # Удаление (право Kubron `write`): только Kustomization и HelmRelease.
+    - apiGroups: [kustomize.toolkit.fluxcd.io]
+      resources: [kustomizations]
+      verbs: [delete]
+    - apiGroups: [helm.toolkit.fluxcd.io]
+      resources: [helmreleases]
+      verbs: [delete]
+```
+
+- **Чтение без изменений.** Достаточно первого блока: раздел Flux покажет статусы, ресурсы и граф, а кнопки действий
+  закончатся ошибкой Kubernetes RBAC (`forbidden`). Права Kubron (`operate`, `write`) выдают возможность в самом Kubron,
+  но не отменяют RBAC кластера: нужны оба уровня.
+- **Prune и uninstall.** Удаление `Kustomization` с `prune: true` и `HelmRelease` выполняют контроллеры Flux под своими
+  учётными записями; ServiceAccount Kubron для этого лишних прав не получает. Само удаление объекта Flux Kubron откатить
+  не может: восстановление идёт из Git.
+- **Секреты.** Правила не затрагивают `secrets`: значения `spec.values`, `valuesFrom` и подстановок `postBuild`
+  в Kubron не отдаются независимо от `rbac.allowSecretsRead`.
 
 ## Несколько реплик (HA)
 

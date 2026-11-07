@@ -91,10 +91,11 @@ Kubron is an open-source **Kubernetes Operations Workspace** for desktop and web
 - **Update hints** — see which installed releases have a newer chart available
 
 ### GitOps
-- **Built in, no extra install** — applications, application sets and projects with sync and health status in the UI
+- **Built in, no extra install** — Argo CD applications, application sets and projects with sync and health status in the UI
 - **Actions** — sync (with options), refresh / hard refresh, terminate operation, roll back, suspend/resume auto-sync, delete with or without cascade
 - **Diff & graph** — live-vs-desired diff and a resource graph for each application
 - **Project access** — roles and access of projects
+- **Flux CD** — Kustomizations and HelmReleases with state, revision, managed resources and release history, plus sources, notifications and image automation (read-only); reconcile, suspend, resume and delete with confirmation. Flux 2.3 or newer; no diff or rollback (use Git)
 
 ### Security & access control
 - **Architecture and security decisions** — [ADR index](docs/adr/README.md) (including [password hashing](docs/adr/0019-password-hashing.md) and [HTTP security](docs/adr/0020-http-security.md)) and [implementation decisions](docs/decisions/README.md) such as the [OIDC browser callback](docs/decisions/2026-11-04-oidc-browser-callback.md)
