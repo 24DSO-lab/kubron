@@ -1,0 +1,36 @@
+{
+  "updated": "Обновлено {time}",
+  "updateFailed": "Не удалось обновить",
+  "refreshing": "Обновление…",
+  "loading": "Загрузка объектов Flux…",
+  "loadFailed": "Не удалось загрузить объекты Flux",
+  "empty": "Kustomization и HelmRelease не найдены",
+  "unsupported": {
+    "title": "Эта версия Flux не поддерживается",
+    "hint": "Обновите Flux до 2.3 или новее и выполните `flux migrate`, чтобы перевести сохранённые объекты на стабильные версии API."
+  },
+  "stats": {
+    "ready": "Готовы",
+    "reconciling": "Применяются",
+    "failed": "С ошибкой",
+    "stalled": "Застряли",
+    "suspended": "Приостановлены",
+    "ofTotal": "из {n}",
+    "none": "нет",
+    "inProgress": "в процессе",
+    "needsAction": "требуют внимания",
+    "suspendedObjects": "приостановлено объектов: {n}"
+  },
+  "needsAttention": "Требуют внимания",
+  "allGood": "Все объекты в порядке",
+  "viewAll": "Показать все ({n})",
+  "recentReconciles": "Последние reconcile",
+  "noReconciles": "Reconcile ещё не было",
+  "byNamespace": "По namespace",
+  "bySource": "По источникам",
+  "noSource": "Без источника",
+  "kind": {
+    "Kustomization": "Kustomization",
+    "HelmRelease": "HelmRelease"
+  }
+}
