@@ -382,16 +382,16 @@ func TestFluxActionsAllowlist(t *testing.T) {
 
 func TestFluxActionsNormalizeRefs(t *testing.T) {
 	obj := fluxaKust("ns", "a", nil)
-	call := func(t *testing.T, refs []FluxRef) ([]FluxActionResult, error, *fluxaRecorder) {
+	call := func(t *testing.T, refs []FluxRef) ([]FluxActionResult, *fluxaRecorder, error) {
 		m, _, rec := fluxaSetup(obj.DeepCopy())
 		res, err := m.SuspendFlux(refs)
-		return res, err, rec
+		return res, rec, err
 	}
 	ref := FluxRef{FluxKindKustomization, "ns", "a"}
 
 	t.Run("empty list", func(t *testing.T) {
 		for _, refs := range [][]FluxRef{nil, {}} {
-			if _, err, _ := call(t, refs); !errors.Is(err, errFluxNoObjects) {
+			if _, _, err := call(t, refs); !errors.Is(err, errFluxNoObjects) {
 				t.Fatalf("err = %v", err)
 			}
 		}
@@ -401,11 +401,11 @@ func TestFluxActionsNormalizeRefs(t *testing.T) {
 		for i := range refs {
 			refs[i] = FluxRef{FluxKindKustomization, "ns", fmt.Sprintf("o%d", i)}
 		}
-		if _, err, rec := call(t, refs); !errors.Is(err, errFluxTooManyObjects) || len(rec.all()) != 0 {
+		if _, rec, err := call(t, refs); !errors.Is(err, errFluxTooManyObjects) || len(rec.all()) != 0 {
 			t.Fatalf("err = %v", err)
 		}
 		// Ровно предел допустим.
-		if res, err, _ := call(t, refs[:fluxMaxActionObjects]); err != nil || len(res) != fluxMaxActionObjects {
+		if res, _, err := call(t, refs[:fluxMaxActionObjects]); err != nil || len(res) != fluxMaxActionObjects {
 			t.Fatalf("limit: err=%v n=%d", err, len(res))
 		}
 	})
@@ -414,7 +414,7 @@ func TestFluxActionsNormalizeRefs(t *testing.T) {
 		for i := range refs {
 			refs[i] = ref
 		}
-		if _, err, _ := call(t, refs); !errors.Is(err, errFluxTooManyObjects) {
+		if _, _, err := call(t, refs); !errors.Is(err, errFluxTooManyObjects) {
 			t.Fatalf("err = %v", err)
 		}
 	})
@@ -424,24 +424,24 @@ func TestFluxActionsNormalizeRefs(t *testing.T) {
 			{FluxKindKustomization, "", "a"}, {FluxKindKustomization, "ns", ""}, {FluxKindKustomization, "  ", "a"},
 			{FluxKindKustomization, "ns", "\t"}, {FluxKindKustomization, long, "a"}, {FluxKindKustomization, "ns", long},
 		} {
-			if _, err, rec := call(t, []FluxRef{ref, r}); !errors.Is(err, errFluxInvalidRef) || len(rec.all()) != 0 {
+			if _, rec, err := call(t, []FluxRef{ref, r}); !errors.Is(err, errFluxInvalidRef) || len(rec.all()) != 0 {
 				t.Fatalf("%+v: err=%v (one bad ref must fail the whole call before anything is sent)", r, err)
 			}
 		}
 		// Длина ровно 200 допустима.
 		edge := strings.Repeat("x", 200)
-		if _, err, _ := call(t, []FluxRef{{FluxKindKustomization, "ns", edge}}); err != nil {
+		if _, _, err := call(t, []FluxRef{{FluxKindKustomization, "ns", edge}}); err != nil {
 			t.Fatalf("200 chars: %v", err)
 		}
 	})
 	t.Run("trim and dedupe", func(t *testing.T) {
-		res, err, rec := call(t, []FluxRef{ref, {" Kustomization", " ns ", "\ta\n"}, ref})
+		res, rec, err := call(t, []FluxRef{ref, {" Kustomization", " ns ", "\ta\n"}, ref})
 		if err == nil {
 			// «Kustomization» с пробелом — вид не из таблицы: регистр и пробелы вида не нормализуются.
 			t.Fatalf("kind must not be normalized, got %+v", res)
 		}
 		_ = rec
-		res, err, rec = call(t, []FluxRef{ref, {FluxKindKustomization, " ns ", "\ta\n"}, ref})
+		res, rec, err = call(t, []FluxRef{ref, {FluxKindKustomization, " ns ", "\ta\n"}, ref})
 		if err != nil || len(res) != 1 || len(rec.all()) != 1 {
 			t.Fatalf("err=%v res=%+v patches=%d", err, res, len(rec.all()))
 		}
