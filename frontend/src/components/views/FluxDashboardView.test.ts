@@ -1,11 +1,11 @@
 // Copyright 2026 The Kubron Authors
 // SPDX-License-Identifier: Apache-2.0
 
-import { createSSRApp, h, ref, shallowRef } from 'vue'
+import { createSSRApp, h, ref, shallowRef, vi } from 'vue'
 import { renderToString } from 'vue/server-renderer'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 
-// Дашборд проверяется на данных фикстуры: композабл подменён, бэкенда нет
+// Дашборд проверяется на данных фикстуры: композаблы и действия изолированы, бэкенда нет.
 const objects = shallowRef<any[] | null>(null)
 const loading = ref(false)
 const error = ref('')
@@ -17,6 +17,10 @@ vi.mock('../../composables/useFluxObjects', () => ({
 }))
 vi.mock('../../composables/useFlux', () => ({
   useFlux: () => ({ fluxStatus: ref({ get state() { return state.value } }) }),
+}))
+// resourceActions импортирует registry, который транзитивно загружает browser-only Monaco.
+vi.mock('../../resources/actions', () => ({
+  resourceActions: { open: vi.fn() },
 }))
 
 import { i18n } from '../../i18n'
