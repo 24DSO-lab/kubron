@@ -12,9 +12,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/24DSO-labs/kubron/internal/audit"
-	"github.com/24DSO-labs/kubron/internal/logging"
-	"github.com/24DSO-labs/kubron/internal/server"
+	"github.com/24DSO-lab/kubron/internal/audit"
+	"github.com/24DSO-lab/kubron/internal/logging"
+	"github.com/24DSO-lab/kubron/internal/server"
 )
 
 func envMap(m map[string]string) func(string) string { return func(k string) string { return m[k] } }

@@ -6,8 +6,8 @@ package app
 import (
 	"strings"
 
-	"github.com/24DSO-labs/kubron/internal/auth"
-	"github.com/24DSO-labs/kubron/internal/k8s"
+	"github.com/24DSO-lab/kubron/internal/auth"
+	"github.com/24DSO-lab/kubron/internal/k8s"
 )
 
 func (a *App) GetResourceYAML(namespace, kind, name string, clean bool) (string, error) {

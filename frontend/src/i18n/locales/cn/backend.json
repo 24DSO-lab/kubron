@@ -712,5 +712,14 @@
   "theClusterDoesNotUseASharedTeamAccount": "该集群未使用团队共享账户",
   "aSharedAccountIsAvailableOnlyForClustersOfATeam": "共享账户仅适用于团队的集群",
   "aSharedAccountIsMeaningfulOnlyForAKubeconfigThatSignsIn": "共享账户仅适用于通过身份提供商或插件登录的 kubeconfig",
-  "thisClusterNeedsASignInButNoSignInBrokerIsConfigured": "该集群需要登录，但未配置登录代理"
+  "thisClusterNeedsASignInButNoSignInBrokerIsConfigured": "该集群需要登录，但未配置登录代理",
+  "fluxNotImplementedYet": "尚未实现",
+  "fluxIsNotInstalledInThisCluster": "此集群中未安装 Flux",
+  "fluxActionNotSupportedForKind": "此操作不支持该对象类型",
+  "fluxInvalidObjectReference": "对 Flux 对象的引用无效",
+  "fluxNoObjectsSelected": "未选择任何对象",
+  "fluxTooManyObjectsInOneCall": "单次调用的对象过多：最多 200 个",
+  "fluxApiVersionNotSupported": "不支持该 Flux API 版本：请将 Flux 升级到 2.3 或更高版本",
+  "fluxObjectIsBeingDeleted": "对象正在删除",
+  "fluxObjectIsSuspended": "对象已暂停：请先恢复"
 }

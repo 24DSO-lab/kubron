@@ -10,13 +10,13 @@ hero:
   actions:
     - theme: brand
       text: Download Kubron
-      link: https://github.com/24DSO-labs/kubron/releases
+      link: https://github.com/24DSO-lab/kubron/releases
     - theme: alt
       text: Get started
       link: /guide/getting-started
     - theme: alt
       text: View on GitHub
-      link: https://github.com/24DSO-labs/kubron
+      link: https://github.com/24DSO-lab/kubron
 
 features:
   - icon: ⎈
@@ -33,7 +33,7 @@ features:
     details: Browse charts and repositories, install and upgrade releases, inspect revisions and roll back.
   - icon: ⟲
     title: GitOps in the same flow
-    details: Work with Argo CD applications, ApplicationSets and projects, including sync, diff and resource graphs.
+    details: Work with Argo CD applications, ApplicationSets and projects, and with Flux CD Kustomizations and HelmReleases, from the same interface.
   - icon: ◉
     title: Private by design
     details: No telemetry or mandatory account in desktop mode. Your kubeconfig stays on your machine.
@@ -54,19 +54,19 @@ Kubron brings everyday Kubernetes operations into one workspace across desktop a
 
 <div class="screenshot-grid">
   <figure>
-    <img src="https://raw.githubusercontent.com/24DSO-labs/kubron/master/docs/images/screenshots/overview.png" alt="Kubron overview with cluster health, workload counts and resource signals" loading="lazy">
+    <img src="https://raw.githubusercontent.com/24DSO-lab/kubron/master/docs/images/screenshots/overview.png" alt="Kubron overview with cluster health, workload counts and resource signals" loading="lazy">
     <figcaption><strong>Cluster overview</strong><br>Health, capacity, blockers and recent changes at a glance.</figcaption>
   </figure>
   <figure>
-    <img src="https://raw.githubusercontent.com/24DSO-labs/kubron/master/docs/images/screenshots/pods.png" alt="Kubron pods table with status and resource usage" loading="lazy">
+    <img src="https://raw.githubusercontent.com/24DSO-lab/kubron/master/docs/images/screenshots/pods.png" alt="Kubron pods table with status and resource usage" loading="lazy">
     <figcaption><strong>Resource browser</strong><br>Inspect pods and workloads, then drill into the details.</figcaption>
   </figure>
   <figure>
-    <img src="https://raw.githubusercontent.com/24DSO-labs/kubron/master/docs/images/screenshots/yaml-editor.png" alt="Kubron YAML editor with review diff before saving" loading="lazy">
+    <img src="https://raw.githubusercontent.com/24DSO-lab/kubron/master/docs/images/screenshots/yaml-editor.png" alt="Kubron YAML editor with review diff before saving" loading="lazy">
     <figcaption><strong>YAML editor</strong><br>Review the diff before applying a manifest change.</figcaption>
   </figure>
   <figure>
-    <img src="https://raw.githubusercontent.com/24DSO-labs/kubron/master/docs/images/screenshots/gitops-applications.png" alt="Kubron GitOps applications list" loading="lazy">
+    <img src="https://raw.githubusercontent.com/24DSO-lab/kubron/master/docs/images/screenshots/gitops-applications.png" alt="Kubron GitOps applications list" loading="lazy">
     <figcaption><strong>GitOps</strong><br>See application health and sync state in context.</figcaption>
   </figure>
 </div>
@@ -93,6 +93,7 @@ Deploy Kubron in your own infrastructure and access it through a browser. Web ad
 - **Practical operations** — logs, exec, port-forward, workload scaling and restarts, node cordon and drain.
 - **Helm lifecycle** — repositories (including OCI), chart discovery, dry-run install, upgrades, revision diffs and rollback.
 - **Argo CD integration** — applications, ApplicationSets, projects, sync controls, live-vs-desired diff and resource graph.
+- **Flux CD integration** — Kustomizations, HelmReleases, sources, notifications and image automation, with reconcile, suspend, resume and a source-to-resources chain.
 - **Optional metrics** — charts for pods, workloads, nodes, PVCs and ingresses when the metrics stack is installed.
 
 ## Why teams choose Kubron
@@ -125,11 +126,11 @@ Desktop does not require an account, sends no telemetry and keeps your kubeconfi
 
 Ready to connect a cluster?
 
-- [Download the latest release](https://github.com/24DSO-labs/kubron/releases)
+- [Download the latest release](https://github.com/24DSO-lab/kubron/releases)
 - [Choose Desktop or Web](/guide/getting-started)
 - [Requirements and verification](/guide/installation)
 - [Explore all features](/features/)
-- [Read the source and contribute](https://github.com/24DSO-labs/kubron)
+- [Read the source and contribute](https://github.com/24DSO-lab/kubron)
 
 <div class="home-license">
   Kubron is open source under the Apache-2.0 license.

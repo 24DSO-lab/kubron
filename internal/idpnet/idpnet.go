@@ -25,7 +25,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/24DSO-labs/kubron/internal/netpolicy"
+	"github.com/24DSO-lab/kubron/internal/netpolicy"
 )
 
 const (

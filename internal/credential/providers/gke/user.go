@@ -18,7 +18,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/24DSO-labs/kubron/internal/credential"
+	"github.com/24DSO-lab/kubron/internal/credential"
 )
 
 // Sign-in of a Google user: the authorization-code flow with PKCE (RFC 7636, S256, RFC 8252 for the paste

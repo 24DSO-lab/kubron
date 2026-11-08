@@ -6,8 +6,8 @@ package main
 import (
 	"log/slog"
 
-	"github.com/24DSO-labs/kubron/internal/app"
-	"github.com/24DSO-labs/kubron/internal/server"
+	"github.com/24DSO-lab/kubron/internal/app"
+	"github.com/24DSO-lab/kubron/internal/server"
 )
 
 // setupGate возвращает защиту первичной настройки: в сервисном режиме SetupAdmin требует токен

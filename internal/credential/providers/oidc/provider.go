@@ -20,7 +20,7 @@ import (
 	"errors"
 	"io"
 
-	"github.com/24DSO-labs/kubron/internal/credential"
+	"github.com/24DSO-lab/kubron/internal/credential"
 )
 
 type randSource = io.Reader

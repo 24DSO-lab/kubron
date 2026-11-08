@@ -59,6 +59,7 @@ func (h *Hub) deliver(session string, addressed bool, event string, data []any) 
 		return
 	}
 	var frame []byte
+	var slow []*Conn
 	for c := range h.conns {
 		if addressed && c.session != session {
 			continue
@@ -77,9 +78,17 @@ func (h *Hub) deliver(session string, addressed bool, event string, data []any) 
 				return
 			}
 		}
-		c.enqueue(frame)
+		if !c.enqueue(frame) {
+			slow = append(slow, c)
+		}
 	}
 	h.mu.RUnlock()
+
+	// Close only after releasing the hub read lock: CloseWith removes the connection
+	// under the hub write lock. Doing this synchronously also makes Done imply removal.
+	for _, c := range slow {
+		c.Close()
+	}
 }
 
 // Register добавляет соединение сессии session.
@@ -197,7 +206,13 @@ func (c *Conn) Unsubscribe(events []string) {
 }
 
 // Send ставит служебный кадр (подтверждение, pong) в очередь; false — очередь полна, соединение закрыто.
-func (c *Conn) Send(frame []byte) bool { return c.enqueue(frame) }
+func (c *Conn) Send(frame []byte) bool {
+	if c.enqueue(frame) {
+		return true
+	}
+	c.Close()
+	return false
+}
 
 func (c *Conn) enqueue(frame []byte) bool {
 	select {
@@ -209,7 +224,6 @@ func (c *Conn) enqueue(frame []byte) bool {
 	case c.out <- frame:
 		return true
 	default:
-		go c.Close() // медленный потребитель; из-под RLock хаба закрываем асинхронно
 		return false
 	}
 }

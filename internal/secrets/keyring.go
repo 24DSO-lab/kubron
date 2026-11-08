@@ -11,7 +11,7 @@ import (
 
 	gokeyring "github.com/zalando/go-keyring"
 
-	"github.com/24DSO-labs/kubron/internal/secretbox"
+	"github.com/24DSO-lab/kubron/internal/secretbox"
 )
 
 // osKeyring is the part of the OS keyring API that the store needs (replaced in tests).

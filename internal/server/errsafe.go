@@ -18,8 +18,8 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/24DSO-labs/kubron/internal/logging"
-	"github.com/24DSO-labs/kubron/internal/publicerr"
+	"github.com/24DSO-lab/kubron/internal/logging"
+	"github.com/24DSO-lab/kubron/internal/publicerr"
 	"github.com/jackc/pgx/v5/pgconn"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 )

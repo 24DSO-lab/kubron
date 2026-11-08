@@ -401,5 +401,13 @@
     "suspended": "已暂停",
     "rejected": "已拒绝",
     "missing": "缺失"
+  },
+  "flux": {
+    "managedBy": "管理方",
+    "badge": "Flux",
+    "managedByValue": "HelmRelease {namespace}/{name}",
+    "warnUpgrade": "Release {name} 由 Flux 管理（HelmRelease {fluxNamespace}/{fluxName}）：手动升级会与 Git 产生偏差，Flux 可能在下一次 reconcile 时覆盖该更改。",
+    "warnRollback": "Release {name} 由 Flux 管理（HelmRelease {fluxNamespace}/{fluxName}）：手动回滚会与 Git 产生偏差，Flux 可能在下一次 reconcile 时覆盖该更改。",
+    "warnUninstall": "Release {name} 由 Flux 管理（HelmRelease {fluxNamespace}/{fluxName}）：手动卸载会与 Git 产生偏差，Flux 可能在下一次 reconcile 时重新安装该 Release。"
   }
 }

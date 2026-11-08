@@ -1,0 +1,29 @@
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: broken
+  namespace: team-a
+  creationTimestamp: "2026-02-10T08:12:03Z"
+  generation: 2
+  uid: 3a1c6e52-9d0e-4b56-8d0e-1a0f3d1c9b22
+  labels:
+    app.kubernetes.io/part-of: platform
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: '{"spec":{"secretRef":{"name":"S3CRET-LASTAPPLIED"}}}'
+    team: platform
+spec:
+  interval: 5m0s
+  url: https://github.com/acme/missing.git
+  ref:
+    branch: main
+  secretRef:
+    name: git-credentials
+status:
+  observedGeneration: 2
+  conditions:
+  - type: Ready
+    status: "False"
+    reason: GitOperationFailed
+    message: 'failed to checkout and determine revision: unable to clone ''https://github.com/acme/missing.git'': authentication required'
+    lastTransitionTime: "2026-11-07T10:05:00Z"
+    observedGeneration: 2

@@ -8,8 +8,8 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/24DSO-labs/kubron/internal/auth"
-	"github.com/24DSO-labs/kubron/internal/streamid"
+	"github.com/24DSO-lab/kubron/internal/auth"
+	"github.com/24DSO-lab/kubron/internal/streamid"
 )
 
 func TestMapErrorClusterAccess(t *testing.T) {

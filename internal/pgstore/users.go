@@ -12,7 +12,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/24DSO-labs/kubron/pkg/ext"
+	"github.com/24DSO-lab/kubron/pkg/ext"
 )
 
 const settingsKeySecurity = "security"

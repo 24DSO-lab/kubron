@@ -21,7 +21,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/24DSO-labs/kubron/internal/netpolicy"
+	"github.com/24DSO-lab/kubron/internal/netpolicy"
 )
 
 // memHelmStore — хранилище состояния Helm в памяти с изоляцией по командам, как у PostgreSQL.

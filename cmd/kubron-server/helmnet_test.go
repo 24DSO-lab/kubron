@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/24DSO-labs/kubron/internal/netpolicy"
+	"github.com/24DSO-lab/kubron/internal/netpolicy"
 )
 
 func envOf(m map[string]string) func(string) string { return func(k string) string { return m[k] } }

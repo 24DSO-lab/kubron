@@ -123,7 +123,18 @@
       "start": "Оболочка на узле открыта",
       "stop": "Оболочка на узле закрыта"
     },
-    "ResetClusterSharedAccount": "Общий вход кластера сброшен"
+    "ResetClusterSharedAccount": "Общий вход кластера сброшен",
+    "GetFluxStatus": "Flux: просмотр состояния",
+    "GetFluxKustomizations": "Flux: просмотр Kustomization",
+    "GetFluxHelmReleases": "Flux: просмотр HelmRelease",
+    "GetFluxSources": "Flux: просмотр источников",
+    "GetFluxNotifications": "Flux: просмотр настроек уведомлений",
+    "GetFluxImageAutomation": "Flux: просмотр автоматизации образов",
+    "GetFluxGraph": "Flux: просмотр графа",
+    "ReconcileFlux": "Flux: reconcile",
+    "SuspendFlux": "Flux: приостановка",
+    "ResumeFlux": "Flux: возобновление",
+    "DeleteFlux": "Flux: объект удалён"
   },
   "export": {
     "csv": "Выгрузить CSV",

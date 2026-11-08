@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/24DSO-labs/kubron/internal/auth"
+	"github.com/24DSO-lab/kubron/internal/auth"
 )
 
 const testSetupToken = "setup-token-0123456789"

@@ -9,8 +9,8 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/24DSO-labs/kubron/internal/clusterhealth"
-	"github.com/24DSO-labs/kubron/internal/replicaevents"
+	"github.com/24DSO-lab/kubron/internal/clusterhealth"
+	"github.com/24DSO-lab/kubron/internal/replicaevents"
 )
 
 // События о состоянии кластеров и доступе (фронтенд перечитывает список кластеров).

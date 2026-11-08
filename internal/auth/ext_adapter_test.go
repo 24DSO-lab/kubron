@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/24DSO-labs/kubron/pkg/ext"
+	"github.com/24DSO-lab/kubron/pkg/ext"
 )
 
 // memUsers — хранилище пользователей «из другого модуля»: знает только публичные типы pkg/ext.

@@ -14,7 +14,7 @@ import (
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/jwt"
 
-	"github.com/24DSO-labs/kubron/internal/credential"
+	"github.com/24DSO-lab/kubron/internal/credential"
 )
 
 const (

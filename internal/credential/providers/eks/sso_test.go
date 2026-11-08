@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/24DSO-labs/kubron/internal/credential"
+	"github.com/24DSO-lab/kubron/internal/credential"
 )
 
 var ssoAnswer = credential.Answer{"eksSsoStartUrl": "https://example.awsapps.com/start", "eksSsoRegion": "eu-west-1", "eksAccountId": "111122223333", "eksRoleName": "Admin"}

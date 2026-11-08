@@ -19,17 +19,17 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/24DSO-labs/kubron/frontend"
-	"github.com/24DSO-labs/kubron/internal/app"
-	"github.com/24DSO-labs/kubron/internal/jobs"
-	"github.com/24DSO-labs/kubron/internal/k8s"
-	"github.com/24DSO-labs/kubron/internal/pgstore"
-	webplatform "github.com/24DSO-labs/kubron/internal/platform/web"
-	"github.com/24DSO-labs/kubron/internal/replicaevents"
-	"github.com/24DSO-labs/kubron/internal/secrets"
-	"github.com/24DSO-labs/kubron/internal/server"
-	"github.com/24DSO-labs/kubron/internal/store"
-	"github.com/24DSO-labs/kubron/internal/websession"
+	"github.com/24DSO-lab/kubron/frontend"
+	"github.com/24DSO-lab/kubron/internal/app"
+	"github.com/24DSO-lab/kubron/internal/jobs"
+	"github.com/24DSO-lab/kubron/internal/k8s"
+	"github.com/24DSO-lab/kubron/internal/pgstore"
+	webplatform "github.com/24DSO-lab/kubron/internal/platform/web"
+	"github.com/24DSO-lab/kubron/internal/replicaevents"
+	"github.com/24DSO-lab/kubron/internal/secrets"
+	"github.com/24DSO-lab/kubron/internal/server"
+	"github.com/24DSO-lab/kubron/internal/store"
+	"github.com/24DSO-lab/kubron/internal/websession"
 )
 
 // userRefreshEvery — как часто реплика перечитывает пользователей из PostgreSQL (изменения других реплик).

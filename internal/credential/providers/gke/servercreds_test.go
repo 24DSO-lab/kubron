@@ -48,7 +48,7 @@ var allowedImports = map[string]bool{
 	"time":                    true,
 	"golang.org/x/oauth2":     true,
 	"golang.org/x/oauth2/jwt": true,
-	"github.com/24DSO-labs/kubron/internal/credential": true,
+	"github.com/24DSO-lab/kubron/internal/credential": true,
 }
 
 // allowedHTTP lists the names of net/http that the sources may use: types, status and method constants, and the

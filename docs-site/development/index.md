@@ -15,6 +15,6 @@ Useful entry points:
 
 Upstream docs:
 
-- [CONTRIBUTING.md](https://github.com/24DSO-labs/kubron/blob/master/CONTRIBUTING.md)
-- [docs/adr](https://github.com/24DSO-labs/kubron/tree/master/docs/adr)
-- [docs/i18n.md](https://github.com/24DSO-labs/kubron/blob/master/docs/i18n.md)
+- [CONTRIBUTING.md](https://github.com/24DSO-lab/kubron/blob/master/CONTRIBUTING.md)
+- [docs/adr](https://github.com/24DSO-lab/kubron/tree/master/docs/adr)
+- [docs/i18n.md](https://github.com/24DSO-lab/kubron/blob/master/docs/i18n.md)

@@ -69,7 +69,7 @@ services:
       retries: 10
 
   kubron:
-    image: ghcr.io/24dso-labs/kubron:1.0.0
+    image: ghcr.io/24dso-lab/kubron:1.1.0
     depends_on:
       db:
         condition: service_healthy
@@ -92,7 +92,7 @@ volumes:
   pgdata:
 ```
 
-Replace `1.0.0` with the version you want (the image tag has no leading `v`).
+Replace `1.1.0` with the version you want (the image tag has no leading `v`).
 
 A few details worth knowing:
 
@@ -165,7 +165,7 @@ See [Add your first cluster](/guide/first-cluster) for the dialog in detail.
 | The server refuses to start with a different key | The key must be the one that encrypted the existing data. Restore the original key, or reset with `docker compose down -v` in a trial |
 | `the setup token is missing or invalid` on the welcome screen | The token must match `KUBRON_SETUP_TOKEN` exactly. The variable itself must be at least 16 characters, otherwise the server will not start |
 | Adding a cluster fails because of its address | The address is blocked by the cluster address policy (loopback, link-local, cloud metadata). See the [configuration reference](/server/configuration) |
-| `docker compose` cannot find the image | Check the tag exists on the [packages page](https://github.com/orgs/24DSO-labs/packages) |
+| `docker compose` cannot find the image | Check the tag exists on the [packages page](https://github.com/orgs/24DSO-lab/packages) |
 
 ## Next steps
 

@@ -11,8 +11,8 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/24DSO-labs/kubron/internal/credential/providers/gke"
-	"github.com/24DSO-labs/kubron/internal/secrets"
+	"github.com/24DSO-lab/kubron/internal/credential/providers/gke"
+	"github.com/24DSO-lab/kubron/internal/secrets"
 )
 
 // Errors of the desktop settings of the Google OAuth client. The texts are fixed and never hold a value that the

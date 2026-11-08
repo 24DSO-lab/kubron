@@ -4,7 +4,7 @@
 package auth
 
 import (
-	"github.com/24DSO-labs/kubron/internal/audit"
+	"github.com/24DSO-lab/kubron/internal/audit"
 )
 
 // Recorder принимает события журнала аудита. Реализация (audit.Logger) не должна

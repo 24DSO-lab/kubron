@@ -6,7 +6,7 @@ package auth
 import (
 	"time"
 
-	"github.com/24DSO-labs/kubron/internal/audit"
+	"github.com/24DSO-lab/kubron/internal/audit"
 )
 
 // NewSession создаёт новую независимую сессию (вид) поверх того же хранилища. source — адрес

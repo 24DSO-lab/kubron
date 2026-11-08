@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/24DSO-labs/kubron/internal/credential"
+	"github.com/24DSO-lab/kubron/internal/credential"
 )
 
 // ChallengeHarness gives the contract suite what it needs from one ChallengeStore implementation.

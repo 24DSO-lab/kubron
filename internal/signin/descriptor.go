@@ -8,9 +8,9 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/24DSO-labs/kubron/internal/credential"
-	"github.com/24DSO-labs/kubron/internal/credential/providers/oidc"
-	"github.com/24DSO-labs/kubron/internal/store"
+	"github.com/24DSO-lab/kubron/internal/credential"
+	"github.com/24DSO-lab/kubron/internal/credential/providers/oidc"
+	"github.com/24DSO-lab/kubron/internal/store"
 )
 
 // События сессии, которой принадлежит вход (ADR-0018). В данных только идентификаторы.

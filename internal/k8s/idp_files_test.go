@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/24DSO-labs/kubron/internal/credential"
+	"github.com/24DSO-lab/kubron/internal/credential"
 )
 
 const idpCAPEM = "-----BEGIN CERTIFICATE-----\nIDP-CA-FILE-CONTENT\n-----END CERTIFICATE-----\n"

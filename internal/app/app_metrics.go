@@ -6,8 +6,8 @@ package app
 import (
 	"time"
 
-	"github.com/24DSO-labs/kubron/internal/auth"
-	"github.com/24DSO-labs/kubron/internal/k8s"
+	"github.com/24DSO-lab/kubron/internal/auth"
+	"github.com/24DSO-lab/kubron/internal/k8s"
 )
 
 func (a *App) GetPodMetrics(namespaces []string) ([]k8s.PodMetrics, error) {

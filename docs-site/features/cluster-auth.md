@@ -29,7 +29,7 @@ An `exec` plugin is executable code. Import kubeconfigs only from sources you tr
 The Web server connects to clusters from the server's network environment. It cannot read files from your workstation and **never executes arbitrary commands** from an uploaded kubeconfig.
 
 - Static credentials must be embedded in kubeconfig data. Local file paths are not available to the server.
-- Supported OIDC flows use the challenge dialog. Depending on the IdP and its configuration, this can involve entering credentials, device-code sign-in, or completing a browser redirect.
+- Supported OIDC flows use the challenge dialog. Depending on the IdP and its configuration, this can involve entering credentials, device-code sign-in, or completing a browser redirect. Returning to the server automatically needs the operator to configure `KUBRON_PUBLIC_URL` and an organization-level web client; otherwise you paste the address the provider redirected to. See [deployment](/server/deploy#optional-browser-sign-in-and-google-accounts).
 - Azure AKS supports the configured `kubelogin` device-code, service-principal client-secret and ROPC modes. ROPC may be unavailable when the tenant requires MFA or Conditional Access.
 - AWS EKS and Google GKE are handled by native providers too: Kubron issues the EKS token itself and signs in to GKE with a service-account key or a Google account. See [AWS EKS](#aws-eks) and [Google GKE](#google-gke).
 - For an `exec` plugin without a native provider, Kubron displays the exact command for you to run on your own computer and accepts the resulting token or `ExecCredential` JSON. The server does not run that command.

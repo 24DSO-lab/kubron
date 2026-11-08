@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/24DSO-labs/kubron/internal/credential"
+	"github.com/24DSO-lab/kubron/internal/credential"
 )
 
 // shown collects everything the provider lets out to a place where a secret must not be: error texts (in the

@@ -10,9 +10,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/24DSO-labs/kubron/internal/audit"
-	"github.com/24DSO-labs/kubron/internal/logging"
-	"github.com/24DSO-labs/kubron/internal/server"
+	"github.com/24DSO-lab/kubron/internal/audit"
+	"github.com/24DSO-lab/kubron/internal/logging"
+	"github.com/24DSO-lab/kubron/internal/server"
 )
 
 // setupLogging настраивает журнал процесса по окружению и делает его логгером по умолчанию (slog.SetDefault

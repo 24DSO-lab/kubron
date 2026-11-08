@@ -1,0 +1,30 @@
+{
+  "doneOne": "{name}: {done}",
+  "doneMany": "{done}: {ok} из {total}",
+  "failedItem": "{name}: {error}",
+  "moreFailed": "…и ещё {n} с ошибкой",
+  "noResult": "Нет результата для объектов: {n}",
+  "reconcileRequested": "reconcile запрошен",
+  "reconcileWithSourceRequested": "reconcile вместе с источником запрошен",
+  "suspended": "приостановлен",
+  "resumed": "возобновлён",
+  "suspendConfirmOne": "Приостановить {name}? Flux перестанет его применять. Если spec.suspend задан в Git, родительская Kustomization вернёт значение.",
+  "suspendConfirmMany": "Приостановить объекты: {n}? Flux перестанет их применять. Если spec.suspend задан в Git, родительская Kustomization вернёт значение.",
+  "resumeConfirmOne": "Возобновить {name}? Flux сразу выполнит reconcile.",
+  "resumeConfirmMany": "Возобновить объекты: {n}? Flux сразу выполнит reconcile.",
+  "deleted": "{name} удалён",
+  "error": {
+    "reconcile": "Не удалось выполнить reconcile: {error}",
+    "suspend": "Не удалось приостановить: {error}",
+    "resume": "Не удалось возобновить: {error}",
+    "delete": "Не удалось удалить: {error}"
+  },
+  "delete": {
+    "prune": "Включён prune: вместе с объектом будут удалены управляемые ресурсы (в inventory: {n}).",
+    "keep": "Prune выключен: управляемые ресурсы останутся в кластере без управления.",
+    "helmUninstall": "Helm-релиз будет удалён (uninstall) вместе с его ресурсами.",
+    "gitRecreates": "Если объект описан в Git, родительская Kustomization создаст его снова.",
+    "typeName": "Введите имя объекта «{name}» для подтверждения",
+    "deleting": "Удаление…"
+  }
+}

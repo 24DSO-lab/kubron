@@ -7,9 +7,9 @@ import (
 	"context"
 	"errors"
 
-	"github.com/24DSO-labs/kubron/internal/credential"
-	"github.com/24DSO-labs/kubron/internal/idpnet"
-	"github.com/24DSO-labs/kubron/internal/netpolicy"
+	"github.com/24DSO-lab/kubron/internal/credential"
+	"github.com/24DSO-lab/kubron/internal/idpnet"
+	"github.com/24DSO-lab/kubron/internal/netpolicy"
 )
 
 // Errors of this provider. The texts are English and fixed: nothing that came from the user, the kubeconfig or AWS

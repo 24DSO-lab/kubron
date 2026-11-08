@@ -401,5 +401,13 @@
     "suspended": "Suspended",
     "rejected": "Rejected",
     "missing": "Missing"
+  },
+  "flux": {
+    "managedBy": "Managed by",
+    "badge": "Flux",
+    "managedByValue": "HelmRelease {namespace}/{name}",
+    "warnUpgrade": "Release {name} is managed by Flux (HelmRelease {fluxNamespace}/{fluxName}): a manual upgrade will diverge from Git, and Flux may overwrite it on the next reconcile.",
+    "warnRollback": "Release {name} is managed by Flux (HelmRelease {fluxNamespace}/{fluxName}): a manual rollback will diverge from Git, and Flux may overwrite it on the next reconcile.",
+    "warnUninstall": "Release {name} is managed by Flux (HelmRelease {fluxNamespace}/{fluxName}): a manual uninstall will diverge from Git, and Flux may install the release again on the next reconcile."
   }
 }

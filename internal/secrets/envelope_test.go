@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/24DSO-labs/kubron/internal/secretbox"
+	"github.com/24DSO-lab/kubron/internal/secretbox"
 )
 
 const canary = "CANARY-s3cr3t-refresh-token-9f2a"

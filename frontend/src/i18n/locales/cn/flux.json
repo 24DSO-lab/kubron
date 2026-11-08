@@ -1,0 +1,39 @@
+{
+  "state": {
+    "Ready": "就绪",
+    "Reconciling": "协调中",
+    "Suspended": "已暂停",
+    "Failed": "失败",
+    "Stalled": "已停滞",
+    "Unknown": "未知"
+  },
+  "conditions": {
+    "type": "类型",
+    "status": "状态",
+    "reason": "原因",
+    "message": "消息",
+    "time": "最近变更",
+    "empty": "没有状态条件"
+  },
+  "inventory": {
+    "filterPlaceholder": "按 kind、名称或命名空间筛选",
+    "kindFilter": "Kind",
+    "allKinds": "所有 kind",
+    "workloads": "工作负载",
+    "others": "其他资源",
+    "health": "健康状态",
+    "loading": "正在加载资源…",
+    "empty": "没有资源",
+    "noMatch": "没有符合筛选条件的资源",
+    "unavailable": "此 Flux 版本不支持",
+    "remote": "资源位于另一个集群",
+    "truncated": "列表已截断",
+    "showMore": "显示更多（还剩 {n} 项）"
+  },
+  "sourceRef": {
+    "source": "来源",
+    "dependsOn": "依赖于",
+    "noSource": "没有来源",
+    "noDependsOn": "没有依赖"
+  }
+}

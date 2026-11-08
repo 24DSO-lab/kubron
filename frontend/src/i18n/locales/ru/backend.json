@@ -712,5 +712,14 @@
   "theClusterDoesNotUseASharedTeamAccount": "кластер не использует общую учётную запись команды",
   "aSharedAccountIsAvailableOnlyForClustersOfATeam": "общая учётная запись доступна только для кластеров команды",
   "aSharedAccountIsMeaningfulOnlyForAKubeconfigThatSignsIn": "общая учётная запись имеет смысл только для kubeconfig со входом через провайдера или плагин",
-  "thisClusterNeedsASignInButNoSignInBrokerIsConfigured": "этому кластеру нужен вход, но брокер входа не настроен"
+  "thisClusterNeedsASignInButNoSignInBrokerIsConfigured": "этому кластеру нужен вход, но брокер входа не настроен",
+  "fluxNotImplementedYet": "ещё не реализовано",
+  "fluxIsNotInstalledInThisCluster": "Flux не установлен в этом кластере",
+  "fluxActionNotSupportedForKind": "это действие не поддерживается для данного вида объекта",
+  "fluxInvalidObjectReference": "некорректная ссылка на объект Flux",
+  "fluxNoObjectsSelected": "не выбрано ни одного объекта",
+  "fluxTooManyObjectsInOneCall": "слишком много объектов в одном вызове: максимум 200",
+  "fluxApiVersionNotSupported": "версия API Flux не поддерживается: обновите Flux до 2.3 или новее",
+  "fluxObjectIsBeingDeleted": "объект удаляется",
+  "fluxObjectIsSuspended": "объект приостановлен: сначала возобновите его"
 }

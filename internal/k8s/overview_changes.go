@@ -18,6 +18,7 @@ const (
 	changeKindRollout = "Rollout"
 	changeKindHelm    = "Helm"
 	changeKindArgo    = "Argo CD"
+	changeKindFlux    = "Flux"
 	maxChanges        = 15
 )
 
@@ -34,8 +35,8 @@ type ChangeEvent struct {
 	at time.Time
 }
 
-// GetRecentChanges собирает rollout'ы Deployment, обновления Helm-релизов и синки Argo CD за последние windowMinutes
-// (5 минут … 24 часа). Источник, который недоступен (нет прав, нет Argo CD), просто не даёт записей.
+// GetRecentChanges собирает rollout'ы Deployment, обновления Helm-релизов, синки Argo CD и reconcile Flux за последние windowMinutes
+// (5 минут … 24 часа). Источник, который недоступен (нет прав, нет Argo CD или Flux), просто не даёт записей.
 func (m *Manager) GetRecentChanges(windowMinutes int) ([]ChangeEvent, error) {
 	conn, err := m.GetActiveConnection()
 	if err != nil {
@@ -82,7 +83,52 @@ func (m *Manager) GetRecentChanges(windowMinutes int) ([]ChangeEvent, error) {
 		}
 	}
 
+	// Flux: время перехода условия Ready у Kustomization и HelmRelease (LastReconcileAt); без Flux списки пусты.
+	ks, _ := m.GetFluxKustomizations(nil)
+	hrs, _ := m.GetFluxHelmReleases(nil)
+	out = append(out, fluxChanges(ks, hrs, since)...)
+
 	return finishChanges(out), nil
+}
+
+// fluxChanges превращает последние переходы Ready объектов Flux в записи ленты. Время — LastReconcileAt (RFC3339);
+// пустое или нечитаемое время и записи старше since пропускаются. Detail: «вид · состояние · ревизия».
+func fluxChanges(ks []FluxKustomizationInfo, hrs []FluxHelmReleaseInfo, since time.Time) []ChangeEvent {
+	var out []ChangeEvent
+	add := func(o FluxObjectInfo, target string) {
+		t, err := time.Parse(time.RFC3339, o.LastReconcileAt)
+		if err != nil || t.Before(since) {
+			return
+		}
+		parts := []string{o.Kind, string(o.State)}
+		if rev := fluxShortRevision(o.Revision); rev != "" {
+			parts = append(parts, rev)
+		}
+		out = append(out, ChangeEvent{
+			Kind: changeKindFlux, Name: o.Name, Namespace: o.Namespace, at: t, Target: target,
+			Detail: strings.Join(parts, " · "),
+		})
+	}
+	for _, k := range ks {
+		add(k.FluxObjectInfo, "flux-kustomization")
+	}
+	for _, h := range hrs {
+		add(h.FluxObjectInfo, "flux-helmrelease")
+	}
+	return out
+}
+
+// fluxShortRevision сокращает хеш в ревизии Flux: «main@sha1:<40 hex>» → «main@sha1:abcdef0»; другие ревизии
+// (версия чарта, тег) остаются как есть.
+func fluxShortRevision(rev string) string {
+	i := strings.LastIndex(rev, ":")
+	if i < 0 {
+		return shortRev(rev)
+	}
+	if hash := rev[i+1:]; len(hash) > 7 {
+		return rev[:i+1] + hash[:7]
+	}
+	return rev
 }
 
 // rolloutChanges: новый ReplicaSet, принадлежащий Deployment, — это начало rollout'а (или первый запуск).

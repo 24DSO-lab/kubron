@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/24DSO-labs/kubron/internal/audit"
+	"github.com/24DSO-lab/kubron/internal/audit"
 )
 
 // ListUsers возвращает всех пользователей.

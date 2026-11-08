@@ -14,8 +14,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
 
-	"github.com/24DSO-labs/kubron/internal/clusterhealth"
-	"github.com/24DSO-labs/kubron/internal/credential"
+	"github.com/24DSO-lab/kubron/internal/clusterhealth"
+	"github.com/24DSO-lab/kubron/internal/credential"
 )
 
 // Health возвращает доску состояний соединения кластеров (общую для всех видов).

@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/24DSO-labs/kubron/internal/logging"
-	"github.com/24DSO-labs/kubron/internal/pgstore"
+	"github.com/24DSO-lab/kubron/internal/logging"
+	"github.com/24DSO-lab/kubron/internal/pgstore"
 )
 
 type keyMismatchError struct{}

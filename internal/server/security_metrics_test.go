@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/24DSO-labs/kubron/internal/metrics"
+	"github.com/24DSO-lab/kubron/internal/metrics"
 )
 
 type answerTarget struct{}

@@ -29,7 +29,7 @@ Kubron copies the kubeconfig contents into its own folder (your original `~/.kub
 If your kubeconfig contains several contexts, add the cluster once per context and give each a clear name and tag.
 :::
 
-## Limited access? It still works
+## Limited access? It still works {#limited-access}
 
 Kubron does not require cluster-wide `list` permission. If you can only see certain namespaces, restrict the namespace set in the cluster settings. Kubron shows what you are allowed to see and reports what it could not read, rather than an empty screen.
 

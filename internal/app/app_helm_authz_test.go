@@ -9,9 +9,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/24DSO-labs/kubron/internal/audit"
-	"github.com/24DSO-labs/kubron/internal/auth"
-	"github.com/24DSO-labs/kubron/internal/k8s"
+	"github.com/24DSO-lab/kubron/internal/audit"
+	"github.com/24DSO-lab/kubron/internal/auth"
+	"github.com/24DSO-lab/kubron/internal/k8s"
 )
 
 // auditAccess — членство в командах для теста: кластер → команда, пользователь → роли по командам.

@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/24DSO-labs/kubron/internal/credential"
+	"github.com/24DSO-lab/kubron/internal/credential"
 )
 
 func devicePoll(p *Provider, env credential.Env, d credential.Descriptor, res credential.Result) (credential.Result, error) {

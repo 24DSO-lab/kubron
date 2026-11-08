@@ -9,7 +9,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/24DSO-labs/kubron/pkg/ext"
+	"github.com/24DSO-lab/kubron/pkg/ext"
 )
 
 // Module подключается при сборке приложения: registry.Install(example.New(users)).

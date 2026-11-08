@@ -7,6 +7,7 @@ import (
 	"context"
 	"sync/atomic"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -93,52 +94,74 @@ func TestArgoCacheFiltersBySet(t *testing.T) {
 }
 
 func TestArgoCacheNotifiesOncePerBurst(t *testing.T) {
-	dyn := newFakeArgoDyn()
-	var calls atomic.Int32
-	ac, err := newArgoCache(dyn, func() { calls.Add(1) }, 50*time.Millisecond)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer ac.stop()
-	waitFor(t, "informer sync", ac.inf.HasSynced)
-
-	gvr := kindTable["application"].gvr
-	for _, name := range []string{"a", "b", "c"} {
-		if _, err := dyn.Resource(gvr).Namespace("argocd").Create(context.Background(), argoObj("Application", "argocd", name, nil), metav1.CreateOptions{}); err != nil {
+	synctest.Test(t, func(t *testing.T) {
+		dyn := newFakeArgoDyn()
+		var calls atomic.Int32
+		ac, err := newArgoCache(dyn, func() { calls.Add(1) }, 50*time.Millisecond)
+		if err != nil {
 			t.Fatal(err)
 		}
-	}
-	waitFor(t, "notification", func() bool { return calls.Load() >= 1 })
-	time.Sleep(150 * time.Millisecond)
-	if got := calls.Load(); got != 1 {
-		t.Fatalf("a burst of 3 changes must give 1 notification, got %d", got)
-	}
+		defer ac.stop()
+		synctest.Wait()
 
-	waitFor(t, "objects in cache", func() bool { l, _ := ac.list(nsScope{}); return len(l) == 3 })
+		gvr := kindTable["application"].gvr
+		for _, name := range []string{"a", "b", "c"} {
+			if _, err := dyn.Resource(gvr).Namespace("argocd").Create(context.Background(), argoObj("Application", "argocd", name, nil), metav1.CreateOptions{}); err != nil {
+				t.Fatal(err)
+			}
+		}
+		synctest.Wait()
+		time.Sleep(50 * time.Millisecond)
+		synctest.Wait()
+		if got := calls.Load(); got != 1 {
+			t.Fatalf("a burst of 3 changes must give 1 notification, got %d", got)
+		}
+		time.Sleep(150 * time.Millisecond)
+		if got := calls.Load(); got != 1 {
+			t.Fatalf("a burst of 3 changes must give 1 notification, got %d", got)
+		}
 
-	// Удаление тоже уведомляет.
-	if err := dyn.Resource(gvr).Namespace("argocd").Delete(context.Background(), "a", metav1.DeleteOptions{}); err != nil {
-		t.Fatal(err)
-	}
-	waitFor(t, "delete notification", func() bool { return calls.Load() >= 2 })
+		if l, _ := ac.list(nsScope{}); len(l) != 3 {
+			t.Fatalf("objects in cache: %d", len(l))
+		}
+
+		// Удаление тоже уведомляет.
+		if err := dyn.Resource(gvr).Namespace("argocd").Delete(context.Background(), "a", metav1.DeleteOptions{}); err != nil {
+			t.Fatal(err)
+		}
+		synctest.Wait()
+		time.Sleep(50 * time.Millisecond)
+		synctest.Wait()
+		if got := calls.Load(); got != 2 {
+			t.Fatalf("delete must notify, got %d", got)
+		}
+	})
 }
 
 func TestArgoCacheStopSilencesNotifications(t *testing.T) {
-	dyn := newFakeArgoDyn()
-	var calls atomic.Int32
-	ac, err := newArgoCache(dyn, func() { calls.Add(1) }, 30*time.Millisecond)
-	if err != nil {
-		t.Fatal(err)
-	}
-	waitFor(t, "informer sync", ac.inf.HasSynced)
+	synctest.Test(t, func(t *testing.T) {
+		dyn := newFakeArgoDyn()
+		var calls atomic.Int32
+		ac, err := newArgoCache(dyn, func() { calls.Add(1) }, 30*time.Millisecond)
+		if err != nil {
+			t.Fatal(err)
+		}
+		synctest.Wait()
 
-	_, _ = dyn.Resource(kindTable["application"].gvr).Namespace("argocd").Create(context.Background(), argoObj("Application", "argocd", "a", nil), metav1.CreateOptions{})
-	waitFor(t, "timer armed", func() bool { ac.mu.Lock(); defer ac.mu.Unlock(); return ac.timer != nil })
-	ac.stop()
-	time.Sleep(100 * time.Millisecond)
-	if calls.Load() != 0 {
-		t.Fatalf("no notifications are expected after stop, got %d", calls.Load())
-	}
+		_, _ = dyn.Resource(kindTable["application"].gvr).Namespace("argocd").Create(context.Background(), argoObj("Application", "argocd", "a", nil), metav1.CreateOptions{})
+		synctest.Wait()
+		ac.mu.Lock()
+		armed := ac.timer != nil
+		ac.mu.Unlock()
+		if !armed {
+			t.Fatal("timer must be armed after a change")
+		}
+		ac.stop()
+		time.Sleep(100 * time.Millisecond)
+		if calls.Load() != 0 {
+			t.Fatalf("no notifications are expected after stop, got %d", calls.Load())
+		}
+	})
 }
 
 func TestConnectionArgoCacheLifecycle(t *testing.T) {
@@ -149,7 +172,7 @@ func TestConnectionArgoCacheLifecycle(t *testing.T) {
 			t.Fatal("the cache must be created lazily and only once")
 		}
 		conn.Close()
-		if conn.argo != nil || !first.stopped {
+		if conn.crdCaches.has(kindTable["application"].gvr) || !first.stopped {
 			t.Fatal("Close must stop and reset the cache")
 		}
 	})

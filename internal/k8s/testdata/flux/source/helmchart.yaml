@@ -1,0 +1,45 @@
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmChart
+metadata:
+  name: apps-podinfo
+  namespace: flux-system
+  creationTimestamp: "2026-02-10T08:12:03Z"
+  generation: 2
+  uid: 3a1c6e52-9d0e-4b56-8d0e-1a0f3d1c9b22
+  labels:
+    app.kubernetes.io/part-of: platform
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: '{"spec":{"secretRef":{"name":"S3CRET-LASTAPPLIED"}}}'
+    team: platform
+spec:
+  interval: 5m0s
+  chart: podinfo
+  version: 6.x
+  sourceRef:
+    kind: HelmRepository
+    name: podinfo
+  reconcileStrategy: ChartVersion
+status:
+  observedGeneration: 2
+  conditions:
+  - type: Ready
+    status: "True"
+    reason: Succeeded
+    message: 'packaged ''podinfo'' chart with version ''6.5.4'''
+    lastTransitionTime: "2026-11-05T09:00:03Z"
+    observedGeneration: 2
+  - type: ArtifactInStorage
+    status: "True"
+    reason: Succeeded
+    message: 'stored artifact for revision'
+    lastTransitionTime: "2026-11-05T09:00:03Z"
+    observedGeneration: 2
+  artifact:
+    digest: sha256:0000d59f14ee26f783064b31cb4c7bf94f057bece083ba8dbc3023a32882f9b7
+    lastUpdateTime: "2026-11-05T09:00:03Z"
+    path: helmchart/flux-system/apps-podinfo/artifact.tar.gz
+    revision: 6.5.4
+    size: 20480
+    url: http://source-controller.flux-system.svc.cluster.local./helmchart/flux-system/apps-podinfo/artifact.tar.gz
+  observedChartName: podinfo
+  observedSourceArtifactRevision: sha256:aaaa

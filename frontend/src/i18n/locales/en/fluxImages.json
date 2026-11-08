@@ -1,0 +1,22 @@
+{
+  "columns": {
+    "image": "Image",
+    "tags": "Tags",
+    "lastScan": "Last scan",
+    "repository": "Image repository",
+    "policy": "Policy",
+    "latestImage": "Latest image",
+    "source": "Source",
+    "branch": "Branch",
+    "lastRun": "Last run",
+    "commit": "Last commit"
+  },
+  "props": {
+    "interval": "Interval",
+    "suspended": "Suspended"
+  },
+  "menu": {
+    "reconcile": "Reconcile",
+    "editYaml": "Edit YAML"
+  }
+}

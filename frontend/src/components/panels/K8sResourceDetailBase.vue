@@ -36,12 +36,12 @@
         </button>
 
         <!-- Delete button -->
-        <button v-if="showDelete !== false" class="btn-action" @click="emit('delete')" :title="$t('panels.detail.deleteResource')">
+        <button v-if="showDelete !== false" class="btn-action" data-testid="resource-delete" @click="emit('delete')" :title="$t('panels.detail.deleteResource')">
           <K8sIcon name="delete" :alt="$t('common.delete')" size="sm" />
         </button>
 
         <!-- Close button -->
-        <button class="btn-action" @click="emit('close')" :title="$t('common.close')">
+        <button class="btn-action" data-testid="resource-detail-close" @click="emit('close')" :title="$t('common.close')">
           <K8sIcon name="close" :alt="$t('common.close')" size="sm" />
         </button>
       </div>

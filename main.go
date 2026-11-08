@@ -9,9 +9,9 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/24DSO-labs/kubron/internal/app"
-	"github.com/24DSO-labs/kubron/internal/k8s"
-	wailsplatform "github.com/24DSO-labs/kubron/internal/platform/wails"
+	"github.com/24DSO-lab/kubron/internal/app"
+	"github.com/24DSO-lab/kubron/internal/k8s"
+	wailsplatform "github.com/24DSO-lab/kubron/internal/platform/wails"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"

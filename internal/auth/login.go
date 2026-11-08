@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/24DSO-labs/kubron/internal/audit"
+	"github.com/24DSO-lab/kubron/internal/audit"
 )
 
 // Setup создаёт первого администратора. Работает только пока в системе нет ни одного пользователя.

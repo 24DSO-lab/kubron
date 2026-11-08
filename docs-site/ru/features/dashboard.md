@@ -34,7 +34,7 @@ Kubron читает TLS-секреты (`kubernetes.io/tls`) и показыва
 
 Для этого экрана нужны право Kubron `secrets.read` и право Kubernetes на чтение Secret.
 
-## Метрики и «горячие точки»
+## Метрики и «горячие точки» {#metrics-and-hotspots}
 
 Всё перечисленное выше работает без стека метрик. Следующее требует данных Prometheus из необязательного стека метрик (Prometheus, kube-state-metrics и node-exporter):
 

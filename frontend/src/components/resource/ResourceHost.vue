@@ -27,6 +27,13 @@
     @deleted="resourceActions.closeDetail()"
   />
 
+  <FluxDeleteDialog
+    v-if="pendingFluxDelete"
+    :object="pendingFluxDelete"
+    @close="closeFluxDelete()"
+    @deleted="resourceActions.closeDetail()"
+  />
+
   <!-- Подтверждение действий (ctx.confirm): Restart, Evict, Rollback ... -->
   <ConfirmationDialog
     :model-value="!!pendingConfirm"
@@ -78,6 +85,8 @@ import SyncDialog from '../panels/SyncDialog.vue'
 import { pendingArgoSync, closeArgoSync } from '../../resources/argoActions'
 import DeleteAppDialog from '../panels/DeleteAppDialog.vue'
 import { pendingArgoDelete, closeArgoDelete } from '../../resources/argoActions'
+import FluxDeleteDialog from '../panels/FluxDeleteDialog.vue'
+import { pendingFluxDelete, closeFluxDelete } from '../../resources/fluxActions'
 
 const { t } = useI18n()
 
@@ -145,14 +154,14 @@ watch(
   async () => {
     const o = opened.value
     const d = def.value
-    if (!o || !d?.liveDetail || !d.api.get || !detail.value) return
+    if (!o || !d?.liveDetail || !detail.value) return
     const my = ++refetchSeq
     const stale = () => my !== refetchSeq || opened.value !== o
     try {
-      await reloadActive() // свежие поля элемента списка (ревизия, статус)
-      const fresh = await d.api.get(o.ns, o.name)
-      if (stale()) return
+      await reloadActive() // обновляем строку списка (работает и для API без get)
       const row = findLoaded(d.view, o.ns, o.name)
+      const fresh = d.api.get ? await d.api.get(o.ns, o.name) : null
+      if (stale()) return
       detail.value = { ...detail.value, ...(row ?? {}), ...(fresh ?? {}) }
     } catch {
       // ресурс мог быть удалён: список обновится сам, панель не закрываем принудительно

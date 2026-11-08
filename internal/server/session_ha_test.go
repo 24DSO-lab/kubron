@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/24DSO-labs/kubron/internal/replicaevents"
-	"github.com/24DSO-labs/kubron/internal/websession"
+	"github.com/24DSO-lab/kubron/internal/replicaevents"
+	"github.com/24DSO-lab/kubron/internal/websession"
 )
 
 // memBackend — общее хранилище сессий в памяти: роль PostgreSQL для двух «реплик» в тесте.

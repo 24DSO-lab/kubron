@@ -1,0 +1,67 @@
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: apps
+  namespace: flux-system
+  creationTimestamp: "2026-02-10T08:12:03Z"
+  generation: 3
+  uid: 6f7d1a52-0c1c-4a56-9d0e-2a0f3d1c9b11
+  labels:
+    kustomize.toolkit.fluxcd.io/name: apps
+    kustomize.toolkit.fluxcd.io/namespace: flux-system
+    app.kubernetes.io/part-of: platform
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: '{"apiVersion":"kustomize.toolkit.fluxcd.io/v1","kind":"Kustomization","metadata":{"name":"apps","namespace":"flux-system"},"spec":{"postBuild":{"substitute":{"DB_PASSWORD":"S3CRET-LASTAPPLIED"}}}}'
+    team: platform
+spec:
+  interval: 10m0s
+  retryInterval: 2m0s
+  timeout: 5m0s
+  path: ./clusters/prod/apps
+  prune: true
+  wait: true
+  targetNamespace: apps
+  serviceAccountName: kustomize-apps
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  postBuild:
+    substitute:
+      DB_PASSWORD: S3CRET-SUBSTITUTE
+      API_TOKEN: S3CRET-SUBSTITUTE-TOKEN
+    substituteFrom:
+    - kind: Secret
+      name: cluster-vars-S3CRET-SUBFROM
+  decryption:
+    provider: sops
+    secretRef:
+      name: sops-age-S3CRET-DECRYPT
+status:
+  observedGeneration: 3
+  conditions:
+  - type: Reconciling
+    status: "True"
+    reason: Progressing
+    message: 'Running health checks for revision main@sha1:b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6 with a timeout of 5m0s'
+    lastTransitionTime: "2026-11-07T10:00:00Z"
+    observedGeneration: 3
+  - type: Ready
+    status: "Unknown"
+    reason: Progressing
+    message: 'Reconciliation in progress'
+    lastTransitionTime: "2026-11-07T10:00:00Z"
+    observedGeneration: 3
+  lastAppliedRevision: main@sha1:6d1f6c3a8b0b9d9e0f6a1c3f0b2f1d8e4a5b6c7d
+  lastAttemptedRevision: main@sha1:b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6
+  lastAppliedOriginRevision: main@sha1:0a1b2c3d4e5f60718293a4b5c6d7e8f901234567
+  lastHandledReconcileAt: "2026-11-05T09:00:01.123456789Z"
+  inventory:
+    entries:
+    - id: apps_web_apps_Deployment
+      v: v1
+    - id: apps_web__Service
+      v: v1
+    - id: apps_web-config__ConfigMap
+      v: v1
+    - id: _apps__Namespace
+      v: v1

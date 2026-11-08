@@ -7,10 +7,10 @@ import (
 	"errors"
 	"strconv"
 
-	"github.com/24DSO-labs/kubron/internal/audit"
-	"github.com/24DSO-labs/kubron/internal/auth"
-	"github.com/24DSO-labs/kubron/internal/k8s"
-	"github.com/24DSO-labs/kubron/internal/teams"
+	"github.com/24DSO-lab/kubron/internal/audit"
+	"github.com/24DSO-lab/kubron/internal/auth"
+	"github.com/24DSO-lab/kubron/internal/k8s"
+	"github.com/24DSO-lab/kubron/internal/teams"
 )
 
 // Управление командами существует только в сервисном режиме (PostgreSQL). В десктопе и в личном режиме

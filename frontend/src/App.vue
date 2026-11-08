@@ -300,6 +300,9 @@ const activeViewProps = computed(() => {
   if (view === 'argo-dashboard') {
     props.clusterName = activeClusterId.value
   }
+  if (view === 'flux-dashboard') {
+    props.clusterName = activeClusterId.value
+  }
   if (view === 'settings') {
     props.clusterName = activeClusterId.value
   }
@@ -310,6 +313,7 @@ const activeViewProps = computed(() => {
 const viewHandlers: Record<string, () => Record<string, (...args: any[]) => void>> = {
   overview: () => ({ navigate: onNavigate }),
   'argo-dashboard': () => ({ navigate: onNavigate }),
+  'flux-dashboard': () => ({ navigate: onNavigate }),
 }
 
 const activeViewEvents = computed(() => ({

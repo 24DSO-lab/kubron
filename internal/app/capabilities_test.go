@@ -7,8 +7,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/24DSO-labs/kubron/internal/pfproxy"
-	"github.com/24DSO-labs/kubron/internal/streamid"
+	"github.com/24DSO-lab/kubron/internal/pfproxy"
+	"github.com/24DSO-lab/kubron/internal/streamid"
 )
 
 type capsPlatform struct{ nopPlatform }

@@ -1,0 +1,39 @@
+{
+  "state": {
+    "Ready": "Готов",
+    "Reconciling": "Применяется",
+    "Suspended": "Приостановлен",
+    "Failed": "Ошибка",
+    "Stalled": "Застрял",
+    "Unknown": "Неизвестно"
+  },
+  "conditions": {
+    "type": "Тип",
+    "status": "Статус",
+    "reason": "Причина",
+    "message": "Сообщение",
+    "time": "Последнее изменение",
+    "empty": "Условий нет"
+  },
+  "inventory": {
+    "filterPlaceholder": "Фильтр по kind, имени или namespace",
+    "kindFilter": "Kind",
+    "allKinds": "Все kind",
+    "workloads": "Рабочие нагрузки",
+    "others": "Прочие ресурсы",
+    "health": "Состояние",
+    "loading": "Загрузка ресурсов…",
+    "empty": "Ресурсы не получены",
+    "noMatch": "Нет ресурсов, подходящих под фильтр",
+    "unavailable": "Недоступно для этой версии Flux",
+    "remote": "Ресурсы находятся в другом кластере",
+    "truncated": "Список усечён",
+    "showMore": "Показать ещё (осталось {n})"
+  },
+  "sourceRef": {
+    "source": "Источник",
+    "dependsOn": "Зависит от",
+    "noSource": "Источника нет",
+    "noDependsOn": "Зависимостей нет"
+  }
+}

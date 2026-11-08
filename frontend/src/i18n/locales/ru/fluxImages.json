@@ -1,0 +1,22 @@
+{
+  "columns": {
+    "image": "Образ",
+    "tags": "Теги",
+    "lastScan": "Последний скан",
+    "repository": "Репозиторий образов",
+    "policy": "Правило",
+    "latestImage": "Последний образ",
+    "source": "Источник",
+    "branch": "Ветка",
+    "lastRun": "Последний запуск",
+    "commit": "Последний коммит"
+  },
+  "props": {
+    "interval": "Интервал",
+    "suspended": "Приостановлен"
+  },
+  "menu": {
+    "reconcile": "Reconcile",
+    "editYaml": "Править YAML"
+  }
+}

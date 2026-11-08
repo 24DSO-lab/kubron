@@ -13,4 +13,4 @@ Kubron построен на следующих технологиях:
 - [Участие в разработке](/ru/development/contributing)
 - [Выпуск релизов](/ru/development/releasing)
 
-Дополнительные материалы в репозитории: [CONTRIBUTING.md](https://github.com/24DSO-labs/kubron/blob/master/CONTRIBUTING.md), [архитектурные решения ADR](https://github.com/24DSO-labs/kubron/tree/master/docs/adr), [локализация](https://github.com/24DSO-labs/kubron/blob/master/docs/i18n.md).
+Дополнительные материалы в репозитории: [CONTRIBUTING.md](https://github.com/24DSO-lab/kubron/blob/master/CONTRIBUTING.md), [архитектурные решения ADR](https://github.com/24DSO-lab/kubron/tree/master/docs/adr), [локализация](https://github.com/24DSO-lab/kubron/blob/master/docs/i18n.md).

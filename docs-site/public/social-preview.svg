@@ -35,5 +35,5 @@
 
   <line x1="70" y1="548" x2="1210" y2="548" stroke="#1F2A44" stroke-width="2"/>
   <text x="70" y="596" font-family="Poppins" font-weight="400" font-size="26" fill="#64748B">Open source · Apache-2.0</text>
-  <text x="1210" y="596" text-anchor="end" font-family="Poppins" font-weight="500" font-size="26" fill="#38BDF8">github.com/24DSO-labs/kubron</text>
+  <text x="1210" y="596" text-anchor="end" font-family="Poppins" font-weight="500" font-size="26" fill="#38BDF8">github.com/24DSO-lab/kubron</text>
 </svg>

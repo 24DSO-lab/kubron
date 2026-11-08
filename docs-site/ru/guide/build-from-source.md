@@ -48,7 +48,7 @@ xcode-select --install
 ## Получение исходников
 
 ```bash
-git clone https://github.com/24DSO-labs/kubron.git
+git clone https://github.com/24DSO-lab/kubron.git
 cd kubron
 ```
 
@@ -99,7 +99,7 @@ wails build -clean -platform windows/amd64
 
 В Linux флаг `-tags webkit2_41` обязателен: он выбирает WebKitGTK 4.1, ту же библиотеку, что и опубликованные сборки.
 
-Wails собирает под ту платформу, на которой запущен. Чтобы получить все три, собирайте на каждой ОС, как это делает [workflow релиза](https://github.com/24DSO-labs/kubron/blob/master/.github/workflows/release.yml) проекта.
+Wails собирает под ту платформу, на которой запущен. Чтобы получить все три, собирайте на каждой ОС, как это делает [workflow релиза](https://github.com/24DSO-lab/kubron/blob/master/.github/workflows/release.yml) проекта.
 
 ### Установка собранного
 

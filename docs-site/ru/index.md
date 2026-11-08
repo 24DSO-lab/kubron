@@ -10,13 +10,13 @@ hero:
   actions:
     - theme: brand
       text: Скачать Kubron
-      link: https://github.com/24DSO-labs/kubron/releases
+      link: https://github.com/24DSO-lab/kubron/releases
     - theme: alt
       text: Начать работу
       link: /ru/guide/getting-started
     - theme: alt
       text: GitHub
-      link: https://github.com/24DSO-labs/kubron
+      link: https://github.com/24DSO-lab/kubron
 
 features:
   - icon: ⎈
@@ -33,7 +33,7 @@ features:
     details: Репозитории и чарты, установка и обновление релизов, история ревизий и rollback.
   - icon: ⟲
     title: GitOps в том же интерфейсе
-    details: "Приложения Argo CD, ApplicationSet и проекты: sync, diff и граф ресурсов."
+    details: "Приложения Argo CD, ApplicationSet и проекты, а также Kustomization и HelmRelease Flux CD в одном интерфейсе."
   - icon: ◉
     title: Приватность по умолчанию
     details: В desktop-режиме нет телеметрии и обязательной учётной записи. Kubeconfig остаётся на вашей машине.
@@ -54,19 +54,19 @@ Kubron объединяет повседневные операции с Kuberne
 
 <div class="screenshot-grid">
   <figure>
-    <img src="https://raw.githubusercontent.com/24DSO-labs/kubron/master/docs/images/screenshots/overview.png" alt="Обзор Kubron: состояние кластера, workloads и ресурсы" loading="lazy">
+    <img src="https://raw.githubusercontent.com/24DSO-lab/kubron/master/docs/images/screenshots/overview.png" alt="Обзор Kubron: состояние кластера, workloads и ресурсы" loading="lazy">
     <figcaption><strong>Обзор кластера</strong><br>Состояние, ресурсы, проблемы и последние изменения.</figcaption>
   </figure>
   <figure>
-    <img src="https://raw.githubusercontent.com/24DSO-labs/kubron/master/docs/images/screenshots/pods.png" alt="Таблица Pod в Kubron со статусом и потреблением ресурсов" loading="lazy">
+    <img src="https://raw.githubusercontent.com/24DSO-lab/kubron/master/docs/images/screenshots/pods.png" alt="Таблица Pod в Kubron со статусом и потреблением ресурсов" loading="lazy">
     <figcaption><strong>Ресурсы</strong><br>Список Pod и workloads с переходом к деталям.</figcaption>
   </figure>
   <figure>
-    <img src="https://raw.githubusercontent.com/24DSO-labs/kubron/master/docs/images/screenshots/yaml-editor.png" alt="YAML-редактор Kubron с просмотром diff перед сохранением" loading="lazy">
+    <img src="https://raw.githubusercontent.com/24DSO-lab/kubron/master/docs/images/screenshots/yaml-editor.png" alt="YAML-редактор Kubron с просмотром diff перед сохранением" loading="lazy">
     <figcaption><strong>YAML-редактор</strong><br>Проверьте diff перед применением изменений.</figcaption>
   </figure>
   <figure>
-    <img src="https://raw.githubusercontent.com/24DSO-labs/kubron/master/docs/images/screenshots/gitops-applications.png" alt="Список GitOps-приложений в Kubron" loading="lazy">
+    <img src="https://raw.githubusercontent.com/24DSO-lab/kubron/master/docs/images/screenshots/gitops-applications.png" alt="Список GitOps-приложений в Kubron" loading="lazy">
     <figcaption><strong>GitOps</strong><br>Состояние приложений и синхронизации в одном месте.</figcaption>
   </figure>
 </div>
@@ -93,6 +93,7 @@ Kubron объединяет повседневные операции с Kuberne
 - **Операционные действия** — логи, exec, port-forward, масштабирование и перезапуск workloads, cordon и drain узлов.
 - **Жизненный цикл Helm** — репозитории (включая OCI), поиск чартов, dry-run, обновления, diff ревизий и rollback.
 - **Argo CD** — приложения, ApplicationSet, проекты, управление sync, сравнение live и desired и граф ресурсов.
+- **Flux CD** — Kustomization, HelmRelease, источники, уведомления и автоматизация образов, с reconcile, suspend, resume и цепочкой от источника до ресурсов.
 - **Метрики** — графики для Pod, workloads, узлов, PVC и Ingress при установленном metrics stack.
 
 ## Почему Kubron
@@ -123,11 +124,11 @@ Desktop не требует аккаунта, не отправляет теле
 
 ## Начало работы
 
-- [Скачать последнюю версию](https://github.com/24DSO-labs/kubron/releases)
+- [Скачать последнюю версию](https://github.com/24DSO-lab/kubron/releases)
 - [Выбрать Desktop или Web](/ru/guide/getting-started)
 - [Требования и проверка](/ru/guide/installation)
 - [Все возможности](/ru/features/)
-- [Исходный код и участие в разработке](https://github.com/24DSO-labs/kubron)
+- [Исходный код и участие в разработке](https://github.com/24DSO-lab/kubron)
 
 <div class="home-license">
   Kubron — открытый проект под лицензией Apache-2.0.

@@ -4,7 +4,7 @@ Kubron is a fast, private, open-source **Kubernetes Operations Workspace** for d
 
 It is written in **Go** and uses [Wails](https://wails.io) with a **Vue 3** interface. The Desktop edition is a compact native application on top of the webview that is already part of your operating system (WebView2 on Windows, WebKit on macOS and Linux). It connects to your clusters directly from your machine with the kubeconfig you already have. There is no Kubron cloud in between.
 
-![Kubron cluster overview](https://raw.githubusercontent.com/24DSO-labs/kubron/master/docs/images/screenshots/overview.png)
+![Kubron cluster overview](https://raw.githubusercontent.com/24DSO-lab/kubron/master/docs/images/screenshots/overview.png)
 
 ## Two editions
 
@@ -45,7 +45,7 @@ Namespace scoping does not require cluster-wide `list`. If you can only see two 
 Kubron recognizes the credential type in your kubeconfig and guides you through sign-in: tokens and certificates, OIDC (password, browser and device code), Azure AKS, AWS EKS and Google GKE. On the Web edition the server never runs commands from an uploaded kubeconfig. See [Connecting to Kubernetes](/features/cluster-auth).
 
 ### Helm and GitOps built in
-Install, upgrade, diff and roll back Helm releases, and manage Argo CD applications, ApplicationSets and projects, all without installing plugins or extra components in the cluster for the UI.
+Install, upgrade, diff and roll back Helm releases, and work with Argo CD and Flux CD, all without installing plugins or extra components in the cluster for the UI.
 
 ### Live, not stale
 Shared informers keep lists and the dashboard current without hammering the API server with polling.
@@ -65,7 +65,7 @@ Apache-2.0 licensed, with a public `pkg/ext` API for extensions. The interface i
 | [Resources & YAML](/features/resources) | Built-in types and CRDs, detail panels, YAML editor with diff, bulk actions |
 | Operations | Live logs, pod terminals, port forwarding, scale, restart, rollback, cordon and drain |
 | [Helm](/features/helm) | Releases, history and diff, chart catalog with OCI, dry-run install and upgrade |
-| [GitOps](/features/gitops) | Argo CD applications, sync and refresh, live-vs-desired diff, resource graph |
+| [GitOps](/features/gitops) | Argo CD applications, sync and refresh, live-vs-desired diff, resource graph; Flux CD Kustomizations and HelmReleases, reconcile, suspend and resume |
 | [Cluster authentication](/features/cluster-auth) | OIDC, AKS, EKS, GKE, exec plugins, personal or shared team sign-in |
 | [Teams](/features/teams) | Web edition: team-owned clusters and per-team roles |
 | [Security](/features/security) | Local users and roles, audit log, lockout, auto-logout |
@@ -76,7 +76,7 @@ Kubron is honest about where it is:
 
 - **Builds are not code-signed yet.** Windows SmartScreen and macOS Gatekeeper will ask you to confirm the first launch. The [Desktop guide](/guide/desktop) shows exactly how, and how to verify the files instead.
 - **Sign-in to Kubron itself uses local accounts.** Organization SSO/OIDC for Kubron's own login is not built in yet; cluster sign-in through an identity provider is supported.
-- **GitOps means Argo CD only for now.** Support for more tools is on the roadmap, as are code-signed builds.
+- **GitOps covers Argo CD and Flux CD.** Flux has no diff or rollback in Kubron: roll back through Git. More tools and code-signed builds are on the roadmap.
 - **Desktop builds target 64-bit systems:** Windows x64, Linux x64 and macOS (universal, Apple Silicon and Intel).
 - **Web is self-hosted.** Read the [production requirements](/server/) before exposing it to users.
 

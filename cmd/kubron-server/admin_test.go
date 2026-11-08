@@ -12,8 +12,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/24DSO-labs/kubron/internal/pgstore"
-	"github.com/24DSO-labs/kubron/internal/secretbox"
+	"github.com/24DSO-lab/kubron/internal/pgstore"
+	"github.com/24DSO-lab/kubron/internal/secretbox"
 	"github.com/jackc/pgx/v5"
 )
 

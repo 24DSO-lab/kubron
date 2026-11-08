@@ -7,7 +7,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/24DSO-labs/kubron/internal/credential"
+	"github.com/24DSO-lab/kubron/internal/credential"
 )
 
 // idTokenLeeway is how long a legacy ID token must stay valid to be used as it is.

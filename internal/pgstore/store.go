@@ -15,8 +15,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
 
-	"github.com/24DSO-labs/kubron/internal/migrate"
-	"github.com/24DSO-labs/kubron/internal/secretbox"
+	"github.com/24DSO-lab/kubron/internal/migrate"
+	"github.com/24DSO-lab/kubron/internal/secretbox"
 )
 
 // DefaultName — имя организации и команды, создаваемых при первом запуске (задача 3.1d переносит в них данные десктопа).

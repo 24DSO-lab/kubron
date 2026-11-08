@@ -8,7 +8,7 @@ Check the [system requirements](/guide/installation#system-requirements) first, 
 
 ## Download
 
-Get the latest release from [GitHub Releases](https://github.com/24DSO-labs/kubron/releases):
+Get the latest release from [GitHub Releases](https://github.com/24DSO-lab/kubron/releases):
 
 | Platform | Package |
 |---|---|
@@ -28,12 +28,12 @@ Checksums are published in `SHA256SUMS.txt`, and release files include build pro
 
 ### Steps
 
-1. Download `Kubron_v<version>_windows-amd64.zip` from the [Releases page](https://github.com/24DSO-labs/kubron/releases).
+1. Download `Kubron_v<version>_windows-amd64.zip` from the [Releases page](https://github.com/24DSO-lab/kubron/releases).
 2. *(Recommended)* Verify the file: [checksum and provenance](/guide/installation#verify-your-download).
 3. Right-click the zip, open **Properties**, and tick **Unblock** if the option is shown. Or run in PowerShell:
 
    ```powershell
-   Unblock-File .\Kubron_v1.0.0_windows-amd64.zip
+   Unblock-File .\Kubron_v1.1.0_windows-amd64.zip
    ```
 
 4. Extract the archive. It contains a single file, `Kubron.exe`. Put it in a folder you control, for example `C:\Tools\Kubron\` or `%LOCALAPPDATA%\Programs\Kubron\`.
@@ -80,7 +80,7 @@ Kubron needs **GTK 3** and **WebKitGTK 4.1**. Pick the install method for your d
 The package declares its dependencies (`libgtk-3-0`, `libwebkit2gtk-4.1-0`), so `apt` installs everything.
 
 ```bash
-sudo apt install ./kubron_1.0.0_amd64.deb
+sudo apt install ./kubron_1.1.0_amd64.deb
 ```
 
 Use the path to the file you downloaded. Installing with `apt install ./file.deb` (not `dpkg -i`) resolves dependencies for you.
@@ -131,7 +131,7 @@ sudo apt remove kubron
 2. Extract the archive. It contains one executable, `Kubron`:
 
    ```bash
-   tar -xzf Kubron_v1.0.0_linux-amd64.tar.gz
+   tar -xzf Kubron_v1.1.0_linux-amd64.tar.gz
    chmod +x Kubron
    ./Kubron
    ```
@@ -205,7 +205,7 @@ Kubron creates the folder so only your user can enter it (`0700`) and writes its
 | **Update** | Replace `Kubron.exe` | Replace `Kubron.app` in Applications | `sudo apt install ./new.deb` | Replace the `Kubron` file |
 | **Uninstall** | Delete `Kubron.exe` | Drag `Kubron.app` to the Trash | `sudo apt remove kubron` | Delete the file |
 
-Your clusters and account stay in `~/.kubron` through updates. Delete that folder only if you also want to remove your data. See the [changelog](https://github.com/24DSO-labs/kubron/blob/master/CHANGELOG.md) before upgrading across major versions.
+Your clusters and account stay in `~/.kubron` through updates. Delete that folder only if you also want to remove your data. See the [changelog](https://github.com/24DSO-lab/kubron/blob/master/CHANGELOG.md) before upgrading across major versions.
 
 ## Troubleshooting
 
@@ -243,7 +243,7 @@ Kubron signs in to Azure AKS (`kubelogin`), AWS EKS and Google GKE on its own. F
 Kubron could not read `~/.kubron/users.json`, so it keeps the app closed rather than risk your data. Restore the file from a backup. See [Where Kubron keeps its data](#where-kubron-keeps-its-data).
 
 ### Still stuck?
-Search or open an issue on [GitHub](https://github.com/24DSO-labs/kubron/issues/new/choose). Include your OS version, the Kubron version and what you tried.
+Search or open an issue on [GitHub](https://github.com/24DSO-lab/kubron/issues/new/choose). Include your OS version, the Kubron version and what you tried.
 
 ## Connect a cluster
 

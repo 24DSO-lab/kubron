@@ -1,6 +1,6 @@
 # Kubron documentation site
 
-VitePress documentation for [Kubron](https://github.com/24DSO-labs/kubron). English is the default locale; Russian is available under `/ru/`.
+VitePress documentation for [Kubron](https://github.com/24DSO-lab/kubron). English is the default locale; Russian is available under `/ru/`.
 
 ## Local development
 

@@ -4,7 +4,7 @@
 package credential
 
 import (
-	"github.com/24DSO-labs/kubron/internal/secrets"
+	"github.com/24DSO-lab/kubron/internal/secrets"
 )
 
 // LegacyTeamAAD is the associated data of the task 3.7 oidc-password secrets (clusters.secret_enc), which

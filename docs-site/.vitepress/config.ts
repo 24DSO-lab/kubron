@@ -3,7 +3,7 @@
 
 import { defineConfig } from 'vitepress'
 
-const repo = 'https://github.com/24DSO-labs/kubron'
+const repo = 'https://github.com/24DSO-lab/kubron'
 const releases = `${repo}/releases`
 const base = process.env.DOCS_BASE || '/'
 
@@ -13,6 +13,8 @@ export default defineConfig({
 
   lang: 'en-US',
   base,
+  // Hosting notes for maintainers are not part of the public site
+  srcExclude: ['README.md', 'DOMAIN.md'],
   appearance: 'dark',
   head: [
     ['link', { rel: 'icon', href: `${base}favicon.svg`, type: 'image/svg+xml' }],
@@ -21,7 +23,7 @@ export default defineConfig({
     ['meta', { property: 'og:site_name', content: 'Kubron' }],
     ['meta', { property: 'og:title', content: 'Kubron — Kubernetes, under control.' }],
     ['meta', { property: 'og:description', content: 'A Kubernetes Operations Workspace for desktop and self-hosted web. Clusters, workloads, Helm and GitOps in one place.' }],
-    ['meta', { property: 'og:image', content: 'https://raw.githubusercontent.com/24DSO-labs/kubron/master/docs/images/social-preview.png' }],
+    ['meta', { property: 'og:image', content: 'https://raw.githubusercontent.com/24DSO-lab/kubron/master/docs/images/social-preview.png' }],
     ['meta', { name: 'twitter:card', content: 'summary_large_image' }]
   ],
   locales: {
@@ -45,6 +47,7 @@ export default defineConfig({
             { text: 'Build from source', link: '/guide/build-from-source' },
             { text: 'Web', link: '/guide/web' },
             { text: 'First cluster', link: '/guide/first-cluster' },
+            { text: 'Troubleshooting & FAQ', link: '/guide/troubleshooting' },
             { text: 'Keyboard shortcuts', link: '/guide/shortcuts' }
           ]}],
           '/features/': [{ text: 'Features', items: [
@@ -63,7 +66,12 @@ export default defineConfig({
             { text: 'Overview', link: '/server/' },
             { text: 'Local quick start', link: '/server/quick-start' },
             { text: 'Docker & Kubernetes', link: '/server/deploy' },
-            { text: 'Configuration', link: '/server/configuration' }
+            { text: 'Configuration', link: '/server/configuration' },
+            { text: 'Backup & key rotation', link: '/server/backup' },
+            { text: 'High availability', link: '/server/ha' },
+            { text: 'Logging, audit & metrics', link: '/server/observability' },
+            { text: 'HTTP security', link: '/server/http-security' },
+            { text: 'Command reference', link: '/server/cli' }
           ]}],
           '/development/': [{ text: 'Development', items: [
             { text: 'Overview', link: '/development/' },
@@ -96,6 +104,7 @@ export default defineConfig({
             { text: 'Сборка из исходников', link: '/ru/guide/build-from-source' },
             { text: 'Web', link: '/ru/guide/web' },
             { text: 'Первый кластер', link: '/ru/guide/first-cluster' },
+            { text: 'Диагностика и FAQ', link: '/ru/guide/troubleshooting' },
             { text: 'Горячие клавиши', link: '/ru/guide/shortcuts' }
           ]}],
           '/ru/features/': [{ text: 'Возможности', items: [
@@ -114,7 +123,12 @@ export default defineConfig({
             { text: 'Обзор', link: '/ru/server/' },
             { text: 'Локальный быстрый запуск', link: '/ru/server/quick-start' },
             { text: 'Docker и Kubernetes', link: '/ru/server/deploy' },
-            { text: 'Конфигурация', link: '/ru/server/configuration' }
+            { text: 'Конфигурация', link: '/ru/server/configuration' },
+            { text: 'Резервное копирование и ключи', link: '/ru/server/backup' },
+            { text: 'Высокая доступность', link: '/ru/server/ha' },
+            { text: 'Журналы, аудит и метрики', link: '/ru/server/observability' },
+            { text: 'Безопасность HTTP', link: '/ru/server/http-security' },
+            { text: 'Справочник команд', link: '/ru/server/cli' }
           ]}],
           '/ru/development/': [{ text: 'Разработка', items: [
             { text: 'Обзор', link: '/ru/development/' },

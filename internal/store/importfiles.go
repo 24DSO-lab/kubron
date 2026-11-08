@@ -8,8 +8,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/24DSO-labs/kubron/internal/pgstore"
-	"github.com/24DSO-labs/kubron/pkg/ext"
+	"github.com/24DSO-lab/kubron/internal/pgstore"
+	"github.com/24DSO-lab/kubron/pkg/ext"
 )
 
 // ImportReport — итог переноса данных из файлового хранилища в PostgreSQL.

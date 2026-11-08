@@ -1,6 +1,6 @@
 # Docker and Kubernetes deployment
 
-This is the step-by-step guide for running the Web edition (`kubron-server`) for a team: first with Docker, then on Kubernetes with the Helm chart. It follows the [full operations guide](https://github.com/24DSO-labs/kubron/blob/master/docs/deploy.md) in the repository, which remains the reference for advanced topics.
+This is the step-by-step guide for running the Web edition (`kubron-server`) for a team: first with Docker, then on Kubernetes with the Helm chart. It follows the [full operations guide](https://github.com/24DSO-lab/kubron/blob/master/docs/deploy.md) in the repository, which remains the reference for advanced topics.
 
 Want to try it on your laptop first? Use the [quick start](/server/quick-start).
 
@@ -16,7 +16,7 @@ Want to try it on your laptop first? Use the [quick start](/server/quick-start).
 | **A DNS name** | For example `kubron.example.com` |
 | **Kubernetes 1.27+ and Helm 3** | Only for the Helm installation |
 
-Plan for **two or more replicas** in production. All state is in PostgreSQL, so replicas are interchangeable (see [high availability](https://github.com/24DSO-labs/kubron/blob/master/docs/ha.md)).
+Plan for **two or more replicas** in production. All state is in PostgreSQL, so replicas are interchangeable (see [high availability](/server/ha)).
 
 ## Step 1. Prepare PostgreSQL
 
@@ -38,7 +38,7 @@ postgres://kubron:PASSWORD@db.example.com:5432/kubron?sslmode=verify-full
 If you reach PostgreSQL through **PgBouncer in transaction mode**, also provide a direct address in `KUBRON_DB_LISTEN_URL`, because `LISTEN/NOTIFY` does not work through a transaction-mode pooler.
 
 ::: tip Backups
-Schedule PostgreSQL backups now. The key and the database must be backed up **separately** and stored in **different places**; see the [backup guide](https://github.com/24DSO-labs/kubron/blob/master/docs/backup.md).
+Schedule PostgreSQL backups now. The key and the database must be backed up **separately** and stored in **different places**; see the [backup guide](/server/backup).
 :::
 
 ## Step 2. Generate and store the encryption key
@@ -66,7 +66,7 @@ docker run -d --name kubron --restart unless-stopped \
   -e KUBRON_SETUP_TOKEN='a-random-token-of-16-or-more-characters' \
   -e KUBRON_SECRET_KEY='k1:...' \
   -e KUBRON_DATABASE_URL='postgres://kubron:...@db.example.com:5432/kubron?sslmode=verify-full' \
-  ghcr.io/24dso-labs/kubron:1.0.0
+  ghcr.io/24dso-lab/kubron:1.1.0
 ```
 
 What each part does:
@@ -149,8 +149,8 @@ Notes:
 ### Install
 
 ```bash
-helm install kubron oci://ghcr.io/24dso-labs/charts/kubron \
-  --version 1.0.0 -n kubron -f values.yaml
+helm install kubron oci://ghcr.io/24dso-lab/charts/kubron \
+  --version 1.1.0 -n kubron -f values.yaml
 ```
 
 The chart version equals the release version (without `v`), and the image tag defaults to the same version. For a build from source, use `helm install kubron deploy/helm/kubron ...` and set `image.repository` and `image.tag` yourself.
@@ -199,6 +199,79 @@ Afterwards the token is no longer used. You may delete the `<release>-setup` Sec
 
 To manage the cluster that Kubron itself runs in, set `inCluster.enabled=true`. The server then uses its own ServiceAccount; choose the RBAC profile in the chart's `rbac` section and grant only what you need.
 
+## Access for the in-cluster ServiceAccount
+
+When `inCluster.enabled=true`, Kubron manages its own cluster through the chart's ServiceAccount. Kubron roles and teams limit what users can ask for, but they never add rights: **the ServiceAccount's RBAC is the ceiling for everyone**, including a Kubron administrator. If the profile does not allow writing, nobody can write. Choose the smallest profile that is enough (`rbac.profile`):
+
+| Profile | What the ServiceAccount may do | What works in Kubron |
+|---|---|---|
+| `readonly` (default) | `get/list/watch` on the API groups Kubron reads (workloads, networking, storage, RBAC objects, CRDs, metrics), **without `secrets`** | Browsing (`read`) |
+| `operator` | `readonly` plus `patch/update` on Deployments, StatefulSets and DaemonSets (restart, rollback), `scale` on Deployments and StatefulSets, `create/delete` on Jobs (retry), `patch` on nodes (cordon) | Browsing and safe operations (`operate`): restart, scale, rollback, retry Job, cordon |
+| `custom` | Only `rbac.customRules`, or an existing ClusterRole (`rbac.existingClusterRole`) | Whatever you grant |
+
+The profiles are derived from the Kubernetes API calls in the code for the `read` and `operate` permissions. The templates are `rbac.readonlyRules` and `rbac.operatorRules` in the chart's `values.yaml`.
+
+**What the profiles deliberately do not cover.** Pod terminals (`pods/exec`, `pods/attach`), port-forward, the node shell (it creates a privileged Pod), drain (`pods/eviction`), editing and deleting arbitrary objects, and Helm (releases are stored in Secrets and apply arbitrary manifests) need broad rights that must not be granted by default. Enable them knowingly through `custom`. You can still switch the matching Kubron permissions off for everyone with `kubron.disableExec`, `kubron.disableNodeShell` and `kubron.disablePortForward`.
+
+- **Secret values.** By default the ServiceAccount does not read `secrets`, so nobody can see Secret values. `rbac.allowSecretsRead=true` adds `get/list/watch` on cluster `secrets` to any profile; everyone with the Kubron `secrets.read` permission (`operator` and `admin`) can then see them.
+- **Custom resources** (CRDs, Argo CD `Application`, Flux objects and so on) are not in the profiles. Add the groups you need to `rbac.extraRules`; a ready-made fragment for Flux is [below](#rights-for-flux-cd).
+- **An existing role.** `rbac.profile=custom` with `rbac.existingClusterRole=view` binds the ServiceAccount to the built-in `view` role without a ClusterRole of its own. The built-in `view` does not include `secrets`, while `edit` and `admin` do and allow writing: bind them only when you really need to.
+- **Changing the profile** takes effect immediately on `helm upgrade`. No Pod restart is needed, because the API server checks the rights.
+
+### Rights for Flux CD {#rights-for-flux-cd}
+
+The profiles contain no Flux rules (just as for Argo CD): Flux objects are readable and changeable only if you add rules to `rbac.extraRules`. The rules end up in the chart's ClusterRole; with `rbac.existingClusterRole` they are not used, and the rights must be granted in the bound role itself. The fragment below is split by level: keep only what you need.
+
+```yaml
+rbac:
+  extraRules:
+    # Read (Kubron `read`): lists, details, dashboard, graph. All three verbs are needed: lists come from an informer.
+    - apiGroups: [kustomize.toolkit.fluxcd.io]
+      resources: [kustomizations]
+      verbs: [get, list, watch]
+    - apiGroups: [helm.toolkit.fluxcd.io]
+      resources: [helmreleases]
+      verbs: [get, list, watch]
+    - apiGroups: [source.toolkit.fluxcd.io]
+      resources: [gitrepositories, ocirepositories, helmrepositories, helmcharts, buckets]
+      verbs: [get, list, watch]
+    - apiGroups: [notification.toolkit.fluxcd.io]
+      resources: [alerts, providers, receivers]
+      verbs: [get, list, watch]
+    - apiGroups: [image.toolkit.fluxcd.io]
+      resources: [imagerepositories, imagepolicies, imageupdateautomations]
+      verbs: [get, list, watch]
+
+    # Reconcile (Kubron `operate`), suspend and resume (`write`): merge-patch of annotations and `spec.suspend`.
+    - apiGroups: [kustomize.toolkit.fluxcd.io]
+      resources: [kustomizations]
+      verbs: [patch]
+    - apiGroups: [helm.toolkit.fluxcd.io]
+      resources: [helmreleases]
+      verbs: [patch]
+    - apiGroups: [source.toolkit.fluxcd.io]
+      resources: [gitrepositories, ocirepositories, helmrepositories, helmcharts, buckets]
+      verbs: [patch]
+    - apiGroups: [image.toolkit.fluxcd.io]
+      resources: [imagerepositories, imageupdateautomations]
+      verbs: [patch]
+
+    # Delete (Kubron `write`): Kustomization and HelmRelease only.
+    - apiGroups: [kustomize.toolkit.fluxcd.io]
+      resources: [kustomizations]
+      verbs: [delete]
+    - apiGroups: [helm.toolkit.fluxcd.io]
+      resources: [helmreleases]
+      verbs: [delete]
+```
+
+- **Read only.** The first block is enough: the Flux section shows states, resources and the graph, and the action buttons end with a Kubernetes RBAC error (`forbidden`). Kubron permissions (`operate`, `write`) enable the action inside Kubron but do not override cluster RBAC: you need both levels.
+- **Flux section missing although Flux is installed.** Without `list` on the Flux CRDs Kubron treats Flux as not installed and hides the section without an error. The check is repeated about every 30 seconds.
+- **Prune and uninstall.** Deleting a `Kustomization` with `prune: true`, or a `HelmRelease`, is carried out by the Flux controllers under their own accounts, so Kubron's ServiceAccount gets no extra rights for it. Kubron cannot undo the deletion of a Flux object: restore it from Git.
+- **Secrets.** The rules do not touch `secrets`: values from `spec.values`, `valuesFrom` and `postBuild` substitutions are not returned by Kubron regardless of `rbac.allowSecretsRead`.
+
+See [GitOps](/features/gitops#flux-cd) for what the Flux section shows.
+
 ## Optional: browser sign-in and Google accounts
 
 Users sign in to clusters through a dialog (see [Connecting to Kubernetes](/features/cluster-auth)). Two features need server-side settings. Both are optional; without them the paste-the-address and service-account-key methods keep working.
@@ -214,6 +287,9 @@ KUBRON_PUBLIC_URL=https://kubron.example.com
 - Production requires `https`. `http` is accepted only for local development on `localhost`, a `.localhost` name or a loopback IP.
 - It must be an absolute URL with no path, credentials, query or fragment. The server validates it at startup and refuses to start with an unsafe value.
 - Register `https://kubron.example.com/auth/cluster/callback` as a redirect URI on the identity provider's web client.
+- The organization administrator then enters that web client's public **client ID and its issuer** in the users section. Both are required: a client ID without an issuer is not applied.
+- The web client is used only for clusters whose kubeconfig names the same issuer and uses authorization-code sign-in. Other clusters and other sign-in kinds (`password`, `device-code`, `authcode-keyboard`, legacy refresh) keep the client from their own kubeconfig. One web client covers one identity provider.
+- Until both the public URL and the client are set, users complete browser sign-in by pasting the address the provider redirected to (`paste-redirect`). If you change or delete the client, users who signed in through it are asked to sign in again.
 - Make sure your proxy passes callback requests through without changing their query parameters.
 
 With Helm, use `kubron.extraEnv`:
@@ -259,12 +335,12 @@ kubron:
 ## Upgrade
 
 ```bash
-helm upgrade kubron oci://ghcr.io/24dso-labs/charts/kubron \
-  --version 1.1.0 -n kubron -f values.yaml
+helm upgrade kubron oci://ghcr.io/24dso-lab/charts/kubron \
+  --version <new-version> -n kubron -f values.yaml
 ```
 
-- Replicas are replaced one by one with a rolling update. Database migrations run automatically on startup. Details for multi-replica operation are in the [HA guide](https://github.com/24DSO-labs/kubron/blob/master/docs/ha.md).
-- Read the [changelog](https://github.com/24DSO-labs/kubron/blob/master/CHANGELOG.md) first. It lists behaviour changes, for example roles and permissions.
+- Replicas are replaced one by one with a rolling update. Database migrations run automatically on startup. Details for multi-replica operation are in the [HA guide](/server/ha).
+- Read the [changelog](https://github.com/24DSO-lab/kubron/blob/master/CHANGELOG.md) first. It lists behaviour changes, for example roles and permissions.
 - Take a database backup before every upgrade.
 - To roll back: `helm rollback kubron -n kubron`. A rollback cannot undo a database migration, so restore from backup if a release changed the schema and you need to go back further.
 
@@ -281,16 +357,16 @@ This removes the workload but **not** your Secret or the PostgreSQL data. Delete
 Every release image and chart is signed with cosign and carries provenance and SBOM attestations. Always verify the **digest**, not only the tag.
 
 ```bash
-VERSION=1.0.0
-IMAGE=ghcr.io/24dso-labs/kubron
-CHART=ghcr.io/24dso-labs/charts/kubron
+VERSION=1.1.0
+IMAGE=ghcr.io/24dso-lab/kubron
+CHART=ghcr.io/24dso-lab/charts/kubron
 
 # Provenance: built by this repository's publish workflow
-gh attestation verify "oci://$IMAGE:$VERSION" --repo 24DSO-labs/kubron \
-  --signer-workflow 24DSO-labs/kubron/.github/workflows/publish.yml
+gh attestation verify "oci://$IMAGE:$VERSION" --repo 24DSO-lab/kubron \
+  --signer-workflow 24DSO-lab/kubron/.github/workflows/publish.yml
 
 # Signature (keyless)
-IDENTITY='^https://github\.com/24DSO-labs/kubron/\.github/workflows/publish\.yml@refs/tags/v[0-9].*$'
+IDENTITY='^https://github\.com/24DSO-lab/kubron/\.github/workflows/publish\.yml@refs/tags/v[0-9].*$'
 cosign verify "$IMAGE:$VERSION" \
   --certificate-identity-regexp "$IDENTITY" \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
@@ -299,7 +375,7 @@ cosign verify "$CHART:$VERSION" \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
 
-The full set of checks, including SBOM attestations and a Kyverno policy that blocks unsigned images, is in the [operations guide](https://github.com/24DSO-labs/kubron/blob/master/docs/deploy.md).
+The full set of checks, including SBOM attestations and a Kyverno policy that blocks unsigned images, is in the [operations guide](https://github.com/24DSO-lab/kubron/blob/master/docs/deploy.md).
 
 ## Hardening checklist
 
@@ -319,7 +395,7 @@ The full set of checks, including SBOM attestations and a Kyverno policy that bl
 | Symptom | What to check |
 |---|---|
 | Pods `CrashLoopBackOff` right after start | `kubectl logs`: a missing `KUBRON_SECRET_KEY`, an unreachable database or a key that does not match the stored data stops startup on purpose |
-| `ImagePullBackOff` | Wrong `image.tag` (source charts default to `0.0.0-dev`, which is not published) or a private registry without `imagePullSecrets` |
+| `ImagePullBackOff` or `InvalidImageName` | Wrong `image.tag` (source charts default to `0.0.0-dev`, which is not published), an image name with uppercase letters (repository names must be lowercase, for example `ghcr.io/24dso-lab/kubron`), or a private registry without `imagePullSecrets` |
 | The site answers `421` | The `Host` is not in `KUBRON_ALLOWED_HOSTS`; add it under `kubron.allowedHosts` |
 | Cannot sign in; the cookie is lost | TLS is not terminated before the pod, or `trustProxy` is off behind an HTTPS proxy |
 | Terminals and live updates disconnect after about a minute | The proxy times out idle WebSockets. Raise the read/send timeouts (see the ingress annotations above) |
@@ -329,6 +405,8 @@ The full set of checks, including SBOM attestations and a Kyverno policy that bl
 ## Learn more
 
 - [Configuration reference](/server/configuration)
-- [High availability](https://github.com/24DSO-labs/kubron/blob/master/docs/ha.md)
-- [Prometheus metrics](https://github.com/24DSO-labs/kubron/blob/master/docs/metrics.md)
-- [Backup and restore](https://github.com/24DSO-labs/kubron/blob/master/docs/backup.md)
+- [High availability](/server/ha)
+- [Logging, audit and metrics](/server/observability)
+- [Backup, restore and key rotation](/server/backup)
+- [HTTP security](/server/http-security)
+- [Command reference](/server/cli)

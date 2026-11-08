@@ -10,14 +10,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/24DSO-labs/kubron/internal/app"
-	"github.com/24DSO-labs/kubron/internal/credential"
-	"github.com/24DSO-labs/kubron/internal/credential/filestore"
-	"github.com/24DSO-labs/kubron/internal/credential/providers/gke"
-	"github.com/24DSO-labs/kubron/internal/logging"
-	"github.com/24DSO-labs/kubron/internal/pgstore"
-	"github.com/24DSO-labs/kubron/internal/secrets"
-	"github.com/24DSO-labs/kubron/internal/server"
+	"github.com/24DSO-lab/kubron/internal/app"
+	"github.com/24DSO-lab/kubron/internal/credential"
+	"github.com/24DSO-lab/kubron/internal/credential/filestore"
+	"github.com/24DSO-lab/kubron/internal/credential/providers/gke"
+	"github.com/24DSO-lab/kubron/internal/logging"
+	"github.com/24DSO-lab/kubron/internal/pgstore"
+	"github.com/24DSO-lab/kubron/internal/secrets"
+	"github.com/24DSO-lab/kubron/internal/server"
 )
 
 // Limits of AnswerChallenge (ADR-0018, section 7): a user may answer 5 times at once and then once in 5 s; all

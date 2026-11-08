@@ -7,8 +7,8 @@ import (
 	"context"
 	"log"
 
-	"github.com/24DSO-labs/kubron/internal/pgstore"
-	"github.com/24DSO-labs/kubron/internal/server"
+	"github.com/24DSO-lab/kubron/internal/pgstore"
+	"github.com/24DSO-lab/kubron/internal/server"
 )
 
 // readyzOption подключает /readyz: проверка БД (если сервер работает с PostgreSQL) и признак draining

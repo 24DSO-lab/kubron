@@ -6,10 +6,10 @@ package main
 import (
 	"log/slog"
 
-	"github.com/24DSO-labs/kubron/internal/app"
-	"github.com/24DSO-labs/kubron/internal/k8s"
-	"github.com/24DSO-labs/kubron/internal/pfproxy"
-	"github.com/24DSO-labs/kubron/internal/server"
+	"github.com/24DSO-lab/kubron/internal/app"
+	"github.com/24DSO-lab/kubron/internal/k8s"
+	"github.com/24DSO-lab/kubron/internal/pfproxy"
+	"github.com/24DSO-lab/kubron/internal/server"
 )
 
 // setupPortForward выбирает режим port-forward (ADR-0017) и при необходимости поднимает прокси потоков:

@@ -11,8 +11,8 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/24DSO-labs/kubron/internal/clusterhealth"
-	"github.com/24DSO-labs/kubron/internal/credential"
+	"github.com/24DSO-lab/kubron/internal/clusterhealth"
+	"github.com/24DSO-lab/kubron/internal/credential"
 )
 
 func signinKubeconfig(server string, insecure bool) string {
