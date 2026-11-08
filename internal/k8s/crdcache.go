@@ -68,10 +68,15 @@ func newCRDCache[T any](dyn dynamic.Interface, cfg crdCacheConfig[T]) (*crdCache
 	scrub := cfg.Scrub
 	if err := inf.SetTransform(func(obj any) (any, error) {
 		if u, ok := obj.(*unstructured.Unstructured); ok {
+			// Не мутируем объект, переданный источником informer: fake-клиенты могут
+			// разделять его с tracker и параллельными List-вызовами. Store получает
+			// отдельную копию, которую безопасно очищать.
+			u = u.DeepCopy()
 			u.SetManagedFields(nil)
 			if scrub != nil {
 				scrub(u)
 			}
+			return u, nil
 		}
 		return obj, nil
 	}); err != nil {
