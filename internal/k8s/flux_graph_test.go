@@ -264,8 +264,6 @@ func TestFluxGraphKustomizationChain(t *testing.T) {
 func TestFluxGraphFluxNodeWinsOverResourceWithSameID(t *testing.T) {
 	// inventory родителя содержит дочернюю Kustomization, которая одновременно является его зависимостью.
 	parent := fluxgFixture(t, "kustomization-v1.yaml")
-	dyn := dynamicfake.NewSimpleDynamicClient(runtime.NewScheme(), parent,
-		fluxgGitRepo("flux-system", "fleet", true), fluxgKust("flux-system", "infra"))
 	// infra встречается и в dependsOn, и в inventory (подменяем запись).
 	entries, _, _ := unstructured.NestedSlice(parent.Object, "status", "inventory", "entries")
 	entries = append(entries, map[string]any{"id": "flux-system_infra_kustomize.toolkit.fluxcd.io_Kustomization", "v": "v1"})
@@ -456,9 +454,8 @@ func TestFluxGraphResourceLimit(t *testing.T) {
 	}
 	k := fluxgKust("ns", "big")
 	k.Object["status"] = map[string]any{"inventory": map[string]any{"entries": entries}}
-	dyn := dynamicfake.NewSimpleDynamicClient(runtime.NewScheme(), k, fluxgGitRepo("ns", "r", true))
 	_ = unstructured.SetNestedField(k.Object, map[string]any{"kind": "GitRepository", "name": "r"}, "spec", "sourceRef")
-	dyn = dynamicfake.NewSimpleDynamicClient(runtime.NewScheme(), k, fluxgGitRepo("ns", "r", true))
+	dyn := dynamicfake.NewSimpleDynamicClient(runtime.NewScheme(), k, fluxgGitRepo("ns", "r", true))
 	g, err := fluxgGraph(t, fluxgKube("ns"), dyn, FluxRef{FluxKindKustomization, "ns", "big"})
 	if err != nil {
 		t.Fatal(err)
