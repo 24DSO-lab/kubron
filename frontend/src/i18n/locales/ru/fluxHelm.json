@@ -1,0 +1,32 @@
+{
+  "columns": {
+    "chart": "Чарт",
+    "release": "Релиз",
+    "targetNamespace": "Целевой namespace"
+  },
+  "props": {
+    "storageNamespace": "Namespace хранилища",
+    "interval": "Интервал",
+    "remote": "Другой кластер",
+    "suspended": "Приостановлен",
+    "lastReconcile": "Последний reconcile",
+    "managed": "Управляемые ресурсы"
+  },
+  "tabs": {
+    "source": "Источник и зависимости",
+    "graph": "Граф"
+  },
+  "menu": {
+    "reconcile": "Reconcile",
+    "reconcileWithSource": "Reconcile вместе с источником",
+    "editYaml": "Править YAML"
+  },
+  "history": {
+    "release": "Версия релиза",
+    "chart": "Чарт",
+    "appVersion": "Версия приложения",
+    "deployed": "Развёрнут",
+    "empty": "Истории релиза нет"
+  },
+  "noInventory": "Недоступно для Flux до 2.8"
+}
