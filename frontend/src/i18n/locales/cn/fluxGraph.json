@@ -1,0 +1,27 @@
+{
+  "loading": "正在加载图…",
+  "empty": "没有可显示的内容",
+  "ariaLabel": "Flux 对象链：来源、对象和资源",
+  "remote": "资源位于另一个集群",
+  "truncated": "图已限制为 {n} 个节点",
+  "collapsedGroups": "已折叠的分组（点击分组或按钮展开）：",
+  "group": "{n} × {kind}",
+  "legend": {
+    "sourceRef": "来源",
+    "dependsOn": "依赖",
+    "inventory": "inventory",
+    "owns": "拥有"
+  },
+  "state": {
+    "Ready": "就绪",
+    "Reconciling": "协调中",
+    "Suspended": "已暂停",
+    "Failed": "失败",
+    "Stalled": "已停滞",
+    "Healthy": "健康",
+    "Degraded": "降级",
+    "Progressing": "进行中",
+    "Missing": "缺失",
+    "Unknown": "未知"
+  }
+}
