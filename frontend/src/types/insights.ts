@@ -20,7 +20,7 @@ export interface OverviewRisks {
 }
 
 export interface ChangeEvent {
-  kind: 'Rollout' | 'Helm' | 'Argo CD' | string
+  kind: 'Rollout' | 'Helm' | 'Argo CD' | 'Flux' | string
   name: string
   namespace: string
   detail: string

@@ -47,3 +47,56 @@ func TestFinishChanges(t *testing.T) {
 		t.Error("an empty result must be [], not null")
 	}
 }
+
+func TestFluxChanges(t *testing.T) {
+	now := time.Date(2026, 11, 8, 12, 0, 0, 0, time.UTC)
+	at := func(d time.Duration) string { return now.Add(-d).Format(time.RFC3339) }
+	obj := func(kind, name, last string, state FluxState, rev string) FluxObjectInfo {
+		return FluxObjectInfo{Kind: kind, Name: name, Namespace: "flux-system", LastReconcileAt: last, State: state, Revision: rev}
+	}
+	ks := []FluxKustomizationInfo{
+		{FluxObjectInfo: obj("Kustomization", "apps", at(10*time.Minute), FluxStateReady, "main@sha1:0123456789abcdef0123456789abcdef01234567")},
+		{FluxObjectInfo: obj("Kustomization", "old", at(3*time.Hour), FluxStateReady, "")},
+		{FluxObjectInfo: obj("Kustomization", "never", "", FluxStateUnknown, "")},
+		{FluxObjectInfo: obj("Kustomization", "garbage", "yesterday", FluxStateReady, "")},
+	}
+	hrs := []FluxHelmReleaseInfo{
+		{FluxObjectInfo: obj("HelmRelease", "podinfo", at(5*time.Minute), FluxStateFailed, "6.5.4")},
+	}
+	got := fluxChanges(ks, hrs, now.Add(-time.Hour))
+	if len(got) != 2 {
+		t.Fatalf("only recent valid entries: %+v", got)
+	}
+	k, h := got[0], got[1]
+	if k.Kind != changeKindFlux || k.Name != "apps" || k.Namespace != "flux-system" || k.Target != "flux-kustomization" ||
+		k.Detail != "Kustomization · Ready · main@sha1:0123456" || !k.at.Equal(now.Add(-10*time.Minute)) {
+		t.Errorf("kustomization: %+v", k)
+	}
+	if h.Kind != changeKindFlux || h.Name != "podinfo" || h.Target != "flux-helmrelease" || h.Detail != "HelmRelease · Failed · 6.5.4" {
+		t.Errorf("helmrelease: %+v", h)
+	}
+	// Без Flux и с пустыми списками записей нет.
+	if got := fluxChanges(nil, nil, now.Add(-time.Hour)); len(got) != 0 {
+		t.Errorf("%+v", got)
+	}
+	// Граница окна: запись ровно на since входит.
+	edge := fluxChanges([]FluxKustomizationInfo{{FluxObjectInfo: obj("Kustomization", "e", at(time.Hour), FluxStateReady, "")}}, nil, now.Add(-time.Hour))
+	if len(edge) != 1 || edge[0].Detail != "Kustomization · Ready" {
+		t.Errorf("edge: %+v", edge)
+	}
+}
+
+func TestFluxShortRevision(t *testing.T) {
+	for in, want := range map[string]string{
+		"":                           "",
+		"6.5.4":                      "6.5.4",
+		"main@sha1:0123456789abcdef": "main@sha1:0123456",
+		"sha256:0123456789abcdef":    "sha256:0123456",
+		"latest@sha256:abc":          "latest@sha256:abc",
+		"v1.0.0":                     "v1.0.0",
+	} {
+		if got := fluxShortRevision(in); got != want {
+			t.Errorf("fluxShortRevision(%q) = %q, want %q", in, got, want)
+		}
+	}
+}

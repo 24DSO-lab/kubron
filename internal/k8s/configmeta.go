@@ -102,7 +102,10 @@ func controlledByOf(refs []metav1.OwnerReference) string {
 
 // managedByOf — кто управляет объектом через GitOps/Helm: "Application/<app>" для Argo CD
 // (tracking-id вида "app:group/Kind:ns/name" или label argocd.argoproj.io/instance),
-// "Helm/<release>" для Helm. Пустая строка, если определить нельзя.
+// "Kustomization/<name>" и "HelmRelease/<name>" для Flux CD (labels kustomize.toolkit.fluxcd.io/name и
+// helm.toolkit.fluxcd.io/name), "Helm/<release>" для Helm. Приоритет: Argo, затем Flux, затем Helm: релиз, который
+// ставит helm-controller, несёт и метку managed-by=Helm, но управляет им HelmRelease. Пустая строка, если определить
+// нельзя. Те же правила и та же таблица тестов — в frontend/src/resources/definitions/common.ts.
 func managedByOf(o metav1.ObjectMeta) string {
 	if id := o.Annotations["argocd.argoproj.io/tracking-id"]; id != "" {
 		if app, _, ok := strings.Cut(id, ":"); ok && app != "" {
@@ -111,6 +114,12 @@ func managedByOf(o metav1.ObjectMeta) string {
 	}
 	if app := o.Labels["argocd.argoproj.io/instance"]; app != "" {
 		return "Application/" + app
+	}
+	if name := o.Labels["kustomize.toolkit.fluxcd.io/name"]; name != "" {
+		return "Kustomization/" + name
+	}
+	if name := o.Labels["helm.toolkit.fluxcd.io/name"]; name != "" {
+		return "HelmRelease/" + name
 	}
 	if o.Labels["app.kubernetes.io/managed-by"] == "Helm" {
 		if rel := o.Annotations["meta.helm.sh/release-name"]; rel != "" {
