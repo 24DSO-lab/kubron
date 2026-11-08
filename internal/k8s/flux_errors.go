@@ -10,7 +10,7 @@ import "errors"
 // fmt.Errorf("%w: %s", errFluxKindUnsupported, kind). Нужна новая ошибка — это изменение контракта (отдельный PR).
 var (
 	// errFluxNotImplemented — заглушка до реализации действия (задачи B.8 и B.9).
-	errFluxNotImplemented = errors.New("not implemented yet")
+	errFluxNotImplemented = errors.New("not implemented yet") //nolint:unused // контракт: используется исполнителями действий (B.8, B.9)
 
 	// errFluxNotInstalled — Flux не найден в активном кластере (нет CRD или нет прав их увидеть).
 	errFluxNotInstalled = errors.New("Flux is not installed in this cluster") //nolint:unused // контракт: используется исполнителями действий (B.8, B.9)

@@ -1,0 +1,25 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: podinfo
+  namespace: apps
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: podinfo
+      sourceRef:
+        kind: HelmRepository
+        name: charts
+  values:
+    password: S3CRET-values
+status:
+  conditions:
+    - type: Ready
+      status: "True"
+  inventory:
+    entries:
+      - id: apps_podinfo_apps_Deployment
+        v: v1
+      - id: apps_podinfo__Service
+        v: v1
