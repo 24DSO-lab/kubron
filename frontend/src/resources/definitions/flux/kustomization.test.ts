@@ -3,6 +3,17 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+/**
+ * This suite tests the resource definition, not the rendering of its tabs.
+ * Keep tab components isolated: FluxInventoryTab and FluxSourceRefSection
+ * import the global resource registry, which pulls browser-only Monaco code
+ * into this Node-only unit test.
+ */
+vi.mock('../../../components/resource/sections/FluxConditionsSection.vue', () => ({ default: {} }))
+vi.mock('../../../components/resource/sections/FluxInventoryTab.vue', () => ({ default: {} }))
+vi.mock('../../../components/resource/sections/FluxSourceRefSection.vue', () => ({ default: {} }))
+vi.mock('../../../components/resource/sections/FluxGraphTab.vue', () => ({ default: {} }))
+
 vi.mock('../../fluxActions', () => ({
   reconcileFlux: vi.fn(async () => {}),
   setFluxSuspended: vi.fn(async () => {}),
