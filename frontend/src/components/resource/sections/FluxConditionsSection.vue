@@ -50,8 +50,6 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { formatDateTime } from '../../../i18n/format'
 
-import { conditionTone } from './fluxConditions'
-
 import type { FluxObjectInfo } from '../../../types/flux'
 
 // Условия (status.conditions) любого объекта Flux; контроллеры сами отдают их в нужном порядке
