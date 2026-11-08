@@ -70,8 +70,6 @@ export function refTarget(
 import { computed } from 'vue'
 import { getResourceById } from '../../../resources/registry'
 
-import { refLabel, refTarget } from './fluxSourceRef'
-
 import type { FluxObjectInfo } from '../../../types/flux'
 
 // sourceRef и dependsOn объекта: переход к объекту, если такой вид открывается в приложении
