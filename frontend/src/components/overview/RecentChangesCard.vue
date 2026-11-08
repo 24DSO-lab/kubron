@@ -40,7 +40,8 @@ let tick: ReturnType<typeof setInterval> | null = null
 onMounted(() => { tick = setInterval(() => (now.value = Date.now()), 30_000) })
 onUnmounted(() => { if (tick) clearInterval(tick) })
 
-const kindClass = (k: string) => (k === 'Rollout' ? 'k-roll' : k === 'Helm' ? 'k-helm' : 'k-argo')
+const KIND_CLASS: Record<string, string> = { Rollout: 'k-roll', Helm: 'k-helm', Flux: 'k-flux' }
+const kindClass = (k: string) => KIND_CLASS[k] ?? 'k-argo'
 </script>
 
 <style scoped>
@@ -57,6 +58,7 @@ const kindClass = (k: string) => (k === 'Rollout' ? 'k-roll' : k === 'Helm' ? 'k
 .k-roll { color: #60a5fa; background: rgba(96, 165, 250, 0.12); }
 .k-helm { color: #a78bfa; background: rgba(167, 139, 250, 0.12); }
 .k-argo { color: #f59e0b; background: rgba(245, 158, 11, 0.12); }
+.k-flux { color: #5b8def; background: rgba(91, 141, 239, 0.14); }
 .name { grid-area: name; font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .when { grid-area: when; font-size: 11px; color: var(--ov-muted); }
 .sub { grid-area: sub; font-size: 11px; color: var(--ov-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

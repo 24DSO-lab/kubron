@@ -56,16 +56,19 @@ function controlledByOf(r: any): string {
 }
 
 /**
- * Кто управляет объектом. Те же правила, что managedByOf в internal/k8s/configmeta.go:
- * Argo CD (tracking-id или label instance) и Helm. Нужны на фронтенде для ресурсов,
+ * Кто управляет объектом. Те же правила и та же таблица тестов, что у managedByOf в internal/k8s/configmeta.go:
+ * Argo CD (tracking-id или label instance), затем Flux (Kustomization и HelmRelease по labels
+ * kustomize.toolkit.fluxcd.io/name и helm.toolkit.fluxcd.io/name), затем Helm. Нужны на фронтенде для ресурсов,
  * которые бэкенд отдаёт без поля managedBy.
  */
-function managedByOf(r: any): string {
+export function managedByOf(r: any): string {
   if (r?.managedBy) return r.managedBy
   const { labels, annotations } = metaOf(r)
   const trackingApp = annotations['argocd.argoproj.io/tracking-id']?.split(':')[0]
   if (trackingApp) return `Application/${trackingApp}`
   if (labels['argocd.argoproj.io/instance']) return `Application/${labels['argocd.argoproj.io/instance']}`
+  if (labels['kustomize.toolkit.fluxcd.io/name']) return `Kustomization/${labels['kustomize.toolkit.fluxcd.io/name']}`
+  if (labels['helm.toolkit.fluxcd.io/name']) return `HelmRelease/${labels['helm.toolkit.fluxcd.io/name']}`
   if (labels['app.kubernetes.io/managed-by'] === 'Helm' && annotations['meta.helm.sh/release-name']) {
     return `Helm/${annotations['meta.helm.sh/release-name']}`
   }
@@ -89,7 +92,7 @@ export const controlledByProp: PropertyDef = {
   },
 }
 
-/** Свойство «Managed by»: "Application/name" (Argo CD) или "Helm/release". Ссылок нет: эти ресурсы приложение не открывает */
+/** Свойство «Managed by»: "Application/name" (Argo CD), "Kustomization/name" или "HelmRelease/name" (Flux), "Helm/release". Ссылок нет: эти ресурсы приложение не открывает */
 export const managedByProp: PropertyDef = {
   label: 'defs.columns.managedBy',
   hideEmpty: true,
