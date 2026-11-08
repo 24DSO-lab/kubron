@@ -1,0 +1,16 @@
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: fresh
+  namespace: flux-system
+spec:
+  interval: 10m
+  path: ./fresh
+  sourceRef:
+    kind: GitRepository
+    name: fleet
+status:
+  conditions:
+    - type: Ready
+      status: "Unknown"
+      reason: Progressing
