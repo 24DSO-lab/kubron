@@ -1,0 +1,18 @@
+{
+  "columns": {
+    "provider": "提供者",
+    "severity": "严重程度",
+    "eventSources": "事件来源",
+    "type": "类型",
+    "channel": "频道",
+    "address": "地址",
+    "resources": "资源"
+  },
+  "props": {
+    "secretRef": "密钥",
+    "lastReconcile": "最近协调"
+  },
+  "menu": {
+    "editYaml": "编辑 YAML"
+  }
+}
