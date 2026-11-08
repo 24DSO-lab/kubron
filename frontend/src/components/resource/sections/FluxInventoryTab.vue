@@ -133,8 +133,7 @@ import { getResourceById } from '../../../resources/registry'
 import { badgeClass } from '../../../resources/status'
 import { callApp } from '../../../resources/wails'
 
-import { inventoryMode, resourceNodes, splitInventory } from './fluxInventory'
-import type { FluxGraph, FluxGraphNode, FluxObjectInfo } from '../../../types/flux'
+import type { FluxObjectInfo } from '../../../types/flux'
 
 const PAGE = 200
 
