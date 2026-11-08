@@ -9,7 +9,7 @@
           v-if="sourceTarget"
           type="button"
           class="flux-linkbtn"
-          @click="openRef(source)"
+          @click="openSource"
         >{{ refLabel(source) }}</button>
         <template v-else>{{ refLabel(source) }}</template>
       </span>
@@ -69,7 +69,7 @@ export function refTarget(
 <script lang="ts" setup>
 import { computed } from 'vue'
 
-import type { FluxObjectInfo } from '../../../types/flux'
+import type { FluxObjectInfo, FluxRef } from '../../../types/flux'
 
 // sourceRef и dependsOn объекта: переход к объекту, если такой вид открывается в приложении
 const props = defineProps<{ resource: Partial<FluxObjectInfo> }>()
@@ -85,6 +85,10 @@ const deps = computed(() =>
     .filter(d => !!d?.name)
     .map(d => ({ ref: d, target: refTarget(d, props.resource, () => true) })),
 )
+
+async function openSource() {
+  if (source.value) await openRef(source.value)
+}
 
 async function openRef(ref: FluxRef) {
   const target = refTarget(ref, props.resource, () => true)
