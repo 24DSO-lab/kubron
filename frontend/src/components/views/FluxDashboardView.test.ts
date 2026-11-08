@@ -1,23 +1,42 @@
 // Copyright 2026 The Kubron Authors
 // SPDX-License-Identifier: Apache-2.0
 
-import { createSSRApp, h, ref, shallowRef, vi } from 'vue'
+import { createSSRApp, h } from 'vue'
 import { renderToString } from 'vue/server-renderer'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-// Дашборд проверяется на данных фикстуры: композаблы и действия изолированы, бэкенда нет.
-const objects = shallowRef<any[] | null>(null)
-const loading = ref(false)
-const error = ref('')
-const state = ref<'ok' | 'unsupportedVersion' | ''>('ok')
-vi.mock('../../composables/useFluxObjects', () => ({
-  useFluxObjects: () => ({
-    objects, loading, refreshing: ref(false), error, updatedAt: ref(null), refresh: vi.fn(),
-  }),
+// Состояние вынесено в hoisted-контекст: фабрики vi.mock выполняются до импорта модулей.
+const mockState = vi.hoisted(() => ({
+  objects: null as any[] | null,
+  loading: false,
+  error: '',
+  state: 'ok' as 'ok' | 'unsupportedVersion' | '',
+  refresh: vi.fn(),
 }))
-vi.mock('../../composables/useFlux', () => ({
-  useFlux: () => ({ fluxStatus: ref({ get state() { return state.value } }) }),
-}))
+
+vi.mock('../../composables/useFluxObjects', async () => {
+  const vue = await vi.importActual<typeof import('vue')>('vue')
+  return {
+    useFluxObjects: () => ({
+      objects: vue.computed(() => mockState.objects),
+      loading: vue.computed(() => mockState.loading),
+      refreshing: vue.computed(() => false),
+      error: vue.computed(() => mockState.error),
+      updatedAt: vue.computed(() => null),
+      refresh: mockState.refresh,
+    }),
+  }
+})
+
+vi.mock('../../composables/useFlux', async () => {
+  const vue = await vi.importActual<typeof import('vue')>('vue')
+  return {
+    useFlux: () => ({
+      fluxStatus: vue.computed(() => ({ state: mockState.state })),
+    }),
+  }
+})
+
 // resourceActions импортирует registry, который транзитивно загружает browser-only Monaco.
 vi.mock('../../resources/actions', () => ({
   resourceActions: { open: vi.fn() },
@@ -42,35 +61,36 @@ const FIXTURE = [
 ]
 
 beforeEach(() => {
-  objects.value = null
-  loading.value = false
-  error.value = ''
-  state.value = 'ok'
+  mockState.objects = null
+  mockState.loading = false
+  mockState.error = ''
+  mockState.state = 'ok'
+  mockState.refresh.mockReset()
 })
 
 describe('FluxDashboardView', () => {
   it('загрузка: индикатор, без пустого состояния', async () => {
-    loading.value = true
+    mockState.loading = true
     const html = await render()
     expect(html).toContain('data-testid="flux-dash-loading"')
     expect(html).not.toContain('data-testid="flux-dash-empty"')
   })
 
   it('ошибка без данных: сообщение и повтор, дашборд не ломается', async () => {
-    error.value = 'forbidden'
+    mockState.error = 'forbidden'
     const html = await render()
     expect(html).toContain('data-testid="flux-dash-error"')
     expect(html).toContain('forbidden')
   })
 
   it('пусто: объектов нет', async () => {
-    objects.value = []
+    mockState.objects = []
     expect(await render()).toContain('data-testid="flux-dash-empty"')
   })
 
   it('unsupportedVersion: подсказка про Flux 2.3 и flux migrate, данных нет', async () => {
-    state.value = 'unsupportedVersion'
-    objects.value = []
+    mockState.state = 'unsupportedVersion'
+    mockState.objects = []
     const html = await render()
     expect(html).toContain('data-testid="flux-dash-unsupported"')
     expect(html).toContain('flux migrate')
@@ -78,7 +98,7 @@ describe('FluxDashboardView', () => {
   })
 
   it('сводка: пять плиток, приостановленные отдельной плиткой', async () => {
-    objects.value = FIXTURE
+    mockState.objects = FIXTURE
     const html = await render()
     for (const id of ['ready', 'reconciling', 'failed', 'stalled', 'suspended']) {
       expect(html).toContain(`data-testid="flux-dash-stat-${id}"`)
@@ -86,7 +106,7 @@ describe('FluxDashboardView', () => {
   })
 
   it('проблемные: Failed, Stalled, Reconciling, Suspended; здоровые не попадают, Stalled выше Failed', async () => {
-    objects.value = FIXTURE
+    mockState.objects = FIXTURE
     const html = await render()
     const problems = html.slice(html.indexOf('flux-dash-problems'), html.indexOf('flux-dash-recent'))
     expect(problems.match(/data-testid="flux-dash-problem"/g)).toHaveLength(4)
@@ -96,20 +116,20 @@ describe('FluxDashboardView', () => {
   })
 
   it('всё в порядке: список проблем пуст, остаётся сообщение', async () => {
-    objects.value = [o({ name: 'a' }), o({ name: 'b' })]
+    mockState.objects = [o({ name: 'a' }), o({ name: 'b' })]
     const html = await render()
     expect(html).not.toContain('data-testid="flux-dash-problem"')
     expect(html).toContain('flux-empty')
   })
 
   it('последние reconcile: только объекты с корректным временем', async () => {
-    objects.value = FIXTURE
+    mockState.objects = FIXTURE
     const html = await render()
     expect(html.match(/data-testid="flux-dash-recent-row"/g)).toHaveLength(1)
   })
 
   it('источник без ссылки подписан словом, а не пустой строкой', async () => {
-    objects.value = [o({ name: 'a' })]
+    mockState.objects = [o({ name: 'a' })]
     expect(await render()).not.toContain('title=""')
   })
 })
