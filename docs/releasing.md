@@ -5,8 +5,8 @@ SBOM, подписи, описание релиза, публикация) де�
 
 ## Один номер версии
 
-Один тег `vX.Y.Z` задаёт версию всего: десктопных файлов, образа `ghcr.io/24DSO-lab/kubron:X.Y.Z`, чарта
-`oci://ghcr.io/24DSO-lab/charts/kubron` версии `X.Y.Z` (его `appVersion` тоже `X.Y.Z`) и имён файлов SBOM.
+Один тег `vX.Y.Z` задаёт версию всего: десктопных файлов, образа `ghcr.io/24dso-lab/kubron:X.Y.Z`, чарта
+`oci://ghcr.io/24dso-lab/charts/kubron` версии `X.Y.Z` (его `appVersion` тоже `X.Y.Z`) и имён файлов SBOM.
 
 - Источник правды — `wails.json` (`info.productVersion`) и `frontend/package.json`: `scripts/release.sh --prepare` обновляет их сам, а
   workflow'ы `release.yml` и `publish.yml` отказываются работать, если тег с ними не совпадает (для `-rc.N` сравнивается база

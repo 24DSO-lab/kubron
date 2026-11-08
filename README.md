@@ -157,7 +157,7 @@ On Linux add `-tags webkit2_41` to `wails dev` / `wails build` (WebKitGTK 4.1, a
 
 Besides the desktop app, Kubron ships `kubron-server`: the same UI served over HTTP for teams. It stores users, clusters and the audit log in **PostgreSQL 14+**, encrypts kubeconfigs and GitOps integration tokens at rest (`KUBRON_SECRET_KEY`) and is meant to run behind a TLS-terminating reverse proxy.
 
-The container image (`ghcr.io/24DSO-lab/kubron`) and the Helm chart (`oci://ghcr.io/24DSO-lab/charts/kubron`) are published for every `vX.Y.Z` tag, signed with cosign and shipped with provenance and SBOM attestations. The chart source is in [`deploy/helm/kubron`](deploy/helm/kubron); it runs two replicas by default. To build the image yourself:
+The container image (`ghcr.io/24dso-lab/kubron`) and the Helm chart (`oci://ghcr.io/24dso-lab/charts/kubron`) are published for every `vX.Y.Z` tag, signed with cosign and shipped with provenance and SBOM attestations. The chart source is in [`deploy/helm/kubron`](deploy/helm/kubron); it runs two replicas by default. To build the image yourself:
 
 ```sh
 docker build -t kubron:dev .

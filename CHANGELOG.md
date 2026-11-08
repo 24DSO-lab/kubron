@@ -148,8 +148,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Repository:** OpenSSF Scorecard workflow (`scorecard.yml`, results in Code scanning) and
   `.github/CODEOWNERS`.
-- **Release:** `publish.yml` publishes the kubron-server image (`ghcr.io/24DSO-lab/kubron`) and the Helm
-  chart (`oci://ghcr.io/24DSO-lab/charts/kubron`) for `vX.Y.Z` tags, with build provenance for the image.
+- **Release:** `publish.yml` publishes the kubron-server image (`ghcr.io/24dso-lab/kubron`) and the Helm
+  chart (`oci://ghcr.io/24dso-lab/charts/kubron`) for `vX.Y.Z` tags, with build provenance for the image.
   A manual run is a dry run unless `push` is ticked.
 - **HA:** with `KUBRON_DATABASE_URL` web sessions and users live in PostgreSQL and are shared by all
   `kubron-server` replicas: a cookie issued by one replica works on any other, a user created or changed on
@@ -179,7 +179,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   web-server build steps. Added a social preview image (`docs/images/social-preview.png`).
 - **Docs:** README no longer names third-party products or describes paid features; the GitOps wording is
   tool-neutral and the comparison table was replaced with a short "Why Kubron" list.
-- **Deploy:** the Helm chart now defaults to `image.repository: ghcr.io/24DSO-lab/kubron` (it still pointed
+- **Deploy:** the Helm chart now defaults to `image.repository: ghcr.io/24dso-lab/kubron` (it still pointed
   to the previous account).
 - **Deploy:** the chart still defaults to `replicaCount: 1` and warns above it; the server itself now
   supports several replicas (see the HA entries above).
