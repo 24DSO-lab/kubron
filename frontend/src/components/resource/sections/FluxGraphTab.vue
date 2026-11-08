@@ -59,10 +59,9 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, shallowRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { callApp } from '../../../resources/wails'
-import { getResourceById } from '../../../resources/registry'
 import {
   GROUP_PREFIX, graphMode, layoutFluxGraph, nodeStateCode, nodeTone, type PlacedFluxNode,
 } from '../../../resources/fluxGraph'
@@ -81,6 +80,13 @@ const graph = ref<FluxGraph | null>(null)
 const loading = ref(false)
 const error = ref('')
 const expandedGroups = ref<Set<string>>(new Set())
+// Registry loads resource definitions that themselves import detail tabs. Defer lookup until mount
+// to avoid an eager registry -> tab -> registry module cycle.
+const resourceLookup = shallowRef<((id: string) => any) | null>(null)
+onMounted(async () => {
+  const registry = await import('../../../resources/registry')
+  resourceLookup.value = registry.getResourceById
+})
 
 /** Номер запроса: ответ по другому объекту или устаревший отбрасывается */
 let seq = 0
@@ -139,7 +145,9 @@ const isCurrent = (n: PlacedFluxNode) =>
 /** Открывается только то, что приложение умеет показывать; текущий объект и схлопнутая группа не открываются как ресурс */
 function target(n: PlacedFluxNode): { id: string; ns: string; name: string } | null {
   if (isGroup(n) || isCurrent(n) || !n.name) return null
-  const def = n.role === 'resource' ? getResourceById(n.kind) : getResourceById(`flux-${n.kind.toLowerCase()}`)
+  const lookup = resourceLookup.value
+  if (!lookup) return null
+  const def = n.role === 'resource' ? lookup(n.kind) : lookup(`flux-${n.kind.toLowerCase()}`)
   if (!def) return null
   if (def.namespaced && !n.namespace) return null
   return { id: def.id, ns: def.namespaced ? n.namespace : '', name: n.name }
