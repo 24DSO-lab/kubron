@@ -1,0 +1,23 @@
+{
+  "columns": {
+    "url": "URL",
+    "ref": "引用"
+  },
+  "props": {
+    "digest": "摘要 (digest)",
+    "secretRef": "密钥",
+    "interval": "间隔",
+    "suspended": "已暂停",
+    "lastReconcile": "最近协调"
+  },
+  "tabs": {
+    "artifact": "制品"
+  },
+  "menu": {
+    "reconcile": "协调",
+    "editYaml": "编辑 YAML"
+  },
+  "artifact": {
+    "empty": "暂无制品"
+  }
+}

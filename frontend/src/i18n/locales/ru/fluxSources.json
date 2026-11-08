@@ -1,0 +1,23 @@
+{
+  "columns": {
+    "url": "URL",
+    "ref": "Ссылка"
+  },
+  "props": {
+    "digest": "Digest",
+    "secretRef": "Секрет",
+    "interval": "Интервал",
+    "suspended": "Приостановлен",
+    "lastReconcile": "Последний reconcile"
+  },
+  "tabs": {
+    "artifact": "Артефакт"
+  },
+  "menu": {
+    "reconcile": "Reconcile",
+    "editYaml": "Править YAML"
+  },
+  "artifact": {
+    "empty": "Артефакта пока нет"
+  }
+}
