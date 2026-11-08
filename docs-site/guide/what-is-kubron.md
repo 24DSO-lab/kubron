@@ -76,7 +76,7 @@ Kubron is honest about where it is:
 
 - **Builds are not code-signed yet.** Windows SmartScreen and macOS Gatekeeper will ask you to confirm the first launch. The [Desktop guide](/guide/desktop) shows exactly how, and how to verify the files instead.
 - **Sign-in to Kubron itself uses local accounts.** Organization SSO/OIDC for Kubron's own login is not built in yet; cluster sign-in through an identity provider is supported.
-- **GitOps means Argo CD only for now.** Support for more tools is on the roadmap, as are code-signed builds.
+- **GitOps means Argo CD today.** Support for Flux CD is being added (see ADR-0023 and the [GitOps page](/features/gitops) for its current state). More tools and code-signed builds are on the roadmap.
 - **Desktop builds target 64-bit systems:** Windows x64, Linux x64 and macOS (universal, Apple Silicon and Intel).
 - **Web is self-hosted.** Read the [production requirements](/server/) before exposing it to users.
 

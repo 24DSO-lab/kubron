@@ -66,7 +66,7 @@ docker run -d --name kubron --restart unless-stopped \
   -e KUBRON_SETUP_TOKEN='случайный-токен-не-короче-16-символов' \
   -e KUBRON_SECRET_KEY='k1:...' \
   -e KUBRON_DATABASE_URL='postgres://kubron:...@db.example.com:5432/kubron?sslmode=verify-full' \
-  ghcr.io/24DSO-lab/kubron:1.0.0
+  ghcr.io/24dso-lab/kubron:1.1.0
 ```
 
 Что делает каждая часть:
@@ -149,8 +149,8 @@ kubron:
 ### Установите
 
 ```bash
-helm install kubron oci://ghcr.io/24DSO-lab/charts/kubron \
-  --version 1.0.0 -n kubron -f values.yaml
+helm install kubron oci://ghcr.io/24dso-lab/charts/kubron \
+  --version 1.1.0 -n kubron -f values.yaml
 ```
 
 Версия чарта равна версии релиза (без `v`), и тег образа по умолчанию совпадает с ней. Для сборки из исходников используйте `helm install kubron deploy/helm/kubron ...` и задайте `image.repository` и `image.tag` сами.
@@ -198,6 +198,25 @@ kubectl -n kubron exec -i deploy/kubron -- \
 3. Добавьте кластеры из списка кластеров. Сервер никогда не выполняет команды из kubeconfig: встройте учётные данные, используйте окно входа или вставьте токен. См. [Подключение к Kubernetes](/ru/features/cluster-auth#web) и [правила kubeconfig](/ru/server/quick-start#добавление-первого-кластера).
 
 Чтобы управлять кластером, в котором работает сам Kubron, задайте `inCluster.enabled=true`. Тогда сервер использует собственный ServiceAccount; профиль RBAC выбирается в разделе `rbac` чарта, выдавайте только необходимое.
+
+## Права ServiceAccount в режиме in-cluster
+
+При `inCluster.enabled=true` Kubron управляет собственным кластером через ServiceAccount чарта. Роли и команды Kubron ограничивают только то, что могут запросить пользователи, но прав они не добавляют: **RBAC ServiceAccount задаёт потолок для всех**, включая администратора Kubron. Если профиль не разрешает запись, записать не сможет никто. Выбирайте минимально достаточный профиль (`rbac.profile`):
+
+| Профиль | Что разрешено ServiceAccount | Что работает в Kubron |
+|---|---|---|
+| `readonly` (по умолчанию) | `get/list/watch` по группам API, которые читает Kubron (нагрузки, сеть, хранилище, объекты RBAC, CRD, метрики), **без `secrets`** | Просмотр (`read`) |
+| `operator` | `readonly` плюс `patch/update` для Deployment, StatefulSet, DaemonSet (restart, rollback), `scale` для Deployment и StatefulSet, `create/delete` для Job (повтор), `patch` узлов (cordon) | Просмотр и безопасные операции (`operate`): restart, scale, rollback, повтор Job, cordon |
+| `custom` | Только `rbac.customRules` либо существующая ClusterRole (`rbac.existingClusterRole`) | То, что вы выдали |
+
+Правила профилей выведены из вызовов Kubernetes API в коде для прав `read` и `operate`. Шаблоны — `rbac.readonlyRules` и `rbac.operatorRules` в `values.yaml` чарта.
+
+**Что профили не покрывают намеренно.** Терминал Pod (`pods/exec`, `pods/attach`), port-forward, оболочка узла (создаёт привилегированный Pod), drain (`pods/eviction`), правка и удаление произвольных объектов, Helm (релизы хранятся в Secret и применяют произвольные манифесты) требуют широких прав, которые нельзя выдавать по умолчанию. Включайте их осознанно через `custom`. Соответствующие права Kubron при этом всё равно можно отключить для всех: `kubron.disableExec`, `kubron.disableNodeShell`, `kubron.disablePortForward`.
+
+- **Значения Secret.** По умолчанию ServiceAccount не читает `secrets`, поэтому значения Secret недоступны никому. `rbac.allowSecretsRead=true` добавляет `get/list/watch` на `secrets` кластера для любого профиля; после этого их увидят все, у кого в Kubron есть право `secrets.read` (роли `operator` и `admin`).
+- **Пользовательские ресурсы** (CRD, Argo CD `Application` и др.) в профили не входят. Добавьте нужные группы в `rbac.extraRules`.
+- **Существующая роль.** `rbac.profile=custom` и `rbac.existingClusterRole=view` привязывают ServiceAccount к встроенной роли `view` без собственной ClusterRole. Встроенная `view` не включает `secrets`, а `edit` и `admin` включают и дают запись: привязывайте их, только когда это действительно нужно.
+- **Смена профиля** применяется сразу при `helm upgrade`. Перезапуск Pod не нужен, права проверяет API-сервер.
 
 ## Необязательно: вход через браузер и аккаунты Google
 
@@ -262,8 +281,8 @@ kubron:
 ## Обновление
 
 ```bash
-helm upgrade kubron oci://ghcr.io/24DSO-lab/charts/kubron \
-  --version 1.1.0 -n kubron -f values.yaml
+helm upgrade kubron oci://ghcr.io/24dso-lab/charts/kubron \
+  --version <new-version> -n kubron -f values.yaml
 ```
 
 - Реплики заменяются по одной (rolling update). Миграции базы применяются автоматически при старте. Подробности работы нескольких реплик — в [руководстве по HA](/ru/server/ha).
@@ -284,9 +303,9 @@ helm uninstall kubron -n kubron
 Каждый релизный образ и чарт подписаны cosign и снабжены аттестациями provenance и SBOM. Всегда проверяйте **digest**, а не только тег.
 
 ```bash
-VERSION=1.0.0
-IMAGE=ghcr.io/24DSO-lab/kubron
-CHART=ghcr.io/24DSO-lab/charts/kubron
+VERSION=1.1.0
+IMAGE=ghcr.io/24dso-lab/kubron
+CHART=ghcr.io/24dso-lab/charts/kubron
 
 # Происхождение: собрано workflow publish этого репозитория
 gh attestation verify "oci://$IMAGE:$VERSION" --repo 24DSO-lab/kubron \
@@ -322,7 +341,7 @@ cosign verify "$CHART:$VERSION" \
 | Симптом | Что проверить |
 |---|---|
 | Поды в `CrashLoopBackOff` сразу после старта | `kubectl logs`: отсутствие `KUBRON_SECRET_KEY`, недоступная база или ключ, не подходящий к сохранённым данным, намеренно останавливают запуск |
-| `ImagePullBackOff` | Неверный `image.tag` (у чарта из исходников по умолчанию `0.0.0-dev`, такого образа нет) или приватный реестр без `imagePullSecrets` |
+| `ImagePullBackOff` или `InvalidImageName` | Неверный `image.tag` (у чарта из исходников по умолчанию `0.0.0-dev`, такого образа нет), имя образа с заглавными буквами (имена репозиториев должны быть в нижнем регистре, например `ghcr.io/24dso-lab/kubron`) или приватный реестр без `imagePullSecrets` |
 | Сайт отвечает `421` | `Host` нет в `KUBRON_ALLOWED_HOSTS`; добавьте его в `kubron.allowedHosts` |
 | Не удаётся войти; cookie теряется | TLS не терминируется перед подом либо `trustProxy` выключен за HTTPS-прокси |
 | Терминалы и живые обновления рвутся примерно через минуту | Прокси закрывает простаивающие WebSocket. Увеличьте таймауты чтения и отправки (см. аннотации ingress выше) |

@@ -47,6 +47,7 @@ export default defineConfig({
             { text: 'Build from source', link: '/guide/build-from-source' },
             { text: 'Web', link: '/guide/web' },
             { text: 'First cluster', link: '/guide/first-cluster' },
+            { text: 'Troubleshooting & FAQ', link: '/guide/troubleshooting' },
             { text: 'Keyboard shortcuts', link: '/guide/shortcuts' }
           ]}],
           '/features/': [{ text: 'Features', items: [
@@ -103,6 +104,7 @@ export default defineConfig({
             { text: 'Сборка из исходников', link: '/ru/guide/build-from-source' },
             { text: 'Web', link: '/ru/guide/web' },
             { text: 'Первый кластер', link: '/ru/guide/first-cluster' },
+            { text: 'Диагностика и FAQ', link: '/ru/guide/troubleshooting' },
             { text: 'Горячие клавиши', link: '/ru/guide/shortcuts' }
           ]}],
           '/ru/features/': [{ text: 'Возможности', items: [

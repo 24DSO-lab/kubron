@@ -66,7 +66,7 @@ docker run -d --name kubron --restart unless-stopped \
   -e KUBRON_SETUP_TOKEN='a-random-token-of-16-or-more-characters' \
   -e KUBRON_SECRET_KEY='k1:...' \
   -e KUBRON_DATABASE_URL='postgres://kubron:...@db.example.com:5432/kubron?sslmode=verify-full' \
-  ghcr.io/24DSO-lab/kubron:1.0.0
+  ghcr.io/24dso-lab/kubron:1.1.0
 ```
 
 What each part does:
@@ -149,8 +149,8 @@ Notes:
 ### Install
 
 ```bash
-helm install kubron oci://ghcr.io/24DSO-lab/charts/kubron \
-  --version 1.0.0 -n kubron -f values.yaml
+helm install kubron oci://ghcr.io/24dso-lab/charts/kubron \
+  --version 1.1.0 -n kubron -f values.yaml
 ```
 
 The chart version equals the release version (without `v`), and the image tag defaults to the same version. For a build from source, use `helm install kubron deploy/helm/kubron ...` and set `image.repository` and `image.tag` yourself.
@@ -198,6 +198,25 @@ Afterwards the token is no longer used. You may delete the `<release>-setup` Sec
 3. Add clusters from the cluster list. The server never runs commands from a kubeconfig: embed credentials, use the sign-in dialog, or paste a token. See [Connecting to Kubernetes](/features/cluster-auth#web) and the [kubeconfig rules](/server/quick-start#add-your-first-cluster).
 
 To manage the cluster that Kubron itself runs in, set `inCluster.enabled=true`. The server then uses its own ServiceAccount; choose the RBAC profile in the chart's `rbac` section and grant only what you need.
+
+## Access for the in-cluster ServiceAccount
+
+When `inCluster.enabled=true`, Kubron manages its own cluster through the chart's ServiceAccount. Kubron roles and teams limit what users can ask for, but they never add rights: **the ServiceAccount's RBAC is the ceiling for everyone**, including a Kubron administrator. If the profile does not allow writing, nobody can write. Choose the smallest profile that is enough (`rbac.profile`):
+
+| Profile | What the ServiceAccount may do | What works in Kubron |
+|---|---|---|
+| `readonly` (default) | `get/list/watch` on the API groups Kubron reads (workloads, networking, storage, RBAC objects, CRDs, metrics), **without `secrets`** | Browsing (`read`) |
+| `operator` | `readonly` plus `patch/update` on Deployments, StatefulSets and DaemonSets (restart, rollback), `scale` on Deployments and StatefulSets, `create/delete` on Jobs (retry), `patch` on nodes (cordon) | Browsing and safe operations (`operate`): restart, scale, rollback, retry Job, cordon |
+| `custom` | Only `rbac.customRules`, or an existing ClusterRole (`rbac.existingClusterRole`) | Whatever you grant |
+
+The profiles are derived from the Kubernetes API calls in the code for the `read` and `operate` permissions. The templates are `rbac.readonlyRules` and `rbac.operatorRules` in the chart's `values.yaml`.
+
+**What the profiles deliberately do not cover.** Pod terminals (`pods/exec`, `pods/attach`), port-forward, the node shell (it creates a privileged Pod), drain (`pods/eviction`), editing and deleting arbitrary objects, and Helm (releases are stored in Secrets and apply arbitrary manifests) need broad rights that must not be granted by default. Enable them knowingly through `custom`. You can still switch the matching Kubron permissions off for everyone with `kubron.disableExec`, `kubron.disableNodeShell` and `kubron.disablePortForward`.
+
+- **Secret values.** By default the ServiceAccount does not read `secrets`, so nobody can see Secret values. `rbac.allowSecretsRead=true` adds `get/list/watch` on cluster `secrets` to any profile; everyone with the Kubron `secrets.read` permission (`operator` and `admin`) can then see them.
+- **Custom resources** (CRDs, Argo CD `Application` and so on) are not in the profiles. Add the groups you need to `rbac.extraRules`.
+- **An existing role.** `rbac.profile=custom` with `rbac.existingClusterRole=view` binds the ServiceAccount to the built-in `view` role without a ClusterRole of its own. The built-in `view` does not include `secrets`, while `edit` and `admin` do and allow writing: bind them only when you really need to.
+- **Changing the profile** takes effect immediately on `helm upgrade`. No Pod restart is needed, because the API server checks the rights.
 
 ## Optional: browser sign-in and Google accounts
 
@@ -262,8 +281,8 @@ kubron:
 ## Upgrade
 
 ```bash
-helm upgrade kubron oci://ghcr.io/24DSO-lab/charts/kubron \
-  --version 1.1.0 -n kubron -f values.yaml
+helm upgrade kubron oci://ghcr.io/24dso-lab/charts/kubron \
+  --version <new-version> -n kubron -f values.yaml
 ```
 
 - Replicas are replaced one by one with a rolling update. Database migrations run automatically on startup. Details for multi-replica operation are in the [HA guide](/server/ha).
@@ -284,9 +303,9 @@ This removes the workload but **not** your Secret or the PostgreSQL data. Delete
 Every release image and chart is signed with cosign and carries provenance and SBOM attestations. Always verify the **digest**, not only the tag.
 
 ```bash
-VERSION=1.0.0
-IMAGE=ghcr.io/24DSO-lab/kubron
-CHART=ghcr.io/24DSO-lab/charts/kubron
+VERSION=1.1.0
+IMAGE=ghcr.io/24dso-lab/kubron
+CHART=ghcr.io/24dso-lab/charts/kubron
 
 # Provenance: built by this repository's publish workflow
 gh attestation verify "oci://$IMAGE:$VERSION" --repo 24DSO-lab/kubron \
@@ -322,7 +341,7 @@ The full set of checks, including SBOM attestations and a Kyverno policy that bl
 | Symptom | What to check |
 |---|---|
 | Pods `CrashLoopBackOff` right after start | `kubectl logs`: a missing `KUBRON_SECRET_KEY`, an unreachable database or a key that does not match the stored data stops startup on purpose |
-| `ImagePullBackOff` | Wrong `image.tag` (source charts default to `0.0.0-dev`, which is not published) or a private registry without `imagePullSecrets` |
+| `ImagePullBackOff` or `InvalidImageName` | Wrong `image.tag` (source charts default to `0.0.0-dev`, which is not published), an image name with uppercase letters (repository names must be lowercase, for example `ghcr.io/24dso-lab/kubron`), or a private registry without `imagePullSecrets` |
 | The site answers `421` | The `Host` is not in `KUBRON_ALLOWED_HOSTS`; add it under `kubron.allowedHosts` |
 | Cannot sign in; the cookie is lost | TLS is not terminated before the pod, or `trustProxy` is off behind an HTTPS proxy |
 | Terminals and live updates disconnect after about a minute | The proxy times out idle WebSockets. Raise the read/send timeouts (see the ingress annotations above) |

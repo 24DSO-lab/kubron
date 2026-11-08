@@ -24,7 +24,7 @@ The server does not terminate TLS itself. Do not expose its HTTP listener direct
 
 ## Deploy the Web edition
 
-The image is published as `ghcr.io/24DSO-lab/kubron`. The chart is available at `oci://ghcr.io/24DSO-lab/charts/kubron`.
+The image is published as `ghcr.io/24dso-lab/kubron`. The chart is available at `oci://ghcr.io/24dso-lab/charts/kubron`.
 
 - [Local quick start](/server/quick-start)
 - [Docker and Kubernetes deployment](/server/deploy)

@@ -24,8 +24,8 @@ Web-версия запускает Kubron как самостоятельно �
 
 ## Развёртывание Web-версии
 
-- Образ: `ghcr.io/24DSO-lab/kubron`.
-- OCI chart: `oci://ghcr.io/24DSO-lab/charts/kubron`.
+- Образ: `ghcr.io/24dso-lab/kubron`.
+- OCI chart: `oci://ghcr.io/24dso-lab/charts/kubron`.
 - [Локальный быстрый запуск](/ru/server/quick-start).
 - [Docker и Kubernetes](/ru/server/deploy).
 - [Справочник по конфигурации](/ru/server/configuration).

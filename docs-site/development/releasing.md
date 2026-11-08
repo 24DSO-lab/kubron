@@ -6,9 +6,9 @@ This page is for maintainers. A release is one command; GitHub Actions does the 
 
 ## One version for everything
 
-A single tag `vX.Y.Z` sets the version of everything: the desktop files, the container image `ghcr.io/24dso-labs/kubron:X.Y.Z`, the Helm chart `oci://ghcr.io/24dso-labs/charts/kubron` at version `X.Y.Z` (its `appVersion` too), and the SBOM file names.
+A single tag `vX.Y.Z` sets the version of everything: the desktop files, the container image `ghcr.io/24dso-lab/kubron:X.Y.Z`, the Helm chart `oci://ghcr.io/24dso-lab/charts/kubron` at version `X.Y.Z` (its `appVersion` too), and the SBOM file names.
 
-- The source of truth is `wails.json` (`info.productVersion`) and `frontend/package.json`. `scripts/release.sh` updates them, and the `release.yml` and `publish.yml` workflows refuse to run if the tag does not match (for a release candidate, the base version without the suffix is compared).
+- The source of truth is `wails.json` (`info.productVersion`) and `frontend/package.json`. `scripts/release.sh --prepare` updates them, and the `release.yml` and `publish.yml` workflows refuse to run if the tag does not match (for a release candidate, the base version without the suffix is compared).
 - `deploy/helm/kubron/Chart.yaml` holds the placeholder `0.0.0-dev`. `publish.yml` sets the chart version and `appVersion` from the tag, so **do not edit `Chart.yaml` for a release**.
 - A trial publish without a tag (`workflow_dispatch`) gets the version `0.0.0-dev.<sha>`, and such images do not get `latest`.
 
@@ -17,7 +17,7 @@ A single tag `vX.Y.Z` sets the version of everything: the desktop files, the con
 | Branch | Purpose | Protection |
 |---|---|---|
 | `refactor` (or feature branches) | Working branch | None |
-| `dev` | Ready for a release. CI runs on every push | No deletion, no force-push |
+| `dev` | Ready for a release. `refactor` reaches it only through a pull request | Pull requests only, the same required checks as `master` including code scanning results (CodeQL, high and above), no deletion, no force-push |
 | `master` | Released code. Tags `vX.Y.Z` are placed here | Pull requests only, 7 required checks, no force-push |
 
 GitHub is the primary repository. GitLab is secondary: push to it without `--force`, and always pull from GitHub.
@@ -26,17 +26,26 @@ GitHub is the primary repository. GitLab is secondary: push to it without `--for
 
 1. **Commit to `refactor`** and push it to GitHub. For external pull requests from forks, CI checks DCO separately.
 2. **Changelog.** Add a line under `## [Unreleased]` in `CHANGELOG.md` for every user-visible change (Added, Changed, Fixed, Removed, Security). These lines become the release notes.
-3. **Merge into `dev`** when everything is ready, and wait for CI to turn green.
-4. **Release** from `dev`, with a clean working tree:
+3. **Prepare the release in `refactor`**, with a clean working tree:
+
+   ```bash
+   scripts/release.sh 0.2.0 --prepare   # [Unreleased] -> [0.2.0], versions in files, one commit; pushes nothing
+   git push github refactor
+   ```
+
+   Wait for `refactor` to turn green. Preparing **before** the merge into `dev` means `dev` already holds everything that goes into the tag, so the script does not need to add new commits to `dev` afterwards.
+4. **Merge into `dev`.** Open a pull request `refactor` to `dev` and wait for green checks, **including CodeQL**: an alert of level high blocks the merge (this is the GitHub code scanning result, not a job from `codeql.yml`). Merge the pull request (merge commit). CI runs again on the push to `dev`: wait for green.
+5. **Release** from `dev`, with a clean working tree:
 
    ```bash
    scripts/release.sh 0.2.0 --dry-run   # checks and a preview of the notes, changes nothing
    scripts/release.sh 0.2.0             # the release itself (--watch waits for the workflow)
    ```
 
-5. **Done.** About 10 to 20 minutes later the release is published. Afterwards `refactor` equals `master`: continue with `git checkout refactor && git pull`.
+   If step 3 was skipped, the script stops and tells you to run `--prepare`.
+6. **Done.** About 10 to 20 minutes later the release is published. Afterwards `refactor` equals `master`: continue with `git checkout refactor && git pull`.
 
-A release candidate is `scripts/release.sh 0.3.0-rc.1`. The changelog is not rolled over, the notes come from `[Unreleased]`, the files carry version `0.3.0`, and the release is marked as a pre-release.
+A release candidate is `scripts/release.sh 0.3.0-rc.1 --prepare`, then the same way through `dev`. The changelog is not rolled over, the notes come from `[Unreleased]`, the files carry version `0.3.0`, and the release is marked as a pre-release.
 
 ## Before you tag
 
@@ -69,13 +78,19 @@ CI does not repeat work on identical content. A test result belongs to the **con
 
 ## What `scripts/release.sh` does
 
-1. Checks that you are on `dev`, the tree is clean, `dev` matches GitHub, and the tag does not exist.
-2. Moves `[Unreleased]` into a `## [X.Y.Z] - date` section, updates the links at the bottom of the changelog and the versions in `wails.json` and `frontend/package*.json`, commits `chore(release): vX.Y.Z` and pushes to `dev`.
+**With `--prepare` (in `refactor`):** moves `[Unreleased]` into a `## [X.Y.Z] - date` section, updates the links at the bottom of the changelog and the versions in `wails.json` and `frontend/package*.json`, and makes the commit `chore(release): vX.Y.Z` (signed off). It pushes nothing. Running it again when everything is already prepared does nothing. It refuses to run in `dev` or `master`.
+
+**Without `--prepare` (in `dev`):**
+
+1. Checks that you are on `dev`, the tree is clean, `dev` matches GitHub, the tag does not exist, and `dev` already contains the `[X.Y.Z]` changelog section and version `X.Y.Z` in `wails.json` and `frontend/package.json` (otherwise it stops and asks for `--prepare`).
+2. Commits and pushes nothing to `dev`: exactly the verified content goes to `master`. That is why a release no longer triggers repeated CI, Deploy and CodeQL runs.
 3. Opens a pull request from `dev` to `master`, waits for green checks, and merges it (merge commit).
 4. Places the annotated tag `vX.Y.Z` on `master` and pushes it.
 5. Fast-forwards `dev` and the working branch `refactor` to `master`. Other branches: `RELEASE_SYNC_BRANCHES="refactor feature-x"`; disable with `RELEASE_SYNC_BRANCHES=" "`. A branch with its own commits is left alone and the script tells you to merge manually (`git merge github/master`), where a `CHANGELOG.md` conflict is possible: keep only your new lines in `[Unreleased]` and take what is already rolled into `[X.Y.Z]` from `master`.
 
 If the script stops (a red check, a network error), fix the cause and run **the same command** again: finished steps are skipped.
+
+- **Checks on the `dev` to `master` pull request are red.** Fix in `refactor`, merge through a pull request into `dev`, wait for green, and run the command again. If only CodeQL is red, open the alerts in Security, Code scanning: high blocks the merge. If an end-to-end job failed without code changes, re-run the failed jobs first; the same test red twice is not a flake.
 
 ## What the `Release` workflow does (on a `v*.*.*` tag)
 

@@ -33,7 +33,7 @@ Desktop-версия запускает Kubron непосредственно н
 3. Щёлкните zip правой кнопкой, откройте **Свойства** и, если есть такая опция, отметьте **Разблокировать**. Или выполните в PowerShell:
 
    ```powershell
-   Unblock-File .\Kubron_v1.0.0_windows-amd64.zip
+   Unblock-File .\Kubron_v1.1.0_windows-amd64.zip
    ```
 
 4. Распакуйте архив. В нём один файл, `Kubron.exe`. Поместите его в удобную папку, например `C:\Tools\Kubron\` или `%LOCALAPPDATA%\Programs\Kubron\`.
@@ -80,7 +80,7 @@ Kubron нужны **GTK 3** и **WebKitGTK 4.1**. Выберите способ 
 Пакет объявляет свои зависимости (`libgtk-3-0`, `libwebkit2gtk-4.1-0`), поэтому `apt` установит всё необходимое.
 
 ```bash
-sudo apt install ./kubron_1.0.0_amd64.deb
+sudo apt install ./kubron_1.1.0_amd64.deb
 ```
 
 Укажите путь к скачанному файлу. Установка через `apt install ./file.deb` (а не `dpkg -i`) сама разрешает зависимости.
@@ -131,7 +131,7 @@ sudo apt remove kubron
 2. Распакуйте архив. В нём один исполняемый файл `Kubron`:
 
    ```bash
-   tar -xzf Kubron_v1.0.0_linux-amd64.tar.gz
+   tar -xzf Kubron_v1.1.0_linux-amd64.tar.gz
    chmod +x Kubron
    ./Kubron
    ```
