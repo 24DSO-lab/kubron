@@ -49,7 +49,8 @@ export const fluxKustomization = defineResource<FluxKustomizationInfo>({
   // Удаление Flux — только по одному объекту и с подтверждением (ADR-0023, раздел 6)
   bulkDelete: false,
   autoRefresh: true,
-  // Список перезагружается по событию flux:changed (informer), таймер остаётся страховкой
+  // Список и открытая панель обновляются по событию flux:changed; таймер остаётся страховкой
+  liveDetail: true,
   refreshOn: () => fluxLiveTick.value,
 
   columns: [
