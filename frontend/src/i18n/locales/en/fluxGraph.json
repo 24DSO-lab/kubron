@@ -1,0 +1,27 @@
+{
+  "loading": "Loading graph…",
+  "empty": "Nothing to show",
+  "ariaLabel": "Flux object chain: source, object and resources",
+  "remote": "The resources are in another cluster",
+  "truncated": "Graph is limited to {n} nodes",
+  "collapsedGroups": "Collapsed groups (click a group or a button to expand):",
+  "group": "{n} × {kind}",
+  "legend": {
+    "sourceRef": "source",
+    "dependsOn": "depends on",
+    "inventory": "inventory",
+    "owns": "owns"
+  },
+  "state": {
+    "Ready": "Ready",
+    "Reconciling": "Reconciling",
+    "Suspended": "Suspended",
+    "Failed": "Failed",
+    "Stalled": "Stalled",
+    "Healthy": "Healthy",
+    "Degraded": "Degraded",
+    "Progressing": "Progressing",
+    "Missing": "Missing",
+    "Unknown": "Unknown"
+  }
+}
