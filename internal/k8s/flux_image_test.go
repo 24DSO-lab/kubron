@@ -653,12 +653,17 @@ func TestGetFluxImageAutomationOnlyReadsClusterObjects(t *testing.T) {
 		if lists[plural] == 0 {
 			t.Errorf("%s: no LIST request", plural)
 		}
-		if watches[plural] == 0 {
-			t.Errorf("%s: no WATCH request", plural)
-		}
 	}
-	if len(lists) != len(plurals) || len(watches) != len(plurals) {
-		t.Errorf("LIST resources = %v, WATCH resources = %v; want exactly the three image automation kinds", lists, watches)
+	// WATCH появляется только для видов, informer которых удалось синхронизировать.
+	// Частичная ошибка LIST допустима (GetFluxImageAutomation возвращает доступные виды),
+	// поэтому отсутствие WATCH у одного вида не означает лишнего API-вызова.
+	if len(lists) != len(plurals) {
+		t.Errorf("LIST resources = %v; want exactly the three image automation kinds", lists)
+	}
+	for plural := range watches {
+		if !slices.Contains(plurals, plural) {
+			t.Errorf("unexpected WATCH resource %q", plural)
+		}
 	}
 }
 
