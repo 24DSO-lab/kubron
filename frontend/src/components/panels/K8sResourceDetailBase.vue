@@ -41,7 +41,7 @@
         </button>
 
         <!-- Close button -->
-        <button class="btn-action" @click="emit('close')" :title="$t('common.close')">
+        <button class="btn-action" data-testid="resource-detail-close" @click="emit('close')" :title="$t('common.close')">
           <K8sIcon name="close" :alt="$t('common.close')" size="sm" />
         </button>
       </div>
