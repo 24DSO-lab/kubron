@@ -310,3 +310,25 @@ func TestLoadConfigGKEOAuth(t *testing.T) {
 		t.Fatalf("secret without id: %v", err)
 	}
 }
+
+func TestLoadConfigDebugContainers(t *testing.T) {
+	cfg, err := LoadConfig(nil, env(nil), io.Discard)
+	if err != nil || cfg.DisableDebug || len(cfg.DebugImages) != 0 {
+		t.Fatalf("debug containers are enabled and unrestricted by default: %+v %v", cfg, err)
+	}
+	cfg, err = LoadConfig(nil, env(map[string]string{
+		"KUBRON_DISABLE_DEBUG": "true",
+		"KUBRON_DEBUG_IMAGES":  " docker.io/library/busybox:stable , ,ghcr.io/acme/tools:1 ",
+	}), io.Discard)
+	if err != nil || !cfg.DisableDebug {
+		t.Fatalf("KUBRON_DISABLE_DEBUG: %+v %v", cfg, err)
+	}
+	if got := strings.Join(cfg.DebugImages, "|"); got != "docker.io/library/busybox:stable|ghcr.io/acme/tools:1" {
+		t.Errorf("images must be split, trimmed and stripped of empty items: %q", got)
+	}
+	cfg, err = LoadConfig([]string{"--debug-images", "busybox", "--disable-debug"},
+		env(map[string]string{"KUBRON_DEBUG_IMAGES": "alpine"}), io.Discard)
+	if err != nil || !cfg.DisableDebug || len(cfg.DebugImages) != 1 || cfg.DebugImages[0] != "busybox" {
+		t.Errorf("flags take precedence over env: %+v %v", cfg, err)
+	}
+}

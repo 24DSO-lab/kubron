@@ -187,6 +187,7 @@ var auditedPermissions = map[auth.Permission]bool{
 	auth.PermOperate:       true,
 	auth.PermWrite:         true,
 	auth.PermExec:          true,
+	auth.PermDebug:         true,
 	auth.PermPortForward:   true,
 	auth.PermClusterManage: true,
 	auth.PermSecretsRead:   true,

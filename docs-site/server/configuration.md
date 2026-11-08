@@ -46,7 +46,9 @@ Durations use Go syntax (`30s`, `15m`, `12h`). Boolean variables accept `1`, `tr
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `KUBRON_DISABLE_EXEC` | off | Disable pod terminals and the node shell for everyone. |
+| `KUBRON_DISABLE_EXEC` | off | Disable pod terminals, the node shell and debug containers for everyone. |
+| `KUBRON_DISABLE_DEBUG` | off | Disable debug (ephemeral) containers for everyone. |
+| `KUBRON_DEBUG_IMAGES` | empty | Comma-separated images allowed for debug containers. Empty allows any image. |
 | `KUBRON_DISABLE_NODE_SHELL` | off | Disable the node shell for everyone. |
 | `KUBRON_DISABLE_PORT_FORWARD` | off | Disable port-forward for everyone. |
 | `KUBRON_MAX_TERMINALS` | `8` | Terminals per user. `0` means unlimited. |

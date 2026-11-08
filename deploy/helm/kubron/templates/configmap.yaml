@@ -82,3 +82,9 @@ data:
   {{- if .Values.kubron.disableExec }}
   KUBRON_DISABLE_EXEC: "true"
   {{- end }}
+  {{- if .Values.kubron.disableDebug }}
+  KUBRON_DISABLE_DEBUG: "true"
+  {{- end }}
+  {{- with .Values.kubron.debugImages }}
+  KUBRON_DEBUG_IMAGES: {{ join "," . | quote }}
+  {{- end }}

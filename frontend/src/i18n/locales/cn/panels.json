@@ -19,5 +19,22 @@
     "increase": "增加",
     "scaling": "⏳ 扩缩中...",
     "submit": "▶ 扩缩"
+  },
+  "debug": {
+    "title": "{pod} 中的调试容器",
+    "loading": "正在加载选项…",
+    "image": "镜像",
+    "imagePlaceholder": "仓库/镜像:标签",
+    "imageStrict": "只能使用管理员允许的镜像。",
+    "profile": "配置",
+    "profiles": {
+      "general": "General：添加 SYS_PTRACE，可以跟踪进程",
+      "restricted": "Restricted：非 root，无 capabilities（适用于 Pod Security \"restricted\"）"
+    },
+    "target": "目标容器",
+    "noTarget": "无（使用 Pod 的命名空间）",
+    "note": "该容器会保留在 Pod 规约中直到 Pod 被删除，无法移除。关闭终端后它会退出。",
+    "start": "▶ 启动",
+    "starting": "⏳ 启动中…"
   }
 }

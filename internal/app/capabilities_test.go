@@ -58,23 +58,26 @@ func TestGetCapabilitiesReportsPortForwardMode(t *testing.T) {
 
 type shellPlatform struct{ nopPlatform }
 
-func (shellPlatform) Capabilities() Capabilities { return Capabilities{Exec: true, NodeShell: true} }
+func (shellPlatform) Capabilities() Capabilities {
+	return Capabilities{Exec: true, NodeShell: true, Debug: true}
+}
 
 func TestGetCapabilitiesReflectsDisableFlags(t *testing.T) {
 	cases := []struct {
-		name      string
-		p         InteractivePolicy
-		exec, nsh bool
+		name           string
+		p              InteractivePolicy
+		exec, nsh, dbg bool
 	}{
-		{"nothing disabled", InteractivePolicy{}, true, true},
-		{"node shell only", InteractivePolicy{DisableNodeShell: true}, true, false},
-		{"exec takes the node shell with it", InteractivePolicy{DisableExec: true}, false, false},
+		{"nothing disabled", InteractivePolicy{}, true, true, true},
+		{"node shell only", InteractivePolicy{DisableNodeShell: true}, true, false, true},
+		{"debug only", InteractivePolicy{DisableDebug: true}, true, true, false},
+		{"exec takes the node shell and debug with it", InteractivePolicy{DisableExec: true}, false, false, false},
 	}
 	for _, tc := range cases {
 		root := NewApp(shellPlatform{})
 		SetInteractivePolicy(root, tc.p)
-		if c := root.GetCapabilities(); c.Exec != tc.exec || c.NodeShell != tc.nsh {
-			t.Errorf("%s: exec=%v nodeShell=%v, expected %v/%v", tc.name, c.Exec, c.NodeShell, tc.exec, tc.nsh)
+		if c := root.GetCapabilities(); c.Exec != tc.exec || c.NodeShell != tc.nsh || c.Debug != tc.dbg {
+			t.Errorf("%s: exec=%v nodeShell=%v debug=%v, expected %v/%v/%v", tc.name, c.Exec, c.NodeShell, c.Debug, tc.exec, tc.nsh, tc.dbg)
 		}
 	}
 }
