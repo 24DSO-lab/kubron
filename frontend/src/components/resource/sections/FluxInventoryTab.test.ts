@@ -5,11 +5,13 @@ import { createSSRApp, h } from 'vue'
 import { renderToString } from 'vue/server-renderer'
 import { describe, expect, it, vi } from 'vitest'
 
+
 // Registry imports resource definitions that transitively load Monaco Editor.
 // Keep these SSR tests in Node without evaluating Monaco's browser-only modules.
 vi.mock('monaco-editor', () => ({ editor: {} }))
 vi.mock('monaco-editor/editor/editor.api', () => ({ editor: {}, KeyMod: {}, KeyCode: {} }))
 vi.mock('monaco-editor/editor/editor.worker?worker', () => ({ default: class {} }))
+
 
 // Бэкенд недоступен: запрос графа не завершается. Остальные экспорты модуля нужны реестру ресурсов, поэтому
 // подменяется только callApp.
@@ -20,8 +22,10 @@ vi.mock('../../../resources/wails', async (importOriginal) => ({
 
 import { i18n } from '../../../i18n'
 import type { FluxGraph, FluxGraphNode, FluxObjectInfo } from '../../../types/flux'
+
 import FluxInventoryTab from './FluxInventoryTab.vue'
 import { inventoryMode, resourceNodes, splitInventory } from './fluxInventory'
+
 
 const node = (p: Partial<FluxGraphNode>): FluxGraphNode => ({
   id: `apps/Deployment/ns/${p.name ?? 'x'}`, kind: 'Deployment', group: 'apps', version: 'v1', namespace: 'ns', name: 'x', role: 'resource', state: 'Healthy', ...p,

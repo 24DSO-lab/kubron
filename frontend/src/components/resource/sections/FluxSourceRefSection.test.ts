@@ -3,6 +3,7 @@
 
 import { createSSRApp, h } from 'vue'
 import { renderToString } from 'vue/server-renderer'
+
 import { describe, expect, it, vi } from 'vitest'
 
 // Registry imports resource definitions that transitively load Monaco Editor.
@@ -15,6 +16,7 @@ import { i18n } from '../../../i18n'
 import type { FluxObjectInfo, FluxRef } from '../../../types/flux'
 import FluxSourceRefSection from './FluxSourceRefSection.vue'
 import { fluxResourceId, refLabel, refTarget } from './fluxSourceRef'
+
 
 const ref = (p: Partial<FluxRef>): FluxRef => ({ kind: 'GitRepository', namespace: 'flux-system', name: 'repo', ...p })
 const render = (resource: Partial<FluxObjectInfo>) =>
