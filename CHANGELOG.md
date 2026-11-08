@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-11-08
+
 ### Added
 
 - **Flux CD:** a GitOps section for clusters running Flux 2.3 or newer, next to Argo CD. See Kustomizations and HelmReleases with their state, revision, dependencies, managed resources and release history, plus sources, notifications and image automation (read-only), a dashboard and a source-to-resources chain. Reconcile, suspend, resume and delete (with a confirmation that shows the consequences) are available according to your permissions. There is no diff or rollback: roll back through Git.
@@ -273,7 +275,8 @@ First public release.
 - Web mode (`cmd/kubron-server`): several concurrent sessions, per-session
   cluster managers with per-user resource limits, idle informers released after a TTL.
 
-[Unreleased]: https://github.com/24DSO-lab/kubron/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/24DSO-lab/kubron/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/24DSO-lab/kubron/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/24DSO-lab/kubron/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/24DSO-lab/kubron/compare/v0.6.0...v1.0.0
 [0.6.0]: https://github.com/24DSO-lab/kubron/compare/v0.5.0...v0.6.0
