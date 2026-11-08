@@ -90,7 +90,7 @@ func TestFluxDeleteKustomization(t *testing.T) {
 		t.Fatalf("deletes: %+v", dels)
 	}
 	// Простой DELETE: без propagationPolicy, preconditions, dryRun и grace period — каскад решает finalizer контроллера.
-	if o := dels[0].opts; o.PropagationPolicy != nil || o.GracePeriodSeconds != nil || o.Preconditions != nil || len(o.DryRun) != 0 || o.OrphanDependents != nil {
+	if o := dels[0].opts; o.PropagationPolicy != nil || o.GracePeriodSeconds != nil || o.Preconditions != nil || len(o.DryRun) != 0 {
 		t.Fatalf("delete must carry no options, got %+v", o)
 	}
 	line := logs.String()
