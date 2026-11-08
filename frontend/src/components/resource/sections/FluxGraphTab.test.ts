@@ -12,11 +12,6 @@ vi.mock('../../../resources/wails', async (importOriginal) => ({
   callApp: vi.fn(() => reply),
 }))
 
-// Реестр ресурсов импортирует Monaco для редактора; для SSR этого теста достаточно изолировать lookup.
-vi.mock('../../../resources/registry', () => ({
-  getResourceById: vi.fn(),
-}))
-
 import { callApp } from '../../../resources/wails'
 import { i18n } from '../../../i18n'
 import type { FluxObjectInfo } from '../../../types/flux'
