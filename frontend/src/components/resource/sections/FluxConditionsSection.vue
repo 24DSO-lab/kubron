@@ -26,29 +26,11 @@
   <div v-else class="rd-empty" data-testid="flux-conditions-empty">{{ $t('flux.conditions.empty') }}</div>
 </template>
 
-<script lang="ts">
-import type { FluxCondition } from '../../../types/flux'
-
-/**
- * Цвет статуса условия. Ready: True — норма, False — ошибка. Stalled: True — ошибка, Reconciling: True — идёт работа;
- * их False — штатное «нет», поэтому не красится. Остальные типы: True — норма, False — ошибка.
- * Тексты статусов (True/False/Unknown) — значения API, не переводятся.
- */
-export function conditionTone(c: Pick<FluxCondition, 'type' | 'status'>): string {
-  const on = c.status === 'True'
-  const off = c.status === 'False'
-  if (c.type === 'Stalled') return on ? 'rd-err' : 'rd-unk'
-  if (c.type === 'Reconciling') return on ? 'rd-warn' : 'rd-unk'
-  if (on) return 'rd-ok'
-  if (off) return 'rd-err'
-  return 'rd-unk'
-}
-</script>
-
 <script lang="ts" setup>
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { formatDateTime } from '../../../i18n/format'
+import { conditionTone } from './fluxConditions'
 import type { FluxObjectInfo } from '../../../types/flux'
 
 // Условия (status.conditions) любого объекта Flux; контроллеры сами отдают их в нужном порядке
