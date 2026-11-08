@@ -1,0 +1,27 @@
+{
+  "columns": {
+    "source": "Источник",
+    "path": "Путь",
+    "interval": "Интервал",
+    "suspended": "Приостановлен"
+  },
+  "props": {
+    "lastAttempted": "Последняя ревизия (попытка)",
+    "prune": "Prune",
+    "wait": "Ожидание готовности (wait)",
+    "targetNamespace": "Целевой namespace",
+    "serviceAccount": "Service account",
+    "remote": "Другой кластер",
+    "inventory": "Управляемые ресурсы",
+    "lastReconcile": "Последний reconcile"
+  },
+  "tabs": {
+    "source": "Источник и зависимости",
+    "graph": "Граф"
+  },
+  "menu": {
+    "reconcile": "Reconcile",
+    "reconcileWithSource": "Reconcile вместе с источником",
+    "editYaml": "Править YAML"
+  }
+}

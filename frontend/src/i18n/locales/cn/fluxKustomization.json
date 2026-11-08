@@ -1,0 +1,27 @@
+{
+  "columns": {
+    "source": "来源",
+    "path": "路径",
+    "interval": "间隔",
+    "suspended": "已暂停"
+  },
+  "props": {
+    "lastAttempted": "最近尝试的修订",
+    "prune": "清理 (prune)",
+    "wait": "等待就绪 (wait)",
+    "targetNamespace": "目标命名空间",
+    "serviceAccount": "服务账号",
+    "remote": "远程集群",
+    "inventory": "受管资源",
+    "lastReconcile": "最近协调"
+  },
+  "tabs": {
+    "source": "来源与依赖",
+    "graph": "图"
+  },
+  "menu": {
+    "reconcile": "协调",
+    "reconcileWithSource": "连同来源一起协调",
+    "editYaml": "编辑 YAML"
+  }
+}
