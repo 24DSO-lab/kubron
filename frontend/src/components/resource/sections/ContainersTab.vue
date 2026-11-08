@@ -6,6 +6,7 @@
       <div class="ct-head" @click="toggle(c.name)">
         <span class="ct-status" :class="statusClass(c)" />
         <span class="ct-name">{{ c.name }}</span>
+        <span v-if="c.isEphemeral" class="ct-debug-badge" data-test="ct-debug-badge">{{ $t('sections.containers.debug') }}</span>
         <span class="ct-image">{{ c.image }}</span>
         <span class="ct-arrow" :class="{ open: !collapsed.has(c.name) }">›</span>
       </div>
@@ -226,7 +227,8 @@ function statusText(c: any): string {
   return c.ready ? t('sections.containers.stateReady', { state }) : state
 }
 function statusClass(c: any): string {
-  if (c.state === 'running' && c.ready) return 'ct-ok'
+  // У ephemeral-контейнера Kubernetes не ведёт готовность: работающий отладочный считается исправным
+  if (c.state === 'running' && (c.ready || c.isEphemeral)) return 'ct-ok'
   if (c.state === 'running') return 'ct-warn'
   if (['CrashLoopBackOff', 'Error', 'OOMKilled'].includes(c.state)) return 'ct-err'
   return 'ct-neutral'
@@ -263,6 +265,7 @@ function fmtRes(c: any, kind: 'requests' | 'limits'): string {
 .ct-ok { background: #4ade80; } .ct-warn { background: #facc15; } .ct-err { background: #ef4444; } .ct-neutral { background: #868d8a; }
 .ct-text-ok { color: #4ade80; } .ct-text-warn { color: #facc15; } .ct-text-err { color: #ef4444; } .ct-text-neutral { color: #868d8a; }
 .ct-name { color: #d4d4d4; }
+.ct-debug-badge { font-size: 0.7rem; font-weight: 600; padding: 1px 6px; border-radius: 3px; background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.35); }
 .ct-image { color: #868d8a; font-size: 0.8rem; font-weight: 400; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ct-arrow { margin-left: auto; transition: transform 0.2s; color: #868d8a; } .ct-arrow.open { transform: rotate(90deg); }
 .ct-body { padding: 16px; border-top: 1px solid #2a2b40; display: flex; flex-direction: column; }

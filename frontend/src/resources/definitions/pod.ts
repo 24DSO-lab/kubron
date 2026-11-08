@@ -19,6 +19,7 @@ import TolerationsSection from '../../components/resource/sections/TolerationsSe
 import ConditionsSection from '../../components/resource/sections/ConditionsSection.vue'
 import { t } from '../../i18n'
 import { hasCapability } from '../../composables/useCapabilities'
+import { can } from '../../composables/useAuth'
 
 const k8s = useK8s()
 
@@ -145,6 +146,23 @@ export const pod = defineResource<models.PodInfo, models.PodDetail>({
         const c = container ?? containersOf(p)[0]?.name
         if (!c) return ctx.notifyError(t('defs.pod.noContainers'))
         return ctx.openShell(p.namespace, p.name, c)
+      },
+    },
+    {
+      id: 'debug',
+      permission: Perm.Debug,
+      // Подключение к отладочному контейнеру идёт терминалом (attach), поэтому нужно и право exec
+      when: () => hasCapability('debug') && hasCapability('exec') && can(Perm.Exec),
+      label: 'defs.menu.debug',
+      icon: 'terminal',
+      perContainer: true,
+      run: (p, ctx, container) => {
+        // Целью может быть только обычный контейнер: отладочные и init в подменю не годятся
+        const regular = ((p.containers ?? []) as { name: string; isInit?: boolean; isEphemeral?: boolean }[])
+          .filter(c => !c.isInit && !c.isEphemeral)
+          .map(c => c.name)
+        if (!regular.length) return ctx.notifyError(t('defs.pod.noContainers'))
+        ctx.requestDebug(p.namespace, p.name, regular, container && regular.includes(container) ? container : regular[0])
       },
     },
     {

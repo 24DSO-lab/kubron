@@ -134,7 +134,8 @@
     "ReconcileFlux": "Flux: reconcile",
     "SuspendFlux": "Flux: приостановка",
     "ResumeFlux": "Flux: возобновление",
-    "DeleteFlux": "Flux: объект удалён"
+    "DeleteFlux": "Flux: объект удалён",
+    "StartDebugContainer": "Отладочный контейнер"
   },
   "export": {
     "csv": "Выгрузить CSV",

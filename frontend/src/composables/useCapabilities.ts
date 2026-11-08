@@ -20,6 +20,8 @@ export interface Capabilities {
   exec: boolean
   /** оболочка на узле */
   nodeShell: boolean
+  /** отладочный (ephemeral) контейнер в поде; отключается KUBRON_DISABLE_DEBUG и KUBRON_DISABLE_EXEC */
+  debug: boolean
   /** чтение kubeconfig с диска машины, где запущен бэкенд */
   localKubeconfig: boolean
   /** вход через SSO/OIDC (модуль SSO) */
@@ -40,6 +42,7 @@ export const DEFAULT_CAPABILITIES: Readonly<Capabilities> = Object.freeze({
   portForwardMode: 'local',
   exec: true,
   nodeShell: true,
+  debug: true,
   localKubeconfig: true,
   sso: false,
   inCluster: false,

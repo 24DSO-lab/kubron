@@ -31,7 +31,7 @@ describe('normalizeCapabilities', () => {
   })
   it('по умолчанию десктопное поведение: всё локальное доступно, SSO нет', () => {
     expect(DEFAULT_CAPABILITIES).toEqual({
-      fileDialog: true, portForward: true, portForwardMode: 'local', exec: true, nodeShell: true, localKubeconfig: true, sso: false, inCluster: false, teams: false,
+      fileDialog: true, portForward: true, portForwardMode: 'local', exec: true, nodeShell: true, debug: true, localKubeconfig: true, sso: false, inCluster: false, teams: false,
     })
   })
 })
