@@ -29,7 +29,6 @@ const stateLabel = (r: S) => t(`flux.state.${KNOWN.includes(r.state) ? r.state :
 const statusKey = (r: S) => (r.state === 'Reconciling' ? 'progressing' : r.state === 'Stalled' ? 'failed' : r.state)
 const stateColor = (r: S) => statusColor(statusKey(r))
 const stateBadge = (r: S) => badgeClass(statusKey(r))
-const yesNo = (v: boolean) => (v ? t('common.yes') : t('common.no'))
 const dash = '—'
 
 const yamlKind = () => `cr:${GROUP}/${useFlux().fluxStatus.value.versions?.HelmRelease || 'v2'}/helmreleases`
