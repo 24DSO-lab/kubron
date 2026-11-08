@@ -129,7 +129,6 @@ export function splitInventory(
 import { computed, ref, watch } from 'vue'
 import { errorText } from '../../../composables/errorText'
 import { fluxLiveTick } from '../../../composables/useFluxLive'
-import { getResourceById } from '../../../resources/registry'
 import { badgeClass } from '../../../resources/status'
 import { callApp } from '../../../resources/wails'
 
@@ -215,15 +214,16 @@ const hiddenCount = computed(() => groups.value.reduce((s, g) => s + g.items.len
 
 /** Открываем только те kind, которые приложение умеет показывать, и namespaced — только с namespace */
 function target(n: FluxGraphNode): { id: string; ns: string; name: string } | null {
-  const def = getResourceById(n.kind)
-  if (!def || !n.name) return null
-  if (def.namespaced && !n.namespace) return null
-  return { id: def.id, ns: def.namespaced ? n.namespace : '', name: n.name }
+  return n.name ? { id: n.kind, ns: n.namespace ?? '', name: n.name } : null
 }
 
-function openNode(n: FluxGraphNode) {
-  const t = target(n)
-  if (t) emit('open', t)
+async function openNode(n: FluxGraphNode) {
+  if (!n.name) return
+  // Resolve lazily: importing the registry here avoids a cycle while resource definitions load.
+  const { getResourceById } = await import('../../../resources/registry')
+  const def = getResourceById(n.kind)
+  if (!def || (def.namespaced && !n.namespace)) return
+  emit('open', { id: def.id, ns: def.namespaced ? n.namespace : '', name: n.name })
 }
 </script>
 
