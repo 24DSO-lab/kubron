@@ -121,10 +121,14 @@ func (a *App) GetCapabilities() Capabilities {
 		}
 	}
 	if a.interactive.DisableExec {
-		c.Exec, c.NodeShell = false, false
+		// Отладочный контейнер без терминала бесполезен: подключение к нему идёт через attach.
+		c.Exec, c.NodeShell, c.Debug = false, false, false
 	}
 	if a.interactive.DisableNodeShell {
 		c.NodeShell = false
+	}
+	if a.interactive.DisableDebug {
+		c.Debug = false
 	}
 	c.Teams = a.dir != nil // команды есть там, где хранилище умеет их хранить, а не в оболочке
 	c.InCluster = c.Teams && k8s.InClusterAvailable()

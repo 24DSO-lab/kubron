@@ -192,7 +192,8 @@
     "mountsCount": "{n} 个挂载 | {n} 个挂载",
     "mountFrom": "来自 {name}",
     "requests": "请求",
-    "stateReady": "{state}，就绪"
+    "stateReady": "{state}，就绪",
+    "debug": "调试"
   },
   "cronJobHistory": {
     "job": "Job",

@@ -26,8 +26,12 @@ const (
 // InteractivePolicy — что администратор сервера отключил (KUBRON_DISABLE_*). Отключённое недоступно всем,
 // независимо от ролей; GetCapabilities сообщает об этом интерфейсу.
 type InteractivePolicy struct {
-	DisableExec      bool // терминалы подов и оболочка на узле (оба используют exec)
+	DisableExec      bool // терминалы подов, оболочка на узле и отладочные контейнеры (все используют exec/attach)
 	DisableNodeShell bool // только оболочка на узле
+	DisableDebug     bool // только отладочные (ephemeral) контейнеры
+	// DebugImages — разрешённые образы отладочных контейнеров (KUBRON_DEBUG_IMAGES). Пусто — ограничений нет,
+	// интерфейсу предлагаются образы по умолчанию, но можно указать любой.
+	DebugImages []string
 }
 
 // SetInteractivePolicy задаёт политику для видов, создаваемых после вызова. Функция пакета, а не метод App:

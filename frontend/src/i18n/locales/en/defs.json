@@ -197,7 +197,8 @@
     "openInBrowser": "Open in browser",
     "stop": "Stop",
     "browseResources": "Browse resources",
-    "uninstall": "Uninstall"
+    "uninstall": "Uninstall",
+    "debug": "Debug container"
   },
   "values": {
     "true": "True",

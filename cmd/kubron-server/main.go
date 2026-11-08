@@ -165,7 +165,10 @@ func main() {
 	guard.Setup = setupGate(cfg, core)
 	app.SetResourceLimits(core, k8s.Limits{Terminals: cfg.MaxTerminals, LogStreams: cfg.MaxLogStreams, PortForwards: cfg.MaxPortForwards,
 		TerminalMaxDuration: cfg.TerminalMaxDuration, TerminalIdleTimeout: cfg.TerminalIdleTimeout})
-	app.SetInteractivePolicy(core, app.InteractivePolicy{DisableExec: cfg.DisableExec, DisableNodeShell: cfg.DisableNodeShell})
+	app.SetInteractivePolicy(core, app.InteractivePolicy{
+		DisableExec: cfg.DisableExec, DisableNodeShell: cfg.DisableNodeShell,
+		DisableDebug: cfg.DisableDebug, DebugImages: cfg.DebugImages,
+	})
 	app.SetClusterIdleTTL(core, 2*time.Minute)
 	enforceAccess := func() { // права могли измениться: закрыть то, что осталось открытым у потерявших доступ
 		for _, v := range sessions.Views() {

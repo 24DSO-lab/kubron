@@ -104,6 +104,10 @@ type Config struct {
 	DisablePortForward bool
 	DisableNodeShell   bool
 	DisableExec        bool
+	// DisableDebug — KUBRON_DISABLE_DEBUG: отладочные (ephemeral) контейнеры. DebugImages — KUBRON_DEBUG_IMAGES,
+	// образы через запятую; если заданы, другие образы запрещены.
+	DisableDebug bool
+	DebugImages  []string
 	// TerminalMaxDuration и TerminalIdleTimeout — абсолютный срок терминала и срок без ввода
 	// (KUBRON_TERMINAL_MAX_DURATION, по умолчанию 8h; KUBRON_TERMINAL_IDLE_TIMEOUT, по умолчанию 30m). 0 — без ограничения.
 	TerminalMaxDuration time.Duration
@@ -142,6 +146,17 @@ const (
 	DefaultTerminalIdleTimeout = 30 * time.Minute
 )
 
+// splitList разбирает список через запятую: пробелы по краям и пустые элементы отбрасываются.
+func splitList(s string) []string {
+	var out []string
+	for _, v := range strings.Split(s, ",") {
+		if v = strings.TrimSpace(v); v != "" {
+			out = append(out, v)
+		}
+	}
+	return out
+}
+
 // LoadConfig разбирает флаги args (без имени программы) и окружение через getenv.
 func LoadConfig(args []string, getenv func(string) string, out io.Writer) (Config, error) {
 	cfg := Config{Listen: "127.0.0.1:8080", SessionTTL: 12 * time.Hour, ClusterCheckInterval: DefaultClusterCheckInterval, TrustedProxyHops: 1,
@@ -163,6 +178,8 @@ func LoadConfig(args []string, getenv func(string) string, out io.Writer) (Confi
 	cfg.DisablePortForward = truthy(getenv("KUBRON_DISABLE_PORT_FORWARD"))
 	cfg.DisableNodeShell = truthy(getenv("KUBRON_DISABLE_NODE_SHELL"))
 	cfg.DisableExec = truthy(getenv("KUBRON_DISABLE_EXEC"))
+	cfg.DisableDebug = truthy(getenv("KUBRON_DISABLE_DEBUG"))
+	cfg.DebugImages = splitList(getenv("KUBRON_DEBUG_IMAGES"))
 	cfg.PFBaseDomain = strings.TrimSpace(getenv("KUBRON_PF_BASE_DOMAIN"))
 	cfg.PFScheme = strings.ToLower(strings.TrimSpace(getenv("KUBRON_PF_SCHEME")))
 	for _, d := range []struct {
@@ -273,11 +290,15 @@ func LoadConfig(args []string, getenv func(string) string, out io.Writer) (Confi
 	fs.BoolVar(&cfg.DisablePortForward, "disable-port-forward", cfg.DisablePortForward, "disable port-forward for everyone (env KUBRON_DISABLE_PORT_FORWARD)")
 	fs.BoolVar(&cfg.DisableNodeShell, "disable-node-shell", cfg.DisableNodeShell, "disable the shell on nodes for everyone (env KUBRON_DISABLE_NODE_SHELL)")
 	fs.BoolVar(&cfg.DisableExec, "disable-exec", cfg.DisableExec, "disable pod terminals and the node shell for everyone (env KUBRON_DISABLE_EXEC)")
+	fs.BoolVar(&cfg.DisableDebug, "disable-debug", cfg.DisableDebug, "disable debug (ephemeral) containers for everyone (env KUBRON_DISABLE_DEBUG)")
+	debugImages := strings.Join(cfg.DebugImages, ",")
+	fs.StringVar(&debugImages, "debug-images", debugImages, "comma-separated images allowed for debug containers, empty allows any image (env KUBRON_DEBUG_IMAGES)")
 	fs.DurationVar(&cfg.TerminalMaxDuration, "terminal-max-duration", cfg.TerminalMaxDuration, "maximum lifetime of a terminal, 0 for unlimited (env KUBRON_TERMINAL_MAX_DURATION)")
 	fs.DurationVar(&cfg.TerminalIdleTimeout, "terminal-idle-timeout", cfg.TerminalIdleTimeout, "close a terminal after this time without input, 0 for unlimited (env KUBRON_TERMINAL_IDLE_TIMEOUT)")
 	if err := fs.Parse(args); err != nil {
 		return Config{}, err
 	}
+	cfg.DebugImages = splitList(debugImages)
 	proxies, err := ParseTrustedProxies(trusted)
 	if err != nil {
 		return Config{}, fmt.Errorf("KUBRON_TRUSTED_PROXIES %q: %w", trusted, err)

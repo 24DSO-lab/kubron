@@ -95,6 +95,11 @@ kubron:
   disablePortForward: false
   disableNodeShell: false
   disableExec: false
+  # Отладочные (ephemeral) контейнеры в подах. disableDebug отключает их для всех; debugImages — список образов,
+  # которыми можно отлаживать (пусто — любой образ). Для работы нужно право patch на pods/ephemeralcontainers
+  # в самом кластере: профили rbac его не выдают, см. rbac.extraRules.
+  disableDebug: false
+  debugImages: []
   # Журнал процесса (stderr, JSON): debug | info | warn | error; пусто — info (KUBRON_LOG_LEVEL).
   # Формат text (KUBRON_LOG_FORMAT) нужен только для разработки.
   logLevel: ""
