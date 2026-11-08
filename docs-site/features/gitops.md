@@ -42,6 +42,7 @@ Kubron also supports Flux CD. Like Argo CD, it is discovered through the Kuberne
 - Sources: GitRepository, OCIRepository, HelmRepository, HelmChart and Bucket.
 - Notifications (Alert, Provider, Receiver) and image automation (ImageRepository, ImagePolicy, ImageUpdateAutomation), read-only.
 - A dashboard with the number of objects per state, problem objects, a breakdown by namespace and source, and the latest reconciles.
+- Objects that a Flux Kustomization or HelmRelease applies are marked in the **Managed by** column of resource lists (`Kustomization/<name>` or `HelmRelease/<name>`), and Flux reconciles appear in the recent changes on the Overview.
 - Helm releases that a `HelmRelease` manages are marked **Managed by Flux** in the Helm list and details (see [Helm](/features/helm#releases-managed-by-flux)).
 
 The view updates by itself when Flux objects change. Values that may contain secrets are never shown: HelmRelease `spec.values` and `valuesFrom`, Kustomization `postBuild` substitutions, `kubeConfig` and `decryption` contents, credentials inside URLs, and webhook paths of Receivers.
