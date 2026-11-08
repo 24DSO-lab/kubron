@@ -69,7 +69,7 @@ export function refTarget(
 <script lang="ts" setup>
 import { computed } from 'vue'
 
-import type { FluxObjectInfo, FluxRef } from '../../../types/flux'
+import type { FluxObjectInfo } from '../../../types/flux'
 import { isKnownFluxResource } from './fluxSourceRef'
 
 // sourceRef и dependsOn объекта: переход к объекту, если такой вид открывается в приложении
