@@ -268,7 +268,7 @@ func TestFluxGraphFluxNodeWinsOverResourceWithSameID(t *testing.T) {
 	entries, _, _ := unstructured.NestedSlice(parent.Object, "status", "inventory", "entries")
 	entries = append(entries, map[string]any{"id": "flux-system_infra_kustomize.toolkit.fluxcd.io_Kustomization", "v": "v1"})
 	_ = unstructured.SetNestedSlice(parent.Object, entries, "status", "inventory", "entries")
-	dyn = dynamicfake.NewSimpleDynamicClient(runtime.NewScheme(), parent,
+	dyn := dynamicfake.NewSimpleDynamicClient(runtime.NewScheme(), parent,
 		fluxgGitRepo("flux-system", "fleet", true), fluxgKust("flux-system", "infra"))
 
 	g, err := fluxgGraph(t, fluxgKube("prod"), dyn, FluxRef{FluxKindKustomization, "flux-system", "apps"})
