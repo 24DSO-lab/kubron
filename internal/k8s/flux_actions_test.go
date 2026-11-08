@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -152,53 +153,189 @@ func TestFluxReconcileWithSourcePatchesSourceFirst(t *testing.T) {
 	// Результат один — по запрошенному объекту; источник отдельной строкой не идёт.
 }
 
+// fluxaChart — сгенерированный helm-controller HelmChart.
+func fluxaChart(ns, name string, spec map[string]any) *unstructured.Unstructured {
+	return fluxObj(fluxaSourceAPI, "HelmChart", ns, name, spec)
+}
+
+func fluxaHR(ns, name string, spec map[string]any) *unstructured.Unstructured {
+	return fluxObj(fluxaHelmAPI, "HelmRelease", ns, name, spec)
+}
+
+// fluxaOrder — записанные патчи в виде «ресурс namespace/имя».
+func fluxaOrder(rec *fluxaRecorder) []string {
+	var out []string
+	for _, p := range rec.all() {
+		out = append(out, p.gvr.Resource+" "+p.ns+"/"+p.name)
+	}
+	return out
+}
+
 func TestFluxReconcileWithSourceResolvesSourceRefs(t *testing.T) {
+	repoRef := map[string]any{"kind": "HelmRepository", "name": "charts"}
 	cases := []struct {
-		name    string
-		obj     *unstructured.Unstructured
-		src     *unstructured.Unstructured
-		wantNS  string
-		wantRes string
+		name string
+		objs []runtime.Object
+		ref  FluxRef
+		want []string
 	}{
 		{
 			name: "kustomization source in another namespace",
-			obj: fluxaKust("apps", "a", map[string]any{"sourceRef": map[string]any{
-				"kind": "OCIRepository", "name": "oci", "namespace": "flux-system"}}),
-			src:     fluxObj(fluxaSourceAPI, "OCIRepository", "flux-system", "oci", nil),
-			wantNS:  "flux-system",
-			wantRes: "ocirepositories",
+			objs: []runtime.Object{
+				fluxaKust("apps", "a", map[string]any{"sourceRef": map[string]any{"kind": "OCIRepository", "name": "oci", "namespace": "flux-system"}}),
+				fluxObj(fluxaSourceAPI, "OCIRepository", "flux-system", "oci", nil),
+			},
+			ref:  FluxRef{FluxKindKustomization, "apps", "a"},
+			want: []string{"ocirepositories flux-system/oci", "kustomizations apps/a"},
 		},
 		{
-			name: "helmrelease chart.spec.sourceRef defaults to own namespace",
-			obj: fluxObj(fluxaHelmAPI, "HelmRelease", "apps", "web", map[string]any{"chart": map[string]any{
-				"spec": map[string]any{"sourceRef": map[string]any{"kind": "HelmRepository", "name": "charts"}}}}),
-			src:     fluxObj(fluxaSourceAPI, "HelmRepository", "apps", "charts", nil),
-			wantNS:  "apps",
-			wantRes: "helmrepositories",
+			// Как flux CLI: репозиторий -> сгенерированный HelmChart <ns>-<имя> -> HelmRelease.
+			name: "helmrelease chart: repository, generated HelmChart, release",
+			objs: []runtime.Object{
+				fluxaHR("apps", "web", map[string]any{"chart": map[string]any{"spec": map[string]any{"sourceRef": repoRef}}}),
+				fluxaChart("apps", "apps-web", map[string]any{"sourceRef": repoRef}),
+				fluxObj(fluxaSourceAPI, "HelmRepository", "apps", "charts", nil),
+			},
+			ref:  FluxRef{FluxKindHelmRelease, "apps", "web"},
+			want: []string{"helmrepositories apps/charts", "helmcharts apps/apps-web", "helmreleases apps/web"},
 		},
 		{
-			name: "helmrelease chartRef",
-			obj: fluxObj(fluxaHelmAPI, "HelmRelease", "apps", "web", map[string]any{"chartRef": map[string]any{
-				"kind": "OCIRepository", "name": "chart", "namespace": "oci-ns"}}),
-			src:     fluxObj(fluxaSourceAPI, "OCIRepository", "oci-ns", "chart", nil),
-			wantNS:  "oci-ns",
-			wantRes: "ocirepositories",
+			name: "helmrelease chart with sourceRef in another namespace puts HelmChart there",
+			objs: []runtime.Object{
+				fluxaHR("apps", "web", map[string]any{"chart": map[string]any{"spec": map[string]any{"sourceRef": map[string]any{
+					"kind": "HelmRepository", "name": "charts", "namespace": "flux-system"}}}}),
+				fluxaChart("flux-system", "apps-web", map[string]any{"sourceRef": map[string]any{"kind": "HelmRepository", "name": "charts"}}),
+				fluxObj(fluxaSourceAPI, "HelmRepository", "flux-system", "charts", nil),
+			},
+			ref:  FluxRef{FluxKindHelmRelease, "apps", "web"},
+			want: []string{"helmrepositories flux-system/charts", "helmcharts flux-system/apps-web", "helmreleases apps/web"},
+		},
+		{
+			name: "helmrelease chart.kind OCIRepository: generated OCIRepository, no HelmChart",
+			objs: []runtime.Object{
+				fluxaHR("apps", "web", map[string]any{"chart": map[string]any{"kind": "OCIRepository", "spec": map[string]any{"url": "oci://example/chart"}}}),
+				fluxObj(fluxaSourceAPI, "OCIRepository", "apps", "apps-web", nil),
+			},
+			ref:  FluxRef{FluxKindHelmRelease, "apps", "web"},
+			want: []string{"ocirepositories apps/apps-web", "helmreleases apps/web"},
+		},
+		{
+			name: "helmrelease chartRef OCIRepository",
+			objs: []runtime.Object{
+				fluxaHR("apps", "web", map[string]any{"chartRef": map[string]any{"kind": "OCIRepository", "name": "chart", "namespace": "oci-ns"}}),
+				fluxObj(fluxaSourceAPI, "OCIRepository", "oci-ns", "chart", nil),
+			},
+			ref:  FluxRef{FluxKindHelmRelease, "apps", "web"},
+			want: []string{"ocirepositories oci-ns/chart", "helmreleases apps/web"},
+		},
+		{
+			name: "helmrelease chartRef HelmChart reconciles the chart with its own source",
+			objs: []runtime.Object{
+				fluxaHR("apps", "web", map[string]any{"chartRef": map[string]any{"kind": "HelmChart", "name": "shared"}}),
+				fluxaChart("apps", "shared", map[string]any{"sourceRef": map[string]any{"kind": "GitRepository", "name": "repo"}}),
+				fluxObj(fluxaSourceAPI, "GitRepository", "apps", "repo", nil),
+			},
+			ref:  FluxRef{FluxKindHelmRelease, "apps", "web"},
+			want: []string{"gitrepositories apps/repo", "helmcharts apps/shared", "helmreleases apps/web"},
+		},
+		{
+			name: "chartRef wins over chart, as in flux CLI",
+			objs: []runtime.Object{
+				fluxaHR("apps", "web", map[string]any{
+					"chartRef": map[string]any{"kind": "OCIRepository", "name": "chart"},
+					"chart":    map[string]any{"spec": map[string]any{"sourceRef": repoRef}},
+				}),
+				fluxObj(fluxaSourceAPI, "OCIRepository", "apps", "chart", nil),
+			},
+			ref:  FluxRef{FluxKindHelmRelease, "apps", "web"},
+			want: []string{"ocirepositories apps/chart", "helmreleases apps/web"},
 		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			m, _, rec := fluxaSetup(tc.obj, tc.src)
-			ref := FluxRef{tc.obj.GetKind(), tc.obj.GetNamespace(), tc.obj.GetName()}
-			res, err := m.ReconcileFlux([]FluxRef{ref}, true)
-			if err != nil || res[0].Error != "" {
+			m, _, rec := fluxaSetup(tc.objs...)
+			res, err := m.ReconcileFlux([]FluxRef{tc.ref}, true)
+			if err != nil || len(res) != 1 || res[0].Error != "" {
 				t.Fatalf("err=%v res=%+v", err, res)
 			}
-			ps := rec.all()
-			if len(ps) != 2 || ps[0].gvr.Resource != tc.wantRes || ps[0].ns != tc.wantNS {
-				t.Fatalf("source patch expected first: %+v", ps)
+			if got := fluxaOrder(rec); !slices.Equal(got, tc.want) {
+				t.Fatalf("patch order\n got: %v\nwant: %v", got, tc.want)
 			}
 		})
 	}
+}
+
+func TestFluxReconcileWithSourceHelmChartEdgeCases(t *testing.T) {
+	repoRef := map[string]any{"kind": "HelmRepository", "name": "charts"}
+	hr := func() *unstructured.Unstructured {
+		return fluxaHR("apps", "web", map[string]any{"chart": map[string]any{"spec": map[string]any{"sourceRef": repoRef}}})
+	}
+	ref := []FluxRef{{FluxKindHelmRelease, "apps", "web"}}
+
+	t.Run("missing HelmChart stops the release and names the chart", func(t *testing.T) {
+		m, dyn, rec := fluxaSetup(hr(), fluxObj(fluxaSourceAPI, "HelmRepository", "apps", "charts", nil))
+		res, _ := m.ReconcileFlux(ref, true)
+		if !strings.Contains(res[0].Error, "HelmChart apps/apps-web") || len(rec.all()) != 0 {
+			t.Fatalf("res=%+v patches=%v", res, fluxaOrder(rec))
+		}
+		if fluxaReq(t, fluxaGet(t, dyn, FluxKindHelmRelease, "apps", "web")) != "" {
+			t.Fatal("the release must stay untouched")
+		}
+	})
+	t.Run("suspended HelmChart stops the chain before its source is touched", func(t *testing.T) {
+		m, _, rec := fluxaSetup(hr(),
+			fluxaChart("apps", "apps-web", map[string]any{"suspend": true, "sourceRef": repoRef}),
+			fluxObj(fluxaSourceAPI, "HelmRepository", "apps", "charts", nil))
+		res, _ := m.ReconcileFlux(ref, true)
+		if !strings.Contains(res[0].Error, errFluxSuspended.Error()) || len(rec.all()) != 0 {
+			t.Fatalf("res=%+v patches=%v", res, fluxaOrder(rec))
+		}
+	})
+	t.Run("suspended chart repository stops the chain", func(t *testing.T) {
+		m, _, rec := fluxaSetup(hr(),
+			fluxaChart("apps", "apps-web", map[string]any{"sourceRef": repoRef}),
+			fluxObj(fluxaSourceAPI, "HelmRepository", "apps", "charts", map[string]any{"suspend": true}))
+		res, _ := m.ReconcileFlux(ref, true)
+		if !strings.Contains(res[0].Error, "HelmRepository apps/charts") || len(rec.all()) != 0 {
+			t.Fatalf("res=%+v patches=%v", res, fluxaOrder(rec))
+		}
+	})
+	t.Run("HelmChart without sourceRef is reconciled alone", func(t *testing.T) {
+		m, _, rec := fluxaSetup(hr(), fluxaChart("apps", "apps-web", nil))
+		res, _ := m.ReconcileFlux(ref, true)
+		want := []string{"helmcharts apps/apps-web", "helmreleases apps/web"}
+		if res[0].Error != "" || !slices.Equal(fluxaOrder(rec), want) {
+			t.Fatalf("res=%+v patches=%v", res, fluxaOrder(rec))
+		}
+	})
+	t.Run("unknown chart.kind reconciles the release only", func(t *testing.T) {
+		m, _, rec := fluxaSetup(fluxaHR("apps", "web", map[string]any{"chart": map[string]any{"kind": "Foo"}}))
+		res, _ := m.ReconcileFlux(ref, true)
+		if res[0].Error != "" || !slices.Equal(fluxaOrder(rec), []string{"helmreleases apps/web"}) {
+			t.Fatalf("res=%+v patches=%v", res, fluxaOrder(rec))
+		}
+	})
+	t.Run("without withSource the chain is not touched", func(t *testing.T) {
+		m, _, rec := fluxaSetup(hr(), fluxaChart("apps", "apps-web", map[string]any{"sourceRef": repoRef}),
+			fluxObj(fluxaSourceAPI, "HelmRepository", "apps", "charts", nil))
+		res, _ := m.ReconcileFlux(ref, false)
+		if res[0].Error != "" || !slices.Equal(fluxaOrder(rec), []string{"helmreleases apps/web"}) {
+			t.Fatalf("res=%+v patches=%v", res, fluxaOrder(rec))
+		}
+	})
+	t.Run("garbage in chart and chartRef does not panic", func(t *testing.T) {
+		for _, spec := range []map[string]any{
+			{"chart": "x"}, {"chart": map[string]any{"spec": int64(3)}}, {"chart": map[string]any{"kind": int64(1)}},
+			{"chartRef": "x"}, {"chartRef": map[string]any{"kind": true, "name": int64(1)}},
+			{"chart": map[string]any{"spec": map[string]any{"sourceRef": "oops"}}},
+		} {
+			m, _, _ := fluxaSetup(fluxaHR("apps", "web", spec))
+			res, err := m.ReconcileFlux(ref, true)
+			if err != nil || len(res) != 1 {
+				t.Fatalf("spec %v: err=%v res=%+v", spec, err, res)
+			}
+		}
+	})
 }
 
 func TestFluxReconcileWithSourceEdgeCases(t *testing.T) {

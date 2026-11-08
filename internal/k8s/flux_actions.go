@@ -70,7 +70,7 @@ func fluxReconcile(ctx context.Context, conn *ClusterConnection, refs []FluxRef,
 		// Сначала источник: если он приостановлен или недоступен, сам объект не трогается (как в flux CLI).
 		if withSource {
 			if src, ok := fluxSourceRefOf(ref, obj); ok {
-				if err := c.reconcileOne(src, now); err != nil {
+				if err := c.reconcileSource(src, now); err != nil {
 					return fmt.Errorf("%s: %w", "source "+src.Kind+" "+src.Namespace+"/"+src.Name, err)
 				}
 			}
@@ -167,33 +167,74 @@ func (c *fluxActionCtx) reconcileOne(ref FluxRef, now func() time.Time) error {
 	return c.reconcileObject(ref, obj, now)
 }
 
-// fluxSourceRefOf находит источник объекта: spec.sourceRef у Kustomization, spec.chart.spec.sourceRef либо
-// spec.chartRef у HelmRelease. Namespace по умолчанию — namespace самого объекта. false — источника нет или его
-// вид не из таблицы (например, ExternalArtifact): тогда пересчитывается только сам объект. Для остальных видов
-// withSource ничего не значит.
-func fluxSourceRefOf(ref FluxRef, obj *unstructured.Unstructured) (FluxRef, bool) {
-	var raw map[string]any
-	switch ref.Kind {
-	case FluxKindKustomization:
-		raw, _ = mapAt(obj.Object, "spec", "sourceRef")
-	case FluxKindHelmRelease:
-		raw, _ = mapAt(obj.Object, "spec", "chart", "spec", "sourceRef")
-		if raw == nil {
-			raw, _ = mapAt(obj.Object, "spec", "chartRef")
+// reconcileSource пересчитывает источник объекта. HelmChart пересчитывается вместе со своим источником
+// (HelmRepository, GitRepository, Bucket), как в flux CLI: цепочка «репозиторий -> HelmChart -> HelmRelease».
+// Без шага HelmChart новая версия чарта не появилась бы до его собственного интервала. Приостановленный HelmChart
+// останавливает цепочку до того, как будет затронут его источник.
+func (c *fluxActionCtx) reconcileSource(src FluxRef, now func() time.Time) error {
+	if src.Kind != FluxKindHelmChart {
+		return c.reconcileOne(src, now)
+	}
+	chart, err := c.get(src, fluxActReconcile)
+	if err != nil {
+		return err
+	}
+	if boolAt(chart.Object, "spec", "suspend") {
+		return errFluxSuspended
+	}
+	raw, _ := mapAt(chart.Object, "spec", "sourceRef")
+	upstream, ok := fluxResolveRef(FluxRef{Kind: strAt(raw, "kind"), Namespace: strAt(raw, "namespace"), Name: strAt(raw, "name")}, chart.GetNamespace())
+	if ok {
+		if err := c.reconcileOne(upstream, now); err != nil {
+			return fmt.Errorf("source %s %s/%s: %w", upstream.Kind, upstream.Namespace, upstream.Name, err)
 		}
 	}
-	kind, name := strAt(raw, "kind"), strAt(raw, "name")
-	if kind == "" || name == "" {
+	return c.reconcileObject(src, chart, now)
+}
+
+// fluxSourceRefOf находит объект, который нужно пересчитать перед самим объектом при withSource, как flux CLI:
+//   - Kustomization: spec.sourceRef;
+//   - HelmRelease со spec.chartRef: объект из chartRef (вид по умолчанию — HelmChart);
+//   - HelmRelease со spec.chart: сгенерированный из шаблона объект (HelmChart либо OCIRepository, в зависимости от
+//     spec.chart.kind) с именем <namespace>-<имя HelmRelease>; его namespace — spec.chart.spec.sourceRef.namespace
+//     для HelmChart, если задан, иначе namespace HelmRelease. Это не сам репозиторий чарта: репозиторий пересчитывает
+//     reconcileSource вместе с HelmChart.
+//
+// chartRef проверяется раньше chart, как в flux CLI. Namespace по умолчанию — namespace самого объекта. false —
+// источника нет или его вид не из таблицы (например, ExternalArtifact): тогда пересчитывается только сам объект.
+// Для остальных видов withSource ничего не значит.
+func fluxSourceRefOf(ref FluxRef, obj *unstructured.Unstructured) (FluxRef, bool) {
+	var src FluxRef
+	switch ref.Kind {
+	case FluxKindKustomization:
+		raw, _ := mapAt(obj.Object, "spec", "sourceRef")
+		src = FluxRef{Kind: strAt(raw, "kind"), Namespace: strAt(raw, "namespace"), Name: strAt(raw, "name")}
+	case FluxKindHelmRelease:
+		if raw, ok := mapAt(obj.Object, "spec", "chartRef"); ok {
+			src = FluxRef{Kind: orDefault(strAt(raw, "kind"), FluxKindHelmChart), Namespace: strAt(raw, "namespace"), Name: strAt(raw, "name")}
+		} else if chart, ok := mapAt(obj.Object, "spec", "chart"); ok {
+			src = FluxRef{Kind: orDefault(strAt(chart, "kind"), FluxKindHelmChart), Name: obj.GetNamespace() + "-" + obj.GetName()}
+			if src.Kind == FluxKindHelmChart {
+				template, _ := mapAt(chart, "spec", "sourceRef")
+				src.Namespace = strAt(template, "namespace")
+			}
+		}
+	}
+	return fluxResolveRef(src, obj.GetNamespace())
+}
+
+// fluxResolveRef проверяет ссылку на объект для reconcile и подставляет namespace по умолчанию.
+func fluxResolveRef(src FluxRef, defaultNS string) (FluxRef, bool) {
+	if src.Kind == "" || src.Name == "" {
 		return FluxRef{}, false
 	}
-	if _, err := checkFluxRef(FluxRef{Kind: kind, Namespace: "x", Name: name}, fluxActReconcile); err != nil {
+	if _, err := checkFluxRef(FluxRef{Kind: src.Kind, Namespace: "x", Name: src.Name}, fluxActReconcile); err != nil {
 		return FluxRef{}, false
 	}
-	ns := strAt(raw, "namespace")
-	if ns == "" {
-		ns = obj.GetNamespace()
+	if src.Namespace == "" {
+		src.Namespace = defaultNS
 	}
-	return FluxRef{Kind: kind, Namespace: ns, Name: name}, true
+	return src, true
 }
 
 // normalizeFluxRefs проверяет список от клиента: не пуст, не больше fluxMaxActionObjects, поля без пробелов по
