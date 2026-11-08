@@ -26,15 +26,6 @@
   <div v-else class="rd-empty" data-testid="flux-history-empty">{{ $t('fluxHelm.history.empty') }}</div>
 </template>
 
-<script lang="ts">
-import type { FluxHelmHistoryEntry } from '../../../types/flux'
-
-/** Новые записи первыми (бэкенд уже так отдаёт, но порядок не должен зависеть от него); вход не мутируется */
-export function sortHistory(h: readonly FluxHelmHistoryEntry[] | null | undefined): FluxHelmHistoryEntry[] {
-  return [...(h ?? [])].filter(Boolean).sort((a, b) => (b.version ?? 0) - (a.version ?? 0))
-}
-</script>
-
 <script lang="ts" setup>
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -42,6 +33,7 @@ import { formatDateTime } from '../../../i18n/format'
 import { chartLabel } from '../../../resources/flux'
 import { badgeClass } from '../../../resources/status'
 import type { FluxHelmReleaseInfo } from '../../../types/flux'
+import { sortHistory } from './fluxHistory'
 
 // История Helm-релиза (status.history): версия релиза, чарт, appVersion, статус, время
 const props = defineProps<{ resource: Partial<FluxHelmReleaseInfo> }>()
