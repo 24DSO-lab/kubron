@@ -1,0 +1,22 @@
+{
+  "columns": {
+    "image": "镜像",
+    "tags": "标签数",
+    "lastScan": "最近扫描",
+    "repository": "镜像仓库",
+    "policy": "策略",
+    "latestImage": "最新镜像",
+    "source": "来源",
+    "branch": "分支",
+    "lastRun": "最近运行",
+    "commit": "最近提交"
+  },
+  "props": {
+    "interval": "间隔",
+    "suspended": "已暂停"
+  },
+  "menu": {
+    "reconcile": "协调",
+    "editYaml": "编辑 YAML"
+  }
+}
