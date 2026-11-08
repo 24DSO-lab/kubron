@@ -8,9 +8,9 @@ import (
 	"log"
 	"time"
 
-	"github.com/24DSO-labs/kubron/internal/jobs"
-	"github.com/24DSO-labs/kubron/internal/pgstore"
-	"github.com/24DSO-labs/kubron/internal/websession"
+	"github.com/24DSO-lab/kubron/internal/jobs"
+	"github.com/24DSO-lab/kubron/internal/pgstore"
+	"github.com/24DSO-lab/kubron/internal/websession"
 )
 
 // Периоды уборки. Записи о неудачных входах без блокировки забываются через loginFailureWindow (как счётчики по

@@ -22,7 +22,7 @@ import (
 	"k8s.io/client-go/tools/portforward"
 	"k8s.io/client-go/transport/spdy"
 
-	"github.com/24DSO-labs/kubron/internal/pfproxy"
+	"github.com/24DSO-lab/kubron/internal/pfproxy"
 )
 
 // Статусы сессии проброса портов.

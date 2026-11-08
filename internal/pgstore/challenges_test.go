@@ -14,9 +14,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/24DSO-labs/kubron/internal/credential"
-	"github.com/24DSO-labs/kubron/internal/credential/credtest"
-	"github.com/24DSO-labs/kubron/internal/secrets"
+	"github.com/24DSO-lab/kubron/internal/credential"
+	"github.com/24DSO-lab/kubron/internal/credential/credtest"
+	"github.com/24DSO-lab/kubron/internal/secrets"
 )
 
 func TestChallengeStoreContract(t *testing.T) {

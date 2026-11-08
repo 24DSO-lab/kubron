@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/24DSO-labs/kubron/internal/credential"
+	"github.com/24DSO-lab/kubron/internal/credential"
 )
 
 // The authorization-code flow of the desktop (RFC 8252 7.3): a listener on 127.0.0.1 receives the redirect of the

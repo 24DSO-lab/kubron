@@ -1,0 +1,32 @@
+{
+  "columns": {
+    "chart": "Chart",
+    "release": "发布",
+    "targetNamespace": "目标命名空间"
+  },
+  "props": {
+    "storageNamespace": "存储命名空间",
+    "interval": "间隔",
+    "remote": "远程集群",
+    "suspended": "已暂停",
+    "lastReconcile": "最近协调",
+    "managed": "受管资源"
+  },
+  "tabs": {
+    "source": "来源与依赖",
+    "graph": "图"
+  },
+  "menu": {
+    "reconcile": "协调",
+    "reconcileWithSource": "连同来源一起协调",
+    "editYaml": "编辑 YAML"
+  },
+  "history": {
+    "release": "发布版本",
+    "chart": "Chart",
+    "appVersion": "应用版本",
+    "deployed": "部署时间",
+    "empty": "没有发布历史"
+  },
+  "noInventory": "Flux 2.8 之前不可用"
+}

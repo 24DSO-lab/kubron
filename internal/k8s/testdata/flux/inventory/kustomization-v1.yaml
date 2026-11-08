@@ -1,0 +1,36 @@
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: apps
+  namespace: flux-system
+spec:
+  interval: 10m
+  path: ./apps
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: fleet
+  dependsOn:
+    - name: infra
+status:
+  conditions:
+    - type: Ready
+      status: "True"
+      reason: ReconciliationSucceeded
+      message: "Applied revision: main@sha1:abc"
+  inventory:
+    entries:
+      - id: prod_web_apps_Deployment
+        v: v1
+      - id: prod_web__Service
+        v: v1
+      - id: prod_web_networking.k8s.io_Ingress
+        v: v1
+      - id: prod_settings__ConfigMap
+        v: v1
+      - id: _prod__Namespace
+        v: v1
+      - id: _system__controller__reader_rbac.authorization.k8s.io_ClusterRole
+        v: v1
+      - id: flux-system_extra_kustomize.toolkit.fluxcd.io_Kustomization
+        v: v1

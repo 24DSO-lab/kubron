@@ -12,7 +12,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/24DSO-labs/kubron/internal/replicaevents"
+	"github.com/24DSO-lab/kubron/internal/replicaevents"
 )
 
 // Транспорт сообщений между репликами на PostgreSQL LISTEN/NOTIFY (ADR-0016, раздел 3).

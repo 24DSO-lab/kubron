@@ -11,7 +11,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/24DSO-labs/kubron/pkg/ext"
+	"github.com/24DSO-lab/kubron/pkg/ext"
 )
 
 // ErrArgoTokenNotSet — для активного кластера не задан токен Argo CD API.

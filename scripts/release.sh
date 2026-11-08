@@ -1,14 +1,19 @@
 #!/usr/bin/env bash
-# Выпуск релиза одной командой (запускать из ветки dev, в Git Bash / терминале IDE):
+# Выпуск релиза в два шага (в Git Bash / терминале IDE):
 #
-#   scripts/release.sh 0.2.0            # выпустить v0.2.0
-#   scripts/release.sh 0.2.0 --dry-run  # только проверки и предпросмотр, ничего не меняется
-#   scripts/release.sh 0.2.0 --watch    # после тега дождаться релизного workflow
+#   1. В рабочей ветке (refactor), ДО слияния в dev:
+#        scripts/release.sh 0.2.0 --prepare   # [Unreleased] -> [0.2.0], версии в файлах, один коммит; без push
+#      Затем: push refactor, проверка, слияние в dev, ожидание зелёного dev.
+#   2. В ветке dev, когда dev зелёный:
+#        scripts/release.sh 0.2.0            # PR dev -> master, слияние, тег vX.Y.Z; новых коммитов нет
+#        scripts/release.sh 0.2.0 --watch    # то же и дождаться релизного workflow
 #
-# Что делает: проверяет окружение -> переносит [Unreleased] из CHANGELOG.md в раздел версии и
-# обновляет версии (wails.json, frontend/package*.json) -> коммит "chore(release)" и push dev ->
-# pull request dev -> master -> ждёт зелёных проверок и сливает его (merge commit) -> ставит и
-# отправляет тег vX.Y.Z -> подтягивает dev к master. Дальше всё делает workflow Release.
+#   --dry-run добавляется к любому шагу: только проверки и предпросмотр, ничего не меняется.
+#
+# Шаг 2 ничего не коммитит и не пушит в dev: в master уходит ровно то содержимое, которое уже
+# проверено в dev, поэтому CI не повторяется (см. «Почему часть job'ов пропущена» в docs/releasing.md).
+# Шаг 2 -> pull request dev -> master -> ждёт зелёных проверок и сливает его (merge commit) ->
+# ставит и отправляет тег vX.Y.Z -> подтягивает dev и рабочие ветки к master. Дальше всё делает workflow Release.
 # Если скрипт остановился (например, красная проверка), исправьте причину и запустите ту же
 # команду снова: уже сделанные шаги пропускаются. Подробности: docs/releasing.md
 #
@@ -19,12 +24,13 @@ die()  { echo "ОШИБКА: $*" >&2; exit 1; }
 step() { echo; echo "==> $*"; }
 info() { echo "    $*"; }
 
-version=""; dry=0; watch=0
+version=""; dry=0; watch=0; prepare=0
 for a in "$@"; do
   case "$a" in
     --dry-run) dry=1 ;;
     --watch)   watch=1 ;;
-    -h|--help) sed -n '2,15p' "$0"; exit 0 ;;
+    --prepare) prepare=1 ;;
+    -h|--help) sed -n '2,19p' "$0"; exit 0 ;;
     -*)        die "неизвестный параметр $a" ;;
     *)         [ -z "$version" ] || die "версия указана дважды"; version="${a#v}" ;;
   esac
@@ -48,43 +54,74 @@ slug="$(git remote get-url "$remote" | sed -E 's#^.*github\.com[:/]##; s#\.git$#
 info "репозиторий: $slug (remote «$remote»), версия: $version"
 
 step "Проверки"
-gh auth status >/dev/null 2>&1 || die "gh не авторизован: выполните gh auth login"
-[ "$(git rev-parse --abbrev-ref HEAD)" = "dev" ] || die "релиз выпускается из ветки dev (сейчас: $(git rev-parse --abbrev-ref HEAD))"
+branch="$(git rev-parse --abbrev-ref HEAD)"
+if [ "$prepare" -eq 1 ]; then
+  case "$branch" in
+    master|dev) die "--prepare выполняется в рабочей ветке (refactor), до слияния в dev (сейчас: $branch)" ;;
+  esac
+else
+  gh auth status >/dev/null 2>&1 || die "gh не авторизован: выполните gh auth login"
+  [ "$branch" = "dev" ] || die "релиз выпускается из ветки dev (сейчас: $branch)"
+fi
 [ -z "$(git status --porcelain)" ] || die "есть незакоммиченные изменения: закоммитьте или уберите их"
 git fetch --quiet --tags "$remote" || die "git fetch $remote не удался. Частая причина — локальный тег расходится с тегом на GitHub: сравните (git ls-remote --tags $remote), удалите локальный тег (git tag -d vX.Y.Z) и запустите снова"
-[ "$(git rev-parse HEAD)" = "$(git rev-parse "$remote/dev")" ] || die "локальная dev не совпадает с $remote/dev: сделайте pull/push"
+if [ "$prepare" -eq 0 ]; then
+  [ "$(git rev-parse HEAD)" = "$(git rev-parse "$remote/dev")" ] || die "локальная dev не совпадает с $remote/dev: сделайте pull/push"
+fi
 if git rev-parse -q --verify "refs/tags/$tag" >/dev/null || git ls-remote --exit-code --tags "$remote" "refs/tags/$tag" >/dev/null 2>&1; then
   die "тег $tag уже существует"
 fi
-git merge-base --is-ancestor "$remote/master" HEAD || die "в $remote/master есть коммиты, которых нет в dev: сначала git merge $remote/master в dev"
+git merge-base --is-ancestor "$remote/master" HEAD || die "в $remote/master есть коммиты, которых нет в $branch: сначала git merge $remote/master"
 node scripts/changelog.mjs check || die "CHANGELOG.md составлен неверно (см. выше)"
 info "окружение, ветка и версии в порядке"
 
+# Версия в файлах (wails.json, frontend/package.json) уже base_version?
+files_versioned=0
+if grep -q "\"productVersion\"[[:space:]]*:[[:space:]]*\"$base_version\"" wails.json \
+  && node -e 'process.exit(require("./frontend/package.json").version === process.argv[1] ? 0 : 1)' "$base_version"; then
+  files_versioned=1
+fi
+
+# Подготовка уже сделана? Релиз: раздел [X.Y.Z] в CHANGELOG и версии в файлах; предрелиз: только версии в файлах.
 already_rolled=0
 if [ "$pre" -eq 1 ]; then
-  info "предрелиз: CHANGELOG.md не меняется, описание берётся из [Unreleased]"
-  echo "    Описание релиза будет таким:"
-  node scripts/changelog.mjs notes "$version" --fallback-unreleased | sed 's/^/      | /' || die "в [Unreleased] нет изменений"
-  if grep -q "\"productVersion\"[[:space:]]*:[[:space:]]*\"$base_version\"" wails.json; then
-    already_rolled=1
-    info "версии в файлах уже $base_version: шаг подготовки пропускаем"
-  fi
-elif node scripts/changelog.mjs has "$version" >/dev/null 2>&1; then
+  [ "$files_versioned" -eq 1 ] && already_rolled=1
+elif node scripts/changelog.mjs has "$version" >/dev/null 2>&1 && [ "$files_versioned" -eq 1 ]; then
   already_rolled=1
-  info "в CHANGELOG.md раздел [$version] уже есть: шаг подготовки пропускаем"
-else
-  tmp="$(mktemp)"; cp CHANGELOG.md "$tmp"
-  node scripts/changelog.mjs roll "$version" --file "$tmp" || { rm -f "$tmp"; die "в [Unreleased] нет изменений"; }
+fi
+
+if [ "$prepare" -eq 0 ]; then
+  # Релиз: ничего не коммитим. Всё, что войдёт в тег, уже должно лежать в dev и быть проверено там.
+  [ "$already_rolled" -eq 1 ] || die "в dev нет подготовки релиза $tag (раздел [$version] в CHANGELOG.md и версии в wails.json и frontend/package.json). Выполните в refactor: scripts/release.sh $version --prepare, затем слейте refactor в dev и дождитесь зелёного dev"
+  info "подготовка релиза $tag найдена в dev: новых коммитов не будет"
   echo "    Описание релиза будет таким:"
-  node scripts/changelog.mjs notes "$version" --file "$tmp" | sed 's/^/      | /'
-  rm -f "$tmp"
-fi
+  node scripts/changelog.mjs notes "$version" --fallback-unreleased | sed 's/^/      | /' || die "в CHANGELOG.md нет описания $tag"
+  if [ "$dry" -eq 1 ]; then
+    echo; echo "Пробный запуск (--dry-run): ничего не изменено."; exit 0
+  fi
+else
+  if [ "$already_rolled" -eq 1 ]; then
+    info "подготовка $tag уже сделана (CHANGELOG и версии в файлах): делать нечего"
+    exit 0
+  fi
+  if [ "$pre" -eq 1 ]; then
+    info "предрелиз: CHANGELOG.md не меняется, описание берётся из [Unreleased]"
+    echo "    Описание релиза будет таким:"
+    node scripts/changelog.mjs notes "$version" --fallback-unreleased | sed 's/^/      | /' || die "в [Unreleased] нет изменений"
+  else
+    if node scripts/changelog.mjs has "$version" >/dev/null 2>&1; then
+      die "раздел [$version] в CHANGELOG.md уже есть, но версии в файлах другие: исправьте wails.json и frontend/package.json вручную"
+    fi
+    tmp="$(mktemp)"; cp CHANGELOG.md "$tmp"
+    node scripts/changelog.mjs roll "$version" --file "$tmp" || { rm -f "$tmp"; die "в [Unreleased] нет изменений"; }
+    echo "    Описание релиза будет таким:"
+    node scripts/changelog.mjs notes "$version" --file "$tmp" | sed 's/^/      | /'
+    rm -f "$tmp"
+  fi
+  if [ "$dry" -eq 1 ]; then
+    echo; echo "Пробный запуск (--dry-run): ничего не изменено."; exit 0
+  fi
 
-if [ "$dry" -eq 1 ]; then
-  echo; echo "Пробный запуск (--dry-run): ничего не изменено."; exit 0
-fi
-
-if [ "$already_rolled" -eq 0 ]; then
   step "Подготовка релиза: CHANGELOG и версии"
   [ "$pre" -eq 1 ] || node scripts/changelog.mjs roll "$version"
   # shellcheck disable=SC2016  # JS-код в одинарных кавычках: подстановки bash здесь не нужны
@@ -99,10 +136,11 @@ if [ "$already_rolled" -eq 0 ]; then
   npm --prefix frontend version "$base_version" --no-git-tag-version --allow-same-version >/dev/null
   git add CHANGELOG.md wails.json frontend/package.json frontend/package-lock.json
   git commit -s -q -m "chore(release): $tag"
-  git push "$remote" dev
-  info "коммит chore(release): $tag отправлен в dev"
-else
-  [ "$(git rev-parse HEAD)" = "$(git rev-parse "$remote/dev")" ] || die "dev не отправлена в $remote"
+  info "коммит chore(release): $tag создан в $branch (ничего не отправлялось)"
+  echo
+  echo "Дальше: git push $remote $branch -> проверка -> слияние $branch в dev -> дождаться зелёного dev ->"
+  echo "        git checkout dev && scripts/release.sh $version"
+  exit 0
 fi
 
 step "Pull request dev -> master"

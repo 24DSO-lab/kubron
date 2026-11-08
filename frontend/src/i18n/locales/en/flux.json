@@ -1,0 +1,39 @@
+{
+  "state": {
+    "Ready": "Ready",
+    "Reconciling": "Reconciling",
+    "Suspended": "Suspended",
+    "Failed": "Failed",
+    "Stalled": "Stalled",
+    "Unknown": "Unknown"
+  },
+  "conditions": {
+    "type": "Type",
+    "status": "Status",
+    "reason": "Reason",
+    "message": "Message",
+    "time": "Last transition",
+    "empty": "No conditions reported"
+  },
+  "inventory": {
+    "filterPlaceholder": "Filter by kind, name or namespace",
+    "kindFilter": "Kind",
+    "allKinds": "All kinds",
+    "workloads": "Workloads",
+    "others": "Other resources",
+    "health": "Health",
+    "loading": "Loading resources…",
+    "empty": "No resources reported",
+    "noMatch": "No resources match the filter",
+    "unavailable": "Not available for this Flux version",
+    "remote": "The resources are in another cluster",
+    "truncated": "The list is truncated",
+    "showMore": "Show more ({n} left)"
+  },
+  "sourceRef": {
+    "source": "Source",
+    "dependsOn": "Depends on",
+    "noSource": "No source",
+    "noDependsOn": "No dependencies"
+  }
+}

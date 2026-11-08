@@ -1,0 +1,30 @@
+{
+  "doneOne": "{name}：{done}",
+  "doneMany": "{done}：{ok}/{total}",
+  "failedItem": "{name}：{error}",
+  "moreFailed": "…另有 {n} 个失败",
+  "noResult": "{n} 个对象没有返回结果",
+  "reconcileRequested": "已请求协调",
+  "reconcileWithSourceRequested": "已请求连同来源一起协调",
+  "suspended": "已暂停",
+  "resumed": "已恢复",
+  "suspendConfirmOne": "暂停 {name}？Flux 将停止应用它。如果 Git 中设置了 spec.suspend，父 Kustomization 会还原该值。",
+  "suspendConfirmMany": "暂停 {n} 个对象？Flux 将停止应用它们。如果 Git 中设置了 spec.suspend，父 Kustomization 会还原该值。",
+  "resumeConfirmOne": "恢复 {name}？Flux 将立即协调。",
+  "resumeConfirmMany": "恢复 {n} 个对象？Flux 将立即协调。",
+  "deleted": "已删除 {name}",
+  "error": {
+    "reconcile": "协调失败：{error}",
+    "suspend": "暂停失败：{error}",
+    "resume": "恢复失败：{error}",
+    "delete": "删除失败：{error}"
+  },
+  "delete": {
+    "prune": "已启用 prune：受管资源将随之删除（inventory 中共 {n} 项）。",
+    "keep": "prune 已关闭：受管资源将保留在集群中，但不再受管理。",
+    "helmUninstall": "Helm 发布将连同其资源一起卸载。",
+    "gitRecreates": "如果该对象在 Git 中定义，父 Kustomization 会再次创建它。",
+    "typeName": "输入对象名称“{name}”以确认",
+    "deleting": "正在删除…"
+  }
+}

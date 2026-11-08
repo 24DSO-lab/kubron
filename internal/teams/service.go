@@ -13,8 +13,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/24DSO-labs/kubron/internal/audit"
-	"github.com/24DSO-labs/kubron/internal/auth"
+	"github.com/24DSO-lab/kubron/internal/audit"
+	"github.com/24DSO-lab/kubron/internal/auth"
 )
 
 // ErrNoTeams — команд нет вне сервисного режима (PostgreSQL): в десктопе и в личном режиме методы отвечают этой ошибкой.

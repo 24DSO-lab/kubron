@@ -16,7 +16,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/24DSO-labs/kubron/internal/secrets"
+	"github.com/24DSO-lab/kubron/internal/secrets"
 )
 
 // Limits of a pending sign-in request.

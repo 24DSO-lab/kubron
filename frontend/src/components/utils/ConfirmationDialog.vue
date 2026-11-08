@@ -1,7 +1,7 @@
 <!-- Copyright 2026 The Kubron Authors -->
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <template>
-  <div v-if="modelValue" class="dialog-overlay" @click="handleOverlayClick">
+  <div v-if="modelValue" class="dialog-overlay" data-testid="confirm-dialog" @click="handleOverlayClick">
     <div class="dialog" @click.stop>
       <div class="dialog-content">
         <p class="dialog-title">{{ title }}</p>
@@ -12,8 +12,8 @@
       </div>
       
       <div class="dialog-actions">
-        <button class="btn btn-cancel" @click="handleCancel">{{ $t('common.cancel') }}</button>
-        <button class="btn btn-danger" @click="handleConfirm" :disabled="isDeleting">
+        <button class="btn btn-cancel" data-testid="confirm-cancel" @click="handleCancel">{{ $t('common.cancel') }}</button>
+        <button class="btn btn-danger" data-testid="confirm-accept" @click="handleConfirm" :disabled="isDeleting">
           <span v-if="isDeleting" class="spinner"></span>
           {{ $t('common.confirm') }}
         </button>

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/24DSO-labs/kubron/internal/credential"
+	"github.com/24DSO-lab/kubron/internal/credential"
 )
 
 // Field names of the challenges. accessKeyId, secretAccessKey and sessionToken are shared labels of the sign-in

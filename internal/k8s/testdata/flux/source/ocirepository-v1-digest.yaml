@@ -1,0 +1,41 @@
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: OCIRepository
+metadata:
+  name: pinned
+  namespace: flux-system
+  creationTimestamp: "2026-02-10T08:12:03Z"
+  generation: 2
+  uid: 3a1c6e52-9d0e-4b56-8d0e-1a0f3d1c9b22
+  labels:
+    app.kubernetes.io/part-of: platform
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: '{"spec":{"secretRef":{"name":"S3CRET-LASTAPPLIED"}}}'
+    team: platform
+spec:
+  interval: 5m0s
+  url: oci://ghcr.io/acme/manifests/app
+  ref:
+    tag: latest
+    digest: sha256:89abcdef0123456789abcdef0123456789abcdef0123456789abcdef01234567
+status:
+  observedGeneration: 2
+  conditions:
+  - type: Ready
+    status: "True"
+    reason: Succeeded
+    message: 'stored artifact for digest ''latest@sha256:89ab'''
+    lastTransitionTime: "2026-11-05T09:00:03Z"
+    observedGeneration: 2
+  - type: ArtifactInStorage
+    status: "True"
+    reason: Succeeded
+    message: 'stored artifact for revision'
+    lastTransitionTime: "2026-11-05T09:00:03Z"
+    observedGeneration: 2
+  artifact:
+    digest: sha256:0000172922128146d409f36b1c02afa4202c000d03e55ff94de0f72c696823d4
+    lastUpdateTime: "2026-11-05T09:00:03Z"
+    path: ocirepository/flux-system/pinned/artifact.tar.gz
+    revision: latest@sha256:89abcdef0123456789abcdef0123456789abcdef0123456789abcdef01234567
+    size: 20480
+    url: http://source-controller.flux-system.svc.cluster.local./ocirepository/flux-system/pinned/artifact.tar.gz

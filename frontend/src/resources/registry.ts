@@ -44,6 +44,19 @@ import { argoApplicationSet } from './definitions/argocd/applicationset'
 import { argoProject } from './definitions/argocd/project'
 import { argoRepository } from './definitions/argocd/repository'
 import { argoCluster } from './definitions/argocd/cluster'
+import { fluxKustomization } from './definitions/flux/kustomization'
+import { fluxHelmRelease } from './definitions/flux/helmrelease'
+import { fluxGitRepository } from './definitions/flux/source-gitrepository'
+import { fluxOCIRepository } from './definitions/flux/source-ocirepository'
+import { fluxHelmRepository } from './definitions/flux/source-helmrepository'
+import { fluxHelmChart } from './definitions/flux/source-helmchart'
+import { fluxBucket } from './definitions/flux/source-bucket'
+import { fluxAlert } from './definitions/flux/alert'
+import { fluxProvider } from './definitions/flux/provider'
+import { fluxReceiver } from './definitions/flux/receiver'
+import { fluxImageRepository } from './definitions/flux/imagerepository'
+import { fluxImagePolicy } from './definitions/flux/imagepolicy'
+import { fluxImageUpdateAutomation } from './definitions/flux/imageupdateautomation'
 import { dynamicById, dynamicByView } from './dynamicRegistry'
 import { customResourceDefinition } from './definitions/crd'
 import { application } from './definitions/application'
@@ -92,6 +105,20 @@ export const resources: ResourceDefinition[] = [
   argoProject,
   argoRepository,
   argoCluster,
+  // flux cd (id и view с префиксом flux-: реестр резолвит определения по id, дубликат молча перекроет чужое)
+  fluxKustomization,
+  fluxHelmRelease,
+  fluxGitRepository,
+  fluxOCIRepository,
+  fluxHelmRepository,
+  fluxHelmChart,
+  fluxBucket,
+  fluxAlert,
+  fluxProvider,
+  fluxReceiver,
+  fluxImageRepository,
+  fluxImagePolicy,
+  fluxImageUpdateAutomation,
   // access control
   serviceAccount,
   role,

@@ -14,8 +14,8 @@ import (
 
 	gooidc "github.com/coreos/go-oidc/v3/oidc"
 
-	"github.com/24DSO-labs/kubron/internal/credential"
-	"github.com/24DSO-labs/kubron/internal/idpnet"
+	"github.com/24DSO-lab/kubron/internal/credential"
+	"github.com/24DSO-lab/kubron/internal/idpnet"
 )
 
 // discovery is the part of the provider metadata (OpenID Connect Discovery, RFC 8414, RFC 8628, RFC 9207)

@@ -16,6 +16,7 @@ import HelmHistoryTab from '../../components/resource/sections/HelmHistoryTab.vu
 import { Perm } from '../../types/auth'
 import HelmUpgradeTab from '../../components/resource/sections/HelmUpgradeTab.vue'
 import HelmChartUpgradeTab from '../../components/resource/sections/HelmChartUpgradeTab.vue'
+import { helmFluxOwner, withFluxWarning } from '../../components/resource/sections/HelmFluxGuard'
 
 export const helmRelease = defineResource<k8s.HelmReleaseInfo, k8s.HelmReleaseDetail>({
   id: 'helmrelease',
@@ -38,6 +39,13 @@ export const helmRelease = defineResource<k8s.HelmReleaseInfo, k8s.HelmReleaseDe
     { key: 'revision', label: 'defs.columns.revision' },
     { key: 'status', label: 'common.status', colorFn: r => statusColor(r.status) },
     {
+      // Релиз под управлением Flux: ручные действия разойдутся с Git (ADR-0023, раздел 9)
+      key: 'fluxManagedBy',
+      label: 'helm.flux.managedBy',
+      formatter: r => (helmFluxOwner(r) ? t('helm.flux.badge') : ''),
+      sortValue: r => (helmFluxOwner(r) ? 1 : 0),
+    },
+    {
       key: 'latestVersion',
       label: 'defs.columns.update',
       formatter: r => (r.latestVersion ? `${r.latestVersion} (${r.latestRepo})` : ''),
@@ -52,6 +60,13 @@ export const helmRelease = defineResource<k8s.HelmReleaseInfo, k8s.HelmReleaseDe
     { label: 'defs.props.chart', value: r => r.chart },
     { label: 'defs.columns.chartVersion', value: r => r.chartVersion },
     { label: 'defs.props.storage', value: r => (r.storage === 'configmap' ? 'ConfigMap' : 'Secret') },
+    {
+      label: 'helm.flux.managedBy',
+      value: () => null,
+      hideEmpty: true,
+      link: r => { const o = helmFluxOwner(r); return o ? { id: 'flux-helmrelease', ns: o.namespace, name: o.name } : null },
+      linkLabel: r => { const o = helmFluxOwner(r); return o ? t('helm.flux.managedByValue', { namespace: o.namespace, name: o.name }) : null },
+    },
     { label: 'defs.props.updateAvailable', value: r => (r.latestVersion ? `${r.latestVersion} (${r.latestRepo})` : '—') },
     { label: 'defs.columns.appVersion', value: r => r.appVersion },
     { label: 'defs.columns.revision', value: r => r.revision },
@@ -77,9 +92,12 @@ actions: [
       danger: true,
       permission: Perm.Write,
       run: async (r, ctx) => {
-        if (!(await ctx.confirm(
+        if (!(await ctx.confirm(withFluxWarning(
+          'uninstall',
+          r,
+          r.name,
           t('defs.helmRelease.uninstallConfirm', { namespace: r.namespace, name: r.name }),
-        ))) return
+        )))) return
         try {
           await runHelmOp({ op: 'uninstall', namespace: r.namespace, release: r.name }, id =>
             callApp('UninstallHelmRelease', r.namespace, r.name, false, id))

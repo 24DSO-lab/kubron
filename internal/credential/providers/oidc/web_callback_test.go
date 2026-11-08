@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/24DSO-labs/kubron/internal/credential"
+	"github.com/24DSO-lab/kubron/internal/credential"
 )
 
 func TestWebBrowserCallback(t *testing.T) {

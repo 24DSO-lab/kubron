@@ -96,6 +96,7 @@ one that supersedes it. Smaller implementation choices go to the pull request de
 
 ## Releases
 
-A release is cut by running `scripts/release.sh X.Y.Z` from the `dev` branch.
+A release is cut in two steps: `scripts/release.sh X.Y.Z --prepare` on the working branch (before it is merged into `dev`),
+then `scripts/release.sh X.Y.Z` from the `dev` branch once `dev` is green.
 Workflow, GitHub setup and troubleshooting: [docs/releasing.md](docs/releasing.md).
 User-visible changes should be added to `CHANGELOG.md` under `[Unreleased]`.

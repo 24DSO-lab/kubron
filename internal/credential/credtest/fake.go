@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/24DSO-labs/kubron/internal/credential"
+	"github.com/24DSO-lab/kubron/internal/credential"
 )
 
 // Grant is what the fake identity provider hands out.

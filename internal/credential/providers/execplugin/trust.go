@@ -16,7 +16,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/24DSO-labs/kubron/internal/credential"
+	"github.com/24DSO-lab/kubron/internal/credential"
 )
 
 // TrustFileName is the file in Env.DataDir that holds the "always" decisions.

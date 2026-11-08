@@ -9,12 +9,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/24DSO-labs/kubron/internal/audit"
-	"github.com/24DSO-labs/kubron/internal/auth"
-	"github.com/24DSO-labs/kubron/internal/credential"
-	"github.com/24DSO-labs/kubron/internal/k8s"
-	"github.com/24DSO-labs/kubron/internal/signin"
-	"github.com/24DSO-labs/kubron/internal/store"
+	"github.com/24DSO-lab/kubron/internal/audit"
+	"github.com/24DSO-lab/kubron/internal/auth"
+	"github.com/24DSO-lab/kubron/internal/credential"
+	"github.com/24DSO-lab/kubron/internal/k8s"
+	"github.com/24DSO-lab/kubron/internal/signin"
+	"github.com/24DSO-lab/kubron/internal/store"
 )
 
 // Events sent to the session that owns the sign-in (ADR-0018). The payloads carry identifiers only.

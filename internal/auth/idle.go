@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/24DSO-labs/kubron/internal/audit"
+	"github.com/24DSO-lab/kubron/internal/audit"
 )
 
 func (s *Service) idleMinutesLocked() int {

@@ -1,0 +1,18 @@
+{
+  "columns": {
+    "provider": "Provider",
+    "severity": "Severity",
+    "eventSources": "Event sources",
+    "type": "Type",
+    "channel": "Channel",
+    "address": "Address",
+    "resources": "Resources"
+  },
+  "props": {
+    "secretRef": "Secret",
+    "lastReconcile": "Last reconcile"
+  },
+  "menu": {
+    "editYaml": "Edit YAML"
+  }
+}

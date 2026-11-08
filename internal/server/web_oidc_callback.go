@@ -10,8 +10,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/24DSO-labs/kubron/internal/auth"
-	"github.com/24DSO-labs/kubron/internal/credential"
+	"github.com/24DSO-lab/kubron/internal/auth"
+	"github.com/24DSO-lab/kubron/internal/credential"
 )
 
 const (

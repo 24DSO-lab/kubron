@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/24DSO-labs/kubron/internal/credential"
+	"github.com/24DSO-lab/kubron/internal/credential"
 )
 
 // Descriptor.Params keys used by this provider (see credential.Describe). "profile" is deliberately not read:

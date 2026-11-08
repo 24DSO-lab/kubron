@@ -7,7 +7,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/24DSO-labs/kubron/internal/credential"
+	"github.com/24DSO-lab/kubron/internal/credential"
 )
 
 func memStoreWithHome(t *testing.T) {

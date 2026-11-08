@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/24DSO-labs/kubron/internal/credential"
+	"github.com/24DSO-lab/kubron/internal/credential"
 )
 
 // legacyTokens signs in once to get a pair of tokens like the ones kubectl leaves in a kubeconfig.

@@ -15,8 +15,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/24DSO-labs/kubron/internal/auth"
-	"github.com/24DSO-labs/kubron/internal/streamid"
+	"github.com/24DSO-lab/kubron/internal/auth"
+	"github.com/24DSO-lab/kubron/internal/streamid"
 )
 
 // maxRPCBody — предел тела запроса (манифесты YAML крупные, но не мегабайты).

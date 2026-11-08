@@ -4,7 +4,7 @@
 package app
 
 import (
-	"github.com/24DSO-labs/kubron/internal/signin"
+	"github.com/24DSO-lab/kubron/internal/signin"
 )
 
 // AttemptLimiter is a token bucket per key (see signin.AttemptLimiter): the web server passes its own limiter.

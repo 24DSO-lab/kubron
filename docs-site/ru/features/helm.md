@@ -13,6 +13,12 @@ Kubron включает инструменты Helm для управления 
 
 Установка, обновление и удаление релизов требуют права Kubron `write`. Откат релиза требует `operate`. Чтение values, manifest, diff ревизий и предпросмотр обновления требуют `secrets.read`, потому что в них могут быть секреты. Добавление и удаление репозиториев и OCI-реестров требует `clusters.manage`. См. [справочник прав](/ru/features/security#справочник-прав).
 
+## Релизы под управлением Flux {#releases-managed-by-flux}
+
+Если релиз устанавливает Flux `HelmRelease`, в списке Helm и в деталях релиза показываются значок **Flux** и управляющий `HelmRelease` (`namespace/name`). Перед ручным обновлением, откатом или удалением такого релиза Kubron предупреждает, что изменение разойдётся с Git и что Flux при следующем reconcile может его перезаписать или установить релиз заново. Предупреждение действие не блокирует.
+
+Сопоставление идёт по объектам `HelmRelease`, которые Kubron читает из кластера, с учётом `spec.targetNamespace` и `spec.releaseName`. `HelmRelease` с `spec.kubeConfig` управляет релизом в другом кластере, поэтому здесь не помечается. Подробнее — в разделе [GitOps](/ru/features/gitops#flux-cd).
+
 ## Каталог чартов и репозитории
 
 - Добавление, обновление и удаление HTTP chart repositories.
@@ -35,4 +41,4 @@ Desktop и Web с файловым хранилищем одного польз�
 
 Web применяет сетевую политику к исходящим запросам к chart repositories и OCI registry для снижения SSRF-риска. Для приватных или внутренних адресов репозиториев может потребоваться явный allowlist администратора; см. [конфигурацию сервера](/ru/server/configuration).
 
-Подробные руководства: [English PDF](https://github.com/24DSO-labs/kubron/blob/master/docs/DOCS/EN/Kubron-Helm-User-Guide-EN.pdf) · [Русский PDF](https://github.com/24DSO-labs/kubron/blob/master/docs/DOCS/RU/Kubron-Helm-User-Guide.pdf)
+Подробные руководства: [English PDF](https://github.com/24DSO-lab/kubron/blob/master/docs/DOCS/EN/Kubron-Helm-User-Guide-EN.pdf) · [Русский PDF](https://github.com/24DSO-lab/kubron/blob/master/docs/DOCS/RU/Kubron-Helm-User-Guide.pdf)

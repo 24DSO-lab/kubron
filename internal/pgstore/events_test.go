@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/24DSO-labs/kubron/internal/replicaevents"
+	"github.com/24DSO-lab/kubron/internal/replicaevents"
 )
 
 type inbox struct {

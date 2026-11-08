@@ -22,8 +22,8 @@ The backend checks one of these permissions for every protected operation. Roles
 |---|---|---|
 | `read` | Browse resources, logs, events, YAML and metrics; list Helm releases, repositories and Argo CD objects | all |
 | `secrets.read` | Secret values; Helm release values, manifests and revision diffs, and upgrade previews; certificate expiry on the dashboard | `operator`, `admin` |
-| `operate` | Scale, restart and roll back workloads; retry Jobs, trigger and suspend CronJobs; cordon nodes; roll back Helm releases; sync, refresh, terminate and roll back Argo CD applications | `operator`, `admin` |
-| `write` | Apply, create and delete YAML; edit ConfigMaps and Secrets; evict Pods; drain nodes; install, upgrade and uninstall Helm releases; install or remove the metrics stack; suspend or resume Argo CD auto-sync and delete applications | `admin` |
+| `operate` | Scale, restart and roll back workloads; retry Jobs, trigger and suspend CronJobs; cordon nodes; roll back Helm releases; sync, refresh, terminate and roll back Argo CD applications; reconcile Flux CD objects | `operator`, `admin` |
+| `write` | Apply, create and delete YAML; edit ConfigMaps and Secrets; evict Pods; drain nodes; install, upgrade and uninstall Helm releases; install or remove the metrics stack; suspend or resume Argo CD auto-sync and delete applications; suspend, resume and delete Flux CD objects | `admin` |
 | `exec` | Pod terminals | `admin` |
 | `nodeshell` | Node shell (privileged host access) | `admin` |
 | `portforward` | Port-forward | `admin` |

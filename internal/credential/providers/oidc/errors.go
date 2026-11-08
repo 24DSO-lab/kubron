@@ -8,9 +8,9 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/24DSO-labs/kubron/internal/credential"
-	"github.com/24DSO-labs/kubron/internal/idpnet"
-	"github.com/24DSO-labs/kubron/internal/netpolicy"
+	"github.com/24DSO-lab/kubron/internal/credential"
+	"github.com/24DSO-lab/kubron/internal/idpnet"
+	"github.com/24DSO-lab/kubron/internal/netpolicy"
 )
 
 // Errors of this provider. Their texts are fixed and never contain anything that came from the identity

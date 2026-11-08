@@ -15,7 +15,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/24DSO-labs/kubron/internal/credential"
+	"github.com/24DSO-lab/kubron/internal/credential"
 )
 
 // Rule 2 of ADR-0018 for cloud providers: the provider never uses the credentials of the machine it runs on.
@@ -26,11 +26,11 @@ var allowedImports = map[string]bool{
 	"bytes": true, "context": true, "crypto/sha256": true, "encoding/base64": true, "encoding/hex": true, "encoding/json": true,
 	"encoding/xml": true, "errors": true, "io": true, "net/http": true, "net/url": true, "regexp": true, "strconv": true,
 	"strings": true, "time": true,
-	"github.com/aws/aws-sdk-go-v2/aws":                 true, // the credentials type only
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4":       true, // local signing
-	"github.com/24DSO-labs/kubron/internal/credential": true,
-	"github.com/24DSO-labs/kubron/internal/idpnet":     true, // address checks and error values only
-	"github.com/24DSO-labs/kubron/internal/netpolicy":  true, // IsBlocked only
+	"github.com/aws/aws-sdk-go-v2/aws":                true, // the credentials type only
+	"github.com/aws/aws-sdk-go-v2/aws/signer/v4":      true, // local signing
+	"github.com/24DSO-lab/kubron/internal/credential": true,
+	"github.com/24DSO-lab/kubron/internal/idpnet":     true, // address checks and error values only
+	"github.com/24DSO-lab/kubron/internal/netpolicy":  true, // IsBlocked only
 }
 
 var forbiddenText = []string{

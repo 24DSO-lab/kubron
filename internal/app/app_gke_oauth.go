@@ -4,8 +4,8 @@
 package app
 
 import (
-	"github.com/24DSO-labs/kubron/internal/auth"
-	"github.com/24DSO-labs/kubron/internal/credential/providers/gke"
+	"github.com/24DSO-lab/kubron/internal/auth"
+	"github.com/24DSO-lab/kubron/internal/credential/providers/gke"
 )
 
 // SetGKEOAuth gives the App the store of the Google OAuth client and the client the running broker was built with

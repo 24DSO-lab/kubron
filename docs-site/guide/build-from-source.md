@@ -48,7 +48,7 @@ xcode-select --install
 ## Get the source
 
 ```bash
-git clone https://github.com/24DSO-labs/kubron.git
+git clone https://github.com/24DSO-lab/kubron.git
 cd kubron
 ```
 
@@ -99,7 +99,7 @@ The result is written to `build/bin/`:
 
 On Linux the `-tags webkit2_41` flag is required: it selects WebKitGTK 4.1, the same library the published builds use.
 
-Wails builds for the platform you run on. To produce all three, build on each OS, as the project's [release workflow](https://github.com/24DSO-labs/kubron/blob/master/.github/workflows/release.yml) does.
+Wails builds for the platform you run on. To produce all three, build on each OS, as the project's [release workflow](https://github.com/24DSO-lab/kubron/blob/master/.github/workflows/release.yml) does.
 
 ### Install what you built
 

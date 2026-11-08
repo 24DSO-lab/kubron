@@ -1,3 +1,3 @@
-module github.com/24DSO-labs/kubron/pkg/ext
+module github.com/24DSO-lab/kubron/pkg/ext
 
 go 1.24

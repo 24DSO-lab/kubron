@@ -1,0 +1,32 @@
+{
+  "columns": {
+    "chart": "Chart",
+    "release": "Release",
+    "targetNamespace": "Target namespace"
+  },
+  "props": {
+    "storageNamespace": "Storage namespace",
+    "interval": "Interval",
+    "remote": "Remote cluster",
+    "suspended": "Suspended",
+    "lastReconcile": "Last reconcile",
+    "managed": "Managed resources"
+  },
+  "tabs": {
+    "source": "Source and dependencies",
+    "graph": "Graph"
+  },
+  "menu": {
+    "reconcile": "Reconcile",
+    "reconcileWithSource": "Reconcile with source",
+    "editYaml": "Edit YAML"
+  },
+  "history": {
+    "release": "Release version",
+    "chart": "Chart",
+    "appVersion": "App version",
+    "deployed": "Deployed",
+    "empty": "No release history"
+  },
+  "noInventory": "Not available for Flux before 2.8"
+}

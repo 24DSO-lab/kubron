@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/24DSO-labs/kubron/internal/credential"
-	"github.com/24DSO-labs/kubron/internal/store"
+	"github.com/24DSO-lab/kubron/internal/credential"
+	"github.com/24DSO-lab/kubron/internal/store"
 )
 
 func TestStateRemembersAndForgetsChallenges(t *testing.T) {

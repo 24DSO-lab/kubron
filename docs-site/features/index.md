@@ -11,7 +11,7 @@ Kubron is a Kubernetes Operations Workspace available as a native Desktop applic
 | Cluster and resource management | Yes | Yes |
 | Local users and roles | Yes | Yes |
 | Organization, teams and team-scoped clusters | — | PostgreSQL service mode |
-| Helm and Argo CD workflows | Yes | Yes |
+| Helm, Argo CD and Flux CD workflows | Yes | Yes |
 | Optional Prometheus metrics stack | Yes | Yes |
 | Multiple server replicas (HA) | — | PostgreSQL service mode |
 | Port-forward | Local port | Local single-user mode or configured proxy mode |
@@ -46,6 +46,7 @@ Kubron is a Kubernetes Operations Workspace available as a native Desktop applic
 - Browse chart repositories and OCI registries, install and upgrade releases with dry-run and manifest diff.
 - Inspect release values, manifests, notes, revision history and diffs; roll back or uninstall.
 - Work with Argo CD Applications, ApplicationSets and Projects: sync, refresh, rollback, diff and resource graph.
+- Work with Flux CD Kustomizations and HelmReleases and see their sources, notifications and image automation: state, revision, dependencies and managed resources, with reconcile, suspend, resume and delete.
 
 ## Security and shared access
 
@@ -63,6 +64,6 @@ Kubron is a Kubernetes Operations Workspace available as a native Desktop applic
 - [Resources and YAML editor](/features/resources)
 - [Day-to-day operations](/features/operations)
 - [Helm](/features/helm)
-- [GitOps with Argo CD](/features/gitops)
+- [GitOps with Argo CD and Flux CD](/features/gitops)
 - [Teams and shared access](/features/teams)
 - [Security and access control](/features/security)

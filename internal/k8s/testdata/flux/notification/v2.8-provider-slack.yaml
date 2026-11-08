@@ -1,0 +1,32 @@
+apiVersion: notification.toolkit.fluxcd.io/v1beta3
+kind: Provider
+metadata:
+  name: slack
+  namespace: flux-system
+  creationTimestamp: "2026-02-10T08:12:03Z"
+  generation: 1
+  uid: 7b1c6e52-9d0e-4b56-8d0e-1a0f3d1c9b33
+  labels:
+    app.kubernetes.io/part-of: platform
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: '{"spec":{"address":"https://hooks.slack.com/services/S3CRET-LASTAPPLIED"}}'
+    team: platform
+spec:
+  type: slack
+  channel: general
+  username: flux-bot
+  address: https://hooks.slack.com/services/T000/B000/S3CRET-WEBHOOKTOKEN?a=S3CRET-QUERY
+  secretRef:
+    name: slack-url
+  proxy: http://u:S3CRET-PROXYPASS@proxy.example.com:3128
+  certSecretRef:
+    name: S3CRET-CERTREF
+status:
+  observedGeneration: 1
+  conditions:
+  - type: Ready
+    status: "True"
+    reason: Succeeded
+    message: 'Initialized'
+    lastTransitionTime: "2026-11-05T09:00:03Z"
+    observedGeneration: 1

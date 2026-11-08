@@ -20,6 +20,7 @@
         <div v-if="a.perContainer && containers.length > 1" class="rd-action-group" data-rd-dropdown>
           <button
             class="rd-action"
+            :data-testid="`resource-action-${a.id}`"
             :title="tl(a.label)"
             @click="toggleDropdown(a.id)"
           >
@@ -41,6 +42,7 @@
         <button
           v-else
           class="rd-action"
+          :data-testid="`resource-action-${a.id}`"
           :title="tl(a.label)"
           @click="a.run(resource, resourceActions)"
         >

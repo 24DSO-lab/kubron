@@ -14,12 +14,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/24DSO-labs/kubron/internal/auth"
-	"github.com/24DSO-labs/kubron/internal/credential"
-	"github.com/24DSO-labs/kubron/internal/k8s"
-	"github.com/24DSO-labs/kubron/internal/signin"
-	"github.com/24DSO-labs/kubron/internal/store"
-	"github.com/24DSO-labs/kubron/pkg/ext"
+	"github.com/24DSO-lab/kubron/internal/auth"
+	"github.com/24DSO-lab/kubron/internal/credential"
+	"github.com/24DSO-lab/kubron/internal/k8s"
+	"github.com/24DSO-lab/kubron/internal/signin"
+	"github.com/24DSO-lab/kubron/internal/store"
+	"github.com/24DSO-lab/kubron/pkg/ext"
 )
 
 // fakeBroker is a scripted credential.Broker: each call pops the next prepared result.

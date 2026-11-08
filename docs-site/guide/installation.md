@@ -42,7 +42,7 @@ Release builds are produced and tested on Ubuntu 24.04. WebKitGTK 4.1 is also av
 
 ## Download
 
-All desktop builds are published on the [Releases page](https://github.com/24DSO-labs/kubron/releases).
+All desktop builds are published on the [Releases page](https://github.com/24DSO-lab/kubron/releases).
 
 | Platform | File | Contents |
 |---|---|---|
@@ -51,9 +51,9 @@ All desktop builds are published on the [Releases page](https://github.com/24DSO
 | Linux (x64) | `Kubron_v<version>_linux-amd64.tar.gz` | `Kubron` executable |
 | Debian / Ubuntu (x64) | `kubron_<version>_amd64.deb` | Package with menu entry and icon |
 | All | `SHA256SUMS.txt` | Checksums of every file |
-| All | `kubron-sbom_v<version>_*.json` | Software bills of materials (CycloneDX / SPDX) |
+| All | `kubron-sbom_v<version>_desktop.cdx.json`, `kubron-sbom_<version>_image.spdx.json`, `kubron-sbom_<version>_chart.cdx.json` | Software bills of materials for the desktop files, the server image and the Helm chart (note that only the desktop file name has the `v`) |
 
-For example, version 1.0.0 is `Kubron_v1.0.0_windows-amd64.zip` and `kubron_1.0.0_amd64.deb`. Note that the archive names include the `v` from the release tag, while the `.deb` file does not.
+For example, version 1.1.0 is `Kubron_v1.1.0_windows-amd64.zip` and `kubron_1.1.0_amd64.deb`. Note that the archive names include the `v` from the release tag, while the `.deb` file does not.
 
 Release candidates (versions such as `1.1.0-rc.1`) are marked as pre-releases on GitHub. Use the latest non-pre-release version unless you are testing.
 
@@ -76,7 +76,7 @@ shasum -a 256 --check --ignore-missing SHA256SUMS.txt
 ```
 
 ```powershell [Windows (PowerShell)]
-(Get-FileHash .\Kubron_v1.0.0_windows-amd64.zip -Algorithm SHA256).Hash
+(Get-FileHash .\Kubron_v1.1.0_windows-amd64.zip -Algorithm SHA256).Hash
 # Compare the result with the matching line in SHA256SUMS.txt (case does not matter)
 ```
 
@@ -89,7 +89,7 @@ You should see `OK` next to your file name. If you see `FAILED`, delete the file
 Every desktop file carries a signed attestation that links it to the exact commit and the GitHub Actions run that built it. With the [GitHub CLI](https://cli.github.com/) installed:
 
 ```bash
-gh attestation verify Kubron_v1.0.0_linux-amd64.tar.gz --repo 24DSO-labs/kubron
+gh attestation verify Kubron_v1.1.0_linux-amd64.tar.gz --repo 24DSO-lab/kubron
 ```
 
 A successful run prints the workflow that produced the file. The same works for the `.deb` and for the Windows and macOS archives.

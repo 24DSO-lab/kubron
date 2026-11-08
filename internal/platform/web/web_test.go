@@ -7,7 +7,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/24DSO-labs/kubron/pkg/ext"
+	"github.com/24DSO-lab/kubron/pkg/ext"
 )
 
 var _ ext.Platform = (*Platform)(nil)

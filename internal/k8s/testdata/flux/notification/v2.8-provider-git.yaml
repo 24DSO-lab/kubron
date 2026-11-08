@@ -1,0 +1,27 @@
+apiVersion: notification.toolkit.fluxcd.io/v1beta3
+kind: Provider
+metadata:
+  name: github
+  namespace: team-a
+  creationTimestamp: "2026-02-10T08:12:03Z"
+  generation: 1
+  uid: 7b1c6e52-9d0e-4b56-8d0e-1a0f3d1c9b33
+  labels:
+    app.kubernetes.io/part-of: platform
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: '{"spec":{"address":"https://hooks.slack.com/services/S3CRET-LASTAPPLIED"}}'
+    team: platform
+spec:
+  type: github
+  address: https://github.com/acme/fleet
+  secretRef:
+    name: github-token
+status:
+  observedGeneration: 1
+  conditions:
+  - type: Ready
+    status: "True"
+    reason: Succeeded
+    message: 'Initialized'
+    lastTransitionTime: "2026-11-05T09:00:03Z"
+    observedGeneration: 1

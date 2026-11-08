@@ -1,0 +1,27 @@
+{
+  "columns": {
+    "source": "Source",
+    "path": "Path",
+    "interval": "Interval",
+    "suspended": "Suspended"
+  },
+  "props": {
+    "lastAttempted": "Last attempted revision",
+    "prune": "Prune",
+    "wait": "Wait",
+    "targetNamespace": "Target namespace",
+    "serviceAccount": "Service account",
+    "remote": "Remote cluster",
+    "inventory": "Managed resources",
+    "lastReconcile": "Last reconcile"
+  },
+  "tabs": {
+    "source": "Source and dependencies",
+    "graph": "Graph"
+  },
+  "menu": {
+    "reconcile": "Reconcile",
+    "reconcileWithSource": "Reconcile with source",
+    "editYaml": "Edit YAML"
+  }
+}

@@ -6,9 +6,9 @@ package app
 import (
 	"sync"
 
-	"github.com/24DSO-labs/kubron/internal/audit"
-	"github.com/24DSO-labs/kubron/internal/credential"
-	"github.com/24DSO-labs/kubron/internal/k8s"
+	"github.com/24DSO-lab/kubron/internal/audit"
+	"github.com/24DSO-lab/kubron/internal/credential"
+	"github.com/24DSO-lab/kubron/internal/k8s"
 )
 
 // revocations is the replica-wide record of revoked personal sign-ins. Views of the same user live in different
