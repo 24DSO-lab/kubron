@@ -70,6 +70,7 @@ export function refTarget(
 import { computed } from 'vue'
 
 import type { FluxObjectInfo, FluxRef } from '../../../types/flux'
+import { isKnownFluxResource } from './fluxSourceRef'
 
 // sourceRef и dependsOn объекта: переход к объекту, если такой вид открывается в приложении
 const props = defineProps<{ resource: Partial<FluxObjectInfo> }>()
@@ -79,11 +80,11 @@ const emit = defineEmits<{
 
 
 const source = computed(() => (props.resource?.sourceRef?.name ? props.resource.sourceRef : null))
-const sourceTarget = computed(() => (source.value ? refTarget(source.value, props.resource, () => true) : null))
+const sourceTarget = computed(() => (source.value ? refTarget(source.value, props.resource, isKnownFluxResource) : null))
 const deps = computed(() =>
   (props.resource?.dependsOn ?? [])
     .filter(d => !!d?.name)
-    .map(d => ({ ref: d, target: refTarget(d, props.resource, () => true) })),
+    .map(d => ({ ref: d, target: refTarget(d, props.resource, isKnownFluxResource) })),
 )
 
 async function openSource() {
@@ -91,7 +92,7 @@ async function openSource() {
 }
 
 async function openRef(ref: FluxRef) {
-  const target = refTarget(ref, props.resource, () => true)
+  const target = refTarget(ref, props.resource, isKnownFluxResource)
   if (!target) return
   // Resolve lazily: importing the registry here avoids a cycle while resource definitions load.
   const { getResourceById } = await import('../../../resources/registry')
