@@ -8,8 +8,10 @@ vi.mock('../i18n', () => ({ t: (k: string, p?: Record<string, unknown>) => (p ? 
 vi.mock('./wails', () => ({ callApp: vi.fn() }))
 vi.mock('./confirm', () => ({ askConfirm: vi.fn(async () => true) }))
 vi.mock('./store', () => ({ reloadActive: vi.fn(async () => {}) }))
-const notifySuccess = vi.fn()
-const notifyError = vi.fn()
+const { notifySuccess, notifyError } = vi.hoisted(() => ({
+  notifySuccess: vi.fn(),
+  notifyError: vi.fn(),
+}))
 vi.mock('../composables/useNotifications', () => ({ useNotifications: () => ({ notifySuccess, notifyError }) }))
 vi.mock('../composables/errorText', () => ({ errorText: (e: unknown) => String((e as Error)?.message ?? e) }))
 
