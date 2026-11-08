@@ -2,7 +2,7 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <template>
   <div class="nav-group">
-    <div class="nav-group-header" @click="emit('toggle', group.id)">
+    <div class="nav-group-header" :data-testid="`nav-group-${group.id}`" @click="emit('toggle', group.id)">
       <span class="nav-arrow" :class="{ open: expanded[group.id] }">›</span>
       <span class="nav-group-icon"></span>
       <span class="nav-group-title">{{ tl(group.title) }}</span>
@@ -12,6 +12,7 @@
         v-for="item in group.items"
         :key="item.view"
         :class="['nav-item', { active: currentView === item.view }]"
+        :data-testid="`nav-item-${item.view}`"
         @click="emit('navigate', item.view)"
       >
         <span class="nav-icon"></span> {{ tl(item.label) }}

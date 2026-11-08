@@ -17,6 +17,7 @@
         <div
           v-if="entry.type === 'item'"
           :class="['nav-item', { active: currentView === entry.view }]"
+          :data-testid="`nav-item-${entry.view}`"
           @click="emit('navigate', entry.view)"
         >
           <span class="nav-icon"></span> {{ tl(entry.label) }}
