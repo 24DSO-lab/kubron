@@ -1,0 +1,36 @@
+{
+  "updated": "Updated {time}",
+  "updateFailed": "Update failed",
+  "refreshing": "Refreshing…",
+  "loading": "Loading Flux objects…",
+  "loadFailed": "Could not load Flux objects",
+  "empty": "No Kustomizations or HelmReleases found",
+  "unsupported": {
+    "title": "This Flux version is not supported",
+    "hint": "Update Flux to 2.3 or newer and run `flux migrate` to move stored objects to stable API versions."
+  },
+  "stats": {
+    "ready": "Ready",
+    "reconciling": "Reconciling",
+    "failed": "Failed",
+    "stalled": "Stalled",
+    "suspended": "Suspended",
+    "ofTotal": "of {n}",
+    "none": "none",
+    "inProgress": "in progress",
+    "needsAction": "need attention",
+    "suspendedObjects": "suspended objects: {n}"
+  },
+  "needsAttention": "Needs attention",
+  "allGood": "All objects are healthy",
+  "viewAll": "View all ({n})",
+  "recentReconciles": "Recent reconciles",
+  "noReconciles": "No reconciles yet",
+  "byNamespace": "By namespace",
+  "bySource": "By source",
+  "noSource": "No source",
+  "kind": {
+    "Kustomization": "Kustomization",
+    "HelmRelease": "HelmRelease"
+  }
+}
