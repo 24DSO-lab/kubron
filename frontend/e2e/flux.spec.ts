@@ -222,6 +222,9 @@ test('роль без права write не видит Suspend, Resume и Delete
   }
   await expect(operator.page.getByTestId('resource-delete')).toHaveCount(0)
 
+  // Закрываем панель деталей: она перекрывает правую часть списка и перехватывает pointer events
+  await operator.page.getByTestId('resource-detail-close').click()
+
   // То же в контекстном меню строки
   await row(operator.page, 'e2e-podinfo').click({ button: 'right' })
   await expect(operator.page.getByTestId('resource-menu-reconcile')).toBeVisible()
