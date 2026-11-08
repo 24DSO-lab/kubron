@@ -10,7 +10,7 @@ Kubron — Kubernetes Operations Workspace в двух версиях: desktop-�
 | Управление кластерами и ресурсами | Да | Да |
 | Локальные пользователи и роли | Да | Да |
 | Организация, команды и кластеры команд | — | Service mode с PostgreSQL |
-| Helm и Argo CD | Да | Да |
+| Helm, Argo CD и Flux CD | Да | Да |
 | Дополнительный стек метрик Prometheus | Да | Да |
 | Несколько реплик сервера (HA) | — | Service mode с PostgreSQL |
 | Port-forward | Локальный порт | Локальный режим одного пользователя или настроенный proxy mode |
@@ -46,6 +46,7 @@ Kubron — Kubernetes Operations Workspace в двух версиях: desktop-�
 - Каталог Helm-репозиториев и OCI registry, установка и обновление с dry-run и diff manifest.
 - Просмотр values, manifest, notes, истории и diff ревизий; rollback и удаление релиза.
 - Работа с Argo CD Applications, ApplicationSets и Projects: sync, refresh, rollback, diff и граф ресурсов.
+- Работа с Kustomization и HelmRelease Flux CD, а также с источниками, уведомлениями и автоматизацией образов: состояние, ревизия, зависимости и управляемые ресурсы, reconcile, suspend, resume и удаление.
 
 ## Безопасность и совместная работа
 
@@ -63,6 +64,6 @@ Kubron — Kubernetes Operations Workspace в двух версиях: desktop-�
 - [Ресурсы и YAML](/ru/features/resources)
 - [Повседневные операции](/ru/features/operations)
 - [Helm](/ru/features/helm)
-- [GitOps с Argo CD](/ru/features/gitops)
+- [GitOps с Argo CD и Flux CD](/ru/features/gitops)
 - [Команды и совместный доступ](/ru/features/teams)
 - [Безопасность и управление доступом](/ru/features/security)

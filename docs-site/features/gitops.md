@@ -30,7 +30,7 @@ An optional published Argo CD URL can be configured in cluster settings. When pr
 User guides: [English PDF](https://github.com/24DSO-lab/kubron/blob/master/docs/DOCS/EN/Kubron-ArgoCD-User-Guide-EN.pdf) · [Русский PDF](https://github.com/24DSO-lab/kubron/blob/master/docs/DOCS/RU/Kubron-ArgoCD-User-Guide.pdf)
 
 
-## Flux CD
+## Flux CD {#flux-cd}
 
 Kubron also supports Flux CD. Like Argo CD, it is discovered through the Kubernetes API: nothing is installed in the cluster for Kubron, and Flux itself must already be running. The Flux section appears in a cluster when the Kustomize or Helm controller is present. Tabs for controllers that are not installed (source, notification, image automation) are hidden, because Flux can be installed partially.
 
@@ -41,7 +41,8 @@ Kubron also supports Flux CD. Like Argo CD, it is discovered through the Kuberne
 - HelmRelease chart, release name and release history.
 - Sources: GitRepository, OCIRepository, HelmRepository, HelmChart and Bucket.
 - Notifications (Alert, Provider, Receiver) and image automation (ImageRepository, ImagePolicy, ImageUpdateAutomation), read-only.
-- A dashboard with the number of objects per state, problem objects and a breakdown by namespace and source. Objects that Flux manages are marked as such in resource lists, and Flux changes appear in recent changes on the Overview.
+- A dashboard with the number of objects per state, problem objects, a breakdown by namespace and source, and the latest reconciles.
+- Helm releases that a `HelmRelease` manages are marked **Managed by Flux** in the Helm list and details (see [Helm](/features/helm#releases-managed-by-flux)).
 
 The view updates by itself when Flux objects change. Values that may contain secrets are never shown: HelmRelease `spec.values` and `valuesFrom`, Kustomization `postBuild` substitutions, `kubeConfig` and `decryption` contents, credentials inside URLs, and webhook paths of Receivers.
 
@@ -57,7 +58,7 @@ Delete asks you to type the object name and shows the consequences first. A Kust
 
 ### Access and permissions
 
-Reconcile needs the Kubron `operate` permission; suspend, resume and delete need `write`. They are also subject to Kubernetes RBAC. Kubron's in-cluster ServiceAccount profiles contain no Flux rules, so grant them through `rbac.extraRules`; a ready-made fragment is in the [deployment guide](https://github.com/24DSO-lab/kubron/blob/master/docs/deploy.md). Without `patch` and `delete` rules the Flux section stays read-only in practice.
+Reconcile needs the Kubron `operate` permission; suspend, resume and delete need `write`. They are also subject to Kubernetes RBAC. Kubron's in-cluster ServiceAccount profiles contain no Flux rules, so grant them through `rbac.extraRules`; a ready-made fragment is in [Docker and Kubernetes deployment](/server/deploy#rights-for-flux-cd). Without `patch` and `delete` rules the Flux section stays read-only in practice.
 
 ### Limitations
 

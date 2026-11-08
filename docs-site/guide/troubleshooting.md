@@ -75,6 +75,20 @@ Find your symptom, read the likely cause, and follow the link when there is a lo
 | Port-forward does not work in Web | Web needs `KUBRON_PF_BASE_DOMAIN` with a wildcard DNS record and certificate for `*.pf.<domain>`. Without it port-forward is off in service mode |
 | Terminals or live updates drop after about a minute (Web) | The proxy closes idle WebSockets. Raise the read and send timeouts. See [Docker and Kubernetes deployment](/server/deploy#troubleshooting) |
 
+## Flux CD
+
+| Message or symptom | Cause and fix |
+|---|---|
+| **This Flux version is not supported** | Only older API versions are served. Update Flux to 2.3 or newer and run `flux migrate` to move stored objects to stable API versions. See [GitOps](/features/gitops#flux-cd) |
+| The Flux section is missing although Flux is installed | Kubron treats Flux as not installed when its CRDs cannot be listed (no `list` permission) or when neither the Kustomize nor the Helm controller is present, and it hides the section without an error. The check repeats about every 30 seconds. See [Rights for Flux CD](/server/deploy#rights-for-flux-cd) |
+| Some Flux tabs (sources, notifications, image automation) are missing | Flux was installed partially: a tab is shown only when its controller exists |
+| Reconcile, suspend, resume or delete fails with `forbidden` | Kubernetes RBAC lacks `patch` or `delete` on those Flux kinds. Kubron permissions (`operate`, `write`) do not override RBAC. Add the rules from [Rights for Flux CD](/server/deploy#rights-for-flux-cd) |
+| No action buttons on an object | Notification objects (`Alert`, `Provider`, `Receiver`) and `ImagePolicy` are read-only, and your role needs `operate` for reconcile or `write` for suspend, resume and delete |
+| The resources tab of a HelmRelease is unavailable | Flux records the inventory only since 2.8. Older versions have no data to show |
+| A resource is marked **remote** | The object uses `spec.kubeConfig`, so its resources are in another cluster and are not resolved locally |
+| An object becomes suspended or active again by itself | `spec.suspend` is set in Git, and the parent Kustomization restores it. Change it in Git |
+| A deleted object came back | It is defined in Git and the parent Kustomization created it again. Remove it from Git |
+
 ## Running the Web server
 
 | Message or symptom | Cause and fix |

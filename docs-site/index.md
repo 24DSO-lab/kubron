@@ -33,7 +33,7 @@ features:
     details: Browse charts and repositories, install and upgrade releases, inspect revisions and roll back.
   - icon: ⟲
     title: GitOps in the same flow
-    details: Work with Argo CD applications, ApplicationSets and projects, including sync, diff and resource graphs.
+    details: Work with Argo CD applications, ApplicationSets and projects, and with Flux CD Kustomizations and HelmReleases, from the same interface.
   - icon: ◉
     title: Private by design
     details: No telemetry or mandatory account in desktop mode. Your kubeconfig stays on your machine.
@@ -93,6 +93,7 @@ Deploy Kubron in your own infrastructure and access it through a browser. Web ad
 - **Practical operations** — logs, exec, port-forward, workload scaling and restarts, node cordon and drain.
 - **Helm lifecycle** — repositories (including OCI), chart discovery, dry-run install, upgrades, revision diffs and rollback.
 - **Argo CD integration** — applications, ApplicationSets, projects, sync controls, live-vs-desired diff and resource graph.
+- **Flux CD integration** — Kustomizations, HelmReleases, sources, notifications and image automation, with reconcile, suspend, resume and a source-to-resources chain.
 - **Optional metrics** — charts for pods, workloads, nodes, PVCs and ingresses when the metrics stack is installed.
 
 ## Why teams choose Kubron

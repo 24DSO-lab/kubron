@@ -22,8 +22,8 @@ Kubron объединяет собственные разрешения прил
 |---|---|---|
 | `read` | Просмотр ресурсов, логов, событий, YAML и метрик; списки релизов Helm, репозиториев и объектов Argo CD | все |
 | `secrets.read` | Значения Secret; values, manifest и diff ревизий релизов Helm, а также предпросмотр обновления; сроки сертификатов на дашборде | `operator`, `admin` |
-| `operate` | Масштабирование, перезапуск и откат нагрузок; повтор Job, запуск и приостановка CronJob; cordon узлов; откат релизов Helm; sync, refresh, terminate и rollback приложений Argo CD | `operator`, `admin` |
-| `write` | Применение, создание и удаление YAML; правка ConfigMap и Secret; вытеснение Pod; drain узлов; установка, обновление и удаление релизов Helm; установка и удаление стека метрик; приостановка и возобновление auto-sync Argo CD, удаление приложений | `admin` |
+| `operate` | Масштабирование, перезапуск и откат нагрузок; повтор Job, запуск и приостановка CronJob; cordon узлов; откат релизов Helm; sync, refresh, terminate и rollback приложений Argo CD; reconcile объектов Flux CD | `operator`, `admin` |
+| `write` | Применение, создание и удаление YAML; правка ConfigMap и Secret; вытеснение Pod; drain узлов; установка, обновление и удаление релизов Helm; установка и удаление стека метрик; приостановка и возобновление auto-sync Argo CD, удаление приложений; suspend, resume и удаление объектов Flux CD | `admin` |
 | `exec` | Терминалы Pod | `admin` |
 | `nodeshell` | Оболочка узла (привилегированный доступ к хосту) | `admin` |
 | `portforward` | Port-forward | `admin` |

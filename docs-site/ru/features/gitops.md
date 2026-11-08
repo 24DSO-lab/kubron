@@ -30,7 +30,7 @@ Sync, refresh, прерывание операции и откат требую�
 Руководства: [English PDF](https://github.com/24DSO-lab/kubron/blob/master/docs/DOCS/EN/Kubron-ArgoCD-User-Guide-EN.pdf) · [Русский PDF](https://github.com/24DSO-lab/kubron/blob/master/docs/DOCS/RU/Kubron-ArgoCD-User-Guide.pdf)
 
 
-## Flux CD
+## Flux CD {#flux-cd}
 
 Kubron поддерживает и Flux CD. Как и Argo CD, он обнаруживается через Kubernetes API: ничего дополнительного в кластер для Kubron устанавливать не нужно, а сам Flux должен быть уже запущен. Раздел Flux появляется в кластере, если есть контроллер Kustomize или Helm. Вкладки контроллеров, которых нет (source, notification, image automation), скрываются: Flux можно установить частично.
 
@@ -41,7 +41,8 @@ Kubron поддерживает и Flux CD. Как и Argo CD, он обнару
 - Чарт HelmRelease, имя релиза и историю релиза.
 - Источники: GitRepository, OCIRepository, HelmRepository, HelmChart и Bucket.
 - Notification (Alert, Provider, Receiver) и image automation (ImageRepository, ImagePolicy, ImageUpdateAutomation) — только чтение.
-- Дашборд: число объектов по состояниям, проблемные объекты, разрез по namespace и источнику. Объекты, которыми управляет Flux, помечаются в списках ресурсов, а изменения Flux попадают в «Последние изменения» на Overview.
+- Дашборд: число объектов по состояниям, проблемные объекты, разрез по namespace и источнику, последние reconcile.
+- Релизы Helm, которыми управляет `HelmRelease`, помечаются в списке и деталях Helm как **Managed by Flux** (см. [Helm](/ru/features/helm#releases-managed-by-flux)).
 
 Вид обновляется сам при изменении объектов Flux. Значения, в которых могут быть секреты, не показываются никогда: `spec.values` и `valuesFrom` у HelmRelease, подстановки `postBuild` у Kustomization, содержимое `kubeConfig` и `decryption`, учётные данные в URL и пути вебхуков у Receiver.
 
@@ -57,7 +58,7 @@ Reconcile, suspend и resume работают для Kustomizations, HelmRelease
 
 ### Доступ и разрешения
 
-Reconcile требует права Kubron `operate`; suspend, resume и удаление — `write`. Дополнительно они проверяются Kubernetes RBAC. Профили ServiceAccount in-cluster режима Kubron не содержат правил Flux, поэтому выдайте их через `rbac.extraRules`; готовый фрагмент есть в [руководстве по развёртыванию](https://github.com/24DSO-lab/kubron/blob/master/docs/deploy.md). Без правил `patch` и `delete` раздел Flux на практике остаётся только для чтения.
+Reconcile требует права Kubron `operate`; suspend, resume и удаление — `write`. Дополнительно они проверяются Kubernetes RBAC. Профили ServiceAccount in-cluster режима Kubron не содержат правил Flux, поэтому выдайте их через `rbac.extraRules`; готовый фрагмент есть в [Развёртывании в Docker и Kubernetes](/ru/server/deploy#rights-for-flux-cd). Без правил `patch` и `delete` раздел Flux на практике остаётся только для чтения.
 
 ### Ограничения
 

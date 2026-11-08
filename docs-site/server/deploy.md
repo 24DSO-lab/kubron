@@ -214,9 +214,63 @@ The profiles are derived from the Kubernetes API calls in the code for the `read
 **What the profiles deliberately do not cover.** Pod terminals (`pods/exec`, `pods/attach`), port-forward, the node shell (it creates a privileged Pod), drain (`pods/eviction`), editing and deleting arbitrary objects, and Helm (releases are stored in Secrets and apply arbitrary manifests) need broad rights that must not be granted by default. Enable them knowingly through `custom`. You can still switch the matching Kubron permissions off for everyone with `kubron.disableExec`, `kubron.disableNodeShell` and `kubron.disablePortForward`.
 
 - **Secret values.** By default the ServiceAccount does not read `secrets`, so nobody can see Secret values. `rbac.allowSecretsRead=true` adds `get/list/watch` on cluster `secrets` to any profile; everyone with the Kubron `secrets.read` permission (`operator` and `admin`) can then see them.
-- **Custom resources** (CRDs, Argo CD `Application` and so on) are not in the profiles. Add the groups you need to `rbac.extraRules`.
+- **Custom resources** (CRDs, Argo CD `Application`, Flux objects and so on) are not in the profiles. Add the groups you need to `rbac.extraRules`; a ready-made fragment for Flux is [below](#rights-for-flux-cd).
 - **An existing role.** `rbac.profile=custom` with `rbac.existingClusterRole=view` binds the ServiceAccount to the built-in `view` role without a ClusterRole of its own. The built-in `view` does not include `secrets`, while `edit` and `admin` do and allow writing: bind them only when you really need to.
 - **Changing the profile** takes effect immediately on `helm upgrade`. No Pod restart is needed, because the API server checks the rights.
+
+### Rights for Flux CD {#rights-for-flux-cd}
+
+The profiles contain no Flux rules (just as for Argo CD): Flux objects are readable and changeable only if you add rules to `rbac.extraRules`. The rules end up in the chart's ClusterRole; with `rbac.existingClusterRole` they are not used, and the rights must be granted in the bound role itself. The fragment below is split by level: keep only what you need.
+
+```yaml
+rbac:
+  extraRules:
+    # Read (Kubron `read`): lists, details, dashboard, graph. All three verbs are needed: lists come from an informer.
+    - apiGroups: [kustomize.toolkit.fluxcd.io]
+      resources: [kustomizations]
+      verbs: [get, list, watch]
+    - apiGroups: [helm.toolkit.fluxcd.io]
+      resources: [helmreleases]
+      verbs: [get, list, watch]
+    - apiGroups: [source.toolkit.fluxcd.io]
+      resources: [gitrepositories, ocirepositories, helmrepositories, helmcharts, buckets]
+      verbs: [get, list, watch]
+    - apiGroups: [notification.toolkit.fluxcd.io]
+      resources: [alerts, providers, receivers]
+      verbs: [get, list, watch]
+    - apiGroups: [image.toolkit.fluxcd.io]
+      resources: [imagerepositories, imagepolicies, imageupdateautomations]
+      verbs: [get, list, watch]
+
+    # Reconcile (Kubron `operate`), suspend and resume (`write`): merge-patch of annotations and `spec.suspend`.
+    - apiGroups: [kustomize.toolkit.fluxcd.io]
+      resources: [kustomizations]
+      verbs: [patch]
+    - apiGroups: [helm.toolkit.fluxcd.io]
+      resources: [helmreleases]
+      verbs: [patch]
+    - apiGroups: [source.toolkit.fluxcd.io]
+      resources: [gitrepositories, ocirepositories, helmrepositories, helmcharts, buckets]
+      verbs: [patch]
+    - apiGroups: [image.toolkit.fluxcd.io]
+      resources: [imagerepositories, imageupdateautomations]
+      verbs: [patch]
+
+    # Delete (Kubron `write`): Kustomization and HelmRelease only.
+    - apiGroups: [kustomize.toolkit.fluxcd.io]
+      resources: [kustomizations]
+      verbs: [delete]
+    - apiGroups: [helm.toolkit.fluxcd.io]
+      resources: [helmreleases]
+      verbs: [delete]
+```
+
+- **Read only.** The first block is enough: the Flux section shows states, resources and the graph, and the action buttons end with a Kubernetes RBAC error (`forbidden`). Kubron permissions (`operate`, `write`) enable the action inside Kubron but do not override cluster RBAC: you need both levels.
+- **Flux section missing although Flux is installed.** Without `list` on the Flux CRDs Kubron treats Flux as not installed and hides the section without an error. The check is repeated about every 30 seconds.
+- **Prune and uninstall.** Deleting a `Kustomization` with `prune: true`, or a `HelmRelease`, is carried out by the Flux controllers under their own accounts, so Kubron's ServiceAccount gets no extra rights for it. Kubron cannot undo the deletion of a Flux object: restore it from Git.
+- **Secrets.** The rules do not touch `secrets`: values from `spec.values`, `valuesFrom` and `postBuild` substitutions are not returned by Kubron regardless of `rbac.allowSecretsRead`.
+
+See [GitOps](/features/gitops#flux-cd) for what the Flux section shows.
 
 ## Optional: browser sign-in and Google accounts
 

@@ -13,6 +13,12 @@ Kubron includes Helm workflows for managing releases and chart sources without l
 
 Installing, upgrading and uninstalling releases needs the Kubron `write` permission. Rolling back a release needs `operate`. Reading release values, manifests, revision diffs and upgrade previews needs `secrets.read`, because they can contain secrets. Adding or removing repositories and OCI registries needs `clusters.manage`. See the [permission reference](/features/security#permission-reference).
 
+## Releases managed by Flux {#releases-managed-by-flux}
+
+If a Flux `HelmRelease` installs a release, the Helm list and the release details show a **Flux** badge and the managing `HelmRelease` (`namespace/name`). Before a manual upgrade, rollback or uninstall of such a release, Kubron warns you that the change diverges from Git and that Flux may overwrite it, or install the release again, on its next reconcile. The warning does not block the action.
+
+The match uses the `HelmRelease` objects Kubron reads from the cluster, with `spec.targetNamespace` and `spec.releaseName` taken into account. A `HelmRelease` that uses `spec.kubeConfig` manages a release in another cluster, so it is not marked here. Read more in [GitOps](/features/gitops#flux-cd).
+
 ## Chart catalog and repositories
 
 - Add, update and remove HTTP chart repositories.

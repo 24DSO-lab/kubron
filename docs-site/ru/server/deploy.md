@@ -214,9 +214,63 @@ kubectl -n kubron exec -i deploy/kubron -- \
 **Что профили не покрывают намеренно.** Терминал Pod (`pods/exec`, `pods/attach`), port-forward, оболочка узла (создаёт привилегированный Pod), drain (`pods/eviction`), правка и удаление произвольных объектов, Helm (релизы хранятся в Secret и применяют произвольные манифесты) требуют широких прав, которые нельзя выдавать по умолчанию. Включайте их осознанно через `custom`. Соответствующие права Kubron при этом всё равно можно отключить для всех: `kubron.disableExec`, `kubron.disableNodeShell`, `kubron.disablePortForward`.
 
 - **Значения Secret.** По умолчанию ServiceAccount не читает `secrets`, поэтому значения Secret недоступны никому. `rbac.allowSecretsRead=true` добавляет `get/list/watch` на `secrets` кластера для любого профиля; после этого их увидят все, у кого в Kubron есть право `secrets.read` (роли `operator` и `admin`).
-- **Пользовательские ресурсы** (CRD, Argo CD `Application` и др.) в профили не входят. Добавьте нужные группы в `rbac.extraRules`.
+- **Пользовательские ресурсы** (CRD, Argo CD `Application`, объекты Flux и др.) в профили не входят. Добавьте нужные группы в `rbac.extraRules`; готовый фрагмент для Flux приведён [ниже](#rights-for-flux-cd).
 - **Существующая роль.** `rbac.profile=custom` и `rbac.existingClusterRole=view` привязывают ServiceAccount к встроенной роли `view` без собственной ClusterRole. Встроенная `view` не включает `secrets`, а `edit` и `admin` включают и дают запись: привязывайте их, только когда это действительно нужно.
 - **Смена профиля** применяется сразу при `helm upgrade`. Перезапуск Pod не нужен, права проверяет API-сервер.
+
+### Права для Flux CD {#rights-for-flux-cd}
+
+Профили правил Flux не содержат (как и для Argo CD): объекты Flux читаются и меняются, только если вы добавили правила в `rbac.extraRules`. Правила попадают в ClusterRole чарта; при `rbac.existingClusterRole` они не используются, и нужные права выдаются в самой привязанной роли. Фрагмент ниже разбит по уровням: оставьте только то, что нужно.
+
+```yaml
+rbac:
+  extraRules:
+    # Чтение (право Kubron `read`): списки, детали, дашборд, граф. Нужны все три глагола: список строится из informer.
+    - apiGroups: [kustomize.toolkit.fluxcd.io]
+      resources: [kustomizations]
+      verbs: [get, list, watch]
+    - apiGroups: [helm.toolkit.fluxcd.io]
+      resources: [helmreleases]
+      verbs: [get, list, watch]
+    - apiGroups: [source.toolkit.fluxcd.io]
+      resources: [gitrepositories, ocirepositories, helmrepositories, helmcharts, buckets]
+      verbs: [get, list, watch]
+    - apiGroups: [notification.toolkit.fluxcd.io]
+      resources: [alerts, providers, receivers]
+      verbs: [get, list, watch]
+    - apiGroups: [image.toolkit.fluxcd.io]
+      resources: [imagerepositories, imagepolicies, imageupdateautomations]
+      verbs: [get, list, watch]
+
+    # Reconcile (право Kubron `operate`), suspend и resume (право `write`): merge-patch аннотации и `spec.suspend`.
+    - apiGroups: [kustomize.toolkit.fluxcd.io]
+      resources: [kustomizations]
+      verbs: [patch]
+    - apiGroups: [helm.toolkit.fluxcd.io]
+      resources: [helmreleases]
+      verbs: [patch]
+    - apiGroups: [source.toolkit.fluxcd.io]
+      resources: [gitrepositories, ocirepositories, helmrepositories, helmcharts, buckets]
+      verbs: [patch]
+    - apiGroups: [image.toolkit.fluxcd.io]
+      resources: [imagerepositories, imageupdateautomations]
+      verbs: [patch]
+
+    # Удаление (право Kubron `write`): только Kustomization и HelmRelease.
+    - apiGroups: [kustomize.toolkit.fluxcd.io]
+      resources: [kustomizations]
+      verbs: [delete]
+    - apiGroups: [helm.toolkit.fluxcd.io]
+      resources: [helmreleases]
+      verbs: [delete]
+```
+
+- **Чтение без изменений.** Достаточно первого блока: раздел Flux покажет статусы, ресурсы и граф, а кнопки действий завершатся ошибкой Kubernetes RBAC (`forbidden`). Права Kubron (`operate`, `write`) включают возможность внутри Kubron, но не отменяют RBAC кластера: нужны оба уровня.
+- **Раздела Flux нет, хотя Flux установлен.** Без права `list` на CRD Flux Kubron считает Flux не установленным и скрывает раздел без ошибки. Проверка повторяется примерно раз в 30 секунд.
+- **Prune и uninstall.** Удаление `Kustomization` с `prune: true` и `HelmRelease` выполняют контроллеры Flux под своими учётными записями, поэтому ServiceAccount Kubron для этого лишних прав не получает. Удаление объекта Flux Kubron откатить не может: восстанавливайте его из Git.
+- **Секреты.** Правила не затрагивают `secrets`: значения `spec.values`, `valuesFrom` и подстановок `postBuild` Kubron не отдаёт независимо от `rbac.allowSecretsRead`.
+
+Что показывает раздел Flux, описано в разделе [GitOps](/ru/features/gitops#flux-cd).
 
 ## Необязательно: вход через браузер и аккаунты Google
 

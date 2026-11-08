@@ -33,7 +33,7 @@ features:
     details: Репозитории и чарты, установка и обновление релизов, история ревизий и rollback.
   - icon: ⟲
     title: GitOps в том же интерфейсе
-    details: "Приложения Argo CD, ApplicationSet и проекты: sync, diff и граф ресурсов."
+    details: "Приложения Argo CD, ApplicationSet и проекты, а также Kustomization и HelmRelease Flux CD в одном интерфейсе."
   - icon: ◉
     title: Приватность по умолчанию
     details: В desktop-режиме нет телеметрии и обязательной учётной записи. Kubeconfig остаётся на вашей машине.
@@ -93,6 +93,7 @@ Kubron объединяет повседневные операции с Kuberne
 - **Операционные действия** — логи, exec, port-forward, масштабирование и перезапуск workloads, cordon и drain узлов.
 - **Жизненный цикл Helm** — репозитории (включая OCI), поиск чартов, dry-run, обновления, diff ревизий и rollback.
 - **Argo CD** — приложения, ApplicationSet, проекты, управление sync, сравнение live и desired и граф ресурсов.
+- **Flux CD** — Kustomization, HelmRelease, источники, уведомления и автоматизация образов, с reconcile, suspend, resume и цепочкой от источника до ресурсов.
 - **Метрики** — графики для Pod, workloads, узлов, PVC и Ingress при установленном metrics stack.
 
 ## Почему Kubron
