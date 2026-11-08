@@ -132,7 +132,9 @@ import { fluxLiveTick } from '../../../composables/useFluxLive'
 import { getResourceById } from '../../../resources/registry'
 import { badgeClass } from '../../../resources/status'
 import { callApp } from '../../../resources/wails'
-import type { FluxObjectInfo } from '../../../types/flux'
+
+import { inventoryMode, resourceNodes, splitInventory } from './fluxInventory'
+import type { FluxGraph, FluxGraphNode, FluxObjectInfo } from '../../../types/flux'
 
 const PAGE = 200
 
@@ -148,6 +150,7 @@ const error = ref('')
 const search = ref('')
 const kind = ref('')
 const limit = ref(PAGE)
+
 
 /** Номер запроса: ответ по уже закрытому или сменившемуся объекту отбрасывается */
 let generation = 0

@@ -6,7 +6,10 @@ import { renderToString } from 'vue/server-renderer'
 import { describe, expect, it } from 'vitest'
 import { i18n } from '../../../i18n'
 import type { FluxCondition, FluxObjectInfo } from '../../../types/flux'
-import FluxConditionsSection, { conditionTone } from './FluxConditionsSection.vue'
+
+import FluxConditionsSection from './FluxConditionsSection.vue'
+import { conditionTone } from './fluxConditions'
+
 
 const cond = (p: Partial<FluxCondition>): FluxCondition => ({
   type: 'Ready', status: 'True', lastTransitionTime: '2026-11-07T10:00:00Z', reason: 'ReconciliationSucceeded', message: 'Applied revision', ...p,
