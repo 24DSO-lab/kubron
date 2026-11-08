@@ -6,7 +6,8 @@ import { renderToString } from 'vue/server-renderer'
 import { describe, expect, it } from 'vitest'
 import { i18n } from '../../../i18n'
 import type { FluxHelmHistoryEntry, FluxHelmReleaseInfo } from '../../../types/flux'
-import FluxHistoryTab, { sortHistory } from './FluxHistoryTab.vue'
+import FluxHistoryTab from './FluxHistoryTab.vue'
+import { sortHistory } from './fluxHistory'
 
 const entry = (version: number, p: Partial<FluxHelmHistoryEntry> = {}): FluxHelmHistoryEntry => ({
   version, status: 'deployed', chartName: 'podinfo', chartVersion: '6.5.0', appVersion: '6.5.0',
