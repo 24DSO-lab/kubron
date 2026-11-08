@@ -9,7 +9,7 @@
           v-if="sourceTarget"
           type="button"
           class="flux-linkbtn"
-          @click="emit('open', sourceTarget)"
+          @click="openRef(source)"
         >{{ refLabel(source) }}</button>
         <template v-else>{{ refLabel(source) }}</template>
       </span>
@@ -24,7 +24,7 @@
             v-if="d.target"
             type="button"
             class="flux-linkbtn"
-            @click="emit('open', d.target)"
+            @click="openRef(d.ref)"
           >{{ refLabel(d.ref) }}</button>
           <template v-else>{{ refLabel(d.ref) }}</template>
         </li>
@@ -68,7 +68,6 @@ export function refTarget(
 
 <script lang="ts" setup>
 import { computed } from 'vue'
-import { getResourceById } from '../../../resources/registry'
 
 import type { FluxObjectInfo } from '../../../types/flux'
 
@@ -78,15 +77,22 @@ const emit = defineEmits<{
   (e: 'open', p: { id: string; ns: string; name: string }): void
 }>()
 
-const isKnown = (id: string) => !!getResourceById(id)
 
 const source = computed(() => (props.resource?.sourceRef?.name ? props.resource.sourceRef : null))
-const sourceTarget = computed(() => (source.value ? refTarget(source.value, props.resource, isKnown) : null))
+const sourceTarget = computed(() => (source.value ? refTarget(source.value, props.resource, () => true) : null))
 const deps = computed(() =>
   (props.resource?.dependsOn ?? [])
     .filter(d => !!d?.name)
-    .map(d => ({ ref: d, target: refTarget(d, props.resource, isKnown) })),
+    .map(d => ({ ref: d, target: refTarget(d, props.resource, () => true) })),
 )
+
+async function openRef(ref: FluxRef) {
+  const target = refTarget(ref, props.resource, () => true)
+  if (!target) return
+  // Resolve lazily: importing the registry here avoids a cycle while resource definitions load.
+  const { getResourceById } = await import('../../../resources/registry')
+  if (getResourceById(target.id)) emit('open', target)
+}
 </script>
 
 <style scoped>
