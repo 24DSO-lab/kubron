@@ -623,20 +623,42 @@ func TestGetFluxImageAutomationPartialFailure(t *testing.T) {
 	})
 }
 
-// TestGetFluxImageAutomationOnlyReadsClusterObjects: обращений к реестрам образов нет — вызывается только list
-// объектов кластера через dynamic client, ничего другого.
+// TestGetFluxImageAutomationOnlyReadsClusterObjects: чтение использует только list/watch объектов кластера,
+// не обращаясь к реестрам образов и не выполняя никаких операций записи.
 func TestGetFluxImageAutomationOnlyReadsClusterObjects(t *testing.T) {
 	dyn := imageNewDyn(imageObjs(t, imageV1Fixtures...)...)
 	if _, err := fluxManager(dyn).GetFluxImageAutomation(nil); err != nil {
 		t.Fatal(err)
 	}
+
+	lists := map[string]int{}
+	watches := map[string]int{}
 	for _, a := range dyn.Actions() {
-		if a.GetVerb() != "list" || a.GetResource().Group != fluxGroupImage {
+		if a.GetResource().Group != fluxGroupImage {
+			t.Errorf("unexpected resource: %s %s", a.GetVerb(), a.GetResource())
+			continue
+		}
+		switch a.GetVerb() {
+		case "list":
+			lists[a.GetResource().Resource]++
+		case "watch":
+			watches[a.GetResource().Resource]++
+		default:
 			t.Errorf("unexpected API call: %s %s", a.GetVerb(), a.GetResource())
 		}
 	}
-	if len(dyn.Actions()) != 3 {
-		t.Errorf("API calls = %d, want 3 (one list per kind)", len(dyn.Actions()))
+
+	plurals := []string{"imagerepositories", "imagepolicies", "imageupdateautomations"}
+	for _, plural := range plurals {
+		if lists[plural] == 0 {
+			t.Errorf("%s: no LIST request", plural)
+		}
+		if watches[plural] == 0 {
+			t.Errorf("%s: no WATCH request", plural)
+		}
+	}
+	if len(lists) != len(plurals) || len(watches) != len(plurals) {
+		t.Errorf("LIST resources = %v, WATCH resources = %v; want exactly the three image automation kinds", lists, watches)
 	}
 }
 
