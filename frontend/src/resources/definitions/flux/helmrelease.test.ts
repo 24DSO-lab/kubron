@@ -5,6 +5,12 @@ import { createSSRApp, h } from 'vue'
 import { renderToString } from 'vue/server-renderer'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+// Registry imports resource definitions that transitively load Monaco Editor.
+// Keep these SSR tests in Node without evaluating Monaco's browser-only modules.
+vi.mock('monaco-editor', () => ({ editor: {} }))
+vi.mock('monaco-editor/editor/editor.api', () => ({ editor: {}, KeyMod: {}, KeyCode: {} }))
+vi.mock('monaco-editor/editor/editor.worker?worker', () => ({ default: class {} }))
+
 vi.mock('../../fluxActions', () => ({
   reconcileFlux: vi.fn(async () => {}),
   setFluxSuspended: vi.fn(async () => {}),
