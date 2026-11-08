@@ -10,6 +10,7 @@ vi.mock('../../wails', async (importOriginal) => ({
 
 import { callApp } from '../../wails'
 import { Perm } from '../../../types/auth'
+import type { ResourceDefinition } from '../../types'
 import type { FluxAlertInfo, FluxNotifications, FluxProviderInfo, FluxReceiverInfo } from '../../../types/flux'
 import { fluxAlert, refList } from './alert'
 import { fluxProvider } from './provider'
@@ -83,7 +84,7 @@ describe('данные', () => {
 })
 
 describe('колонки', () => {
-  const col = (d: (typeof ALL)[number][0], key: string) => d.columns.find(c => c.key === key)!
+  const col = <T>(d: ResourceDefinition<T>, key: string) => d.columns.find(c => c.key === key)!
   it('Provider: тип, канал, схема и хост', () => {
     expect(col(fluxProvider, 'type').formatter!(provider)).toBe('slack')
     expect(col(fluxProvider, 'channel').formatter!(provider)).toBe('#ops')
