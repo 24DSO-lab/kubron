@@ -667,7 +667,9 @@ func fluxcHeavyHelmRelease(i int) *unstructured.Unstructured {
 	u.Object["status"] = map[string]any{"history": hist, "lastAppliedRevision": "1.2.3"}
 	u.SetManagedFields([]metav1.ManagedFieldsEntry{
 		{Manager: "helm-controller", Operation: metav1.ManagedFieldsOperationUpdate, APIVersion: fluxcHelmAPI, FieldsType: "FieldsV1",
-			FieldsV1: &metav1.FieldsV1{Raw: []byte(`{"f:spec":{"f:values":{"f:key00":{}}},"f:status":{"f:history":{}}}`)}},
+
+			FieldsV1: metav1.NewFieldsV1(`{"f:spec":{"f:values":{"f:key00":{}}},"f:status":{"f:history":{}}}`)},
+
 	})
 	lastApplied, _ := json.Marshal(map[string]any{"spec": map[string]any{"values": values}})
 	u.SetAnnotations(map[string]string{fluxLastAppliedAnnotation: string(lastApplied)})
@@ -689,7 +691,7 @@ func TestFluxCacheMemory2000(t *testing.T) {
 			objs = append(objs, fluxcHeavyHelmRelease(i))
 		}
 		dyn := fluxcDyn(objs...)
-		objs = nil // оригиналы остаются только у fake-клиента, а не у теста
+
 		before := fluxcHeap()
 
 		var inf interface {

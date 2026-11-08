@@ -1,0 +1,48 @@
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImageUpdateAutomation
+metadata:
+  name: flux-system
+  namespace: flux-system
+  creationTimestamp: "2026-02-10T08:12:03Z"
+  generation: 1
+  uid: 9c1c6e52-9d0e-4b56-8d0e-1a0f3d1c9b44
+  labels:
+    app.kubernetes.io/part-of: platform
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: '{"spec":{"git":{"commit":{"author":{"email":"S3CRET-LASTAPPLIED"}}}}}'
+    team: platform
+spec:
+  interval: 30m0s
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  git:
+    checkout:
+      ref:
+        branch: main
+    commit:
+      author:
+        email: S3CRET-EMAIL@example.com
+        name: S3CRET-AUTHOR
+      signingKey:
+        secretRef:
+          name: S3CRET-SIGNKEY
+      messageTemplate: 'S3CRET-TEMPLATE {{ .AutomationObject }}'
+    push:
+      branch: image-updates
+      refspec: 'refs/heads/image-updates:refs/heads/S3CRET-REFSPEC'
+  update:
+    path: ./clusters/prod
+    strategy: Setters
+status:
+  observedGeneration: 1
+  conditions:
+  - type: Ready
+    status: "True"
+    reason: Succeeded
+    message: 'repository up-to-date'
+    lastTransitionTime: "2026-11-05T09:00:03Z"
+    observedGeneration: 1
+  lastAutomationRunTime: "2026-11-05T09:00:01Z"
+  lastPushCommit: 6d1f6c3a8b0b9d9e0f6a1c3f0b2f1d8e4a5b6c7d
+  lastPushTime: "2026-11-04T12:00:00Z"

@@ -1,0 +1,42 @@
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: OCIRepository
+metadata:
+  name: podinfo
+  namespace: flux-system
+  creationTimestamp: "2026-02-10T08:12:03Z"
+  generation: 2
+  uid: 3a1c6e52-9d0e-4b56-8d0e-1a0f3d1c9b22
+  labels:
+    app.kubernetes.io/part-of: platform
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: '{"spec":{"secretRef":{"name":"S3CRET-LASTAPPLIED"}}}'
+    team: platform
+spec:
+  interval: 5m0s
+  url: oci://ghcr.io/stefanprodan/manifests/podinfo
+  ref:
+    tag: 6.5.4
+  secretRef:
+    name: ghcr-auth
+status:
+  observedGeneration: 2
+  conditions:
+  - type: Ready
+    status: "True"
+    reason: Succeeded
+    message: 'stored artifact for digest ''6.5.4@sha256:0123'''
+    lastTransitionTime: "2026-11-05T09:00:03Z"
+    observedGeneration: 2
+  - type: ArtifactInStorage
+    status: "True"
+    reason: Succeeded
+    message: 'stored artifact for revision'
+    lastTransitionTime: "2026-11-05T09:00:03Z"
+    observedGeneration: 2
+  artifact:
+    digest: sha256:00002e420ac191914ebb87fe462b85d93705d6961dd8ef250443deda36e2de59
+    lastUpdateTime: "2026-11-05T09:00:03Z"
+    path: ocirepository/flux-system/podinfo/artifact.tar.gz
+    revision: 6.5.4@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+    size: 20480
+    url: http://source-controller.flux-system.svc.cluster.local./ocirepository/flux-system/podinfo/artifact.tar.gz

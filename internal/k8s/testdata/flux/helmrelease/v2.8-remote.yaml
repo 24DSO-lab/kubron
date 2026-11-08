@@ -1,0 +1,74 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: edge
+  namespace: fleet
+  creationTimestamp: "2026-02-10T08:12:03Z"
+  generation: 2
+  uid: 0b5c1d3e-71a4-4f0b-8f0e-5d2a6c9e1a77
+  labels:
+    helm.toolkit.fluxcd.io/name: edge
+    helm.toolkit.fluxcd.io/namespace: fleet
+    app.kubernetes.io/part-of: platform
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: '{"apiVersion":"helm.toolkit.fluxcd.io/v2","kind":"HelmRelease","metadata":{"name":"edge","namespace":"fleet"},"spec":{"values":{"adminPassword":"S3CRET-LASTAPPLIED"}}}'
+    team: platform
+spec:
+  interval: 15m0s
+  chart:
+    spec:
+      chart: podinfo
+      version: 6.x
+      interval: 5m0s
+      sourceRef:
+        kind: HelmRepository
+        name: podinfo
+        namespace: flux-system
+  values:
+    adminPassword: S3CRET-VALUES
+    ingress:
+      tls:
+        key: S3CRET-VALUES-TLSKEY
+  valuesFrom:
+  - kind: Secret
+    name: podinfo-values-S3CRET-VALUESFROM
+    valuesKey: S3CRET-VALUESKEY
+    targetPath: auth.password
+  - kind: ConfigMap
+    name: podinfo-config
+  kubeConfig:
+    secretRef:
+      name: remote-kubeconfig-S3CRET-KUBECONFIG
+      key: value
+status:
+  observedGeneration: 2
+  helmChart: flux-system/fleet-edge
+  conditions:
+  - type: Ready
+    status: "True"
+    reason: InstallSucceeded
+    message: 'Helm install succeeded for release edge/edge.v1 with chart podinfo@6.5.4'
+    lastTransitionTime: "2026-11-05T09:10:00Z"
+    observedGeneration: 2
+  lastAppliedRevision: 6.5.4
+  lastAttemptedRevision: 6.5.4
+  lastReleaseRevision: 1
+  history:
+  - appVersion: 6.5.4
+    chartName: podinfo
+    chartVersion: 6.5.4
+    configDigest: sha256:0000000000000000000000000000000000000000000000000000000000000007
+    digest: sha256:000000000000000000000000000000000000000000000000000000000000000b
+    firstDeployed: "2026-11-05T09:09:00Z"
+    lastDeployed: "2026-11-05T09:10:00Z"
+    name: edge
+    namespace: fleet
+    ociDigest: sha256:000000000000000000000000000000000000000000000000000000000000000d
+    status: deployed
+    version: 1
+  inventory:
+    entries:
+    - id: podinfo_podinfo_apps_Deployment
+      v: v1
+    - id: podinfo_podinfo__Service
+      v: v1

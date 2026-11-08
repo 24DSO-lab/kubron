@@ -401,5 +401,13 @@
     "suspended": "Приостановлено",
     "rejected": "Отклонено",
     "missing": "Отсутствует"
+  },
+  "flux": {
+    "managedBy": "Управляется",
+    "badge": "Flux",
+    "managedByValue": "HelmRelease {namespace}/{name}",
+    "warnUpgrade": "Релиз {name} управляется Flux (HelmRelease {fluxNamespace}/{fluxName}): ручное обновление разойдётся с Git, и Flux может перезаписать его при следующем reconcile.",
+    "warnRollback": "Релиз {name} управляется Flux (HelmRelease {fluxNamespace}/{fluxName}): ручной откат разойдётся с Git, и Flux может перезаписать его при следующем reconcile.",
+    "warnUninstall": "Релиз {name} управляется Flux (HelmRelease {fluxNamespace}/{fluxName}): ручное удаление разойдётся с Git, и Flux может установить релиз заново при следующем reconcile."
   }
 }

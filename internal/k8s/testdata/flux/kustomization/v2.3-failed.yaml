@@ -1,0 +1,57 @@
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: infra
+  namespace: flux-system
+  creationTimestamp: "2024-06-12T07:00:00Z"
+  generation: 3
+  uid: 6f7d1a52-0c1c-4a56-9d0e-2a0f3d1c9b11
+  labels:
+    kustomize.toolkit.fluxcd.io/name: infra
+    kustomize.toolkit.fluxcd.io/namespace: flux-system
+    app.kubernetes.io/part-of: platform
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: '{"apiVersion":"kustomize.toolkit.fluxcd.io/v1","kind":"Kustomization","metadata":{"name":"infra","namespace":"flux-system"},"spec":{"postBuild":{"substitute":{"DB_PASSWORD":"S3CRET-LASTAPPLIED"}}}}'
+    team: platform
+spec:
+  interval: 10m0s
+  retryInterval: 2m0s
+  timeout: 5m0s
+  path: ./clusters/prod/infra
+  prune: true
+  wait: true
+  targetNamespace: infra
+  serviceAccountName: kustomize-infra
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  postBuild:
+    substitute:
+      DB_PASSWORD: S3CRET-SUBSTITUTE
+      API_TOKEN: S3CRET-SUBSTITUTE-TOKEN
+    substituteFrom:
+    - kind: Secret
+      name: cluster-vars-S3CRET-SUBFROM
+  decryption:
+    provider: sops
+    secretRef:
+      name: sops-age-S3CRET-DECRYPT
+status:
+  observedGeneration: 3
+  conditions:
+  - type: Ready
+    status: "False"
+    reason: ReconciliationFailed
+    message: 'Deployment/infra/web dry-run failed: admission webhook denied the request'
+    lastTransitionTime: "2024-06-13T07:05:00Z"
+    observedGeneration: 3
+  lastAppliedRevision: main@sha1:6d1f6c3a8b0b9d9e0f6a1c3f0b2f1d8e4a5b6c7d
+  lastAttemptedRevision: main@sha1:b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6
+  inventory:
+    entries:
+    - id: apps_web_apps_Deployment
+      v: v1
+    - id: apps_web__Service
+      v: v1
+    - id: apps_web-config__ConfigMap
+      v: v1
