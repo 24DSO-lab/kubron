@@ -1,0 +1,30 @@
+{
+  "doneOne": "{name}: {done}",
+  "doneMany": "{done}: {ok} of {total}",
+  "failedItem": "{name}: {error}",
+  "moreFailed": "…and {n} more failed",
+  "noResult": "No result for {n} object(s)",
+  "reconcileRequested": "reconcile requested",
+  "reconcileWithSourceRequested": "reconcile with source requested",
+  "suspended": "suspended",
+  "resumed": "resumed",
+  "suspendConfirmOne": "Suspend {name}? Flux will stop applying it. If spec.suspend is set in Git, the parent Kustomization will revert the change.",
+  "suspendConfirmMany": "Suspend {n} objects? Flux will stop applying them. If spec.suspend is set in Git, the parent Kustomization will revert the change.",
+  "resumeConfirmOne": "Resume {name}? Flux will reconcile it right away.",
+  "resumeConfirmMany": "Resume {n} objects? Flux will reconcile them right away.",
+  "deleted": "{name} deleted",
+  "error": {
+    "reconcile": "Reconcile failed: {error}",
+    "suspend": "Suspend failed: {error}",
+    "resume": "Resume failed: {error}",
+    "delete": "Delete failed: {error}"
+  },
+  "delete": {
+    "prune": "Prune is enabled: the managed resources will be deleted along with it ({n} in inventory).",
+    "keep": "Prune is disabled: the managed resources will stay in the cluster without management.",
+    "helmUninstall": "The Helm release will be uninstalled together with its resources.",
+    "gitRecreates": "If the object is defined in Git, the parent Kustomization will create it again.",
+    "typeName": "Type the object name \"{name}\" to confirm",
+    "deleting": "Deleting…"
+  }
+}

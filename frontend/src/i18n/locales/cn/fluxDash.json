@@ -1,0 +1,36 @@
+{
+  "updated": "更新于 {time}",
+  "updateFailed": "更新失败",
+  "refreshing": "正在刷新…",
+  "loading": "正在加载 Flux 对象…",
+  "loadFailed": "无法加载 Flux 对象",
+  "empty": "未找到 Kustomization 或 HelmRelease",
+  "unsupported": {
+    "title": "不支持此 Flux 版本",
+    "hint": "请将 Flux 升级到 2.3 或更高版本，并运行 `flux migrate` 将已存储的对象迁移到稳定的 API 版本。"
+  },
+  "stats": {
+    "ready": "就绪",
+    "reconciling": "协调中",
+    "failed": "失败",
+    "stalled": "已停滞",
+    "suspended": "已暂停",
+    "ofTotal": "共 {n}",
+    "none": "无",
+    "inProgress": "进行中",
+    "needsAction": "需要处理",
+    "suspendedObjects": "已暂停对象：{n}"
+  },
+  "needsAttention": "需要关注",
+  "allGood": "所有对象均正常",
+  "viewAll": "查看全部（{n}）",
+  "recentReconciles": "最近协调",
+  "noReconciles": "暂无协调记录",
+  "byNamespace": "按命名空间",
+  "bySource": "按来源",
+  "noSource": "无来源",
+  "kind": {
+    "Kustomization": "Kustomization",
+    "HelmRelease": "HelmRelease"
+  }
+}

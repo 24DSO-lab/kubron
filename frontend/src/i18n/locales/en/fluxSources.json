@@ -1,0 +1,23 @@
+{
+  "columns": {
+    "url": "URL",
+    "ref": "Reference"
+  },
+  "props": {
+    "digest": "Digest",
+    "secretRef": "Secret",
+    "interval": "Interval",
+    "suspended": "Suspended",
+    "lastReconcile": "Last reconcile"
+  },
+  "tabs": {
+    "artifact": "Artifact"
+  },
+  "menu": {
+    "reconcile": "Reconcile",
+    "editYaml": "Edit YAML"
+  },
+  "artifact": {
+    "empty": "No artifact yet"
+  }
+}

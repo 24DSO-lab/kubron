@@ -1,0 +1,18 @@
+{
+  "columns": {
+    "provider": "Провайдер",
+    "severity": "Важность",
+    "eventSources": "Источники событий",
+    "type": "Тип",
+    "channel": "Канал",
+    "address": "Адрес",
+    "resources": "Ресурсы"
+  },
+  "props": {
+    "secretRef": "Секрет",
+    "lastReconcile": "Последний reconcile"
+  },
+  "menu": {
+    "editYaml": "Править YAML"
+  }
+}
