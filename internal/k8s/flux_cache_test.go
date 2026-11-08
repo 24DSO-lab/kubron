@@ -689,6 +689,7 @@ func TestFluxCacheMemory2000(t *testing.T) {
 			objs = append(objs, fluxcHeavyHelmRelease(i))
 		}
 		dyn := fluxcDyn(objs...)
+
 		before := fluxcHeap()
 
 		var inf interface {
