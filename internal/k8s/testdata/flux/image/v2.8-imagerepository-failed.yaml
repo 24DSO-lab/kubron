@@ -1,0 +1,25 @@
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImageRepository
+metadata:
+  name: broken
+  namespace: team-a
+  creationTimestamp: "2026-02-10T08:12:03Z"
+  generation: 1
+  uid: 9c1c6e52-9d0e-4b56-8d0e-1a0f3d1c9b44
+  labels:
+    app.kubernetes.io/part-of: platform
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: '{"spec":{"git":{"commit":{"author":{"email":"S3CRET-LASTAPPLIED"}}}}}'
+    team: platform
+spec:
+  image: registry.example.com/missing/app
+  interval: 5m0s
+status:
+  observedGeneration: 1
+  conditions:
+  - type: Ready
+    status: "False"
+    reason: ReconciliationFailed
+    message: 'scan failed: GET https://u:S3CRET-MSGPASS@registry.example.com/v2/missing/app/tags/list: UNAUTHORIZED'
+    lastTransitionTime: "2026-11-07T10:05:00Z"
+    observedGeneration: 1

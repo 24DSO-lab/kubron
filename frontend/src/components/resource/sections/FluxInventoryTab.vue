@@ -81,50 +81,6 @@
   </div>
 </template>
 
-<script lang="ts">
-import type { FluxGraph, FluxGraphNode } from '../../../types/flux'
-
-/** Рабочие нагрузки: то, что пользователь ищет в списке ресурсов в первую очередь */
-export const WORKLOAD_KINDS: ReadonlySet<string> = new Set([
-  'Deployment', 'StatefulSet', 'DaemonSet', 'ReplicaSet', 'Job', 'CronJob', 'Pod',
-])
-
-/** Что показать вместо списка: нет данных, граф недоступен (Flux < 2.8), ресурсы в другом кластере или список */
-export type InventoryMode = 'none' | 'unavailable' | 'remote' | 'list'
-
-export function inventoryMode(g: FluxGraph | null | undefined): InventoryMode {
-  if (!g) return 'none'
-  if (!g.available) return 'unavailable'
-  if (g.remote) return 'remote'
-  return 'list'
-}
-
-/** Ресурсы объекта: узлы графа с ролью resource (источник и сам объект — другие роли) */
-export function resourceNodes(g: FluxGraph | null | undefined): FluxGraphNode[] {
-  return (g?.nodes ?? []).filter(n => n?.role === 'resource' && !!n.name)
-}
-
-const byIdentity = (a: FluxGraphNode, b: FluxGraphNode) =>
-  a.kind.localeCompare(b.kind) || a.namespace.localeCompare(b.namespace) || a.name.localeCompare(b.name)
-
-/** Фильтр по kind и подстроке (kind, имя, namespace) и разбиение на рабочие нагрузки и прочее; порядок стабильный */
-export function splitInventory(
-  nodes: readonly FluxGraphNode[],
-  query = '',
-  kind = '',
-): { workloads: FluxGraphNode[]; others: FluxGraphNode[] } {
-  const q = query.trim().toLowerCase()
-  const kept = nodes
-    .filter(n => !kind || n.kind === kind)
-    .filter(n => !q || `${n.kind} ${n.name} ${n.namespace}`.toLowerCase().includes(q))
-    .sort(byIdentity)
-  return {
-    workloads: kept.filter(n => WORKLOAD_KINDS.has(n.kind)),
-    others: kept.filter(n => !WORKLOAD_KINDS.has(n.kind)),
-  }
-}
-</script>
-
 <script lang="ts" setup>
 import { computed, ref, watch } from 'vue'
 import { errorText } from '../../../composables/errorText'
@@ -132,7 +88,8 @@ import { fluxLiveTick } from '../../../composables/useFluxLive'
 import { getResourceById } from '../../../resources/registry'
 import { badgeClass } from '../../../resources/status'
 import { callApp } from '../../../resources/wails'
-import type { FluxObjectInfo } from '../../../types/flux'
+import { inventoryMode, resourceNodes, splitInventory } from './fluxInventory'
+import type { FluxGraph, FluxGraphNode, FluxObjectInfo } from '../../../types/flux'
 
 const PAGE = 200
 
