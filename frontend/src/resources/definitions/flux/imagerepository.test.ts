@@ -40,7 +40,7 @@ const ALL = [
   [fluxImageUpdateAutomation, 'flux-imageupdateautomation', 'flux-imageupdateautomations', 'ImageUpdateAutomation'],
 ] as const
 const ctx = { edit: vi.fn(async () => {}) } as any
-const col = (d: (typeof ALL)[number][0], key: string) => d.columns.find(c => c.key === key)!
+const col = (d: { columns: { key: string; formatter?: (row: any) => unknown }[] }, key: string) => d.columns.find(c => c.key === key)!
 
 beforeEach(() => { vi.clearAllMocks(); vi.mocked(callApp as any).mockResolvedValue(data) })
 
