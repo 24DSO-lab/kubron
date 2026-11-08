@@ -655,7 +655,7 @@ jobs:
       # релиза (sha256sum install.yaml). Установка Flux обязательна и валит job, если не прошла. Источники тестовых
       # объектов внешние (GitHub, GitHub Pages), поэтому их Ready ждём с таймаутом и только с предупреждением:
       # e2e проверяет списки и действия, а не загрузку репозитория и чарта.
-      # Объекты (namespace $FLUX_E2E_NAMESPACE): GitRepository, Kustomization, HelmRepository, HelmRelease, все с именем e2e-podinfo.
+      # Объекты (namespace $FLUX_E2E_NAMESPACE): GitRepository, Kustomization, HelmRepository, HelmRelease, все с именем e2e-podinfo, и e2e-delete (Kustomization для теста удаления).
       - name: Flux
         run: |
           curl -fsSL --retry 3 --retry-all-errors -o "$RUNNER_TEMP/flux-install.yaml" \
@@ -693,6 +693,22 @@ jobs:
             interval: 10m
             path: ./kustomize
             prune: true
+            targetNamespace: ${FLUX_E2E_NAMESPACE}
+            sourceRef:
+              kind: GitRepository
+              name: e2e-podinfo
+          ---
+          # Объект для теста удаления (flux.spec.ts): приостановлен и без prune, чтобы не дублировать e2e-podinfo
+          apiVersion: kustomize.toolkit.fluxcd.io/v1
+          kind: Kustomization
+          metadata:
+            name: e2e-delete
+            namespace: ${FLUX_E2E_NAMESPACE}
+          spec:
+            suspend: true
+            interval: 10m
+            path: ./kustomize
+            prune: false
             targetNamespace: ${FLUX_E2E_NAMESPACE}
             sourceRef:
               kind: GitRepository

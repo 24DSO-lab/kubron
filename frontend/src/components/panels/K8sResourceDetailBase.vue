@@ -36,7 +36,7 @@
         </button>
 
         <!-- Delete button -->
-        <button v-if="showDelete !== false" class="btn-action" @click="emit('delete')" :title="$t('panels.detail.deleteResource')">
+        <button v-if="showDelete !== false" class="btn-action" data-testid="resource-delete" @click="emit('delete')" :title="$t('panels.detail.deleteResource')">
           <K8sIcon name="delete" :alt="$t('common.delete')" size="sm" />
         </button>
 
