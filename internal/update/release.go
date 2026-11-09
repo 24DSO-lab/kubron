@@ -205,7 +205,7 @@ func (c *Client) convert(raw apiRelease) (*Release, error) {
 		if !assetNameRe.MatchString(a.Name) || !hasPrefixFold(a.URL, web+"download/") {
 			continue // чужой хост или странное имя: файл просто не предлагаем
 		}
-		rel.Assets = append(rel.Assets, Asset{Name: a.Name, URL: a.URL, Size: a.Size})
+		rel.Assets = append(rel.Assets, Asset(a))
 	}
 	return rel, nil
 }

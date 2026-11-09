@@ -47,7 +47,7 @@ func SavePreferences(dir string, p Preferences) error {
 		return err
 	}
 	name := tmp.Name()
-	defer os.Remove(name) // после успешного Rename файла уже нет, ошибка безразлична
+	defer func() { _ = os.Remove(name) }() // после успешного Rename файла уже нет, ошибка безразлична
 	if _, err := tmp.Write(b); err != nil {
 		tmp.Close()
 		return err
