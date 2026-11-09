@@ -1,0 +1,68 @@
+{
+  "title": "Version and updates",
+  "badge": {
+    "title": "Kubron version and updates",
+    "available": "Update available: {version}"
+  },
+  "banner": {
+    "text": "Kubron {version} is available (installed: {current}).",
+    "details": "How to update",
+    "dismiss": "Hide until the next version"
+  },
+  "current": "Installed version",
+  "installedAs": "Installation",
+  "latest": "Latest version",
+  "checkedAt": "Last checked",
+  "adminOnly": "Details about updates are available to administrators.",
+  "locked": "Update checks are turned off by the administrator of this installation.",
+  "devBuild": "This is a development build: update checks are disabled.",
+  "available": "A new version is available: {version}.",
+  "upToDate": "You are using the latest version.",
+  "notChecked": "No check has completed yet.",
+  "how": "How to update",
+  "unknownMethod": "The installation method could not be determined. Download the new version from the release page.",
+  "hint": {
+    "helm": "Run this command with access to the cluster. Your current Helm values are kept.",
+    "kubernetes": "Change the image in your manifests, Kustomize overlay or GitOps repository to this tag and apply it.",
+    "docker": "Pull the new image and recreate the container.",
+    "binary": "Replace the server binary with the new build and restart it.",
+    "deb": "Download the package and install it with the command below. The application will use the new version after a restart.",
+    "archive": "Download the new archive and replace the files of the current installation.",
+    "macosApp": "Download the new archive and replace Kubron.app in Applications.",
+    "unknown": "Download the new version from the release page."
+  },
+  "method": {
+    "helm": "Helm chart",
+    "kubernetes": "Kubernetes (without Helm)",
+    "docker": "Container (Docker, Podman)",
+    "binary": "Server binary",
+    "deb": "DEB package",
+    "archive": "Archive",
+    "macosApp": "macOS application",
+    "unknown": "Unknown"
+  },
+  "command": {
+    "helmUpgrade": "Update the Helm release",
+    "dockerPull": "Pull the image",
+    "composeUp": "Docker Compose",
+    "image": "New image",
+    "debInstall": "Install the package"
+  },
+  "download": "Download",
+  "releaseNotes": "Release notes on GitHub",
+  "copy": "Copy",
+  "copied": "Copied",
+  "copyFailed": "Could not copy to the clipboard",
+  "autoCheck": "Check for updates automatically once a day",
+  "check": "Check for updates",
+  "checking": "Checking…",
+  "error": {
+    "network": "Could not reach GitHub. Check the network connection.",
+    "rate_limited": "GitHub request limit exceeded. Try again later.",
+    "not_found": "No releases have been published yet.",
+    "unexpected_response": "GitHub returned an unexpected response.",
+    "locked": "Update checks are turned off by the administrator.",
+    "unavailable": "Update checks are not available here.",
+    "generic": "The update check failed."
+  }
+}

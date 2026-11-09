@@ -104,6 +104,9 @@ func main() {
 	platform.SetSessionEmitter(hub.EmitTo)
 	core := app.NewApp(platform)
 	app.SetReplicaID(core, replicaID) // потоки терминала и логов несут реплику-владельца в идентификаторе
+	if err := setupUpdateCheck(ctx, core, os.Getenv); err != nil {
+		fatal("configuration", err)
+	}
 	// Общее хранилище веб-сессий: с PostgreSQL сессия, выданная одной репликой, действует на всех (ADR-0016).
 	// Файловое хранилище его не имеет, сессии остаются в памяти процесса.
 	var sessionBackend websession.Backend

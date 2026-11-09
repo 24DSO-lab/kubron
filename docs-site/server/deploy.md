@@ -334,6 +334,8 @@ kubron:
 
 ## Upgrade
 
+Kubron checks GitHub once a day for a new release. Administrators see a banner and a **Version and updates** dialog with the exact command for your installation method (Helm, Kubernetes manifests, Docker). The server never updates itself. To stop these requests, for example in an air-gapped network, set `kubron.updateCheck: false`. If you restrict `networkPolicy.egress.clusterApi.cidrs`, allow `api.github.com` through `networkPolicy.egress.extra` or turn the check off.
+
 ```bash
 helm upgrade kubron oci://ghcr.io/24dso-lab/charts/kubron \
   --version <new-version> -n kubron -f values.yaml

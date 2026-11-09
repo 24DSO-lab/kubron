@@ -17,6 +17,7 @@ import (
 	"github.com/24DSO-lab/kubron/internal/replicaevents"
 	"github.com/24DSO-lab/kubron/internal/signin"
 	"github.com/24DSO-lab/kubron/internal/store"
+	"github.com/24DSO-lab/kubron/internal/update"
 )
 
 type App struct {
@@ -29,6 +30,9 @@ type App struct {
 	dir                auth.Directory // команды и участники; nil вне сервисного режима
 	store              store.Store    // общее хранилище настроек и данных
 	webOIDCRedirectURL string         // публичный callback URL; задаётся серверной оболочкой до запуска
+	// updates — проверка новых версий (ADR-0028). Один на процесс: виды веб-сессий копируют указатель с корневого
+	// экземпляра. nil — оболочка проверку не подключала (тесты).
+	updates *update.Checker
 	// sessionID — веб-сессия владельца вида (пусто у корневого экземпляра и в десктопе).
 	sessionID string
 	// Port-forward в вебе (ADR-0017): режим и прокси; задаются до создания видов (SetPortForwardMode/Proxy).

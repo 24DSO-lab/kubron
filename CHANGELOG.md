@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Version and updates:** the current version is shown in the header. Kubron checks GitHub once a day for a newer release and, for administrators, shows a banner and a "Version and updates" dialog. It detects how it was installed and shows the matching steps: `helm upgrade` for the Helm chart, the new image tag for Kubernetes manifests, `docker pull` for containers, and a download link or `apt install` command for the desktop `.deb`, archive or macOS app. Kubron does not install updates itself.
+- **Update check policy:** set `KUBRON_UPDATE_CHECK=off` (`kubron.updateCheck: false` in the Helm chart) to stop all update requests, for example in air-gapped networks. On Desktop, users can also turn the daily check off in the update dialog.
+
 ## [1.2.0] - 2026-11-08
 
 ### Added

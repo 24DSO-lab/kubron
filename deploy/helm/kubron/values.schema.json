@@ -290,6 +290,9 @@
         "disableExec": {
           "type": "boolean"
         },
+        "updateCheck": {
+          "type": "boolean"
+        },
         "extraEnv": {
           "$ref": "#/definitions/k8sObjectList"
         },
