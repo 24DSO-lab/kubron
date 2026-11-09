@@ -31,8 +31,14 @@ describe('normalizeCapabilities', () => {
   })
   it('по умолчанию десктопное поведение: всё локальное доступно, SSO нет', () => {
     expect(DEFAULT_CAPABILITIES).toEqual({
-      fileDialog: true, portForward: true, portForwardMode: 'local', exec: true, nodeShell: true, debug: true, localKubeconfig: true, sso: false, inCluster: false, teams: false,
+      fileDialog: true, portForward: true, portForwardMode: 'local', exec: true, nodeShell: true, debug: true, localKubeconfig: true, sso: false, inCluster: false, teams: false, bugReport: false,
     })
+  })
+
+  it('кнопка «Сообщить об ошибке» выключена, пока бэкенд её не включил', () => {
+    expect(normalizeCapabilities({}).bugReport).toBe(false)
+    expect(normalizeCapabilities({ bugReport: true }).bugReport).toBe(true)
+    expect(normalizeCapabilities({ bugReport: 'yes' }).bugReport).toBe(false)
   })
 })
 

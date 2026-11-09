@@ -742,5 +742,21 @@
   "theDebugContainerExitedBeforeItWasAttachedExitCode": "отладочный контейнер завершился до подключения (код выхода {p0}, {p1})",
   "theDebugContainerFailedToStart": "отладочный контейнер не запустился ({p0}): {p1}",
   "timedOutWaitingForTheDebugContainerToStartIt": "истекло время ожидания запуска отладочного контейнера {p0} ({p1}); он остаётся в spec пода, и удалить его нельзя",
-  "sourceReconcileFailed": "источник {p0} {p1}/{p2}: {p3}"
+  "sourceReconcileFailed": "источник {p0} {p1}/{p2}: {p3}",
+  "bugReportDescribeTheProblemBeforeSendingTheReport": "опишите проблему перед отправкой отчёта",
+  "bugReportTheDescriptionIsTooLong": "описание слишком длинное",
+  "bugReportTheScreenshotIsNotAValidPngImage": "снимок экрана не является корректным PNG-изображением",
+  "bugReportTheScreenshotIsTooLarge": "снимок экрана слишком большой",
+  "bugReportTheContactAddressIsNotAValidEmailAddress": "контактный адрес не является корректным адресом электронной почты",
+  "bugReportTheMailServerSettingsAreNotValid": "настройки почтового сервера недопустимы",
+  "bugReportCouldNotConnectToTheMailServer": "не удалось подключиться к почтовому серверу",
+  "bugReportTheMailServerRejectedTheSignInOrDoesNotSupportIt": "почтовый сервер отклонил вход или не поддерживает его",
+  "bugReportTheMailServerDidNotAcceptTheMessage": "почтовый сервер не принял сообщение",
+  "bugReportTheStorageForTheMailServerSettingsIsNotAvailable": "хранилище настроек почтового сервера недоступно",
+  "bugReportTheSavedMailServerSettingsCannotBeRead": "сохранённые настройки почтового сервера не удаётся прочитать",
+  "bugReportTheMailServerForBugReportsIsNotConfigured": "почтовый сервер для отчётов об ошибках не настроен",
+  "bugReportAReportWasSentAMomentAgoWaitALittleAndTryAgain": "отчёт был отправлен только что; подождите немного и повторите",
+  "bugReportTheFolderForTheBugReportFilesIsNotAvailable": "папка для файлов отчёта об ошибке недоступна",
+  "bugReportTheFolderCouldNotBeOpened": "не удалось открыть папку",
+  "bugReportTheFileIsNotAFileOfABugReport": "это не файл отчёта об ошибке"
 }

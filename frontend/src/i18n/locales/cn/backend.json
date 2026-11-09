@@ -742,5 +742,21 @@
   "theDebugContainerExitedBeforeItWasAttachedExitCode": "调试容器在连接前已退出（退出码 {p0}，{p1}）",
   "theDebugContainerFailedToStart": "调试容器启动失败（{p0}）：{p1}",
   "timedOutWaitingForTheDebugContainerToStartIt": "等待调试容器 {p0} 启动超时（{p1}）；它会保留在 Pod 规约中，无法移除",
-  "sourceReconcileFailed": "源 {p0} {p1}/{p2}：{p3}"
+  "sourceReconcileFailed": "源 {p0} {p1}/{p2}：{p3}",
+  "bugReportDescribeTheProblemBeforeSendingTheReport": "发送报告前请先描述问题",
+  "bugReportTheDescriptionIsTooLong": "描述过长",
+  "bugReportTheScreenshotIsNotAValidPngImage": "截图不是有效的 PNG 图像",
+  "bugReportTheScreenshotIsTooLarge": "截图过大",
+  "bugReportTheContactAddressIsNotAValidEmailAddress": "联系地址不是有效的电子邮件地址",
+  "bugReportTheMailServerSettingsAreNotValid": "邮件服务器设置无效",
+  "bugReportCouldNotConnectToTheMailServer": "无法连接到邮件服务器",
+  "bugReportTheMailServerRejectedTheSignInOrDoesNotSupportIt": "邮件服务器拒绝了登录或不支持登录",
+  "bugReportTheMailServerDidNotAcceptTheMessage": "邮件服务器未接受该邮件",
+  "bugReportTheStorageForTheMailServerSettingsIsNotAvailable": "邮件服务器设置的存储不可用",
+  "bugReportTheSavedMailServerSettingsCannotBeRead": "无法读取已保存的邮件服务器设置",
+  "bugReportTheMailServerForBugReportsIsNotConfigured": "尚未配置用于错误报告的邮件服务器",
+  "bugReportAReportWasSentAMomentAgoWaitALittleAndTryAgain": "刚刚已发送过报告；请稍等片刻后重试",
+  "bugReportTheFolderForTheBugReportFilesIsNotAvailable": "错误报告文件的文件夹不可用",
+  "bugReportTheFolderCouldNotBeOpened": "无法打开该文件夹",
+  "bugReportTheFileIsNotAFileOfABugReport": "该文件不是错误报告文件"
 }

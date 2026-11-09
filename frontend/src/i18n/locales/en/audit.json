@@ -135,7 +135,10 @@
     "SuspendFlux": "Flux: suspend",
     "ResumeFlux": "Flux: resume",
     "DeleteFlux": "Flux: object deleted",
-    "StartDebugContainer": "Debug container"
+    "StartDebugContainer": "Debug container",
+    "bugreport": {
+      "submit": "Bug report sent"
+    }
   },
   "export": {
     "csv": "Export CSV",

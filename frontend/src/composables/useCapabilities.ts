@@ -30,6 +30,8 @@ export interface Capabilities {
   inCluster: boolean
   /** команды и кластеры по командам (сервисный режим) */
   teams: boolean
+  /** кнопка «Сообщить об ошибке» (десктоп): письмо со снимком экрана */
+  bugReport: boolean
 }
 
 /**
@@ -47,6 +49,7 @@ export const DEFAULT_CAPABILITIES: Readonly<Capabilities> = Object.freeze({
   sso: false,
   inCluster: false,
   teams: false,
+  bugReport: false,
 })
 
 /** Берёт из ответа только известные булевы флаги; остальное — значения по умолчанию. */

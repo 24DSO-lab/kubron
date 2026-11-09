@@ -83,6 +83,13 @@ Durations use Go syntax (`30s`, `15m`, `12h`). Boolean variables accept `1`, `tr
 | `KUBRON_HELM_ALLOW_CIDRS` | — | Exceptions for Helm, for example an internal repository on `10.20.0.0/16`. |
 | `KUBRON_GKE_OAUTH_CLIENT_ID` | — | OAuth client ID that lets users sign in to GKE with their own Google account. Without it GKE uses a service-account key. |
 | `KUBRON_GKE_OAUTH_CLIENT_SECRET` | — | Secret of that client. Keep it in a Secret. The server refuses a secret without a client ID. |
+| `KUBRON_BUGREPORT_SMTP_HOST` | — | Mail server for the **Report a problem** button. Without it the button is hidden. See [Bug reports](/server/deploy#bug-reports). |
+| `KUBRON_BUGREPORT_SMTP_PORT` | `587` (`465` for `tls`) | Mail server port. |
+| `KUBRON_BUGREPORT_SMTP_SECURITY` | `starttls` | `starttls` or `tls`. `none` is accepted only for a server on the same machine. |
+| `KUBRON_BUGREPORT_SMTP_USER` | — | Sign-in of the mail account, for example `224vadim224@gmail.com`. |
+| `KUBRON_BUGREPORT_SMTP_PASSWORD` | — | Its password (for Gmail, an app password). Keep it in a Secret. The server does not send reports with a user but no password. |
+| `KUBRON_BUGREPORT_SMTP_FROM` | the user | Sender address. Gmail requires the signed-in account. |
+| `KUBRON_BUGREPORT_SMTP_TO` | `224vadim224@gmail.com` | Where the reports go. |
 
 ### Operations, audit and logging
 

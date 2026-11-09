@@ -31,4 +31,5 @@ type Capabilities struct {
 	SSO             bool   `json:"sso"`             // вход через SSO/OIDC (модуль SSO, этап 6)
 	InCluster       bool   `json:"inCluster"`       // сервер работает внутри Kubernetes: можно добавить его кластер (режим in-cluster)
 	Teams           bool   `json:"teams"`           // команды и кластеры по командам (сервисный режим; выставляет ядро по хранилищу)
+	BugReport       bool   `json:"bugReport"`       // кнопка «Сообщить об ошибке»: письмо со снимком экрана (десктоп)
 }

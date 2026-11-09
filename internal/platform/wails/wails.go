@@ -62,5 +62,6 @@ func (p *Platform) Capabilities() app.Capabilities {
 		Debug:           true,
 		LocalKubeconfig: true,
 		SSO:             false,
+		BugReport:       true,
 	}
 }

@@ -9,6 +9,8 @@ package server
 // или в deniedMethods (см. TestEveryAppMethodIsClassified). Каждый метод по-прежнему сам
 // проверяет права через authz.
 var allowedMethods = []string{
+	"GetBugReportStatus",
+	"SubmitBugReport",
 	"ExportAuditLog",
 	"AddClusterToTeam",
 	"AddInClusterToTeam",
@@ -219,17 +221,21 @@ var allowedMethods = []string{
 
 // deniedMethods — методы, которые в веб-режиме недоступны намеренно.
 var deniedMethods = map[string]string{
-	"PickKubeconfigFile":    "the native file picker is available only on desktop (capabilities.fileDialog)",
-	"GetGKEOAuth":           "the Google OAuth client of the desktop; the web server takes it from KUBRON_GKE_OAUTH_CLIENT_ID and KUBRON_GKE_OAUTH_CLIENT_SECRET",
-	"SaveGKEOAuth":          "the Google OAuth client of the desktop; the web server takes it from KUBRON_GKE_OAUTH_CLIENT_ID and KUBRON_GKE_OAUTH_CLIENT_SECRET",
-	"ClearGKEOAuth":         "the Google OAuth client of the desktop; the web server takes it from KUBRON_GKE_OAUTH_CLIENT_ID and KUBRON_GKE_OAUTH_CLIENT_SECRET",
-	"AddClusterFromFile":    "reads a path on the server filesystem; in web mode the kubeconfig is passed as text (AddClusterFromText)",
-	"OpenBrowserURL":        "opens a browser on the server machine; in web mode the browser opens links itself",
-	"GetFreePort":           "a port on the server machine is of no use to the browser; in web mode port-forward is HTTP-only through a proxy (stage 5)",
-	"StartTerminalSession":  "the session id is chosen by the client; in web mode the server issues an unguessable id itself (OpenTerminal)",
-	"WriteTerminal":         "terminal input goes over WebSocket /api/terminal/{id}",
-	"ResizeTerminal":        "terminal size is sent as a control frame over WebSocket /api/terminal/{id}",
-	"SetUpdateCheckEnabled": "the server update check is set by the operator through KUBRON_UPDATE_CHECK, not by users of the page",
+	"PickKubeconfigFile":     "the native file picker is available only on desktop (capabilities.fileDialog)",
+	"GetGKEOAuth":            "the Google OAuth client of the desktop; the web server takes it from KUBRON_GKE_OAUTH_CLIENT_ID and KUBRON_GKE_OAUTH_CLIENT_SECRET",
+	"SaveGKEOAuth":           "the Google OAuth client of the desktop; the web server takes it from KUBRON_GKE_OAUTH_CLIENT_ID and KUBRON_GKE_OAUTH_CLIENT_SECRET",
+	"ClearGKEOAuth":          "the Google OAuth client of the desktop; the web server takes it from KUBRON_GKE_OAUTH_CLIENT_ID and KUBRON_GKE_OAUTH_CLIENT_SECRET",
+	"OpenBugReportDraft":     "opens the mail program and files on the machine of the desktop; the server has neither",
+	"RevealBugReportFile":    "opens the mail program and files on the machine of the desktop; the server has neither",
+	"SaveBugReportSettings":  "the mail settings of bug reports are set by the desktop user or, on the server, by the administrator in KUBRON_BUGREPORT_SMTP_*",
+	"ClearBugReportSettings": "the mail settings of bug reports are set by the desktop user or, on the server, by the administrator in KUBRON_BUGREPORT_SMTP_*",
+	"AddClusterFromFile":     "reads a path on the server filesystem; in web mode the kubeconfig is passed as text (AddClusterFromText)",
+	"OpenBrowserURL":         "opens a browser on the server machine; in web mode the browser opens links itself",
+	"GetFreePort":            "a port on the server machine is of no use to the browser; in web mode port-forward is HTTP-only through a proxy (stage 5)",
+	"StartTerminalSession":   "the session id is chosen by the client; in web mode the server issues an unguessable id itself (OpenTerminal)",
+	"WriteTerminal":          "terminal input goes over WebSocket /api/terminal/{id}",
+	"ResizeTerminal":         "terminal size is sent as a control frame over WebSocket /api/terminal/{id}",
+	"SetUpdateCheckEnabled":  "the server update check is set by the operator through KUBRON_UPDATE_CHECK, not by users of the page",
 }
 
 // NewAppDispatcher строит диспетчер для app.App с allowlist по умолчанию.

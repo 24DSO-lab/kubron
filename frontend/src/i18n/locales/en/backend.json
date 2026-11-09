@@ -742,5 +742,21 @@
   "theDebugContainerExitedBeforeItWasAttachedExitCode": "the debug container exited before it was attached (exit code {p0}, {p1})",
   "theDebugContainerFailedToStart": "the debug container failed to start ({p0}): {p1}",
   "timedOutWaitingForTheDebugContainerToStartIt": "timed out waiting for the debug container {p0} to start ({p1}); it stays in the pod spec and cannot be removed",
-  "sourceReconcileFailed": "source {p0} {p1}/{p2}: {p3}"
+  "sourceReconcileFailed": "source {p0} {p1}/{p2}: {p3}",
+  "bugReportDescribeTheProblemBeforeSendingTheReport": "describe the problem before sending the report",
+  "bugReportTheDescriptionIsTooLong": "the description is too long",
+  "bugReportTheScreenshotIsNotAValidPngImage": "the screenshot is not a valid PNG image",
+  "bugReportTheScreenshotIsTooLarge": "the screenshot is too large",
+  "bugReportTheContactAddressIsNotAValidEmailAddress": "the contact address is not a valid e-mail address",
+  "bugReportTheMailServerSettingsAreNotValid": "the mail server settings are not valid",
+  "bugReportCouldNotConnectToTheMailServer": "could not connect to the mail server",
+  "bugReportTheMailServerRejectedTheSignInOrDoesNotSupportIt": "the mail server rejected the sign-in or does not support it",
+  "bugReportTheMailServerDidNotAcceptTheMessage": "the mail server did not accept the message",
+  "bugReportTheStorageForTheMailServerSettingsIsNotAvailable": "the storage for the mail server settings is not available",
+  "bugReportTheSavedMailServerSettingsCannotBeRead": "the saved mail server settings cannot be read",
+  "bugReportTheMailServerForBugReportsIsNotConfigured": "the mail server for bug reports is not configured",
+  "bugReportAReportWasSentAMomentAgoWaitALittleAndTryAgain": "a report was sent a moment ago; wait a little and try again",
+  "bugReportTheFolderForTheBugReportFilesIsNotAvailable": "the folder for the bug report files is not available",
+  "bugReportTheFolderCouldNotBeOpened": "the folder could not be opened",
+  "bugReportTheFileIsNotAFileOfABugReport": "the file is not a file of a bug report"
 }

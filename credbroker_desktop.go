@@ -21,6 +21,9 @@ import (
 // keeps the old path, and the reason is logged: a failed keyring is never silent.
 func setupDesktopBroker(ctx context.Context, a *app.App, platform *wailsplatform.Platform) {
 	dir := k8s.GetKubronDir()
+	// «Report a problem» without a mail server: the mail program is opened with the report prepared; the screenshot and
+	// the long text are files in this folder. It needs neither the master key nor the network, so it is set first.
+	app.SetBugReportDraftDir(a, filepath.Join(dir, "bugreports"))
 	sel, err := secrets.Resolve(ctx, secrets.Options{Mode: secrets.ModeDesktop, DataDir: dir})
 	if err != nil {
 		slog.Error("sign-in: the master key is unavailable; clusters that need a sign-in will not connect", "error", err.Error())
@@ -34,6 +37,9 @@ func setupDesktopBroker(ctx context.Context, a *app.App, platform *wailsplatform
 		slog.Error("sign-in: the encryption is not available", "error", err.Error())
 		return
 	}
+	// Mail settings for «Report a problem»: the password is sealed with the same envelope. Without the master key the
+	// button still works from the environment (KUBRON_BUGREPORT_SMTP_*), but nothing can be saved.
+	app.SetBugReport(a, app.NewBugReportStore(filepath.Join(dir, "bugreport.json"), env))
 	fs, err := filestore.New(filepath.Join(dir, "credentials.json"), credential.NewSealer(env))
 	if err != nil {
 		slog.Error("sign-in: the credentials file cannot be used", "error", err.Error())

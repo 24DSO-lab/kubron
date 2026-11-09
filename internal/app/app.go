@@ -54,7 +54,8 @@ type App struct {
 	gkeOAuth       *GKEOAuthStore
 	gkeOAuthActive string
 	conn           *signin.State
-	rev            *revocations // отозванные личные входы реплики; общий для всех видов
+	bugReport      *bugReportService // письма «Сообщить об ошибке» (десктоп)
+	rev            *revocations      // отозванные личные входы реплики; общий для всех видов
 	// limitUser и limitIDP ограничивают попытки AnswerChallenge на пользователя и на провайдера входа; nil — без лимита.
 	limitUser, limitIDP AttemptLimiter
 	// finish подменяется в тестах: подключение и проверка кластера после успешного входа.
@@ -77,11 +78,12 @@ func NewApp(p Platform) *App {
 	}
 	mgr := k8s.NewManager()
 	a := &App{
-		platform: p,
-		k8sMgr:   mgr,
-		pfMgr:    k8s.NewPortForwardManager(mgr),
-		conn:     signin.NewState(),
-		rev:      &revocations{},
+		platform:  p,
+		k8sMgr:    mgr,
+		pfMgr:     k8s.NewPortForwardManager(mgr),
+		conn:      signin.NewState(),
+		rev:       &revocations{},
+		bugReport: newBugReportService(),
 	}
 	a.pfMgr.SetObserver(a.portForwardObserver())
 	a.configureTerminals()
@@ -134,6 +136,7 @@ func (a *App) GetCapabilities() Capabilities {
 	if a.interactive.DisableDebug {
 		c.Debug = false
 	}
+	c.BugReport = a.bugReportCapability(c.BugReport)
 	c.Teams = a.dir != nil // команды есть там, где хранилище умеет их хранить, а не в оболочке
 	c.InCluster = c.Teams && k8s.InClusterAvailable()
 	return c

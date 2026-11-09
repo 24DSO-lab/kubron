@@ -30,6 +30,7 @@
       </div>
       <div class="header-right">
         <VersionBadge />
+        <BugReportButton :view="currentView" />
         <UserMenu />
       </div>
     </header>
@@ -158,6 +159,7 @@ import VersionBadge from './components/update/VersionBadge.vue'
 import UpdateBanner from './components/update/UpdateBanner.vue'
 import UpdateDialog from './components/update/UpdateDialog.vue'
 import { useUpdates } from './composables/useUpdates'
+import BugReportButton from './components/bugreport/BugReportButton.vue'
 import IdleGuard from './components/auth/IdleGuard.vue'
 import HelmOpsPanel from './components/HelmOpsPanel.vue'
 import ClusterBar from './components/ClusterBar.vue'

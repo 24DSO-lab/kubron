@@ -135,7 +135,10 @@
     "SuspendFlux": "Flux: приостановка",
     "ResumeFlux": "Flux: возобновление",
     "DeleteFlux": "Flux: объект удалён",
-    "StartDebugContainer": "Отладочный контейнер"
+    "StartDebugContainer": "Отладочный контейнер",
+    "bugreport": {
+      "submit": "Отчёт об ошибке отправлен"
+    }
   },
   "export": {
     "csv": "Выгрузить CSV",

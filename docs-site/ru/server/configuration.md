@@ -83,6 +83,13 @@ Web-версия (`kubron-server`) настраивается переменны
 | `KUBRON_HELM_ALLOW_CIDRS` | — | Исключения для Helm, например внутренний репозиторий `10.20.0.0/16`. |
 | `KUBRON_GKE_OAUTH_CLIENT_ID` | — | ID OAuth-клиента, позволяющий входить в GKE своим аккаунтом Google. Без него GKE использует ключ сервисного аккаунта. |
 | `KUBRON_GKE_OAUTH_CLIENT_SECRET` | — | Секрет этого клиента. Храните в Secret. Сервер не принимает секрет без ID клиента. |
+| `KUBRON_BUGREPORT_SMTP_HOST` | — | Почтовый сервер для кнопки **Сообщить об ошибке**. Без него кнопки нет. См. [Отчёты об ошибках](/ru/server/deploy#bug-reports). |
+| `KUBRON_BUGREPORT_SMTP_PORT` | `587` (`465` для `tls`) | Порт почтового сервера. |
+| `KUBRON_BUGREPORT_SMTP_SECURITY` | `starttls` | `starttls` или `tls`. `none` допустим только для сервера на этой же машине. |
+| `KUBRON_BUGREPORT_SMTP_USER` | — | Логин почтового ящика, например `224vadim224@gmail.com`. |
+| `KUBRON_BUGREPORT_SMTP_PASSWORD` | — | Пароль ящика (для Gmail — пароль приложения). Храните в Secret. Отчёты не отправляются, если задан пользователь, а пароля нет. |
+| `KUBRON_BUGREPORT_SMTP_FROM` | пользователь | Адрес отправителя. Gmail требует адрес ящика, под которым выполнен вход. |
+| `KUBRON_BUGREPORT_SMTP_TO` | `224vadim224@gmail.com` | Куда отправлять отчёты. |
 
 ### Эксплуатация, аудит и журналы
 
