@@ -288,8 +288,9 @@ networkPolicy:
 **Что профили не покрывают намеренно.** Терминал пода (`pods/exec`, `pods/attach`), port-forward, оболочка узла (создаёт
 привилегированный под), drain (`pods/eviction`), правка и удаление произвольных объектов, Helm (релизы хранятся в Secret'ах
 и применяют произвольные манифесты) требуют широких прав, и выдавать их по умолчанию нельзя. Включайте их осознанно через
-`custom`. Права Kubron `exec`, `nodeshell`, `portforward`, `write` при этом всё равно можно отключить для всех:
-`kubron.disableExec`, `kubron.disableNodeShell`, `kubron.disablePortForward`.
+`custom`. Отладочные контейнеры требуют ещё и `patch` на `pods/ephemeralcontainers`. Права Kubron `exec`, `nodeshell`, `debug`,
+`portforward`, `write` при этом всё равно можно отключить для всех: `kubron.disableExec`, `kubron.disableNodeShell`,
+`kubron.disableDebug`, `kubron.disablePortForward`.
 
 - **Значения Secret.** По умолчанию ServiceAccount не читает `secrets`, поэтому значения Secret недоступны никому.
   `rbac.allowSecretsRead=true` добавляет `get/list/watch` на `secrets` кластера для любого профиля: после этого их увидят
@@ -420,9 +421,12 @@ Ingress привязку по cookie (`nginx.ingress.kubernetes.io/affinity: coo
 
 Терминал пода (exec/attach) требует права `exec`. Оболочка на узле — привилегированный под с оболочкой
 хоста — требует отдельного права `nodeshell`, по умолчанию его есть только у роли администратора.
+Отладочный (ephemeral) контейнер в работающем поде требует отдельного права `debug` (по умолчанию только у
+администратора) и `exec` для терминала; образы можно ограничить списком `KUBRON_DEBUG_IMAGES`. Kubernetes не умеет
+удалять ephemeral-контейнеры, поэтому каждый запуск остаётся в spec пода до его удаления.
 Администратор сервера может отключить возможности для всех независимо от ролей:
-`KUBRON_DISABLE_EXEC` (терминалы подов и оболочка узла), `KUBRON_DISABLE_NODE_SHELL`,
-`KUBRON_DISABLE_PORT_FORWARD`; интерфейс скрывает недоступное по `GetCapabilities`, а методы отвечают
+`KUBRON_DISABLE_EXEC` (терминалы подов, оболочка узла и отладочные контейнеры), `KUBRON_DISABLE_NODE_SHELL`,
+`KUBRON_DISABLE_DEBUG`, `KUBRON_DISABLE_PORT_FORWARD`; интерфейс скрывает недоступное по `GetCapabilities`, а методы отвечают
 понятной ошибкой. Терминал закрывается по абсолютному сроку `KUBRON_TERMINAL_MAX_DURATION` (по умолчанию
 8h) и после простоя без ввода `KUBRON_TERMINAL_IDLE_TIMEOUT` (30m); `0` снимает ограничение. Начало и конец
 сессии пишутся в аудит (`terminal.start/stop`, `nodeshell.start/stop`: пользователь, кластер, namespace/под,

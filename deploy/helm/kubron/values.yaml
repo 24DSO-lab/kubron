@@ -95,11 +95,19 @@ kubron:
   disablePortForward: false
   disableNodeShell: false
   disableExec: false
+
   # Проверка обновлений (KUBRON_UPDATE_CHECK, ADR-0028): раз в сутки сервер спрашивает api.github.com о последнем
   # релизе, и администратор видит в «Настройках», что вышла новая версия и какой командой обновить (сервер сам
   # ничего не обновляет). false — сервер не делает таких запросов; так же поступайте, если egress закрыт
   # NetworkPolicy и до GitHub всё равно не дойти (docs/deploy.md, «Проверка обновлений»).
   updateCheck: true
+
+  # Отладочные (ephemeral) контейнеры в подах. disableDebug отключает их для всех; debugImages — список образов,
+  # которыми можно отлаживать (пусто — любой образ). Для работы нужно право patch на pods/ephemeralcontainers
+  # в самом кластере: профили rbac его не выдают, см. rbac.extraRules.
+  disableDebug: false
+  debugImages: []
+
   # Журнал процесса (stderr, JSON): debug | info | warn | error; пусто — info (KUBRON_LOG_LEVEL).
   # Формат text (KUBRON_LOG_FORMAT) нужен только для разработки.
   logLevel: ""

@@ -140,6 +140,28 @@ func (tsm *TerminalSessionManager) Remove(sessionID string) {
 	delete(tsm.sessions, sessionID)
 }
 
+// containerTTYStdin — флаги tty и stdin контейнера из spec пода: обычные, init и ephemeral (отладочные) контейнеры.
+// Неизвестный контейнер даёт false/false, то есть вывод без ввода; для ephemeral-контейнера это молча сделало бы
+// сессию «только чтение», поэтому они обязательно ищутся здесь.
+func containerTTYStdin(p *corev1.Pod, name string) (tty, stdin bool) {
+	for _, c := range p.Spec.Containers {
+		if c.Name == name {
+			return c.TTY, c.Stdin
+		}
+	}
+	for _, c := range p.Spec.InitContainers {
+		if c.Name == name {
+			return c.TTY, c.Stdin
+		}
+	}
+	for _, c := range p.Spec.EphemeralContainers {
+		if c.Name == name {
+			return c.TTY, c.Stdin
+		}
+	}
+	return false, false
+}
+
 // ─── sizeQueue для TerminalSizeQueue ───────────────────────
 
 type sizeQueue struct {
@@ -199,11 +221,7 @@ func (m *Manager) startTerminal(sessionID, namespace, pod, container, shell stri
 		if perr != nil {
 			return perr
 		}
-		for _, c := range p.Spec.Containers {
-			if c.Name == container {
-				tty, stdin = c.TTY, c.Stdin
-			}
-		}
+		tty, stdin = containerTTYStdin(p, container)
 		req = req.SubResource("attach").
 			VersionedParams(&corev1.PodAttachOptions{
 				Container: container,

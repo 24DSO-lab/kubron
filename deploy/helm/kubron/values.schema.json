@@ -290,9 +290,21 @@
         "disableExec": {
           "type": "boolean"
         },
+
         "updateCheck": {
           "type": "boolean"
         },
+
+        "disableDebug": {
+          "type": "boolean"
+        },
+        "debugImages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+
         "extraEnv": {
           "$ref": "#/definitions/k8sObjectList"
         },

@@ -192,7 +192,8 @@
     "mountsCount": "{n} монтирование | {n} монтирования | {n} монтирований",
     "mountFrom": "из {name}",
     "requests": "Запросы",
-    "stateReady": "{state}, готов"
+    "stateReady": "{state}, готов",
+    "debug": "отладка"
   },
   "cronJobHistory": {
     "job": "Job",
