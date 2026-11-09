@@ -741,5 +741,6 @@
   "podDisappearedWhileTheDebugContainerWasStarting": "под {p0}/{p1} исчез, пока запускался отладочный контейнер",
   "theDebugContainerExitedBeforeItWasAttachedExitCode": "отладочный контейнер завершился до подключения (код выхода {p0}, {p1})",
   "theDebugContainerFailedToStart": "отладочный контейнер не запустился ({p0}): {p1}",
-  "timedOutWaitingForTheDebugContainerToStartIt": "истекло время ожидания запуска отладочного контейнера {p0} ({p1}); он остаётся в spec пода, и удалить его нельзя"
+  "timedOutWaitingForTheDebugContainerToStartIt": "истекло время ожидания запуска отладочного контейнера {p0} ({p1}); он остаётся в spec пода, и удалить его нельзя",
+  "sourceReconcileFailed": "источник {p0} {p1}/{p2}: {p3}"
 }

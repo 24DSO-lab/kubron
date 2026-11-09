@@ -741,5 +741,6 @@
   "podDisappearedWhileTheDebugContainerWasStarting": "pod {p0}/{p1} disappeared while the debug container was starting",
   "theDebugContainerExitedBeforeItWasAttachedExitCode": "the debug container exited before it was attached (exit code {p0}, {p1})",
   "theDebugContainerFailedToStart": "the debug container failed to start ({p0}): {p1}",
-  "timedOutWaitingForTheDebugContainerToStartIt": "timed out waiting for the debug container {p0} to start ({p1}); it stays in the pod spec and cannot be removed"
+  "timedOutWaitingForTheDebugContainerToStartIt": "timed out waiting for the debug container {p0} to start ({p1}); it stays in the pod spec and cannot be removed",
+  "sourceReconcileFailed": "source {p0} {p1}/{p2}: {p3}"
 }
