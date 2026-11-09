@@ -16,6 +16,14 @@ data:
   # Метрики Prometheus на отдельном порту; Ingress до него не доходит (см. metrics-service.yaml)
   KUBRON_METRICS_LISTEN: {{ printf "0.0.0.0:%d" (int .Values.metrics.port) | quote }}
   {{- end }}
+  # Как установлен сервер: страница обновлений показывает точную команду helm upgrade для этого релиза (ADR-0028)
+  KUBRON_INSTALL_METHOD: "helm"
+  KUBRON_HELM_RELEASE: {{ .Release.Name | quote }}
+  KUBRON_HELM_NAMESPACE: {{ .Release.Namespace | quote }}
+  {{- if not .Values.kubron.updateCheck }}
+  # Проверка обновлений выключена: сервер не обращается к api.github.com
+  KUBRON_UPDATE_CHECK: "off"
+  {{- end }}
   KUBRON_TRUST_PROXY: {{ include "kubron.trustProxy" . | quote }}
   {{- with (include "kubron.allowedHosts" .) }}
   KUBRON_ALLOWED_HOSTS: {{ . | quote }}

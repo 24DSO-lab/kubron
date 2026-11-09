@@ -1,0 +1,68 @@
+{
+  "title": "版本与更新",
+  "badge": {
+    "title": "Kubron 版本与更新",
+    "available": "有可用更新：{version}"
+  },
+  "banner": {
+    "text": "Kubron {version} 已发布（当前版本 {current}）。",
+    "details": "如何更新",
+    "dismiss": "隐藏，直到下一个版本"
+  },
+  "current": "已安装版本",
+  "installedAs": "安装方式",
+  "latest": "最新版本",
+  "checkedAt": "上次检查",
+  "adminOnly": "更新详情仅对管理员可见。",
+  "locked": "此安装的管理员已关闭更新检查。",
+  "devBuild": "这是开发版本：更新检查已禁用。",
+  "available": "有新版本可用：{version}。",
+  "upToDate": "您正在使用最新版本。",
+  "notChecked": "尚未完成检查。",
+  "how": "如何更新",
+  "unknownMethod": "无法确定安装方式。请在发布页面下载新版本。",
+  "hint": {
+    "helm": "在能访问集群的环境中运行此命令，当前的 Helm 值会被保留。",
+    "kubernetes": "将清单、Kustomize 叠加层或 GitOps 仓库中的镜像改为此标签并应用。",
+    "docker": "拉取新镜像并重新创建容器。",
+    "binary": "用新的构建替换服务器二进制文件并重启。",
+    "deb": "下载安装包并使用下面的命令安装。重启应用后将使用新版本。",
+    "archive": "下载新的压缩包并替换当前安装的文件。",
+    "macosApp": "下载新的压缩包并替换“应用程序”中的 Kubron.app。",
+    "unknown": "请在发布页面下载新版本。"
+  },
+  "method": {
+    "helm": "Helm 图表",
+    "kubernetes": "Kubernetes（不使用 Helm）",
+    "docker": "容器（Docker、Podman）",
+    "binary": "服务器二进制文件",
+    "deb": "DEB 安装包",
+    "archive": "压缩包",
+    "macosApp": "macOS 应用",
+    "unknown": "未知"
+  },
+  "command": {
+    "helmUpgrade": "更新 Helm 发布",
+    "dockerPull": "拉取镜像",
+    "composeUp": "Docker Compose",
+    "image": "新镜像",
+    "debInstall": "安装软件包"
+  },
+  "download": "下载",
+  "releaseNotes": "GitHub 上的发布说明",
+  "copy": "复制",
+  "copied": "已复制",
+  "copyFailed": "无法复制到剪贴板",
+  "autoCheck": "每天自动检查更新",
+  "check": "检查更新",
+  "checking": "正在检查…",
+  "error": {
+    "network": "无法连接 GitHub。请检查网络连接。",
+    "rate_limited": "已超过 GitHub 请求限制，请稍后重试。",
+    "not_found": "尚未发布任何版本。",
+    "unexpected_response": "GitHub 返回了意外的响应。",
+    "locked": "管理员已关闭更新检查。",
+    "unavailable": "此处无法检查更新。",
+    "generic": "更新检查失败。"
+  }
+}

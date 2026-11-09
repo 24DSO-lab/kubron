@@ -52,6 +52,14 @@ Durations use Go syntax (`30s`, `15m`, `12h`). Boolean variables accept `1`, `tr
 | `KUBRON_DISABLE_NODE_SHELL` | off | Disable the node shell for everyone. |
 | `KUBRON_DISABLE_PORT_FORWARD` | off | Disable port-forward for everyone. |
 | `KUBRON_MAX_TERMINALS` | `8` | Terminals per user. `0` means unlimited. |
+
+### Updates
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `KUBRON_UPDATE_CHECK` | `on` | `off` stops all update checks: the server makes no requests to `api.github.com`. |
+| `KUBRON_INSTALL_METHOD` | detected | `helm`, `kubernetes`, `docker` or `binary`. Set it only if automatic detection is wrong; the Helm chart sets it itself. |
+| `KUBRON_HELM_RELEASE`, `KUBRON_HELM_NAMESPACE` | set by the chart | Release name and namespace shown in the `helm upgrade` command. |
 | `KUBRON_MAX_LOG_STREAMS` | `20` | Log streams per user. `0` means unlimited. |
 | `KUBRON_MAX_PORT_FORWARDS` | `10` | Port-forwards per user. `0` means unlimited. |
 | `KUBRON_TERMINAL_MAX_DURATION` | `8h` | Maximum lifetime of a terminal. `0` means unlimited. |

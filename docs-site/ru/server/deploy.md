@@ -334,6 +334,8 @@ kubron:
 
 ## Обновление
 
+Kubron раз в сутки проверяет GitHub на наличие нового релиза. Администраторы видят баннер и окно **Версия и обновления** с точной командой для вашего способа установки (Helm, манифесты Kubernetes, Docker). Сервер сам себя не обновляет. Чтобы отключить такие запросы, например в изолированной сети, задайте `kubron.updateCheck: false`. Если вы сузили `networkPolicy.egress.clusterApi.cidrs`, разрешите `api.github.com` через `networkPolicy.egress.extra` или отключите проверку.
+
 ```bash
 helm upgrade kubron oci://ghcr.io/24dso-lab/charts/kubron \
   --version <new-version> -n kubron -f values.yaml

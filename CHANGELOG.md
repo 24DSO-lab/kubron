@@ -9,8 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+
+- **Version and updates:** the current version is shown in the header. Kubron checks GitHub once a day for a newer release and, for administrators, shows a banner and a "Version and updates" dialog. It detects how it was installed and shows the matching steps: `helm upgrade` for the Helm chart, the new image tag for Kubernetes manifests, `docker pull` for containers, and a download link or `apt install` command for the desktop `.deb`, archive or macOS app. Kubron does not install updates itself.
+- **Update check policy:** set `KUBRON_UPDATE_CHECK=off` (`kubron.updateCheck: false` in the Helm chart) to stop all update requests, for example in air-gapped networks. On Desktop, users can also turn the daily check off in the update dialog.
+
 - **Debug containers:** the **Debug container** action on a Pod adds an ephemeral container to the running Pod and attaches a terminal to it, for images without a shell or debugging tools. Choose an image, a `general` or `restricted` profile and a target container. It needs the new `debug` permission (administrators by default) and `exec`, and the cluster account needs `patch` on `pods/ephemeralcontainers`. Debug containers are marked in the container list; Kubernetes cannot remove them, so each one stays in the Pod spec until the Pod is deleted.
 - **Debug container settings:** `KUBRON_DISABLE_DEBUG` (`kubron.disableDebug` in the Helm chart) turns the feature off, and `KUBRON_DEBUG_IMAGES` (`kubron.debugImages`) limits the images that can be used. Turning off `KUBRON_DISABLE_EXEC` turns it off as well.
+
 
 ## [1.2.0] - 2026-11-08
 

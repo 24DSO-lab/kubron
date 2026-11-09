@@ -52,6 +52,14 @@ Web-версия (`kubron-server`) настраивается переменны
 | `KUBRON_DEBUG_IMAGES` | пусто | Образы отладочных контейнеров через запятую. Пусто — разрешён любой образ. |
 | `KUBRON_DISABLE_PORT_FORWARD` | выкл. | Отключить port-forward для всех. |
 | `KUBRON_MAX_TERMINALS` | `8` | Терминалов на пользователя. `0` — без ограничения. |
+
+### Обновления
+
+| Переменная | По умолчанию | Назначение |
+|---|---|---|
+| `KUBRON_UPDATE_CHECK` | `on` | `off` отключает любые проверки обновлений: сервер не обращается к `api.github.com`. |
+| `KUBRON_INSTALL_METHOD` | определяется | `helm`, `kubernetes`, `docker` или `binary`. Задавайте, только если автоопределение ошиблось; чарт Helm задаёт её сам. |
+| `KUBRON_HELM_RELEASE`, `KUBRON_HELM_NAMESPACE` | задаёт чарт | Имя релиза и пространство имён в команде `helm upgrade`. |
 | `KUBRON_MAX_LOG_STREAMS` | `20` | Потоков логов на пользователя. `0` — без ограничения. |
 | `KUBRON_MAX_PORT_FORWARDS` | `10` | Port-forward на пользователя. `0` — без ограничения. |
 | `KUBRON_TERMINAL_MAX_DURATION` | `8h` | Максимальная длительность терминала. `0` — без ограничения. |
