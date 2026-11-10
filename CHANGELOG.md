@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-11-10
 
 ### Added
 
@@ -21,7 +22,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **Pod containers:** in the Environment tab, a variable that comes from a ConfigMap now shows its value, below the `ConfigMap → key` reference. If the ConfigMap can't be read, only the reference is shown, as before.
-
 
 ## [1.2.0] - 2026-11-08
 
@@ -291,7 +291,8 @@ First public release.
 - Web mode (`cmd/kubron-server`): several concurrent sessions, per-session
   cluster managers with per-user resource limits, idle informers released after a TTL.
 
-[Unreleased]: https://github.com/24DSO-lab/kubron/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/24DSO-lab/kubron/compare/v1.2.1...HEAD
+[1.2.1]: https://github.com/24DSO-lab/kubron/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/24DSO-lab/kubron/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/24DSO-lab/kubron/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/24DSO-lab/kubron/compare/v0.6.0...v1.0.0
