@@ -40,9 +40,10 @@ jobs:
   #
   # Помимо этого job решает, что можно не гонять заново без потери качества:
   #  - verified: для точно такого же содержимого (tree hash) полный прогон уже был зелёным. Merge-коммит PR,
-  #    коммит после слияния и повышение refactor -> dev -> master различаются SHA, но не содержимым, поэтому
-  #    результат тестов тот же. Тег, ручной запуск и проверки уязвимостей зависимостей (deps-audit,
-  #    vulncheck: база уязвимостей меняется со временем) заново выполняются всегда. См. .github/actions/verified-tree;
+  #    коммит после слияния, повышение refactor -> dev -> master и тег релиза различаются SHA, но не содержимым,
+  #    поэтому результат тестов тот же. Ручной запуск и проверки уязвимостей зависимостей (deps-audit,
+  #    vulncheck: база уязвимостей меняется со временем) заново выполняются всегда; тег без отметки гоняет полный
+  #    набор. См. .github/actions/verified-tree;
   #  - go: PR, который меняет только frontend/ и docs-site/ (без *.go), не влияет на Go-проверки: Go-тесты
   #    не читают файлы фронтенда, а main.go и frontend/embed.go встраивают заглушку dist. Только для
   #    pull_request: push, тег и ручной запуск всегда идут полным набором.
@@ -74,6 +75,8 @@ jobs:
         with:
           prefix: ci
           token: ${{ github.token }}
+          # Тег приходит только из release.yml и ставится на содержимое, уже проверенное в dev: см. verified-tree
+          reuse-on-tag: "true"
 
       - name: Diff against the base
         id: diff
@@ -784,7 +787,14 @@ jobs:
         with:
           browsers: chromium
 
-      - run: npx playwright install --with-deps chromium
+      # --with-deps ставит системные пакеты через apt: при сбое зеркала без таймаута шаг висел до конца job'а
+      - name: Playwright browsers
+        run: |
+          for attempt in 1 2 3; do
+            timeout 300 npx playwright install --with-deps chromium && exit 0
+            echo "::warning::playwright install, попытка $attempt из 3: ошибка или таймаут"
+          done
+          exit 1
         working-directory: frontend
 
       - name: Playwright
@@ -881,7 +891,14 @@ jobs:
         with:
           browsers: chromium
 
-      - run: npx playwright install --with-deps chromium
+      # --with-deps ставит системные пакеты через apt: при сбое зеркала без таймаута шаг висел до конца job'а
+      - name: Playwright browsers
+        run: |
+          for attempt in 1 2 3; do
+            timeout 300 npx playwright install --with-deps chromium && exit 0
+            echo "::warning::playwright install, попытка $attempt из 3: ошибка или таймаут"
+          done
+          exit 1
         working-directory: frontend
 
       - name: Playwright (teams)
@@ -981,7 +998,14 @@ jobs:
         with:
           browsers: chromium
 
-      - run: npx playwright install --with-deps chromium
+      # --with-deps ставит системные пакеты через apt: при сбое зеркала без таймаута шаг висел до конца job'а
+      - name: Playwright browsers
+        run: |
+          for attempt in 1 2 3; do
+            timeout 300 npx playwright install --with-deps chromium && exit 0
+            echo "::warning::playwright install, попытка $attempt из 3: ошибка или таймаут"
+          done
+          exit 1
         working-directory: frontend
 
       - name: Playwright (HA)
@@ -1008,7 +1032,7 @@ jobs:
   # Отметка «содержимое проверено» (см. verified-tree): артефакт ci-verified-<tree>. Пишется только после
   # полностью зелёного прогона без единого пропуска (поэтому PR, пропустивший Go-job'ы по путям, или
   # docs-only прогон отметки не оставляют), и только для push и PR из этого же репозитория. Тег, ручной
-  # запуск и форки отметок не пишут. Следующий прогон с тем же содержимым пропустит эти job'ы.
+  # запуск и форки отметок не пишут (тег их читает). Следующий прогон с тем же содержимым пропустит эти job'ы.
   # Проверки уязвимостей (deps-audit, vulncheck) и DCO сюда не входят: они выполняются всегда.
   record-verified:
     name: Record verified tree

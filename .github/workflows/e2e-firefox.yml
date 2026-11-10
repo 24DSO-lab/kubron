@@ -134,7 +134,14 @@ jobs:
         with:
           browsers: chromium-firefox
 
-      - run: npx playwright install --with-deps chromium firefox
+      # --with-deps ставит системные пакеты через apt: при сбое зеркала без таймаута шаг висел до конца job'а
+      - name: Playwright browsers
+        run: |
+          for attempt in 1 2 3; do
+            timeout 300 npx playwright install --with-deps chromium firefox && exit 0
+            echo "::warning::playwright install, попытка $attempt из 3: ошибка или таймаут"
+          done
+          exit 1
         working-directory: frontend
 
       - name: Playwright (chromium + firefox)
