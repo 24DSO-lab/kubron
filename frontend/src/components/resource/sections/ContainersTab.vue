@@ -79,12 +79,13 @@
       <span class="ct-ref-badge" :class="'ct-ref-' + refOf(e.value)!.kind">{{ refOf(e.value)!.kind }}</span>
 
       <span v-if="envKey(c, e) in secretValues" class="ct-env-plain">{{ secretValues[envKey(c, e)] || $t('sections.containers.emptyValue') }}</span>
+      <span v-else-if="configMapValue(e) !== undefined" class="ct-env-plain">{{ configMapValue(e) || $t('sections.containers.emptyValue') }}</span>
+      <!-- Ссылка name → key остаётся всегда; у ConfigMap со значением выводится отдельной строкой под ним -->
       <span
-        v-else-if="configMapValue(e) !== undefined"
-        class="ct-env-plain"
-        :title="`${refOf(e.value)!.name} → ${refOf(e.value)!.key}`"
-      >{{ configMapValue(e) || $t('sections.containers.emptyValue') }}</span>
-      <span v-else class="ct-ref-text">
+        v-if="!(envKey(c, e) in secretValues)"
+        class="ct-ref-text"
+        :class="{ 'ct-ref-sub': configMapValue(e) !== undefined }"
+      >
         <template v-if="refOf(e.value)!.key">
           {{ refOf(e.value)!.name }}<span class="ct-ref-arrow"> → </span>{{ refOf(e.value)!.key }}
         </template>
@@ -351,6 +352,7 @@ function fmtRes(c: any, kind: 'requests' | 'limits'): string {
 .ct-ref-field, .ct-ref-resource { color: #a78bfa; background: rgba(167,139,250,0.14); }
 
 .ct-ref-text { color: #9ca0b8; overflow-wrap: anywhere; min-width: 0; }
+.ct-ref-sub { flex-basis: 100%; font-size: 0.85em; }
 .ct-ref-arrow { color: #6b6d8a; }
 
 .ct-env-eye {
