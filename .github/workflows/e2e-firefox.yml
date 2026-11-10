@@ -4,19 +4,15 @@ name: E2E (Firefox, CSP)
 # только Chromium, а менять его нельзя во избежание конфликтов с этапом 3. Повторяет подготовку job `e2e`
 # из ci.yml (веб-сборка, сервер, kind) и запускает оба проекта Playwright: Firefox-проект берёт
 # администратора и кластер, созданные тестами Chromium-проекта.
+#
+# Проверка «E2E (Chromium + Firefox, kind)» обязательна для master и dev, поэтому workflow запускается на каждый
+# push и pull request, а решение «нужен ли прогон» принимает job `changes`. Job, пропущенный по `if`, считается
+# успешным. Раньше стоял фильтр `paths` на уровне workflow: если PR не затрагивал эти файлы, workflow не
+# стартовал, проверка оставалась в состоянии Pending, и слияние блокировалось («base branch policy prohibits the merge»).
 on:
   push:
     branches: [main, master, dev, refactor]
-    paths: &paths
-      - internal/server/headers.go
-      - internal/server/server.go
-      - frontend/e2e/**
-      - frontend/playwright.config.ts
-      - frontend/index.html
-      - frontend/vite.config.ts
-      - .github/workflows/e2e-firefox.yml
   pull_request:
-    paths: *paths
   workflow_dispatch:
 
 permissions:
@@ -30,8 +26,48 @@ env:
   GO_TAGS: webkit2_41
 
 jobs:
+  # Файлы, от которых зависит проверка CSP в Firefox. Список держите в синхроне с шагом Diff ниже.
+  changes:
+    name: Firefox E2E changes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      run: ${{ steps.diff.outputs.run }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # pull_request проверяется на merge-коммите: HEAD^1..HEAD — весь PR целиком
+          fetch-depth: 2
+
+      - name: Diff against the base
+        id: diff
+        env:
+          EVENT: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          relevant='^(internal/server/headers\.go|internal/server/server\.go|frontend/e2e/|frontend/playwright\.config\.ts|frontend/index\.html|frontend/vite\.config\.ts|\.github/workflows/e2e-firefox\.yml)'
+          base=
+          if [[ $EVENT == pull_request ]]; then
+            base=HEAD^1
+          elif [[ $EVENT == push && $REF == refs/heads/* && ! $BEFORE =~ ^0*$ ]] &&
+            git fetch --no-tags --depth=1 origin "$BEFORE"; then
+            base=$BEFORE
+          fi
+          # Ручной запуск и всё, что нельзя сравнить, гоняют проверку
+          run=true
+          if [[ -n $base ]] && changed=$(git -c core.quotepath=off diff --no-renames --name-only "$base" HEAD) &&
+            [[ -n $changed ]] && ! grep -qE "$relevant" <<<"$changed"; then
+            run=false
+          fi
+          echo "run=$run" | tee -a "$GITHUB_OUTPUT"
+
   e2e-firefox:
     name: E2E (Chromium + Firefox, kind)
+    needs: changes
+    # !cancelled(): сбой job `changes` должен запускать проверку, а не «проходить» её пропуском
+    if: ${{ !cancelled() && needs.changes.outputs.run != 'false' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     steps:

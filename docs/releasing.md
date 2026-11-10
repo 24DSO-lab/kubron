@@ -68,7 +68,7 @@ workflow'ов запускается только по путям файлов: 
 | `deps-audit` | `ci.yml` | `npm audit`, osv-scanner, сроки исключений в `.trivyignore` и `osv-scanner.toml` |
 | `vulncheck` (govulncheck) | `ci.yml` | не блокирует, но откройте отчёт: найденные уязвимости с исправлением чините до релиза |
 | `deploy` (`hadolint`, `chart`, `kind`) | `deploy.yml` | **по путям**: запустите вручную, если не менялись `Dockerfile`, `deploy/**` и т. п. |
-| `e2e-firefox` | `e2e-firefox.yml` | **по путям** (CSP, заголовки); при сомнениях запустите вручную |
+| `e2e-firefox` | `e2e-firefox.yml` | запускается всегда; сам прогон пропускается, если файлы CSP и заголовков не менялись (пропуск считается зелёным) |
 | CodeQL | `codeql.yml` | последний прогон на `dev` зелёный, открытых алертов уровня high нет |
 | Пробная публикация сервера | `publish.yml` вручную, `push` выключен | `gh workflow run publish.yml --ref dev`: сборка, Trivy-ворота, SBOM, пакет чарта без push |
 
