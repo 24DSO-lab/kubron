@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+
 ### Added
 
 
@@ -16,6 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Debug containers:** the **Debug container** action on a Pod adds an ephemeral container to the running Pod and attaches a terminal to it, for images without a shell or debugging tools. Choose an image, a `general` or `restricted` profile and a target container. It needs the new `debug` permission (administrators by default) and `exec`, and the cluster account needs `patch` on `pods/ephemeralcontainers`. Debug containers are marked in the container list; Kubernetes cannot remove them, so each one stays in the Pod spec until the Pod is deleted.
 - **Debug container settings:** `KUBRON_DISABLE_DEBUG` (`kubron.disableDebug` in the Helm chart) turns the feature off, and `KUBRON_DEBUG_IMAGES` (`kubron.debugImages`) limits the images that can be used. Turning off `KUBRON_DISABLE_EXEC` turns it off as well.
 - **Report a problem (Desktop and Web):** a button in the header takes a screenshot of the window, lets you review it, describe the problem and send both by e-mail. On the desktop it works at once through the user's mail app (the screenshot is copied to the clipboard and saved as a file), or the mail server can be set in the dialog (the password is stored encrypted) or with `KUBRON_BUGREPORT_SMTP_*`; on the web server the administrator sets `KUBRON_BUGREPORT_SMTP_*` and the button appears once it is valid. Per-user and hourly limits apply, and each report is audited. See `docs/bug-report.md`.
+
+### Fixed
+
+- **Pod containers:** in the Environment tab, a variable that comes from a ConfigMap now shows its value instead of the `ConfigMap → key` reference. The reference is still available as a tooltip. If the ConfigMap can't be read, the reference is shown as before.
+
 
 ## [1.2.0] - 2026-11-08
 

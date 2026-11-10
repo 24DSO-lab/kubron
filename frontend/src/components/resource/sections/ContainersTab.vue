@@ -65,7 +65,7 @@
         </div>
 
 <!-- Environment -->
-<div class="rd-row rd-click" @click="flip(envOpen, c.name)">
+<div class="rd-row rd-click" @click="toggleEnv(c)">
   <span class="rd-label">{{ $t('sections.containers.environment') }}<span class="rd-arrow" :class="{ open: envOpen[c.name] }">›</span></span>
   <span class="rd-value">{{ $t('sections.containers.envCount', envList(c).length) }}</span>
 
@@ -79,6 +79,11 @@
       <span class="ct-ref-badge" :class="'ct-ref-' + refOf(e.value)!.kind">{{ refOf(e.value)!.kind }}</span>
 
       <span v-if="envKey(c, e) in secretValues" class="ct-env-plain">{{ secretValues[envKey(c, e)] || $t('sections.containers.emptyValue') }}</span>
+      <span
+        v-else-if="configMapValue(e) !== undefined"
+        class="ct-env-plain"
+        :title="`${refOf(e.value)!.name} → ${refOf(e.value)!.key}`"
+      >{{ configMapValue(e) || $t('sections.containers.emptyValue') }}</span>
       <span v-else class="ct-ref-text">
         <template v-if="refOf(e.value)!.key">
           {{ refOf(e.value)!.name }}<span class="ct-ref-arrow"> → </span>{{ refOf(e.value)!.key }}
@@ -215,6 +220,40 @@ async function toggleSecret(c: any, e: { name: string; value: string }) {
   } finally {
     secretLoading[k] = false
   }
+}
+
+// ConfigMap не секрет: значения env с configMapKeyRef подгружаются автоматически
+// при раскрытии блока «Окружение» (через GetConfigMapDetail, право read).
+// Ключ кеша — имя ConfigMap; undefined в configMapValue => показываем "name → key".
+const configMapData = reactive<Record<string, Record<string, string>>>({})
+
+async function loadConfigMaps(c: any) {
+  const names = new Set<string>()
+  for (const e of envList(c)) {
+    const r = refOf(e.value)
+    if (r?.kind === 'configmap' && r.key) names.add(r.name)
+  }
+  await Promise.all([...names].map(async (name) => {
+    try {
+      const cm = await callApp('GetConfigMapDetail', props.resource.namespace, name)
+      configMapData[name] = cm?.data ?? {}
+    } catch (err) {
+      // нет прав / ConfigMap удалён / optional — остаёмся на отображении ссылки
+      console.warn('GetConfigMapDetail failed:', name, err)
+      delete configMapData[name]
+    }
+  }))
+}
+
+function configMapValue(e: { value: string }): string | undefined {
+  const r = refOf(e.value)
+  if (r?.kind !== 'configmap') return undefined
+  return configMapData[r.name]?.[r.key]
+}
+
+function toggleEnv(c: any) {
+  flip(envOpen, c.name)
+  if (envOpen[c.name]) void loadConfigMaps(c) // обновляем значения при каждом раскрытии
 }
 
 // function maskRef(v: string): string {
