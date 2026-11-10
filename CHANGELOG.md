@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **Pod containers:** in the Environment tab, a variable that comes from a ConfigMap now shows its value instead of the `ConfigMap → key` reference. The reference is still available as a tooltip. If the ConfigMap can't be read, the reference is shown as before.
+- **Pod containers:** in the Environment tab, a variable that comes from a ConfigMap now shows its value, with the `ConfigMap → key` reference kept on the line below. If the ConfigMap can't be read, only the reference is shown, as before.
 
 ## [1.2.0] - 2026-11-08
 
