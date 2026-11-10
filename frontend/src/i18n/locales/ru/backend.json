@@ -756,7 +756,10 @@
   "bugReportTheSavedMailServerSettingsCannotBeRead": "сохранённые настройки почтового сервера не удаётся прочитать",
   "bugReportTheMailServerForBugReportsIsNotConfigured": "почтовый сервер для отчётов об ошибках не настроен",
   "bugReportAReportWasSentAMomentAgoWaitALittleAndTryAgain": "отчёт был отправлен только что; подождите немного и повторите",
-  "bugReportTheFolderForTheBugReportFilesIsNotAvailable": "папка для файлов отчёта об ошибке недоступна",
-  "bugReportTheFolderCouldNotBeOpened": "не удалось открыть папку",
-  "bugReportTheFileIsNotAFileOfABugReport": "это не файл отчёта об ошибке"
+  "bugReportTheReportReceiverIsNotAvailable": "приёмник отчётов недоступен",
+  "bugReportTheReportReceiverDidNotAcceptTheReport": "приёмник отчётов не принял отчёт",
+  "bugReportTheReportReceiverAddressIsNotValid": "адрес приёмника отчётов недопустим",
+  "bugReportTheFolderForTheReportsThatWaitForDeliveryIsNotAvailable": "папка для отчётов, ожидающих отправки, недоступна",
+  "bugReportThereAreNoReportsWaitingForDelivery": "нет отчётов, ожидающих отправки",
+  "bugReportTheArchiveOfTheReportsCouldNotBeWritten": "не удалось записать архив с отчётами"
 }

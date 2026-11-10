@@ -21,9 +21,9 @@ import (
 // keeps the old path, and the reason is logged: a failed keyring is never silent.
 func setupDesktopBroker(ctx context.Context, a *app.App, platform *wailsplatform.Platform) {
 	dir := k8s.GetKubronDir()
-	// «Report a problem» without a mail server: the mail program is opened with the report prepared; the screenshot and
-	// the long text are files in this folder. It needs neither the master key nor the network, so it is set first.
-	app.SetBugReportDraftDir(a, filepath.Join(dir, "bugreports"))
+	// «Report a problem»: the report goes to the receiver of the project, and one that cannot be delivered waits in this
+	// folder for a connection. It needs neither the master key nor the network, so it is set first.
+	app.SetBugReportOutbox(a, filepath.Join(dir, "bugreports"))
 	sel, err := secrets.Resolve(ctx, secrets.Options{Mode: secrets.ModeDesktop, DataDir: dir})
 	if err != nil {
 		slog.Error("sign-in: the master key is unavailable; clusters that need a sign-in will not connect", "error", err.Error())

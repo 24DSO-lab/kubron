@@ -756,7 +756,10 @@
   "bugReportTheSavedMailServerSettingsCannotBeRead": "the saved mail server settings cannot be read",
   "bugReportTheMailServerForBugReportsIsNotConfigured": "the mail server for bug reports is not configured",
   "bugReportAReportWasSentAMomentAgoWaitALittleAndTryAgain": "a report was sent a moment ago; wait a little and try again",
-  "bugReportTheFolderForTheBugReportFilesIsNotAvailable": "the folder for the bug report files is not available",
-  "bugReportTheFolderCouldNotBeOpened": "the folder could not be opened",
-  "bugReportTheFileIsNotAFileOfABugReport": "the file is not a file of a bug report"
+  "bugReportTheReportReceiverIsNotAvailable": "the report receiver is not available",
+  "bugReportTheReportReceiverDidNotAcceptTheReport": "the report receiver did not accept the report",
+  "bugReportTheReportReceiverAddressIsNotValid": "the report receiver address is not valid",
+  "bugReportTheFolderForTheReportsThatWaitForDeliveryIsNotAvailable": "the folder for the reports that wait for delivery is not available",
+  "bugReportThereAreNoReportsWaitingForDelivery": "there are no reports waiting for delivery",
+  "bugReportTheArchiveOfTheReportsCouldNotBeWritten": "the archive of the reports could not be written"
 }

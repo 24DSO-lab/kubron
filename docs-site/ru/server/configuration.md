@@ -90,6 +90,7 @@ Web-версия (`kubron-server`) настраивается переменны
 | `KUBRON_BUGREPORT_SMTP_PASSWORD` | — | Пароль ящика (для Gmail — пароль приложения). Храните в Secret. Отчёты не отправляются, если задан пользователь, а пароля нет. |
 | `KUBRON_BUGREPORT_SMTP_FROM` | пользователь | Адрес отправителя. Gmail требует адрес ящика, под которым выполнен вход. |
 | `KUBRON_BUGREPORT_SMTP_TO` | `224vadim224@gmail.com` | Куда отправлять отчёты. |
+| `KUBRON_BUGREPORT_RELAY_URL` | — | HTTPS-адрес приёмника отчётов (например, `https://kubron.pages.dev/api/bugreport`) вместо почтового сервера или после него. `off` отключает. См. [Отчёты об ошибках](/ru/server/deploy#bug-reports). |
 
 ### Эксплуатация, аудит и журналы
 

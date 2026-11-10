@@ -4,13 +4,15 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { BugReportStatus } from '../../types/bugreport'
 import {
-  canOpenMailClient, pasteShortcut, pngBlob,
+  deliveryHint,
   MAX_DESCRIPTION, SCREENSHOT_MAX_BASE64, SCREENSHOT_MAX_SIDE, renderWithinLimit, canSaveMailSettings, canSendReport, defaultPort, pngBase64, screenshotScale,
 } from './bugReportView'
 
-const status = (configured: boolean): BugReportStatus => ({
-  configured, source: configured ? 'saved' : '', recipient: 'a@b.c', canSave: true, canDraft: true,
+const status = (configured: boolean, over: Partial<BugReportStatus> = {}): BugReportStatus => ({
+  configured, source: configured ? 'saved' : '', recipient: 'a@b.c', canSave: true,
+  channel: configured ? 'mail' : '', canQueue: false, pending: 0,
   settings: { host: '', port: 587, username: '', password: '', from: '', to: '', security: 'starttls', passwordSet: false },
+  ...over,
 })
 
 describe('screenshotScale', () => {
@@ -96,27 +98,22 @@ describe('renderWithinLimit', () => {
   })
 })
 
-describe('почтовая программа', () => {
-  it('открыть можно с описанием, если оболочка умеет черновик; настроенная почта не нужна', () => {
-    expect(canOpenMailClient('broken', status(false), false)).toBe(true)
-    expect(canOpenMailClient('broken', { ...status(false), canDraft: false }, false)).toBe(false)
-    expect(canOpenMailClient('  ', status(false), false)).toBe(false)
-    expect(canOpenMailClient('broken', status(false), true)).toBe(false)
-    expect(canOpenMailClient('broken', null, false)).toBe(false)
+describe('способ доставки', () => {
+  it('подсказка выбирается по каналу; без канала отчёт ждёт в очереди, а без очереди отправлять некуда', () => {
+    expect(deliveryHint(null)).toBe('none')
+    expect(deliveryHint(status(true))).toBe('mail')
+    expect(deliveryHint(status(false, { channel: 'relay' }))).toBe('relay')
+    expect(deliveryHint(status(false, { canQueue: true }))).toBe('queue')
+    expect(deliveryHint(status(false))).toBe('none')
   })
 
-  it('подсказка вставки зависит от системы', () => {
-    expect(pasteShortcut('MacIntel')).toBe('⌘V')
-    expect(pasteShortcut('Win32')).toBe('Ctrl+V')
-    expect(pasteShortcut('Linux x86_64')).toBe('Ctrl+V')
-    expect(pasteShortcut('')).toBe('Ctrl+V')
-  })
-
-  it('PNG из data URL превращается в Blob без fetch', async () => {
-    const blob = pngBlob('data:image/png;base64,' + btoa('\x89PNG-bytes'))
-    expect(blob?.type).toBe('image/png')
-    expect(blob?.size).toBe('\x89PNG-bytes'.length)
-    expect(pngBlob('data:image/jpeg;base64,QUJD')).toBeNull()
-    expect(pngBlob('data:image/png;base64,***')).toBeNull()
+  it('отправить можно при любом способе доставки, пока есть описание допустимой длины', () => {
+    expect(canSendReport('broken', status(false, { channel: 'relay' }), false)).toBe(true)
+    expect(canSendReport('broken', status(false, { canQueue: true }), false)).toBe(true)
+    expect(canSendReport('broken', status(false), false)).toBe(false)
+    expect(canSendReport('  ', status(true), false)).toBe(false)
+    expect(canSendReport('broken', status(true), true)).toBe(false)
+    expect(canSendReport('x'.repeat(MAX_DESCRIPTION + 1), status(true), false)).toBe(false)
+    expect(canSendReport('broken', null, false)).toBe(false)
   })
 })

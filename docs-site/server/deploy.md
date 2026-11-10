@@ -326,7 +326,7 @@ kubron:
 
 ### Bug reports {#bug-reports}
 
-The **Report a problem** button in the header sends the user's description and a screenshot of the browser window to a mailbox. The server sends the mail through your SMTP account; the button appears only when `KUBRON_BUGREPORT_SMTP_HOST` is set and valid.
+The **Report a problem** button in the header sends the user's description and a screenshot of the browser window to a mailbox. The server sends the mail through your SMTP account, or posts the report to a receiver; the button appears only when `KUBRON_BUGREPORT_SMTP_HOST` or `KUBRON_BUGREPORT_RELAY_URL` is set and valid. A server without internet access should use the SMTP account of your own mail server.
 
 ```yaml
 kubron:
@@ -343,6 +343,7 @@ kubron:
 - Reports go to `224vadim224@gmail.com` unless `KUBRON_BUGREPORT_SMTP_TO` says otherwise. For Gmail use port 587 and an [app password](https://support.google.com/accounts/answer/185833), not the account password.
 - The mail contains the text, the screenshot if the user kept it, the optional contact address, the version, the language, the open section and the login of the sender. It has no cluster names or logs. **The screenshot can show anything on the screen**, including names and values the user can see; tell your users to check the preview.
 - Limits: one report per user every 30 seconds and 30 reports an hour for the whole server. Each sent report is written to the audit log as `bugreport.submit` without its text.
+- Instead of mail, set `KUBRON_BUGREPORT_RELAY_URL` to an HTTPS receiver, for example the project one, `https://kubron.pages.dev/api/bugreport`. The server has no receiver by default. If both are set, mail is tried first. Open outbound HTTPS to it in the network policy.
 - With `networkPolicy.enabled`, open the SMTP port yourself, for example:
 
 ```yaml

@@ -756,7 +756,10 @@
   "bugReportTheSavedMailServerSettingsCannotBeRead": "无法读取已保存的邮件服务器设置",
   "bugReportTheMailServerForBugReportsIsNotConfigured": "尚未配置用于错误报告的邮件服务器",
   "bugReportAReportWasSentAMomentAgoWaitALittleAndTryAgain": "刚刚已发送过报告；请稍等片刻后重试",
-  "bugReportTheFolderForTheBugReportFilesIsNotAvailable": "错误报告文件的文件夹不可用",
-  "bugReportTheFolderCouldNotBeOpened": "无法打开该文件夹",
-  "bugReportTheFileIsNotAFileOfABugReport": "该文件不是错误报告文件"
+  "bugReportTheReportReceiverIsNotAvailable": "报告接收服务不可用",
+  "bugReportTheReportReceiverDidNotAcceptTheReport": "报告接收服务未接受该报告",
+  "bugReportTheReportReceiverAddressIsNotValid": "报告接收服务的地址无效",
+  "bugReportTheFolderForTheReportsThatWaitForDeliveryIsNotAvailable": "用于存放待发送报告的文件夹不可用",
+  "bugReportThereAreNoReportsWaitingForDelivery": "没有等待发送的报告",
+  "bugReportTheArchiveOfTheReportsCouldNotBeWritten": "无法写入报告压缩包"
 }

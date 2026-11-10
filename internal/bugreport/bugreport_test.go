@@ -17,12 +17,10 @@ import (
 	"mime/quotedprintable"
 	"net"
 	"net/mail"
-	"net/url"
 	"strings"
 	"sync"
 	"testing"
 	"time"
-	"unicode/utf8"
 )
 
 func pngBytes(t *testing.T, w, h int) []byte {
@@ -294,64 +292,6 @@ func TestSendMapsErrors(t *testing.T) {
 		t.Fatalf("got %v", err)
 	}
 	if err := Send(context.Background(), SMTPConfig{}, []byte("x")); !errors.Is(err, ErrSettingsInvalid) {
-		t.Fatalf("got %v", err)
-	}
-}
-
-func TestMailtoShortReportIsComplete(t *testing.T) {
-	r := Report{Description: "Таблица подов пустая", Diagnostics: Diagnostics{AppVersion: "1.2.0", Shell: "desktop", OS: "linux", Arch: "amd64", Locale: "ru", View: "pods"}}
-	_ = r.Normalize()
-	link, truncated, err := Mailto(DefaultRecipient, r, MaxMailtoLen)
-	if err != nil || truncated {
-		t.Fatalf("truncated=%v err=%v", truncated, err)
-	}
-	u, err := url.Parse(link)
-	if err != nil || u.Scheme != "mailto" || u.Opaque != DefaultRecipient || !strings.HasPrefix(u.RawQuery, "subject=") {
-		t.Fatalf("link %q: %v", link, err)
-	}
-	q, _ := url.ParseQuery(strings.SplitN(link, "?", 2)[1])
-	if q.Get("subject") != "[Kubron bug report] Таблица подов пустая" {
-		t.Fatalf("subject %q", q.Get("subject"))
-	}
-	body := q.Get("body")
-	if !strings.HasPrefix(body, "Таблица подов пустая\r\n") || !strings.Contains(body, "Kubron 1.2.0 (desktop), linux/amd64, ru, pods") {
-		t.Fatalf("body %q", body)
-	}
-	if strings.Contains(link, "+") || strings.Contains(link, " ") {
-		t.Fatalf("spaces must be %%20: %q", link)
-	}
-}
-
-func TestMailtoLongDescriptionFitsAndSaysSo(t *testing.T) {
-	r := Report{Description: strings.Repeat("Ошибка в таблице. ", 200)}
-	_ = r.Normalize()
-	link, truncated, err := Mailto(DefaultRecipient, r, MaxMailtoLen)
-	if err != nil || !truncated {
-		t.Fatalf("truncated=%v err=%v", truncated, err)
-	}
-	if len(link) > MaxMailtoLen {
-		t.Fatalf("link is %d characters", len(link))
-	}
-	q, err := url.ParseQuery(strings.SplitN(link, "?", 2)[1])
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !utf8.ValidString(q.Get("body")) || !strings.Contains(q.Get("body"), "…") {
-		t.Fatalf("body must stay valid UTF-8 and show the cut: %q", q.Get("body"))
-	}
-}
-
-func TestMailtoKeepsHeadersSafe(t *testing.T) {
-	r := Report{Description: "x\r\nBcc: evil@example.org"}
-	_ = r.Normalize()
-	link, _, err := Mailto(DefaultRecipient, r, MaxMailtoLen)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if strings.Count(link, "?") != 1 || strings.Contains(strings.ToLower(link), "&bcc=") || strings.Contains(strings.ToLower(link), "?bcc=") {
-		t.Fatalf("a header was injected: %q", link)
-	}
-	if _, _, err := Mailto("not an address", r, MaxMailtoLen); !errors.Is(err, ErrSettingsInvalid) {
 		t.Fatalf("got %v", err)
 	}
 }

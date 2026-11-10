@@ -1,30 +1,37 @@
 # Report a problem
 
-The **Report a problem** button in the header of the desktop app and of the web interface sends a bug report by e-mail. Decision and
-alternatives: [ADR-0029](adr/0029-bug-report.md).
+The **Report a problem** button in the header of the desktop app and of the web interface sends a bug report to the
+developers. Decisions and alternatives: [ADR-0029](adr/0029-bug-report.md) and
+[ADR-0030](adr/0030-bug-report-receiver.md).
 
 ## What the user does
 
 1. Presses the button. The app takes a screenshot of the window *before* the dialog opens, so the screenshot shows
    the error and not the dialog.
 2. Checks the preview (it can be turned off or retaken), writes what happened and, optionally, an e-mail for questions.
-3. Presses **Send**, or on the desktop **Open in mail app** (see below).
+3. Presses **Send**. The screenshot and the facts below are added automatically. No account is needed.
 
-## Desktop: your mail app, no mail server
+The dialog then says either **sent**, or **saved**: there was no connection, so the report waits on this computer and
+is sent by itself later.
 
-On the desktop, **Open in mail app** works without any setup. It opens the default mail program with a message to the
-recipient (subject, description and facts filled in); the user checks it and presses Send there.
+## Where the report goes
 
-A mail link cannot carry an attachment, so:
+The core tries the ways in this order and stops at the first that works:
 
-- the screenshot is **copied to the clipboard**: click in the message and paste (`Ctrl+V`, `⌘V` on macOS);
-- it is also **saved as a file** in `<data directory>/bugreports/` (mode 0600; files older than 7 days and all but the
-  newest 20 are removed); the dialog shows the path and a **Show in folder** button, for the case that pasting does not work
-  (some older WebKitGTK builds cannot put an image on the clipboard);
-- a description that does not fit into the link (about 1900 characters, which is about 250 Cyrillic letters) is shortened
-  in the message, and the full text is saved next to the screenshot as a `.txt` file.
+1. **A mail server**, if one is set (see below). A company mail server works without internet access.
+2. **The receiver of the project**: a Pages Function at `https://kubron.pages.dev/api/bugreport`. It stores the report
+   in a **private** repository: the screenshot as a file and an issue that links to it. The desktop uses it by default;
+   the web server only when the administrator sets `KUBRON_BUGREPORT_RELAY_URL`. The value `off` turns it off.
 
-If nothing opens, no mail program is set as the default for e-mail links.
+A report that could not be delivered because there is no connection is kept in `<data directory>/bugreports/` (desktop
+only; mode 0600, files older than 14 days and all but the newest 20 are removed). The app tries again a minute after the
+start and then every 15 minutes. A report that the receiver refused is not kept: repeating would not change the answer.
+
+### A computer without any connection
+
+If reports are waiting, the dialog shows how many and a **Save as archive** button. It writes one `.zip` (a folder with
+the text, the screenshot and the facts for each report) and shows it in the file manager. Pass the file to the developers
+by any means. The reports stay in the queue and are still sent if a connection appears.
 
 ## What is sent
 
@@ -39,8 +46,8 @@ There are no credentials in the application.
 - **Desktop:** set them once in the dialog (**Mail server settings**) or with environment variables. Saved settings take
   priority.
 - **Web server:** the administrator sets the variables below (see
-  [Bug reports](../docs-site/server/deploy.md#bug-reports)). The button is hidden until `KUBRON_BUGREPORT_SMTP_HOST` is
-  valid, and users cannot read or change the mail account.
+  [Bug reports](../docs-site/server/deploy.md#bug-reports)). The button is hidden until `KUBRON_BUGREPORT_SMTP_HOST` or
+  `KUBRON_BUGREPORT_RELAY_URL` is valid, and users cannot read or change the mail account.
 
 | Variable | Meaning | Default |
 |---|---|---|
@@ -50,6 +57,7 @@ There are no credentials in the application.
 | `KUBRON_BUGREPORT_SMTP_USER`, `KUBRON_BUGREPORT_SMTP_PASSWORD` | sign-in; the password is required with a user | none |
 | `KUBRON_BUGREPORT_SMTP_FROM` | sender address | the user |
 | `KUBRON_BUGREPORT_SMTP_TO` | recipient | `224vadim224@gmail.com` |
+| `KUBRON_BUGREPORT_RELAY_URL` | address of the report receiver (HTTPS); `off` disables it | desktop: the project receiver; server: none |
 
 For Gmail use `smtp.gmail.com`, port 587 and an [app password](https://support.google.com/accounts/answer/185833),
 not the account password.
@@ -58,8 +66,10 @@ Saved settings live in `bugreport.json` in the data directory (mode 0600, the pa
 
 ## Limits
 
-The mail-app way has no limits of its own: the message goes from the user's own account.
-
 Description up to 5000 characters, screenshot up to 6 MiB (PNG; the browser shrinks it to fit the 4 MiB request limit of
-the web server). One report per user every 30 seconds; the web server also stops at 30 reports an hour. Each sent report is
+the web server). One report per user every 30 seconds; the web server also stops at 30 reports an hour (mail server). The receiver of the project accepts 10 reports an hour from one address and 200 a day in total. Each sent report is
 written to the audit log (`bugreport.submit`) without its text.
+
+## Setting up the receiver (maintainers)
+
+See `docs-site/DOMAIN.md`: the private reports repository, the token and the Cloudflare Pages settings.
