@@ -17,13 +17,20 @@ export interface BugReportSettings {
   passwordSet: boolean
 }
 
+/** Куда пойдёт следующий отчёт: почтовый сервер, приёмник отчётов или никуда (останется в очереди) */
+export type BugReportChannel = 'mail' | 'relay' | ''
+
 export interface BugReportStatus {
+  /** задан почтовый сервер */
   configured: boolean
   source: 'saved' | 'environment' | ''
   recipient: string
   canSave: boolean
-  /** десктоп может открыть почтовую программу с готовым письмом */
-  canDraft: boolean
+  channel: BugReportChannel
+  /** отчёт, который не удалось доставить, сохраняется и уйдёт позже (десктоп) */
+  canQueue: boolean
+  /** сколько отчётов ждёт отправки */
+  pending: number
   settings: BugReportSettings
 }
 
@@ -36,10 +43,9 @@ export interface BugReportRequest {
   view: string
 }
 
-/** Результат OpenBugReportDraft: что подготовлено рядом с письмом */
-export interface BugReportDraft {
-  screenshotPath: string
-  textPath: string
-  /** описание не влезло в ссылку и сокращено; полный текст в textPath */
-  truncated: boolean
+/** Что стало с отчётом: ушёл или сохранён до появления связи */
+export interface BugReportResult {
+  status: 'sent' | 'queued'
+  channel: BugReportChannel
+  pending: number
 }

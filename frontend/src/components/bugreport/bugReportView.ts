@@ -22,34 +22,20 @@ export function pngBase64(dataUrl: string): string {
   return dataUrl.startsWith(prefix) ? dataUrl.slice(prefix.length) : ''
 }
 
-/** Можно ли открыть почтовую программу: нужна поддержка оболочки и непустое описание допустимой длины */
-export function canOpenMailClient(description: string, status: BugReportStatus | null, busy: boolean): boolean {
-  const len = [...description.trim()].length
-  return !busy && !!status?.canDraft && len > 0 && len <= MAX_DESCRIPTION
+/** Куда пойдёт отчёт: подпись в диалоге выбирается по этому значению. 'none' — отправлять некуда и не сохранить. */
+export type DeliveryHint = 'mail' | 'relay' | 'queue' | 'none'
+
+export function deliveryHint(status: BugReportStatus | null): DeliveryHint {
+  if (!status) return 'none'
+  if (status.channel === 'mail') return 'mail'
+  if (status.channel === 'relay') return 'relay'
+  return status.canQueue ? 'queue' : 'none'
 }
 
-/** Сочетание клавиш вставки для подсказки: ⌘V на macOS, Ctrl+V в остальных системах */
-export function pasteShortcut(platform: string): string {
-  return /mac|iphone|ipad/i.test(platform) ? '⌘V' : 'Ctrl+V'
-}
-
-/** PNG из data URL в Blob без fetch: CSP может не разрешать data: в connect-src. Не PNG — null. */
-export function pngBlob(dataUrl: string): Blob | null {
-  const b64 = pngBase64(dataUrl)
-  if (!b64) return null
-  try {
-    const bin = atob(b64)
-    const bytes = new Uint8Array(bin.length)
-    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
-    return new Blob([bytes], { type: 'image/png' })
-  } catch {
-    return null
-  }
-}
-
+/** Отправить можно, если есть способ доставки (или очередь, где отчёт подождёт), описание не пусто и не длиннее предела */
 export function canSendReport(description: string, status: BugReportStatus | null, busy: boolean): boolean {
   const len = [...description.trim()].length
-  return !busy && !!status?.configured && len > 0 && len <= MAX_DESCRIPTION
+  return !busy && deliveryHint(status) !== 'none' && len > 0 && len <= MAX_DESCRIPTION
 }
 
 /** Порт по умолчанию для способа защиты соединения (как в bugreport.SMTPConfig.Normalize) */

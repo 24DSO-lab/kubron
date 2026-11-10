@@ -90,6 +90,7 @@ Durations use Go syntax (`30s`, `15m`, `12h`). Boolean variables accept `1`, `tr
 | `KUBRON_BUGREPORT_SMTP_PASSWORD` | — | Its password (for Gmail, an app password). Keep it in a Secret. The server does not send reports with a user but no password. |
 | `KUBRON_BUGREPORT_SMTP_FROM` | the user | Sender address. Gmail requires the signed-in account. |
 | `KUBRON_BUGREPORT_SMTP_TO` | `224vadim224@gmail.com` | Where the reports go. |
+| `KUBRON_BUGREPORT_RELAY_URL` | — | HTTPS address of a report receiver (for example `https://kubron.pages.dev/api/bugreport`) instead of, or after, the mail server. `off` disables it. See [Bug reports](/server/deploy#bug-reports). |
 
 ### Operations, audit and logging
 

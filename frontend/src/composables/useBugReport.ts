@@ -6,11 +6,10 @@ import { i18n } from '../i18n'
 import { captureScreenshot } from './captureScreenshot'
 import { errorText } from './errorText'
 import { pngBase64 } from '../components/bugreport/bugReportView'
-import { copyImageToClipboard } from './clipboardImage'
-import { getBugReportStatus, openBugReportDraft, revealBugReportFile, submitBugReport } from '../platform/bugreport'
-import type { BugReportDraft, BugReportStatus } from '../types/bugreport'
+import { exportBugReports, getBugReportStatus, submitBugReport } from '../platform/bugreport'
+import type { BugReportResult, BugReportStatus } from '../types/bugreport'
 
-type Phase = 'closed' | 'capturing' | 'open' | 'sending' | 'sent' | 'draft'
+type Phase = 'closed' | 'capturing' | 'open' | 'sending'
 
 const CONTACT_KEY = 'kubron.bugreport.contact'
 
@@ -31,8 +30,7 @@ const contact = ref(loadContact())
 const error = ref('')
 const status = ref<BugReportStatus | null>(null)
 const view = ref('')
-// Результат «Открыть в почтовой программе»: что подготовлено и попал ли снимок в буфер обмена
-const draft = ref<(BugReportDraft & { copied: boolean }) | null>(null)
+const exportedPath = ref('') // архив ожидающих отчётов, сохранённый из диалога
 
 async function refreshStatus() {
   try {
@@ -55,11 +53,12 @@ async function capture() {
   includeScreenshot.value = !!screenshot.value
 }
 
-/** Начать отчёт: снимок экрана, затем диалог. currentView — раздел интерфейса, он попадёт в письмо. */
+/** Начать отчёт: снимок экрана, затем диалог. currentView — раздел интерфейса, он попадёт в отчёт. */
 async function start(currentView: string) {
   if (phase.value !== 'closed') return
   view.value = currentView
   error.value = ''
+  exportedPath.value = ''
   phase.value = 'capturing'
   // Дадим интерфейсу перерисоваться (закрыть меню, убрать фокус), потом снимаем.
   await new Promise<void>((r) => requestAnimationFrame(() => r()))
@@ -87,60 +86,34 @@ function buildRequest() {
 }
 
 /**
- * Открыть почтовую программу с готовым письмом (десктоп, без почтового сервера). Ссылка mailto не умеет вложений,
- * поэтому снимок кладётся в буфер обмена (вставить Ctrl+V) и сохраняется файлом. Запись в буфер начинается сразу,
- * до первого await: браузер требует действия пользователя.
+ * Отправить отчёт. Результат говорит, что с ним стало: «sent» — ушёл, «queued» — сохранён на этом компьютере и уйдёт
+ * сам, когда появится связь. При ошибке диалог остаётся открытым с введённым текстом. null — отправить не удалось.
  */
-async function openInMailClient(): Promise<boolean> {
-  if (phase.value !== 'open') return false
-  const req = buildRequest()
-  const copying = req.screenshot ? copyImageToClipboard(screenshot.value) : Promise.resolve(false)
+async function send(): Promise<BugReportResult | null> {
+  if (phase.value !== 'open') return null
   error.value = ''
   phase.value = 'sending'
   try {
     saveContact(contact.value.trim())
-    const files = await openBugReportDraft(req)
-    draft.value = { ...files, copied: await copying }
-    phase.value = 'draft'
-    return true
-  } catch (e) {
-    error.value = errorText(e)
-    phase.value = 'open'
-    return false
-  }
-}
-
-/** Показать сохранённый файл в файловом менеджере; ошибка показывается в диалоге. */
-async function revealFile(path: string) {
-  try {
-    await revealBugReportFile(path)
-  } catch (e) {
-    error.value = errorText(e)
-  }
-}
-
-/** Вернуться к отчёту из подсказки (например, если почтовая программа не открылась). */
-function backToReport() {
-  if (phase.value === 'draft') {
-    draft.value = null
-    error.value = ''
-    phase.value = 'open'
-  }
-}
-
-async function send(): Promise<boolean> {
-  if (phase.value !== 'open') return false
-  error.value = ''
-  phase.value = 'sending'
-  try {
-    saveContact(contact.value.trim())
-    await submitBugReport(buildRequest())
-    phase.value = 'sent'
+    const result = await submitBugReport(buildRequest())
     close()
-    return true
+    return result
   } catch (e) {
     error.value = errorText(e)
     phase.value = 'open'
+    return null
+  }
+}
+
+/** Сохранить ожидающие отчёты архивом (для компьютера без связи); путь показывается в диалоге. */
+async function exportPending(): Promise<boolean> {
+  if (phase.value !== 'open') return false
+  error.value = ''
+  try {
+    exportedPath.value = await exportBugReports()
+    return true
+  } catch (e) {
+    error.value = errorText(e)
     return false
   }
 }
@@ -151,15 +124,14 @@ function close() {
   screenshot.value = ''
   description.value = ''
   error.value = ''
+  exportedPath.value = ''
   captureFailed.value = false
-  draft.value = null
 }
 
 export function useBugReport() {
   return {
     phase: readonly(phase),
-    visible: computed(() => phase.value === 'open' || phase.value === 'sending' || phase.value === 'draft'),
-    draft: readonly(draft),
+    visible: computed(() => phase.value === 'open' || phase.value === 'sending'),
     screenshot: readonly(screenshot),
     captureFailed: readonly(captureFailed),
     includeScreenshot,
@@ -167,6 +139,7 @@ export function useBugReport() {
     contact,
     error: readonly(error),
     status: readonly(status),
-    start, retake, send, openInMailClient, revealFile, backToReport, close, refreshStatus,
+    exportedPath: readonly(exportedPath),
+    start, retake, send, exportPending, close, refreshStatus,
   }
 }

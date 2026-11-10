@@ -44,6 +44,10 @@ jobs:
         working-directory: docs-site
         run: npm ci
 
+      - name: Test the bug report receiver
+        working-directory: docs-site
+        run: npm run test:relay
+
       - name: Build site
         working-directory: docs-site
         env:
@@ -69,15 +73,26 @@ jobs:
       name: production
       url: https://kubron.pages.dev/
     steps:
+      # Wrangler takes the Pages Functions (docs-site/functions, the bug report receiver) from the working directory,
+      # so the sources are needed here next to the built site.
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            docs-site/functions
+            docs-site/relay
+
       - name: Download build artifact
         uses: actions/download-artifact@v8
         with:
           name: kubron-docs
-          path: dist
+          path: docs-site/dist
 
       - name: Deploy with Wrangler
         uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: docs-site
           command: pages deploy dist --project-name=kubron --branch=refactor

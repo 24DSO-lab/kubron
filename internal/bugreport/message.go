@@ -109,8 +109,8 @@ func subject(description string) string {
 	return subjectPrefix + line
 }
 
-// PlainBody is the full text of the report: the description and the facts. It is the body of the e-mail and the
-// content of the text file saved when the description does not fit into a mailto link.
+// PlainBody is the full text of the report: the description and the facts. It is the body of the e-mail and of the
+// report.txt of the exported archive.
 func PlainBody(r Report, now time.Time) string {
 	d := r.Diagnostics
 	shot := "not attached"

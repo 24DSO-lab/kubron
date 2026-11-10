@@ -32,7 +32,7 @@ describe('BugReportDialog', () => {
   it('пока состояние почты неизвестно, действий отправки нет: только «Отмена»', async () => {
     const html = await render()
     expect(html).not.toContain('data-testid="bug-report-send"')
-    expect(html).not.toContain('data-testid="bug-report-mailclient"')
+    expect(html).not.toContain('data-testid="bug-report-export"')
     expect(html).toContain('data-testid="bug-report-cancel"')
   })
 

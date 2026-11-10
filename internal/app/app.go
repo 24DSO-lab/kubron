@@ -54,7 +54,7 @@ type App struct {
 	gkeOAuth       *GKEOAuthStore
 	gkeOAuthActive string
 	conn           *signin.State
-	bugReport      *bugReportService // письма «Сообщить об ошибке» (десктоп)
+	bugReport      *bugReportService // доставка отчётов «Сообщить об ошибке»: почта, relay, очередь (десктоп)
 	rev            *revocations      // отозванные личные входы реплики; общий для всех видов
 	// limitUser и limitIDP ограничивают попытки AnswerChallenge на пользователя и на провайдера входа; nil — без лимита.
 	limitUser, limitIDP AttemptLimiter
@@ -114,6 +114,7 @@ func (a *App) startup(ctx context.Context) {
 	if a.auth != nil {
 		go a.auth.RunIdleWatcher(ctx, 10*time.Second)
 	}
+	go a.runBugReportRetry(ctx) // reports that could not be delivered wait in the outbox (desktop only)
 }
 
 // GetCapabilities — что доступно в текущей оболочке. Вызывается до входа в систему
