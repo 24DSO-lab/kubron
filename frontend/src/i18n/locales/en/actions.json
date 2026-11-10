@@ -9,5 +9,6 @@
   "bulkFailed": "Failed to delete {failed} of {total}: {list}",
   "andMore": "and {n} more",
   "unavailable": "\"{label}\" is not available for {name}",
-  "scaled": "{kind} {name} scaled to {n} replicas"
+  "scaled": "{kind} {name} scaled to {n} replicas",
+  "debugStarted": "Debug container {name} started in {pod}"
 }

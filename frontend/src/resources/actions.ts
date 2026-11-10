@@ -43,6 +43,15 @@ const MAX_FAILURES_SHOWN = 3
 /** Deployment, для которого открыт диалог масштабирования */
 export const scaleTarget = shallowRef<any | null>(null)
 
+/** Под, для которого открыт диалог отладочного (ephemeral) контейнера */
+export const debugTarget = shallowRef<{ namespace: string; pod: string; containers: string[]; target?: string } | null>(null)
+
+/** Параметры, которые пользователь выбрал в диалоге отладочного контейнера */
+export interface DebugStartParams { image: string; profile: string; target: string }
+
+/** Отладочный контейнер, созданный бэкендом (Go: k8s.DebugContainer) */
+interface DebugContainerInfo { namespace: string; pod: string; container: string }
+
 /** Запасная проверка в самих действиях (кнопки без права и так скрыты); бэкенд проверяет независимо */
 function allowed(permission: Permission): boolean {
   if (can(permission)) return true
@@ -61,6 +70,9 @@ export const resourceActions: ActionContext & {
   create(id: string): void
   confirmScale(replicas: number): Promise<void>
   cancelScale(): void
+  /** Создаёт отладочный контейнер и открывает к нему терминал (attach). Ошибку бросает диалогу: он показывает её и даёт повторить. */
+  confirmDebug(params: DebugStartParams): Promise<void>
+  cancelDebug(): void
 } = {
   open(id, ns, name, item) {
     opened.value = { id: id.toLowerCase(), ns, name, item }
@@ -207,6 +219,27 @@ export const resourceActions: ActionContext & {
 
   cancelScale() {
     scaleTarget.value = null
+  },
+
+  requestDebug(ns, pod, containers, target) {
+    // Подключение к отладочному контейнеру идёт терминалом (attach): без exec контейнер создался бы зря
+    if (!allowed(Perm.Debug) || !allowed(Perm.Exec)) return
+    debugTarget.value = { namespace: ns, pod, containers, target }
+  },
+
+  async confirmDebug({ image, profile, target }) {
+    const dt = debugTarget.value
+    if (!dt) return
+    const dc = await callApp('StartDebugContainer', dt.namespace, dt.pod, target, image, profile) as DebugContainerInfo
+    debugTarget.value = null
+    notifications.notifySuccess(t('actions.debugStarted', { name: dc.container, pod: dt.pod }))
+    // Новый контейнер виден в деталях пода; обновление списка не должно мешать открытию терминала
+    void reloadActive()
+    await globalTabbedPanel.openTerminalTab('pod', dt.pod, dt.namespace, dt.pod, dc.container, 'attach')
+  },
+
+  cancelDebug() {
+    debugTarget.value = null
   },
 
   // Свой диалог вместо window.confirm: в Wails нативный confirm работает не на всех ОС

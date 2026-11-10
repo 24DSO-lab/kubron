@@ -197,7 +197,8 @@
     "openInBrowser": "在浏览器中打开",
     "stop": "停止",
     "browseResources": "浏览资源",
-    "uninstall": "卸载"
+    "uninstall": "卸载",
+    "debug": "调试容器"
   },
   "values": {
     "true": "是",

@@ -9,5 +9,6 @@
   "bulkFailed": "Не удалось удалить {failed} из {total}: {list}",
   "andMore": "и ещё {n}",
   "unavailable": "\"{label}\" недоступно для {name}",
-  "scaled": "{kind} {name}: масштаб изменён, реплик: {n}"
+  "scaled": "{kind} {name}: масштаб изменён, реплик: {n}",
+  "debugStarted": "Отладочный контейнер {name} запущен в {pod}"
 }

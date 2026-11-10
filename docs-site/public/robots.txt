@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://kubron.pages.dev/sitemap.xml

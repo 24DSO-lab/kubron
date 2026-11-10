@@ -82,7 +82,9 @@ func (p *Platform) Capabilities() ext.Capabilities {
 		PortForward:     true,
 		Exec:            true,
 		NodeShell:       true,
+		Debug:           true,
 		LocalKubeconfig: false,
 		SSO:             false,
+		BugReport:       true, // ядро включает флаг, только если на сервере настроена почта
 	}
 }

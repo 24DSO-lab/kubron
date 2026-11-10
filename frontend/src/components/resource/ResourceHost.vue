@@ -18,6 +18,13 @@
     @scale="resourceActions.confirmScale"
   />
 
+  <DebugDialog
+    v-if="debugTarget"
+    :target="debugTarget"
+    :start="resourceActions.confirmDebug"
+    @close="resourceActions.cancelDebug()"
+  />
+
     <SyncDialog v-if="pendingArgoSync" :apps="pendingArgoSync.apps" @close="closeArgoSync()" />
 
     <DeleteAppDialog
@@ -76,10 +83,11 @@ import { errorText } from '../../composables/errorText'
 import ResourceDetailPanel from './ResourceDetailPanel.vue'
 import ConfirmationDialog from '../utils/ConfirmationDialog.vue'
 import ScaleDialog from '../panels/ScaleDialog.vue'
+import DebugDialog from '../panels/DebugDialog.vue'
 import { getResourceById } from '../../resources/registry'
 import { findLoaded, reloadActive } from '../../resources/store'
 import { itemName, itemNs } from '../../resources/utils'
-import { opened, pendingDelete, pendingBulkDelete, scaleTarget, resourceActions } from '../../resources/actions'
+import { opened, pendingDelete, pendingBulkDelete, scaleTarget, debugTarget, resourceActions } from '../../resources/actions'
 import { pendingConfirm, answerConfirm } from '../../resources/confirm'
 import SyncDialog from '../panels/SyncDialog.vue'
 import { pendingArgoSync, closeArgoSync } from '../../resources/argoActions'

@@ -20,6 +20,8 @@ export interface Capabilities {
   exec: boolean
   /** оболочка на узле */
   nodeShell: boolean
+  /** отладочный (ephemeral) контейнер в поде; отключается KUBRON_DISABLE_DEBUG и KUBRON_DISABLE_EXEC */
+  debug: boolean
   /** чтение kubeconfig с диска машины, где запущен бэкенд */
   localKubeconfig: boolean
   /** вход через SSO/OIDC (модуль SSO) */
@@ -28,6 +30,8 @@ export interface Capabilities {
   inCluster: boolean
   /** команды и кластеры по командам (сервисный режим) */
   teams: boolean
+  /** кнопка «Сообщить об ошибке» (десктоп): письмо со снимком экрана */
+  bugReport: boolean
 }
 
 /**
@@ -40,10 +44,12 @@ export const DEFAULT_CAPABILITIES: Readonly<Capabilities> = Object.freeze({
   portForwardMode: 'local',
   exec: true,
   nodeShell: true,
+  debug: true,
   localKubeconfig: true,
   sso: false,
   inCluster: false,
   teams: false,
+  bugReport: false,
 })
 
 /** Берёт из ответа только известные булевы флаги; остальное — значения по умолчанию. */

@@ -59,7 +59,9 @@ func (p *Platform) Capabilities() app.Capabilities {
 		PortForwardMode: "local",
 		Exec:            true,
 		NodeShell:       true,
+		Debug:           true,
 		LocalKubeconfig: true,
 		SSO:             false,
+		BugReport:       true,
 	}
 }

@@ -17,6 +17,7 @@ import (
 	"github.com/24DSO-lab/kubron/internal/replicaevents"
 	"github.com/24DSO-lab/kubron/internal/signin"
 	"github.com/24DSO-lab/kubron/internal/store"
+	"github.com/24DSO-lab/kubron/internal/update"
 )
 
 type App struct {
@@ -29,6 +30,9 @@ type App struct {
 	dir                auth.Directory // команды и участники; nil вне сервисного режима
 	store              store.Store    // общее хранилище настроек и данных
 	webOIDCRedirectURL string         // публичный callback URL; задаётся серверной оболочкой до запуска
+	// updates — проверка новых версий (ADR-0028). Один на процесс: виды веб-сессий копируют указатель с корневого
+	// экземпляра. nil — оболочка проверку не подключала (тесты).
+	updates *update.Checker
 	// sessionID — веб-сессия владельца вида (пусто у корневого экземпляра и в десктопе).
 	sessionID string
 	// Port-forward в вебе (ADR-0017): режим и прокси; задаются до создания видов (SetPortForwardMode/Proxy).
@@ -50,7 +54,8 @@ type App struct {
 	gkeOAuth       *GKEOAuthStore
 	gkeOAuthActive string
 	conn           *signin.State
-	rev            *revocations // отозванные личные входы реплики; общий для всех видов
+	bugReport      *bugReportService // доставка отчётов «Сообщить об ошибке»: почта, relay, очередь (десктоп)
+	rev            *revocations      // отозванные личные входы реплики; общий для всех видов
 	// limitUser и limitIDP ограничивают попытки AnswerChallenge на пользователя и на провайдера входа; nil — без лимита.
 	limitUser, limitIDP AttemptLimiter
 	// finish подменяется в тестах: подключение и проверка кластера после успешного входа.
@@ -73,11 +78,12 @@ func NewApp(p Platform) *App {
 	}
 	mgr := k8s.NewManager()
 	a := &App{
-		platform: p,
-		k8sMgr:   mgr,
-		pfMgr:    k8s.NewPortForwardManager(mgr),
-		conn:     signin.NewState(),
-		rev:      &revocations{},
+		platform:  p,
+		k8sMgr:    mgr,
+		pfMgr:     k8s.NewPortForwardManager(mgr),
+		conn:      signin.NewState(),
+		rev:       &revocations{},
+		bugReport: newBugReportService(),
 	}
 	a.pfMgr.SetObserver(a.portForwardObserver())
 	a.configureTerminals()
@@ -108,6 +114,7 @@ func (a *App) startup(ctx context.Context) {
 	if a.auth != nil {
 		go a.auth.RunIdleWatcher(ctx, 10*time.Second)
 	}
+	go a.runBugReportRetry(ctx) // reports that could not be delivered wait in the outbox (desktop only)
 }
 
 // GetCapabilities — что доступно в текущей оболочке. Вызывается до входа в систему
@@ -121,11 +128,16 @@ func (a *App) GetCapabilities() Capabilities {
 		}
 	}
 	if a.interactive.DisableExec {
-		c.Exec, c.NodeShell = false, false
+		// Отладочный контейнер без терминала бесполезен: подключение к нему идёт через attach.
+		c.Exec, c.NodeShell, c.Debug = false, false, false
 	}
 	if a.interactive.DisableNodeShell {
 		c.NodeShell = false
 	}
+	if a.interactive.DisableDebug {
+		c.Debug = false
+	}
+	c.BugReport = a.bugReportCapability(c.BugReport)
 	c.Teams = a.dir != nil // команды есть там, где хранилище умеет их хранить, а не в оболочке
 	c.InCluster = c.Teams && k8s.InClusterAvailable()
 	return c

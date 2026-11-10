@@ -19,5 +19,22 @@
     "increase": "Increase",
     "scaling": "⏳ Scaling...",
     "submit": "▶ Scale"
+  },
+  "debug": {
+    "title": "Debug container in {pod}",
+    "loading": "Loading options…",
+    "image": "Image",
+    "imagePlaceholder": "registry/image:tag",
+    "imageStrict": "Only images allowed by the administrator can be used.",
+    "profile": "Profile",
+    "profiles": {
+      "general": "General: adds SYS_PTRACE, so you can trace processes",
+      "restricted": "Restricted: non-root, no capabilities (for Pod Security \"restricted\")"
+    },
+    "target": "Target container",
+    "noTarget": "None (use the pod namespaces)",
+    "note": "The container stays in the pod spec until the pod is deleted and cannot be removed. It exits when you close the terminal.",
+    "start": "▶ Start",
+    "starting": "⏳ Starting…"
   }
 }

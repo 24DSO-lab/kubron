@@ -25,6 +25,7 @@ The backend checks one of these permissions for every protected operation. Roles
 | `operate` | Scale, restart and roll back workloads; retry Jobs, trigger and suspend CronJobs; cordon nodes; roll back Helm releases; sync, refresh, terminate and roll back Argo CD applications; reconcile Flux CD objects | `operator`, `admin` |
 | `write` | Apply, create and delete YAML; edit ConfigMaps and Secrets; evict Pods; drain nodes; install, upgrade and uninstall Helm releases; install or remove the metrics stack; suspend or resume Argo CD auto-sync and delete applications; suspend, resume and delete Flux CD objects | `admin` |
 | `exec` | Pod terminals | `admin` |
+| `debug` | Add a debug (ephemeral) container to a running Pod; the terminal attached to it also needs `exec` | `admin` |
 | `nodeshell` | Node shell (privileged host access) | `admin` |
 | `portforward` | Port-forward | `admin` |
 | `clusters.manage` | Add, change and remove clusters; manage Helm repositories and OCI registries | `admin` |

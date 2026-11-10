@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-11-10
+
+### Added
+
+
+- **Version and updates:** the current version is shown in the header. Kubron checks GitHub once a day for a newer release and, for administrators, shows a banner and a "Version and updates" dialog. It detects how it was installed and shows the matching steps: `helm upgrade` for the Helm chart, the new image tag for Kubernetes manifests, `docker pull` for containers, and a download link or `apt install` command for the desktop `.deb`, archive or macOS app. Kubron does not install updates itself.
+- **Update check policy:** set `KUBRON_UPDATE_CHECK=off` (`kubron.updateCheck: false` in the Helm chart) to stop all update requests, for example in air-gapped networks. On Desktop, users can also turn the daily check off in the update dialog.
+
+- **Debug containers:** the **Debug container** action on a Pod adds an ephemeral container to the running Pod and attaches a terminal to it, for images without a shell or debugging tools. Choose an image, a `general` or `restricted` profile and a target container. It needs the new `debug` permission (administrators by default) and `exec`, and the cluster account needs `patch` on `pods/ephemeralcontainers`. Debug containers are marked in the container list; Kubernetes cannot remove them, so each one stays in the Pod spec until the Pod is deleted.
+- **Debug container settings:** `KUBRON_DISABLE_DEBUG` (`kubron.disableDebug` in the Helm chart) turns the feature off, and `KUBRON_DEBUG_IMAGES` (`kubron.debugImages`) limits the images that can be used. Turning off `KUBRON_DISABLE_EXEC` turns it off as well.
+- **Report a problem (Desktop and Web):** a button in the header takes a screenshot of the window, lets you review it, describe the problem and send both by e-mail. On the desktop it works at once through the user's mail app (the screenshot is copied to the clipboard and saved as a file), or the mail server can be set in the dialog (the password is stored encrypted) or with `KUBRON_BUGREPORT_SMTP_*`; on the web server the administrator sets `KUBRON_BUGREPORT_SMTP_*` and the button appears once it is valid. Per-user and hourly limits apply, and each report is audited. See `docs/bug-report.md`.
+
+### Fixed
+
+- **Pod containers:** in the Environment tab, a variable that comes from a ConfigMap now shows its value, below the `ConfigMap → key` reference. If the ConfigMap can't be read, only the reference is shown, as before.
+
 ## [1.2.0] - 2026-11-08
 
 ### Added
@@ -178,7 +194,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Docs:** refreshed README (logo, badges, `.deb` download, links to the user guides, server mode section,
   roadmap with statuses, screenshots of the overview, pods, YAML editor and GitOps); fixed the local
-  web-server build steps. Added a social preview image (`docs/images/social-preview.png`).
+  web-server build steps. Added a social preview image (`docs/images/kubron-banner.png`).
 - **Docs:** README no longer names third-party products or describes paid features; the GitOps wording is
   tool-neutral and the comparison table was replaced with a short "Why Kubron" list.
 - **Deploy:** the Helm chart now defaults to `image.repository: ghcr.io/24dso-lab/kubron` (it still pointed
@@ -275,7 +291,8 @@ First public release.
 - Web mode (`cmd/kubron-server`): several concurrent sessions, per-session
   cluster managers with per-user resource limits, idle informers released after a TTL.
 
-[Unreleased]: https://github.com/24DSO-lab/kubron/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/24DSO-lab/kubron/compare/v1.2.1...HEAD
+[1.2.1]: https://github.com/24DSO-lab/kubron/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/24DSO-lab/kubron/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/24DSO-lab/kubron/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/24DSO-lab/kubron/compare/v0.6.0...v1.0.0

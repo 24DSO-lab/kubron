@@ -104,6 +104,9 @@ func main() {
 	platform.SetSessionEmitter(hub.EmitTo)
 	core := app.NewApp(platform)
 	app.SetReplicaID(core, replicaID) // потоки терминала и логов несут реплику-владельца в идентификаторе
+	if err := setupUpdateCheck(ctx, core, os.Getenv); err != nil {
+		fatal("configuration", err)
+	}
 	// Общее хранилище веб-сессий: с PostgreSQL сессия, выданная одной репликой, действует на всех (ADR-0016).
 	// Файловое хранилище его не имеет, сессии остаются в памяти процесса.
 	var sessionBackend websession.Backend
@@ -165,7 +168,10 @@ func main() {
 	guard.Setup = setupGate(cfg, core)
 	app.SetResourceLimits(core, k8s.Limits{Terminals: cfg.MaxTerminals, LogStreams: cfg.MaxLogStreams, PortForwards: cfg.MaxPortForwards,
 		TerminalMaxDuration: cfg.TerminalMaxDuration, TerminalIdleTimeout: cfg.TerminalIdleTimeout})
-	app.SetInteractivePolicy(core, app.InteractivePolicy{DisableExec: cfg.DisableExec, DisableNodeShell: cfg.DisableNodeShell})
+	app.SetInteractivePolicy(core, app.InteractivePolicy{
+		DisableExec: cfg.DisableExec, DisableNodeShell: cfg.DisableNodeShell,
+		DisableDebug: cfg.DisableDebug, DebugImages: cfg.DebugImages,
+	})
 	app.SetClusterIdleTTL(core, 2*time.Minute)
 	enforceAccess := func() { // права могли измениться: закрыть то, что осталось открытым у потерявших доступ
 		for _, v := range sessions.Views() {

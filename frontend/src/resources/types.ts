@@ -79,6 +79,8 @@ export interface ActionContext {
   openResourceLogs(kind: string, ns: string, name: string): void
   openShell(ns: string, pod: string, container: string): Promise<void>
   openAttach(ns: string, pod: string, container: string): Promise<void>
+  /** Открыть диалог отладочного (ephemeral) контейнера; target — контейнер пода, чьи пространства имён он разделит */
+  requestDebug(ns: string, pod: string, containers: string[], target?: string): void
   /** Открыть диалог масштабирования (Deployment / StatefulSet) */
   requestScale(item: any, kind?: string): void
   /** Диалог подтверждения (рисует ResourceHost). Резолвится true по «Подтвердить», false по отмене */

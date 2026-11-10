@@ -192,7 +192,8 @@
     "mountsCount": "{n} Mount | {n} Mounts",
     "mountFrom": "from {name}",
     "requests": "Requests",
-    "stateReady": "{state}, ready"
+    "stateReady": "{state}, ready",
+    "debug": "debug"
   },
   "cronJobHistory": {
     "job": "Job",

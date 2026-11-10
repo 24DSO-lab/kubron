@@ -9,5 +9,6 @@
   "bulkFailed": "删除失败 {failed}/{total}：{list}",
   "andMore": "以及其他 {n} 个",
   "unavailable": "\"{label}\" 对 {name} 不可用",
-  "scaled": "{kind} {name} 已扩缩至 {n} 个副本"
+  "scaled": "{kind} {name} 已扩缩至 {n} 个副本",
+  "debugStarted": "调试容器 {name} 已在 {pod} 中启动"
 }

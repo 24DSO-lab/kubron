@@ -46,10 +46,20 @@ Web-версия (`kubron-server`) настраивается переменны
 
 | Переменная | По умолчанию | Назначение |
 |---|---|---|
-| `KUBRON_DISABLE_EXEC` | выкл. | Отключить терминалы Pod и оболочку узла для всех. |
+| `KUBRON_DISABLE_EXEC` | выкл. | Отключить терминалы Pod, оболочку узла и отладочные контейнеры для всех. |
 | `KUBRON_DISABLE_NODE_SHELL` | выкл. | Отключить оболочку узла для всех. |
+| `KUBRON_DISABLE_DEBUG` | выкл. | Отключить отладочные (ephemeral) контейнеры для всех. |
+| `KUBRON_DEBUG_IMAGES` | пусто | Образы отладочных контейнеров через запятую. Пусто — разрешён любой образ. |
 | `KUBRON_DISABLE_PORT_FORWARD` | выкл. | Отключить port-forward для всех. |
 | `KUBRON_MAX_TERMINALS` | `8` | Терминалов на пользователя. `0` — без ограничения. |
+
+### Обновления
+
+| Переменная | По умолчанию | Назначение |
+|---|---|---|
+| `KUBRON_UPDATE_CHECK` | `on` | `off` отключает любые проверки обновлений: сервер не обращается к `api.github.com`. |
+| `KUBRON_INSTALL_METHOD` | определяется | `helm`, `kubernetes`, `docker` или `binary`. Задавайте, только если автоопределение ошиблось; чарт Helm задаёт её сам. |
+| `KUBRON_HELM_RELEASE`, `KUBRON_HELM_NAMESPACE` | задаёт чарт | Имя релиза и пространство имён в команде `helm upgrade`. |
 | `KUBRON_MAX_LOG_STREAMS` | `20` | Потоков логов на пользователя. `0` — без ограничения. |
 | `KUBRON_MAX_PORT_FORWARDS` | `10` | Port-forward на пользователя. `0` — без ограничения. |
 | `KUBRON_TERMINAL_MAX_DURATION` | `8h` | Максимальная длительность терминала. `0` — без ограничения. |
@@ -73,6 +83,14 @@ Web-версия (`kubron-server`) настраивается переменны
 | `KUBRON_HELM_ALLOW_CIDRS` | — | Исключения для Helm, например внутренний репозиторий `10.20.0.0/16`. |
 | `KUBRON_GKE_OAUTH_CLIENT_ID` | — | ID OAuth-клиента, позволяющий входить в GKE своим аккаунтом Google. Без него GKE использует ключ сервисного аккаунта. |
 | `KUBRON_GKE_OAUTH_CLIENT_SECRET` | — | Секрет этого клиента. Храните в Secret. Сервер не принимает секрет без ID клиента. |
+| `KUBRON_BUGREPORT_SMTP_HOST` | — | Почтовый сервер для кнопки **Сообщить об ошибке**. Без него кнопки нет. См. [Отчёты об ошибках](/ru/server/deploy#bug-reports). |
+| `KUBRON_BUGREPORT_SMTP_PORT` | `587` (`465` для `tls`) | Порт почтового сервера. |
+| `KUBRON_BUGREPORT_SMTP_SECURITY` | `starttls` | `starttls` или `tls`. `none` допустим только для сервера на этой же машине. |
+| `KUBRON_BUGREPORT_SMTP_USER` | — | Логин почтового ящика, например `224vadim224@gmail.com`. |
+| `KUBRON_BUGREPORT_SMTP_PASSWORD` | — | Пароль ящика (для Gmail — пароль приложения). Храните в Secret. Отчёты не отправляются, если задан пользователь, а пароля нет. |
+| `KUBRON_BUGREPORT_SMTP_FROM` | пользователь | Адрес отправителя. Gmail требует адрес ящика, под которым выполнен вход. |
+| `KUBRON_BUGREPORT_SMTP_TO` | `224vadim224@gmail.com` | Куда отправлять отчёты. |
+| `KUBRON_BUGREPORT_RELAY_URL` | — | HTTPS-адрес приёмника отчётов (например, `https://kubron.pages.dev/api/bugreport`) вместо почтового сервера или после него. `off` отключает. См. [Отчёты об ошибках](/ru/server/deploy#bug-reports). |
 
 ### Эксплуатация, аудит и журналы
 

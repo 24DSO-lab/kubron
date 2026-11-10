@@ -31,7 +31,7 @@ If your kubeconfig contains several contexts, add the cluster once per context a
 
 ## Limited access? It still works {#limited-access}
 
-Kubron does not require cluster-wide `list` permission. If you can only see certain namespaces, restrict the namespace set in the cluster settings. Kubron shows what you are allowed to see and reports what it could not read, rather than an empty screen.
+Kubron does not require cluster-wide `list` permission to work in a namespace. Select the namespaces you may read in the [namespace selector](/features/working-with-resources#choosing-namespaces), or set a default namespace in the [cluster settings](/features/settings#cluster-settings). Kubron reads the selected namespaces one by one, shows what you are allowed to see, and marks the ones it could not read with **No access**, rather than showing an empty screen. The connection test warns you when you cannot list namespaces at all.
 
 ## What you get
 
