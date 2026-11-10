@@ -85,8 +85,12 @@ jobs:
         run: npm ci
         working-directory: frontend
 
+      # Версия попадает в бинарь (main.version): по ней приложение сравнивает себя с последним релизом и показывает её
+      # в интерфейсе. Сборки без тега (PR, ручной запуск) получают "dev", и проверка обновлений в них отключена.
       - name: Build
-        run: wails build -clean -platform ${{ matrix.platform }} ${{ matrix.build_args }}
+        env:
+          APP_VERSION: ${{ github.ref_type == 'tag' && github.ref_name || 'dev' }}
+        run: wails build -clean -platform ${{ matrix.platform }} ${{ matrix.build_args }} -ldflags "-X main.version=${APP_VERSION#v}"
 
       - name: Package
         env:

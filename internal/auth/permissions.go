@@ -27,6 +27,11 @@ const (
 	// PermNodeShell — оболочка на узле: привилегированный под с root-доступом к хосту. Отдельно от exec: терминал
 	// в обычном поде и root на узле — разные уровни риска. По умолчанию только у роли admin.
 	PermNodeShell Permission = "nodeshell"
+	// PermDebug — добавление отладочного (ephemeral) контейнера в работающий под. Отдельно от exec: контейнер
+	// запускается из произвольного образа в пространствах имён пода, а в spec пода он остаётся до удаления самого
+	// пода (убрать его нельзя). Подключение к такому контейнеру идёт обычным терминалом и требует ещё и exec.
+	// По умолчанию только у роли admin.
+	PermDebug Permission = "debug"
 	// PermPortForward — проброс портов в поды и сервисы.
 	PermPortForward Permission = "portforward"
 	// PermClusterManage — добавление, изменение и удаление кластеров в приложении.
@@ -45,6 +50,7 @@ var allPermissions = []Permission{
 	PermWrite,
 	PermExec,
 	PermNodeShell,
+	PermDebug,
 	PermPortForward,
 	PermClusterManage,
 	PermUsersManage,

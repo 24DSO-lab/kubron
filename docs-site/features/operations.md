@@ -33,9 +33,18 @@ The node shell is a privileged operation: it uses a privileged helper Pod with a
 - Pod terminals use Kubernetes exec/attach.
 - Port-forward can target a Pod or a Service.
 
+### Debug containers
+
+The **Debug container** action on a Pod adds an [ephemeral container](https://kubernetes.io/docs/concepts/workloads/pods/ephemeral-containers/) to the running Pod and attaches a terminal to it. Use it when the application image has no shell or debugging tools. You choose an image, a profile and an optional target container whose process namespace the debug container shares.
+
+- **Permissions:** it needs the separate `debug` permission (administrators by default) and `exec`, because the terminal is attached to the container. The cluster account needs `patch` on `pods/ephemeralcontainers`.
+- **Profiles:** `general` adds `SYS_PTRACE` so you can trace processes. `restricted` runs as a non-root user without capabilities and fits Pod Security `restricted` namespaces.
+- **It stays in the Pod:** Kubernetes cannot remove or change an ephemeral container, so every session leaves a finished `kubron-debug-*` container in the Pod spec until the Pod is deleted. Kubron marks them in the container list. The shell exits when you close the terminal, so you cannot reconnect to the same container; start a new one.
+- **Administrators:** `KUBRON_DEBUG_IMAGES` limits the images that can be used, and `KUBRON_DISABLE_DEBUG` turns the feature off. Creating the container and starting each terminal session are recorded in the audit log.
+
 Desktop port-forward opens a local address on the same computer as Kubron. In Web service mode, port-forward is disabled unless the operator configures `KUBRON_PF_BASE_DOMAIN`, wildcard DNS and a wildcard TLS certificate. This uses a per-stream proxy origin rather than exposing a listening port on the server host.
 
-Server operators can disable interactive features globally with `KUBRON_DISABLE_EXEC`, `KUBRON_DISABLE_NODE_SHELL` and `KUBRON_DISABLE_PORT_FORWARD`. Per-user limits and session timeouts also apply.
+Server operators can disable interactive features globally with `KUBRON_DISABLE_EXEC`, `KUBRON_DISABLE_NODE_SHELL`, `KUBRON_DISABLE_DEBUG` and `KUBRON_DISABLE_PORT_FORWARD`. Per-user limits and session timeouts also apply.
 
 ## Metrics
 

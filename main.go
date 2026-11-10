@@ -51,6 +51,7 @@ func main() {
 				slog.Error("app: не удалось подготовить каталог Kubron", "error", err)
 			}
 			setupDesktopBroker(ctx, a.App, platform)
+			setupDesktopUpdates(ctx, a.App, os.Getenv)
 			app.OnStartup(a.App)(ctx)
 		},
 		OnShutdown: app.OnShutdown(a.App),

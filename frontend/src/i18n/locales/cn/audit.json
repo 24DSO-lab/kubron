@@ -134,7 +134,11 @@
     "ReconcileFlux": "Flux：reconcile",
     "SuspendFlux": "Flux：暂停",
     "ResumeFlux": "Flux：恢复",
-    "DeleteFlux": "Flux：对象已删除"
+    "DeleteFlux": "Flux：对象已删除",
+    "StartDebugContainer": "调试容器",
+    "bugreport": {
+      "submit": "已发送错误报告"
+    }
   },
   "export": {
     "csv": "导出 CSV",

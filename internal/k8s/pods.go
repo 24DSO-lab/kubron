@@ -81,6 +81,7 @@ type ContainerInfo struct {
 	RestartCount       int32                     `json:"restartCount"`
 	State              string                    `json:"state"`
 	IsInit             bool                      `json:"isInit"`
+	IsEphemeral        bool                      `json:"isEphemeral"` // отладочный контейнер (ephemeralContainers)
 	Ports              []ContainerPort           `json:"ports"`
 	Env                []EnvVarInfo              `json:"env"`
 	VolumeMounts       []VolumeMountInfo         `json:"volumeMounts"`
@@ -227,6 +228,42 @@ func convertPod(pod corev1.Pod) PodInfo {
 			WorkingDir:         spec.WorkingDir,
 			ImagePullPolicy:    string(spec.ImagePullPolicy),
 			TerminationMsgPath: spec.TerminationMessagePath,
+		})
+	}
+
+	// Ephemeral (отладочные) контейнеры: остаются в spec до удаления пода, даже завершённые. В готовность и
+	// счётчик перезапусков пода они не входят.
+	for _, ec := range pod.Spec.EphemeralContainers {
+		state, image := "waiting", ec.Image
+		var ready bool
+		for _, es := range pod.Status.EphemeralContainerStatuses {
+			if es.Name != ec.Name {
+				continue
+			}
+			ready = es.Ready
+			if es.Image != "" {
+				image = es.Image
+			}
+			switch {
+			case es.State.Running != nil:
+				state = "running"
+			case es.State.Waiting != nil:
+				state = es.State.Waiting.Reason
+			case es.State.Terminated != nil:
+				state = es.State.Terminated.Reason
+			}
+		}
+		containers = append(containers, ContainerInfo{
+			Name:            ec.Name,
+			Image:           image,
+			Ready:           ready,
+			State:           state,
+			IsEphemeral:     true,
+			Command:         ec.Command,
+			Args:            ec.Args,
+			WorkingDir:      ec.WorkingDir,
+			ImagePullPolicy: string(ec.ImagePullPolicy),
+			SecurityCtx:     extractSecurityCtx(corev1.Container{SecurityContext: ec.SecurityContext}),
 		})
 	}
 

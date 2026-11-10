@@ -6,6 +6,7 @@
       <div class="ct-head" @click="toggle(c.name)">
         <span class="ct-status" :class="statusClass(c)" />
         <span class="ct-name">{{ c.name }}</span>
+        <span v-if="c.isEphemeral" class="ct-debug-badge" data-test="ct-debug-badge">{{ $t('sections.containers.debug') }}</span>
         <span class="ct-image">{{ c.image }}</span>
         <span class="ct-arrow" :class="{ open: !collapsed.has(c.name) }">›</span>
       </div>
@@ -64,7 +65,7 @@
         </div>
 
 <!-- Environment -->
-<div class="rd-row rd-click" @click="flip(envOpen, c.name)">
+<div class="rd-row rd-click" @click="toggleEnv(c)">
   <span class="rd-label">{{ $t('sections.containers.environment') }}<span class="rd-arrow" :class="{ open: envOpen[c.name] }">›</span></span>
   <span class="rd-value">{{ $t('sections.containers.envCount', envList(c).length) }}</span>
 
@@ -78,12 +79,17 @@
       <span class="ct-ref-badge" :class="'ct-ref-' + refOf(e.value)!.kind">{{ refOf(e.value)!.kind }}</span>
 
       <span v-if="envKey(c, e) in secretValues" class="ct-env-plain">{{ secretValues[envKey(c, e)] || $t('sections.containers.emptyValue') }}</span>
+      <!-- Ссылка name → key остаётся всегда; у ConfigMap значение выводится отдельной строкой под ней -->
       <span v-else class="ct-ref-text">
         <template v-if="refOf(e.value)!.key">
           {{ refOf(e.value)!.name }}<span class="ct-ref-arrow"> → </span>{{ refOf(e.value)!.key }}
         </template>
         <template v-else>{{ refOf(e.value)!.name }}</template>
       </span>
+      <span
+        v-if="configMapValue(e) !== undefined"
+        class="ct-env-plain ct-env-sub"
+      >{{ configMapValue(e) || $t('sections.containers.emptyValue') }}</span>
     </template>
     <span v-else class="ct-env-plain">{{ e.value || '—' }}</span>
 
@@ -216,6 +222,40 @@ async function toggleSecret(c: any, e: { name: string; value: string }) {
   }
 }
 
+// ConfigMap не секрет: значения env с configMapKeyRef подгружаются автоматически
+// при раскрытии блока «Окружение» (через GetConfigMapDetail, право read).
+// Ключ кеша — имя ConfigMap; undefined в configMapValue => показываем "name → key".
+const configMapData = reactive<Record<string, Record<string, string>>>({})
+
+async function loadConfigMaps(c: any) {
+  const names = new Set<string>()
+  for (const e of envList(c)) {
+    const r = refOf(e.value)
+    if (r?.kind === 'configmap' && r.key) names.add(r.name)
+  }
+  await Promise.all([...names].map(async (name) => {
+    try {
+      const cm = await callApp('GetConfigMapDetail', props.resource.namespace, name)
+      configMapData[name] = cm?.data ?? {}
+    } catch (err) {
+      // нет прав / ConfigMap удалён / optional — остаёмся на отображении ссылки
+      console.warn('GetConfigMapDetail failed:', name, err)
+      delete configMapData[name]
+    }
+  }))
+}
+
+function configMapValue(e: { value: string }): string | undefined {
+  const r = refOf(e.value)
+  if (r?.kind !== 'configmap') return undefined
+  return configMapData[r.name]?.[r.key]
+}
+
+function toggleEnv(c: any) {
+  flip(envOpen, c.name)
+  if (envOpen[c.name]) void loadConfigMaps(c) // обновляем значения при каждом раскрытии
+}
+
 // function maskRef(v: string): string {
 //   const m = v.match(/^secret\(([^)]+)\)$/)
 //   return m ? `secret(${m[1].split('/')[0]})` : 'secret(???)'
@@ -226,7 +266,8 @@ function statusText(c: any): string {
   return c.ready ? t('sections.containers.stateReady', { state }) : state
 }
 function statusClass(c: any): string {
-  if (c.state === 'running' && c.ready) return 'ct-ok'
+  // У ephemeral-контейнера Kubernetes не ведёт готовность: работающий отладочный считается исправным
+  if (c.state === 'running' && (c.ready || c.isEphemeral)) return 'ct-ok'
   if (c.state === 'running') return 'ct-warn'
   if (['CrashLoopBackOff', 'Error', 'OOMKilled'].includes(c.state)) return 'ct-err'
   return 'ct-neutral'
@@ -263,6 +304,7 @@ function fmtRes(c: any, kind: 'requests' | 'limits'): string {
 .ct-ok { background: #4ade80; } .ct-warn { background: #facc15; } .ct-err { background: #ef4444; } .ct-neutral { background: #868d8a; }
 .ct-text-ok { color: #4ade80; } .ct-text-warn { color: #facc15; } .ct-text-err { color: #ef4444; } .ct-text-neutral { color: #868d8a; }
 .ct-name { color: #d4d4d4; }
+.ct-debug-badge { font-size: 0.7rem; font-weight: 600; padding: 1px 6px; border-radius: 3px; background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.35); }
 .ct-image { color: #868d8a; font-size: 0.8rem; font-weight: 400; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ct-arrow { margin-left: auto; transition: transform 0.2s; color: #868d8a; } .ct-arrow.open { transform: rotate(90deg); }
 .ct-body { padding: 16px; border-top: 1px solid #2a2b40; display: flex; flex-direction: column; }
@@ -309,6 +351,7 @@ function fmtRes(c: any, kind: 'requests' | 'limits'): string {
 .ct-ref-field, .ct-ref-resource { color: #a78bfa; background: rgba(167,139,250,0.14); }
 
 .ct-ref-text { color: #9ca0b8; overflow-wrap: anywhere; min-width: 0; }
+.ct-env-sub { flex-basis: 100%; }
 .ct-ref-arrow { color: #6b6d8a; }
 
 .ct-env-eye {

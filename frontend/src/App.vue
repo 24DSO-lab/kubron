@@ -28,8 +28,15 @@
         <button class="btn-disconnect" :title="$t('app.header.disconnect')" :aria-label="$t('app.header.disconnect')"
           @click="clusterConn.disconnect()">✕</button>
       </div>
-      <UserMenu />
+      <div class="header-right">
+        <VersionBadge />
+        <BugReportButton :view="currentView" />
+        <UserMenu />
+      </div>
     </header>
+
+    <!-- Вышла новая версия: баннер только администратору (ADR-0028) -->
+    <UpdateBanner />
 
     <div class="app-body">
       <!-- Cluster Bar -->
@@ -106,6 +113,8 @@
       :cluster="clusterConn.editingCluster.value" :pick-file="clusterConn.pickKubeconfigFile"
       :save="clusterConn.saveCluster" @close="clusterConn.closeEditCluster" @delete="clusterConn.deleteFromEdit" />
 
+    <UpdateDialog />
+
     <NotificationToast :notifications="notifications.notifications.value" @dismiss="notifications.dismiss" />
 
     <!-- Диалог входа в кластер (вызовы ConnectCluster) -->
@@ -146,6 +155,11 @@ import { useCapabilities } from './composables/useCapabilities'
 
 import AuthScreen from './components/auth/AuthScreen.vue'
 import UserMenu from './components/auth/UserMenu.vue'
+import VersionBadge from './components/update/VersionBadge.vue'
+import UpdateBanner from './components/update/UpdateBanner.vue'
+import UpdateDialog from './components/update/UpdateDialog.vue'
+import { useUpdates } from './composables/useUpdates'
+import BugReportButton from './components/bugreport/BugReportButton.vue'
 import IdleGuard from './components/auth/IdleGuard.vue'
 import HelmOpsPanel from './components/HelmOpsPanel.vue'
 import ClusterBar from './components/ClusterBar.vue'
@@ -359,6 +373,7 @@ async function applyYAMLTabbed(tabId: string) {
 // ═══════════════════════════════════════════════
 
 const appSettings = useAppSettings()
+const updates = useUpdates()
 
 // Данные кластеров загружаем только после входа: до этого бэкенд отвечает «требуется вход»
 let appStarted = false
@@ -369,6 +384,16 @@ watch(
     appStarted = true
     appSettings.loadSettings()
     clusterConn.initialize()
+  },
+  { immediate: true },
+)
+
+// Версия и обновления: читаем после входа (права нужны для состояния обновлений), при выходе сбрасываем
+watch(
+  () => auth.screen.value,
+  screen => {
+    if (screen === 'app') void updates.start()
+    else updates.stop()
   },
   { immediate: true },
 )

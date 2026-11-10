@@ -33,7 +33,7 @@ Checksums are published in `SHA256SUMS.txt`, and release files include build pro
 3. Right-click the zip, open **Properties**, and tick **Unblock** if the option is shown. Or run in PowerShell:
 
    ```powershell
-   Unblock-File .\Kubron_v1.1.0_windows-amd64.zip
+   Unblock-File .\Kubron_v1.2.0_windows-amd64.zip
    ```
 
 4. Extract the archive. It contains a single file, `Kubron.exe`. Put it in a folder you control, for example `C:\Tools\Kubron\` or `%LOCALAPPDATA%\Programs\Kubron\`.
@@ -80,7 +80,7 @@ Kubron needs **GTK 3** and **WebKitGTK 4.1**. Pick the install method for your d
 The package declares its dependencies (`libgtk-3-0`, `libwebkit2gtk-4.1-0`), so `apt` installs everything.
 
 ```bash
-sudo apt install ./kubron_1.1.0_amd64.deb
+sudo apt install ./kubron_1.2.0_amd64.deb
 ```
 
 Use the path to the file you downloaded. Installing with `apt install ./file.deb` (not `dpkg -i`) resolves dependencies for you.
@@ -131,7 +131,7 @@ sudo apt remove kubron
 2. Extract the archive. It contains one executable, `Kubron`:
 
    ```bash
-   tar -xzf Kubron_v1.1.0_linux-amd64.tar.gz
+   tar -xzf Kubron_v1.2.0_linux-amd64.tar.gz
    chmod +x Kubron
    ./Kubron
    ```

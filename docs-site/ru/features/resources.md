@@ -21,6 +21,19 @@ Kubron предоставляет каталог стандартных объе
 
 Kubron обнаруживает CustomResourceDefinitions активного кластера. Для поддерживаемых CRD читаются предпочтительная обслуживаемая версия, scope, short names и `additionalPrinterColumns`. Это позволяет показывать custom resources в таблицах по аналогии с `kubectl get`.
 
+## Кто управляет объектом {#managed-by}
+
+В списках ресурсов есть колонка **Managed by**: она показывает, какой инструмент создал объект или применяет его, чтобы вы знали, где вносить изменение, которое должно сохраниться:
+
+| Значение | Что означает |
+|---|---|
+| `Application/<имя>` | Приложение Argo CD (по аннотации отслеживания или метке instance) |
+| `Kustomization/<имя>` | Flux Kustomization (по метке `kustomize.toolkit.fluxcd.io/name`) |
+| `HelmRelease/<имя>` | Flux HelmRelease (по метке `helm.toolkit.fluxcd.io/name`) |
+| `Helm/<релиз>` | Релиз Helm, установленный напрямую |
+
+Если присутствует несколько меток, Argo CD главнее Flux, а Flux главнее Helm: релиз, который ставит helm-controller Flux, тоже несёт метку Helm, но управляет им HelmRelease. Колонка пуста, если владельца определить нельзя. Правки, сделанные в Kubron над управляемым объектом, могут быть отменены при следующем sync или reconcile, поэтому такие объекты меняйте в Git. См. [GitOps](/ru/features/gitops).
+
 ## Подробности объекта
 
 Панели деталей объединяют conditions, events, owner references, containers, volumes, affinity, tolerations, labels и annotations — в зависимости от типа ресурса.

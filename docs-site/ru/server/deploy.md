@@ -66,7 +66,7 @@ docker run -d --name kubron --restart unless-stopped \
   -e KUBRON_SETUP_TOKEN='случайный-токен-не-короче-16-символов' \
   -e KUBRON_SECRET_KEY='k1:...' \
   -e KUBRON_DATABASE_URL='postgres://kubron:...@db.example.com:5432/kubron?sslmode=verify-full' \
-  ghcr.io/24dso-lab/kubron:1.1.0
+  ghcr.io/24dso-lab/kubron:1.2.0
 ```
 
 Что делает каждая часть:
@@ -150,7 +150,7 @@ kubron:
 
 ```bash
 helm install kubron oci://ghcr.io/24dso-lab/charts/kubron \
-  --version 1.1.0 -n kubron -f values.yaml
+  --version 1.2.0 -n kubron -f values.yaml
 ```
 
 Версия чарта равна версии релиза (без `v`), и тег образа по умолчанию совпадает с ней. Для сборки из исходников используйте `helm install kubron deploy/helm/kubron ...` и задайте `image.repository` и `image.tag` сами.
@@ -324,6 +324,36 @@ kubron:
 - Kubron запрашивает scope `openid`, `userinfo.email` и `cloud-platform`. `cloud-platform` для Google чувствительный: для внешних пользователей может потребоваться проверка приложения, а в режиме Testing действуют ограничения на число пользователей и срок refresh-токена. Проверьте актуальные правила экрана согласия OAuth до выкладки.
 - Сервер не запустится, если задан секрет клиента без ID клиента. Ранее сохранённые ключи продолжают работать.
 
+### Отчёты об ошибках {#bug-reports}
+
+Кнопка **Сообщить об ошибке** в шапке отправляет описание пользователя и снимок окна браузера на почту. Письмо отправляет сервер через ваш SMTP-аккаунт, либо отчёт уходит в приёмник; кнопка появляется, только если задан и корректен `KUBRON_BUGREPORT_SMTP_HOST` или `KUBRON_BUGREPORT_RELAY_URL`. Серверу без выхода в интернет подойдёт SMTP-аккаунт вашего внутреннего почтового сервера.
+
+```yaml
+kubron:
+  extraEnv:
+    - name: KUBRON_BUGREPORT_SMTP_HOST
+      value: smtp.gmail.com
+    - name: KUBRON_BUGREPORT_SMTP_USER
+      value: 224vadim224@gmail.com
+    - name: KUBRON_BUGREPORT_SMTP_PASSWORD
+      valueFrom:
+        secretKeyRef: {name: kubron-bugreport, key: smtp-password}
+```
+
+- Отчёты уходят на `224vadim224@gmail.com`, если `KUBRON_BUGREPORT_SMTP_TO` не задаёт другой адрес. Для Gmail используйте порт 587 и [пароль приложения](https://support.google.com/accounts/answer/185833), а не пароль аккаунта.
+- В письме: текст, снимок экрана (если пользователь его оставил), необязательный контактный адрес, версия, язык, открытый раздел и логин отправителя. Имён кластеров и журналов в нём нет. **На снимке может быть всё, что видно на экране**, включая имена и значения, доступные пользователю; скажите пользователям проверять предпросмотр.
+- Лимиты: один отчёт от пользователя раз в 30 секунд и 30 отчётов в час на весь сервер. Каждый отправленный отчёт попадает в журнал аудита как `bugreport.submit`, без текста.
+- Вместо почты можно задать `KUBRON_BUGREPORT_RELAY_URL` — HTTPS-адрес приёмника, например проектного: `https://kubron.pages.dev/api/bugreport`. По умолчанию у сервера приёмника нет. Если заданы оба способа, сначала пробуется почта. Откройте исходящий HTTPS к приёмнику в сетевой политике.
+- При `networkPolicy.enabled` откройте порт SMTP сами, например:
+
+```yaml
+networkPolicy:
+  egress:
+    extra:
+      - ports: [{port: 587, protocol: TCP}]
+        to: [{ipBlock: {cidr: 0.0.0.0/0}}]
+```
+
 ### Что разрешить на стороне провайдера идентификации
 
 - **HTTPS issuer.** В Web-версии issuer должен работать по HTTPS с сертификатом, которому доверяет сервер. `insecure-skip-tls-verify` для веб-входа отклоняется; CA передайте встроенными данными kubeconfig.
@@ -333,6 +363,8 @@ kubron:
 - **Сетевой доступ.** Разрешите серверу обращаться к issuer и к endpoint-адресам из OIDC discovery (authorization, token, device, JWKS, userinfo, revocation). Для нестандартных портов задайте `networkPolicy.egress.idp.ports` или `idp.cidrs`. При политике адресов `strict` добавьте внутренний IdP в `KUBRON_CLUSTER_ADDR_ALLOW_CIDRS`.
 
 ## Обновление
+
+Kubron раз в сутки проверяет GitHub на наличие нового релиза. Администраторы видят баннер и окно **Версия и обновления** с точной командой для вашего способа установки (Helm, манифесты Kubernetes, Docker). Сервер сам себя не обновляет. Чтобы отключить такие запросы, например в изолированной сети, задайте `kubron.updateCheck: false`. Если вы сузили `networkPolicy.egress.clusterApi.cidrs`, разрешите `api.github.com` через `networkPolicy.egress.extra` или отключите проверку.
 
 ```bash
 helm upgrade kubron oci://ghcr.io/24dso-lab/charts/kubron \
@@ -357,7 +389,7 @@ helm uninstall kubron -n kubron
 Каждый релизный образ и чарт подписаны cosign и снабжены аттестациями provenance и SBOM. Всегда проверяйте **digest**, а не только тег.
 
 ```bash
-VERSION=1.1.0
+VERSION=1.2.0
 IMAGE=ghcr.io/24dso-lab/kubron
 CHART=ghcr.io/24dso-lab/charts/kubron
 

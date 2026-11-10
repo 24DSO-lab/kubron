@@ -22,6 +22,7 @@ body {
 }
 .header h1 { font-size: 20px; margin: 0; }
 .header.env-prod { box-shadow: inset 0 -2px 0 #f38ba8; } /* рабочий кластер: красная линия под шапкой */
+.header-right { margin-left: auto; display: flex; align-items: center; }
 .connection-info { font-size: 13px; color: #cdd6f4; display: flex; align-items: center; gap: 10px; }
 .env-badge {
   padding: 1px 7px; font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;

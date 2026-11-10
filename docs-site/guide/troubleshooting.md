@@ -36,7 +36,7 @@ Find your symptom, read the likely cause, and follow the link when there is a lo
 | `x509: certificate signed by unknown authority` | The kubeconfig has no cluster CA, or a corporate proxy re-signs TLS |
 | `Unauthorized` | The token or certificate expired or was revoked. Sign in again or replace the credentials |
 | `Forbidden` | The user lacks Kubernetes RBAC rights. Kubron permissions never add rights beyond RBAC |
-| **no permission to read namespaces: some data may be unavailable** | You cannot list namespaces cluster-wide. Restrict the cluster to the namespaces you can read in its settings; Kubron then shows those and reports what it could not read. See [First cluster](/guide/first-cluster#limited-access) |
+| **no permission to read namespaces: some data may be unavailable** | You cannot list namespaces cluster-wide. Views still work in namespaces you select: pick them in the selector, or set a default namespace in the cluster settings. Namespaces Kubron cannot read are marked **No access**. See [Working with resources](/features/working-with-resources#choosing-namespaces) |
 | **the kubeconfig refers to files on the server: embed certificates and tokens in it (the -data fields)** (Web) | The server cannot read files from your computer. Embed `certificate-authority-data`, `client-certificate-data` and `client-key-data`, or use the sign-in dialog |
 | Adding a cluster fails because of its address (Web) | The address policy blocks loopback, link-local and cloud-metadata addresses (and private networks under `strict`). See [Configuration](/server/configuration) |
 
@@ -114,7 +114,7 @@ Find your symptom, read the likely cause, and follow the link when there is a lo
 
 **Can I use several clusters and contexts?** Yes. Add each context as its own cluster with a clear name and environment tag. See [First cluster](/guide/first-cluster).
 
-**Can I use it with limited access?** Yes. Namespace-restricted access works without cluster-wide `list`. See [First cluster](/guide/first-cluster#limited-access).
+**Can I use it with limited access?** Yes. You can work in the namespaces you select without cluster-wide `list`. See [Working with resources](/features/working-with-resources#choosing-namespaces).
 
 **What does it cost, and under which license?** Kubron is open source under Apache-2.0, including the Web edition.
 

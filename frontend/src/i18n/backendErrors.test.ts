@@ -39,6 +39,20 @@ describe('перевод ошибок бэкенда', () => {
     expect(out).not.toContain('failed to')
   })
 
+  it('переводит ошибки отладочных контейнеров и оставляет причину от кластера как есть', () => {
+    expect(translateBackendError('debug containers are disabled by the administrator')).toBe('отладочные контейнеры отключены администратором')
+    expect(translateBackendError('image "evil" is not allowed by the administrator (allowed: busybox:1)')).toBe(
+      'образ "evil" не разрешён администратором (разрешены: busybox:1)',
+    )
+    const out = translateBackendError(
+      'the cluster account is not allowed to add ephemeral containers to pod prod/web (RBAC: patch on pods/ephemeralcontainers): denied',
+    )
+    expect(out).toContain('prod/web')
+    expect(out).toContain('pods/ephemeralcontainers')
+    expect(out.endsWith('): denied')).toBe(true)
+    expect(out).not.toContain('not allowed')
+  })
+
   it('неизвестное сообщение возвращает как есть', () => {
     expect(translateBackendError('the server could not find the requested resource')).toBe('the server could not find the requested resource')
     expect(translateBackendError('')).toBe('')

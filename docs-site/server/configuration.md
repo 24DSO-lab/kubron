@@ -46,10 +46,20 @@ Durations use Go syntax (`30s`, `15m`, `12h`). Boolean variables accept `1`, `tr
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `KUBRON_DISABLE_EXEC` | off | Disable pod terminals and the node shell for everyone. |
+| `KUBRON_DISABLE_EXEC` | off | Disable pod terminals, the node shell and debug containers for everyone. |
+| `KUBRON_DISABLE_DEBUG` | off | Disable debug (ephemeral) containers for everyone. |
+| `KUBRON_DEBUG_IMAGES` | empty | Comma-separated images allowed for debug containers. Empty allows any image. |
 | `KUBRON_DISABLE_NODE_SHELL` | off | Disable the node shell for everyone. |
 | `KUBRON_DISABLE_PORT_FORWARD` | off | Disable port-forward for everyone. |
 | `KUBRON_MAX_TERMINALS` | `8` | Terminals per user. `0` means unlimited. |
+
+### Updates
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `KUBRON_UPDATE_CHECK` | `on` | `off` stops all update checks: the server makes no requests to `api.github.com`. |
+| `KUBRON_INSTALL_METHOD` | detected | `helm`, `kubernetes`, `docker` or `binary`. Set it only if automatic detection is wrong; the Helm chart sets it itself. |
+| `KUBRON_HELM_RELEASE`, `KUBRON_HELM_NAMESPACE` | set by the chart | Release name and namespace shown in the `helm upgrade` command. |
 | `KUBRON_MAX_LOG_STREAMS` | `20` | Log streams per user. `0` means unlimited. |
 | `KUBRON_MAX_PORT_FORWARDS` | `10` | Port-forwards per user. `0` means unlimited. |
 | `KUBRON_TERMINAL_MAX_DURATION` | `8h` | Maximum lifetime of a terminal. `0` means unlimited. |
@@ -73,6 +83,14 @@ Durations use Go syntax (`30s`, `15m`, `12h`). Boolean variables accept `1`, `tr
 | `KUBRON_HELM_ALLOW_CIDRS` | — | Exceptions for Helm, for example an internal repository on `10.20.0.0/16`. |
 | `KUBRON_GKE_OAUTH_CLIENT_ID` | — | OAuth client ID that lets users sign in to GKE with their own Google account. Without it GKE uses a service-account key. |
 | `KUBRON_GKE_OAUTH_CLIENT_SECRET` | — | Secret of that client. Keep it in a Secret. The server refuses a secret without a client ID. |
+| `KUBRON_BUGREPORT_SMTP_HOST` | — | Mail server for the **Report a problem** button. Without it the button is hidden. See [Bug reports](/server/deploy#bug-reports). |
+| `KUBRON_BUGREPORT_SMTP_PORT` | `587` (`465` for `tls`) | Mail server port. |
+| `KUBRON_BUGREPORT_SMTP_SECURITY` | `starttls` | `starttls` or `tls`. `none` is accepted only for a server on the same machine. |
+| `KUBRON_BUGREPORT_SMTP_USER` | — | Sign-in of the mail account, for example `224vadim224@gmail.com`. |
+| `KUBRON_BUGREPORT_SMTP_PASSWORD` | — | Its password (for Gmail, an app password). Keep it in a Secret. The server does not send reports with a user but no password. |
+| `KUBRON_BUGREPORT_SMTP_FROM` | the user | Sender address. Gmail requires the signed-in account. |
+| `KUBRON_BUGREPORT_SMTP_TO` | `224vadim224@gmail.com` | Where the reports go. |
+| `KUBRON_BUGREPORT_RELAY_URL` | — | HTTPS address of a report receiver (for example `https://kubron.pages.dev/api/bugreport`) instead of, or after, the mail server. `off` disables it. See [Bug reports](/server/deploy#bug-reports). |
 
 ### Operations, audit and logging
 

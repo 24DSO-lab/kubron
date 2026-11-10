@@ -31,7 +31,9 @@
         <p>{{ $t('utils.tab.noTabs') }}</p>
       </div>
     </div>
-    <div class="resize-handle" @pointerdown="startResize" @pointermove="handleResize" @pointerup="stopResize"
+    <!-- Хендлы на всех сторонах и углах; углы идут после сторон и перекрывают их концы -->
+    <div v-for="edge in RESIZE_EDGES" :key="edge" class="resize-handle" :class="`resize-${edge}`"
+      @pointerdown="startResize($event, edge)" @pointermove="handleResize" @pointerup="stopResize"
       @pointercancel="stopResize"></div>
   </div>
 </template>
@@ -40,6 +42,7 @@
 import { ref, computed, onMounted } from 'vue'
 import editorWorker from 'monaco-editor/editor/editor.worker?worker'
 import { globalTabbedPanel } from '../../composables/useTabbedPanel'
+import { PANEL_MIN_SIZE, RESIZE_EDGES, resizeRect, type PanelRect, type ResizeEdge } from '../../composables/panelGeometry'
 import LogsView from './LogsView.vue'
 import YamlView from './YamlView.vue'
 import TerminalView from './TerminalView.vue'
@@ -72,10 +75,10 @@ const dragStartX = ref(0)
 const dragStartY = ref(0)
 const dragStartLeft = ref(0)
 const dragStartTop = ref(0)
-const resizeStartX = ref(0)
-const resizeStartY = ref(0)
-const resizeStartWidth = ref(0)
-const resizeStartHeight = ref(0)
+let resizeEdge: ResizeEdge = 'se'
+let resizeStartX = 0
+let resizeStartY = 0
+let resizeStartRect: PanelRect = { x: 0, y: 0, width: 0, height: 0 }
 
 const panelStyle = computed(() => ({ position: 'fixed' as const, left: `${panelX.value}px`, top: `${panelY.value}px`, width: `${panelWidth.value}px`, height: `${panelHeight.value}px` }))
 
@@ -126,14 +129,14 @@ function handleDrag(e: PointerEvent) {
   clampPanel()
 }
 
-function startResize(e: PointerEvent) {
+function startResize(e: PointerEvent, edge: ResizeEdge) {
   if (e.button !== 0) return
   ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
   isResizing.value = true
-  resizeStartX.value = e.clientX
-  resizeStartY.value = e.clientY
-  resizeStartWidth.value = panelWidth.value
-  resizeStartHeight.value = panelHeight.value
+  resizeEdge = edge
+  resizeStartX = e.clientX
+  resizeStartY = e.clientY
+  resizeStartRect = { x: panelX.value, y: panelY.value, width: panelWidth.value, height: panelHeight.value }
   e.preventDefault()
 }
 
@@ -145,8 +148,15 @@ function stopResize(e: PointerEvent) {
 
 function handleResize(e: PointerEvent) {
   if (!isResizing.value) return
-  panelWidth.value = Math.max(400, resizeStartWidth.value + (e.clientX - resizeStartX.value))
-  panelHeight.value = Math.max(250, resizeStartHeight.value + (e.clientY - resizeStartY.value))
+  // Считаем от прямоугольника в начале жеста, а не накопительно: нет дрейфа, и упор в минимум обратим.
+  const r = resizeRect(
+    resizeStartRect, resizeEdge, e.clientX - resizeStartX, e.clientY - resizeStartY,
+    { width: window.innerWidth, height: window.innerHeight }, PANEL_MIN_SIZE,
+  )
+  panelX.value = r.x
+  panelY.value = r.y
+  panelWidth.value = r.width
+  panelHeight.value = r.height
 }
 </script>
 
@@ -268,19 +278,59 @@ function handleResize(e: PointerEvent) {
   color: #666;
 }
 
+/* Хендлы лежат внутри рамки (у панели overflow: hidden), поэтому полоса захвата — 6px, углы — 14px */
 .resize-handle {
   position: absolute;
+  z-index: 2;
+  touch-action: none;
+}
+
+.resize-n,
+.resize-s {
+  left: 0;
+  right: 0;
+  height: 6px;
+  cursor: ns-resize;
+}
+
+.resize-e,
+.resize-w {
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  cursor: ew-resize;
+}
+
+.resize-n { top: 0; }
+.resize-s { bottom: 0; }
+.resize-e { right: 0; }
+.resize-w { left: 0; }
+
+.resize-ne,
+.resize-nw,
+.resize-se,
+.resize-sw {
+  z-index: 3;
+  width: 14px;
+  height: 14px;
+}
+
+.resize-ne { top: 0; right: 0; cursor: nesw-resize; }
+.resize-sw { bottom: 0; left: 0; cursor: nesw-resize; }
+.resize-nw { top: 0; left: 0; cursor: nwse-resize; }
+
+/* Правый нижний угол сохраняет прежний «уголок» как подсказку, что панель тянется */
+.resize-se {
   bottom: 0;
   right: 0;
   width: 20px;
   height: 20px;
-  cursor: se-resize;
-  touch-action: none;
+  cursor: nwse-resize;
   background: linear-gradient(135deg, transparent 50%, #3b3d5c 50%);
   opacity: 0.5;
 }
 
-.resize-handle:hover {
+.resize-se:hover {
   opacity: 1;
 }
 </style>

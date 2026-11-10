@@ -26,7 +26,7 @@ Each of these lists shows up to 10 rows, with a total count.
 
 ## What changed recently
 
-The recent-changes timeline combines Deployment rollouts, Helm release updates and Argo CD syncs, newest first (up to 15 entries). It answers "what changed before this broke". It is built from what Kubron can observe through the Kubernetes API and installed integrations; it is not a complete audit trail of every cluster change.
+The recent-changes timeline combines Deployment rollouts, Helm release updates, Argo CD syncs and Flux reconciles (the time a Kustomization or HelmRelease last changed its Ready condition), newest first (up to 15 entries). Switch the period between 1 hour, 6 hours and 24 hours. A source that is unavailable, for example because Flux is not installed or you lack permission to read it, simply adds no entries. It answers "what changed before this broke". It is built from what Kubron can observe through the Kubernetes API and installed integrations; it is not a complete audit trail of every cluster change.
 
 ## Certificates
 
@@ -44,4 +44,4 @@ Everything above works without a metrics stack. The following needs Prometheus d
 
 Pending and lost PersistentVolumeClaims are counted from the Kubernetes API and are shown even without the metrics stack.
 
-[Learn about the optional metrics stack and operational actions](/features/operations).
+[Learn about the optional metrics stack](/features/metrics) and [operational actions](/features/operations).

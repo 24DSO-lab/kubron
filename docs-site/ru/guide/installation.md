@@ -53,9 +53,9 @@ Kubron выпускается в двух версиях: **Desktop** и **Web**
 | Все | `SHA256SUMS.txt` | Контрольные суммы всех файлов |
 | Все | `kubron-sbom_v<версия>_desktop.cdx.json`, `kubron-sbom_<версия>_image.spdx.json`, `kubron-sbom_<версия>_chart.cdx.json` | Спецификации состава ПО для десктопных файлов, образа сервера и Helm-чарта (`v` есть только в имени десктопного файла) |
 
-Например, версия 1.1.0 — это `Kubron_v1.1.0_windows-amd64.zip` и `kubron_1.1.0_amd64.deb`. Обратите внимание: в именах архивов есть `v` из тега релиза, а в имени `.deb` его нет.
+Например, версия 1.2.0 — это `Kubron_v1.2.0_windows-amd64.zip` и `kubron_1.2.0_amd64.deb`. Обратите внимание: в именах архивов есть `v` из тега релиза, а в имени `.deb` его нет.
 
-Релиз-кандидаты (версии вида `1.1.0-rc.1`) помечаются на GitHub как pre-release. Если вы не тестируете, берите последнюю версию без этой пометки.
+Релиз-кандидаты (версии вида `1.3.0-rc.1`) помечаются на GitHub как pre-release. Если вы не тестируете, берите последнюю версию без этой пометки.
 
 ## Проверка загрузки
 
@@ -76,7 +76,7 @@ shasum -a 256 --check --ignore-missing SHA256SUMS.txt
 ```
 
 ```powershell [Windows (PowerShell)]
-(Get-FileHash .\Kubron_v1.1.0_windows-amd64.zip -Algorithm SHA256).Hash
+(Get-FileHash .\Kubron_v1.2.0_windows-amd64.zip -Algorithm SHA256).Hash
 # Сравните результат с соответствующей строкой в SHA256SUMS.txt (регистр не важен)
 ```
 
@@ -89,7 +89,7 @@ shasum -a 256 --check --ignore-missing SHA256SUMS.txt
 К каждому десктопному файлу прилагается подписанная аттестация, связывающая его с конкретным коммитом и запуском GitHub Actions, который его собрал. При установленном [GitHub CLI](https://cli.github.com/):
 
 ```bash
-gh attestation verify Kubron_v1.1.0_linux-amd64.tar.gz --repo 24DSO-lab/kubron
+gh attestation verify Kubron_v1.2.0_linux-amd64.tar.gz --repo 24DSO-lab/kubron
 ```
 
 Успешный запуск выведет workflow, создавший файл. То же работает для `.deb` и для архивов Windows и macOS.
