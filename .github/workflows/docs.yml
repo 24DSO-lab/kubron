@@ -73,26 +73,34 @@ jobs:
       name: production
       url: https://kubron.pages.dev/
     steps:
-      # Wrangler takes the Pages Functions (docs-site/functions, the bug report receiver) from the working directory,
-      # so the sources are needed here next to the built site.
+      # Wrangler takes the Pages Functions (functions/) from its working directory. That directory must not be docs-site:
+      # wrangler-action installs Wrangler next to the nearest package.json, and docs-site pins esbuild to 0.25 for
+      # VitePress, which is too old for Wrangler ("import-source" is not a valid feature name). So the Pages project
+      # (the built site and the receiver) is assembled in a folder of its own.
       - name: Checkout
         uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
           sparse-checkout: |
             docs-site/functions
-            docs-site/relay
+            docs-site/relay/bugreport.ts
 
       - name: Download build artifact
         uses: actions/download-artifact@v8
         with:
           name: kubron-docs
-          path: docs-site/dist
+          path: pages/dist
+
+      - name: Assemble the Pages project
+        run: |
+          mkdir -p pages/relay
+          cp -r docs-site/functions pages/functions
+          cp docs-site/relay/bugreport.ts pages/relay/bugreport.ts
 
       - name: Deploy with Wrangler
         uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          workingDirectory: docs-site
-          command: pages deploy dist --project-name=kubron --branch=refactor
+          workingDirectory: pages
+          command: pages deploy dist --project-name=kubron --branch=refactor --commit-dirty=true
