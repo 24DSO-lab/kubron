@@ -188,7 +188,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Docs:** refreshed README (logo, badges, `.deb` download, links to the user guides, server mode section,
   roadmap with statuses, screenshots of the overview, pods, YAML editor and GitOps); fixed the local
-  web-server build steps. Added a social preview image (`docs/images/social-preview.png`).
+  web-server build steps. Added a social preview image (`docs/images/kubron-banner.png`).
 - **Docs:** README no longer names third-party products or describes paid features; the GitOps wording is
   tool-neutral and the comparison table was replaced with a short "Why Kubron" list.
 - **Deploy:** the Helm chart now defaults to `image.repository: ghcr.io/24dso-lab/kubron` (it still pointed

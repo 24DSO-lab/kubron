@@ -52,7 +52,7 @@ export default defineConfig({
     ['meta', { property: 'og:site_name', content: 'Kubron' }],
     ['meta', { property: 'og:title', content: 'Kubron — Kubernetes, under control.' }],
     ['meta', { property: 'og:description', content: 'A Kubernetes Operations Workspace for desktop and self-hosted web. Clusters, workloads, Helm and GitOps in one place.' }],
-    ['meta', { property: 'og:image', content: 'https://raw.githubusercontent.com/24DSO-lab/kubron/master/docs/images/social-preview.png' }],
+    ['meta', { property: 'og:image', content: 'https://raw.githubusercontent.com/24DSO-lab/kubron/master/docs/images/kubron-banner.png' }],
     ['meta', { name: 'twitter:card', content: 'summary_large_image' }]
   ],
   locales: {
