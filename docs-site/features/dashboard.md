@@ -44,4 +44,4 @@ Everything above works without a metrics stack. The following needs Prometheus d
 
 Pending and lost PersistentVolumeClaims are counted from the Kubernetes API and are shown even without the metrics stack.
 
-[Learn about the optional metrics stack and operational actions](/features/operations).
+[Learn about the optional metrics stack](/features/metrics) and [operational actions](/features/operations).

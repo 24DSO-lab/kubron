@@ -25,6 +25,7 @@ Kubron объединяет собственные разрешения прил
 | `operate` | Масштабирование, перезапуск и откат нагрузок; повтор Job, запуск и приостановка CronJob; cordon узлов; откат релизов Helm; sync, refresh, terminate и rollback приложений Argo CD; reconcile объектов Flux CD | `operator`, `admin` |
 | `write` | Применение, создание и удаление YAML; правка ConfigMap и Secret; вытеснение Pod; drain узлов; установка, обновление и удаление релизов Helm; установка и удаление стека метрик; приостановка и возобновление auto-sync Argo CD, удаление приложений; suspend, resume и удаление объектов Flux CD | `admin` |
 | `exec` | Терминалы Pod | `admin` |
+| `debug` | Добавление отладочного (ephemeral) контейнера в работающий Pod; для терминала к нему нужен ещё и `exec` | `admin` |
 | `nodeshell` | Оболочка узла (привилегированный доступ к хосту) | `admin` |
 | `portforward` | Port-forward | `admin` |
 | `clusters.manage` | Добавление, изменение и удаление кластеров; управление репозиториями Helm и OCI-реестрами | `admin` |

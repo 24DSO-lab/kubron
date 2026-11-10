@@ -31,7 +31,7 @@ Kubron копирует содержимое kubeconfig в собственны�
 
 ## Ограниченный доступ? Всё равно работает {#limited-access}
 
-Kubron не требует cluster-wide права `list`. Если вам доступны только некоторые namespace, ограничьте набор namespace в настройках кластера. Kubron покажет то, что вам разрешено, и сообщит, что прочитать не удалось, вместо пустого экрана.
+Kubron не требует cluster-wide права `list`, чтобы работать в namespace. Выберите доступные вам namespace в [селекторе namespace](/ru/features/working-with-resources#choosing-namespaces) либо задайте namespace по умолчанию в [настройках кластера](/ru/features/settings#cluster-settings). Kubron читает выбранные namespace по одному, показывает то, что вам разрешено, и помечает непрочитанные как **No access**, вместо пустого экрана. Проверка подключения предупреждает, если список namespace вам вообще недоступен.
 
 ## Что вы получите
 

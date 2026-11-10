@@ -36,7 +36,7 @@
 | `x509: certificate signed by unknown authority` | В kubeconfig нет CA кластера либо корпоративный прокси подменяет TLS |
 | `Unauthorized` | Токен или сертификат истёк либо отозван. Войдите заново или замените учётные данные |
 | `Forbidden` | У пользователя не хватает прав Kubernetes RBAC. Права Kubron никогда не добавляют прав сверх RBAC |
-| **no permission to read namespaces: some data may be unavailable** | Вы не можете получить список namespace по всему кластеру. Ограничьте кластер доступными namespace в его настройках; Kubron покажет их и сообщит, что прочитать не удалось. См. [Первый кластер](/ru/guide/first-cluster#limited-access) |
+| **no permission to read namespaces: some data may be unavailable** | Вы не можете получить список namespace по всему кластеру. Разделы работают в выбранных вами namespace: выберите их в селекторе либо задайте namespace по умолчанию в настройках кластера. Namespace, которые Kubron прочитать не может, помечаются **No access**. См. [Работа с ресурсами](/ru/features/working-with-resources#choosing-namespaces) |
 | **the kubeconfig refers to files on the server: embed certificates and tokens in it (the -data fields)** (Web) | Сервер не может читать файлы с вашего компьютера. Встройте `certificate-authority-data`, `client-certificate-data` и `client-key-data` либо используйте окно входа |
 | Добавление кластера не проходит из-за адреса (Web) | Политика адресов закрывает loopback, link-local и адреса метаданных облака (а при `strict` и частные сети). См. [Конфигурацию](/ru/server/configuration) |
 
@@ -114,7 +114,7 @@
 
 **Можно ли использовать несколько кластеров и контекстов?** Да. Добавьте каждый контекст как отдельный кластер с понятным именем и тегом окружения. См. [Первый кластер](/ru/guide/first-cluster).
 
-**Работает ли с ограниченным доступом?** Да. Доступ, ограниченный namespace, работает без cluster-wide `list`. См. [Первый кластер](/ru/guide/first-cluster#limited-access).
+**Работает ли с ограниченным доступом?** Да. Вы можете работать в выбранных namespace без cluster-wide `list`. См. [Работа с ресурсами](/ru/features/working-with-resources#choosing-namespaces).
 
 **Сколько это стоит и под какой лицензией?** Kubron — открытое ПО под Apache-2.0, включая Web-версию.
 

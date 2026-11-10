@@ -69,7 +69,7 @@ services:
       retries: 10
 
   kubron:
-    image: ghcr.io/24dso-lab/kubron:1.1.0
+    image: ghcr.io/24dso-lab/kubron:1.2.0
     depends_on:
       db:
         condition: service_healthy
@@ -92,7 +92,7 @@ volumes:
   pgdata:
 ```
 
-Замените `1.1.0` на нужную версию (в теге образа нет ведущей `v`).
+Замените `1.2.0` на нужную версию (в теге образа нет ведущей `v`).
 
 Что важно знать:
 

@@ -44,4 +44,4 @@ Kubron читает TLS-секреты (`kubernetes.io/tls`) и показыва
 
 PersistentVolumeClaim в состоянии Pending и Lost подсчитываются по API Kubernetes и показываются и без стека метрик.
 
-[О необязательном стеке метрик и операциях](/ru/features/operations).
+[О необязательном стеке метрик](/ru/features/metrics) и [операциях](/ru/features/operations).

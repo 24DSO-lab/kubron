@@ -66,7 +66,7 @@ docker run -d --name kubron --restart unless-stopped \
   -e KUBRON_SETUP_TOKEN='a-random-token-of-16-or-more-characters' \
   -e KUBRON_SECRET_KEY='k1:...' \
   -e KUBRON_DATABASE_URL='postgres://kubron:...@db.example.com:5432/kubron?sslmode=verify-full' \
-  ghcr.io/24dso-lab/kubron:1.1.0
+  ghcr.io/24dso-lab/kubron:1.2.0
 ```
 
 What each part does:
@@ -150,7 +150,7 @@ Notes:
 
 ```bash
 helm install kubron oci://ghcr.io/24dso-lab/charts/kubron \
-  --version 1.1.0 -n kubron -f values.yaml
+  --version 1.2.0 -n kubron -f values.yaml
 ```
 
 The chart version equals the release version (without `v`), and the image tag defaults to the same version. For a build from source, use `helm install kubron deploy/helm/kubron ...` and set `image.repository` and `image.tag` yourself.
@@ -388,7 +388,7 @@ This removes the workload but **not** your Secret or the PostgreSQL data. Delete
 Every release image and chart is signed with cosign and carries provenance and SBOM attestations. Always verify the **digest**, not only the tag.
 
 ```bash
-VERSION=1.1.0
+VERSION=1.2.0
 IMAGE=ghcr.io/24dso-lab/kubron
 CHART=ghcr.io/24dso-lab/charts/kubron
 

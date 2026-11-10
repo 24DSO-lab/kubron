@@ -66,7 +66,7 @@ docker run -d --name kubron --restart unless-stopped \
   -e KUBRON_SETUP_TOKEN='случайный-токен-не-короче-16-символов' \
   -e KUBRON_SECRET_KEY='k1:...' \
   -e KUBRON_DATABASE_URL='postgres://kubron:...@db.example.com:5432/kubron?sslmode=verify-full' \
-  ghcr.io/24dso-lab/kubron:1.1.0
+  ghcr.io/24dso-lab/kubron:1.2.0
 ```
 
 Что делает каждая часть:
@@ -150,7 +150,7 @@ kubron:
 
 ```bash
 helm install kubron oci://ghcr.io/24dso-lab/charts/kubron \
-  --version 1.1.0 -n kubron -f values.yaml
+  --version 1.2.0 -n kubron -f values.yaml
 ```
 
 Версия чарта равна версии релиза (без `v`), и тег образа по умолчанию совпадает с ней. Для сборки из исходников используйте `helm install kubron deploy/helm/kubron ...` и задайте `image.repository` и `image.tag` сами.
@@ -388,7 +388,7 @@ helm uninstall kubron -n kubron
 Каждый релизный образ и чарт подписаны cosign и снабжены аттестациями provenance и SBOM. Всегда проверяйте **digest**, а не только тег.
 
 ```bash
-VERSION=1.1.0
+VERSION=1.2.0
 IMAGE=ghcr.io/24dso-lab/kubron
 CHART=ghcr.io/24dso-lab/charts/kubron
 
