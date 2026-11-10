@@ -6,6 +6,20 @@ import { defineConfig } from 'vitepress'
 const repo = 'https://github.com/24DSO-lab/kubron'
 const releases = `${repo}/releases`
 const base = process.env.DOCS_BASE || '/'
+// Public origin of the site, used for canonical links, hreflang and the sitemap
+const siteUrl = (process.env.DOCS_SITE_URL || 'https://kubron.pages.dev').replace(/\/+$/, '')
+
+// 'guide/desktop.md' -> '/guide/desktop', 'index.md' -> '/', 'ru/server/index.md' -> '/ru/server/'
+function cleanPath(relativePath: string): string {
+  const p = relativePath.replace(/\.md$/, '').replace(/(^|\/)index$/, '$1')
+  return '/' + p
+}
+// Every page exists in both languages, so the counterpart path is computed, not looked up
+function languagePaths(relativePath: string): { en: string; ru: string } {
+  const isRu = relativePath === 'ru' || relativePath.startsWith('ru/')
+  const enRel = isRu ? relativePath.replace(/^ru\/?/, '') || 'index.md' : relativePath
+  return { en: cleanPath(enRel), ru: cleanPath('ru/' + enRel).replace(/^\/ru\/\/$/, '/ru/') }
+}
 
 export default defineConfig({
   title: 'Kubron',
@@ -15,6 +29,21 @@ export default defineConfig({
   base,
   // Hosting notes for maintainers are not part of the public site
   srcExclude: ['README.md', 'DOMAIN.md'],
+  sitemap: { hostname: siteUrl },
+  // canonical and hreflang links tie the English and Russian versions of a page together
+  transformHead({ pageData }) {
+    const { relativePath } = pageData
+    if (relativePath === '404.md') return []
+    const { en, ru } = languagePaths(relativePath)
+    const isRu = relativePath === 'ru' || relativePath.startsWith('ru/')
+    const url = (path: string) => `${siteUrl}${base.replace(/\/$/, '')}${path}`
+    return [
+      ['link', { rel: 'canonical', href: url(isRu ? ru : en) }],
+      ['link', { rel: 'alternate', hreflang: 'en', href: url(en) }],
+      ['link', { rel: 'alternate', hreflang: 'ru', href: url(ru) }],
+      ['link', { rel: 'alternate', hreflang: 'x-default', href: url(en) }]
+    ]
+  },
   appearance: 'dark',
   head: [
     ['link', { rel: 'icon', href: `${base}favicon.svg`, type: 'image/svg+xml' }],
@@ -56,11 +85,15 @@ export default defineConfig({
             { text: 'Cluster authentication', link: '/features/cluster-auth' },
             { text: 'Dashboard', link: '/features/dashboard' },
             { text: 'Resources & YAML', link: '/features/resources' },
+            { text: 'Working with resources', link: '/features/working-with-resources' },
             { text: 'Operations', link: '/features/operations' },
+            { text: 'Metrics stack & charts', link: '/features/metrics' },
             { text: 'Helm', link: '/features/helm' },
             { text: 'GitOps', link: '/features/gitops' },
             { text: 'Teams & shared access', link: '/features/teams' },
-            { text: 'Security & access', link: '/features/security' }
+            { text: 'Security & access', link: '/features/security' },
+            { text: 'Users & audit log', link: '/features/administration' },
+            { text: 'Settings', link: '/features/settings' }
           ]}],
           '/server/': [{ text: 'Web version', items: [
             { text: 'Overview', link: '/server/' },
@@ -113,11 +146,15 @@ export default defineConfig({
             { text: 'Подключение кластера', link: '/ru/features/cluster-auth' },
             { text: 'Дашборд', link: '/ru/features/dashboard' },
             { text: 'Ресурсы и YAML', link: '/ru/features/resources' },
+            { text: 'Работа с ресурсами', link: '/ru/features/working-with-resources' },
             { text: 'Операции', link: '/ru/features/operations' },
+            { text: 'Стек метрик и графики', link: '/ru/features/metrics' },
             { text: 'Helm', link: '/ru/features/helm' },
             { text: 'GitOps', link: '/ru/features/gitops' },
             { text: 'Команды и совместный доступ', link: '/ru/features/teams' },
-            { text: 'Безопасность и доступ', link: '/ru/features/security' }
+            { text: 'Безопасность и доступ', link: '/ru/features/security' },
+            { text: 'Пользователи и аудит', link: '/ru/features/administration' },
+            { text: 'Настройки', link: '/ru/features/settings' }
           ]}],
           '/ru/server/': [{ text: 'Web-версия', items: [
             { text: 'Обзор', link: '/ru/server/' },
@@ -150,11 +187,6 @@ export default defineConfig({
       copyright: 'Copyright © 2026 The Kubron Authors'
     },
     search: { provider: 'local' },
-    editLink: {
-      pattern: `${repo}/edit/master/docs-site/:path`,
-      text: 'Edit this page on GitHub'
-    },
-    lastUpdated: { text: 'Updated at', formatOptions: { dateStyle: 'medium', timeStyle: 'short' } },
     outline: { level: [2, 3] }
   },
   markdown: { lineNumbers: false },
