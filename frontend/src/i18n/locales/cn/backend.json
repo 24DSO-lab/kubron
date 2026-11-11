@@ -761,5 +761,9 @@
   "bugReportTheReportReceiverAddressIsNotValid": "报告接收服务的地址无效",
   "bugReportTheFolderForTheReportsThatWaitForDeliveryIsNotAvailable": "用于存放待发送报告的文件夹不可用",
   "bugReportThereAreNoReportsWaitingForDelivery": "没有等待发送的报告",
-  "bugReportTheArchiveOfTheReportsCouldNotBeWritten": "无法写入报告压缩包"
+  "bugReportTheArchiveOfTheReportsCouldNotBeWritten": "无法写入报告压缩包",
+  "resourceNotFound": "未找到资源",
+  "accessToTheResourceIsForbidden": "禁止访问该资源",
+  "clusterSourceIsUnavailable": "集群数据源不可用",
+  "responseIsTooLarge": "响应过大"
 }

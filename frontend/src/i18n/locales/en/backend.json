@@ -761,5 +761,9 @@
   "bugReportTheReportReceiverAddressIsNotValid": "the report receiver address is not valid",
   "bugReportTheFolderForTheReportsThatWaitForDeliveryIsNotAvailable": "the folder for the reports that wait for delivery is not available",
   "bugReportThereAreNoReportsWaitingForDelivery": "there are no reports waiting for delivery",
-  "bugReportTheArchiveOfTheReportsCouldNotBeWritten": "the archive of the reports could not be written"
+  "bugReportTheArchiveOfTheReportsCouldNotBeWritten": "the archive of the reports could not be written",
+  "resourceNotFound": "resource not found",
+  "accessToTheResourceIsForbidden": "access to the resource is forbidden",
+  "clusterSourceIsUnavailable": "cluster source is unavailable",
+  "responseIsTooLarge": "response is too large"
 }
