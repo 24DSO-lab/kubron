@@ -41,6 +41,9 @@ type Store struct {
 
 // Open подключается к БД. Схему создаёт Migrate; без неё Open сразу создавать организацию не станет:
 // это делает Init.
+// OrgID возвращает идентификатор организации каталога (tenant.Scope операционных модулей, ADR-0026 §4).
+func (s *Store) OrgID() string { return s.orgID }
+
 func Open(ctx context.Context, url string, keys *secretbox.Keyring) (*Store, error) {
 	if keys == nil {
 		return nil, secretbox.ErrNoKey

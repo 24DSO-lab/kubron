@@ -13,6 +13,7 @@ import (
 
 	"github.com/24DSO-lab/kubron/internal/app"
 	"github.com/24DSO-lab/kubron/internal/metrics"
+	"github.com/24DSO-lab/kubron/internal/opsplatform"
 	"github.com/24DSO-lab/kubron/internal/pgstore"
 	"github.com/24DSO-lab/kubron/internal/server"
 )
@@ -35,6 +36,7 @@ func setupMetrics(ctx context.Context, cfg server.Config, d metricsDeps, handler
 		return handler
 	}
 	m := metrics.New(version, func() metrics.Snapshot { return snapshot(d) })
+	opsplatform.SetObserver(m) // метрики операций операционных модулей (ADR-0026 §6)
 	ln, err := net.Listen("tcp", cfg.MetricsListen)
 	if err != nil {
 		log.Fatalf("metrics: %v", err) // адрес задан явно: молча работать без метрик нельзя
