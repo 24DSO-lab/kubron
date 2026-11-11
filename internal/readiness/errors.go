@@ -40,6 +40,8 @@ var (
 	ErrInvalidScope = errors.New("readiness scope is incomplete")
 	// ErrInvalidReport — отчёт не прошёл проверку и не сохраняется (в том числе без заполненного coverage).
 	ErrInvalidReport = errors.New("readiness report is invalid")
+	// ErrUnknownFormat — формат экспорта не поддерживается.
+	ErrUnknownFormat = errors.New("readiness export format is not supported")
 	// ErrBadCursor — курсор страницы истории повреждён.
 	ErrBadCursor = errors.New("history cursor is invalid")
 )
