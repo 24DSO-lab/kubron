@@ -1,0 +1,13 @@
+error loading key from /etc/tls/key.pem
+-----BEGIN RSA PRIVATE KEY-----
+⟦MIIEowIBAAKCAQEAx8cXk0Zx1v7Qk3nO2mJb5r9wYtLd4HfGp6sVaUeNoIiXcZyB⟧
+⟦8TqWmEjRlKgDh1uSfPnOvA3bYtC7xZwLqMk92JrHsGdFeUa0iNpTyBoVcXzWmQ==⟧
+-----END RSA PRIVATE KEY-----
+retrying in 5s
+%%%
+-----BEGIN OPENSSH PRIVATE KEY-----
+⟦b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW⟧
+-----END OPENSSH PRIVATE KEY-----
+%%%
+config dump: -----BEGIN PRIVATE KEY-----
+⟦MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg⟧ (log line cut here, no END marker)

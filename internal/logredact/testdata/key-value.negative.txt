@@ -1,0 +1,17 @@
+max_tokens: 4096
+%%%
+tokens=250 consumed
+%%%
+token: null
+%%%
+password: ""
+%%%
+password policy requires 12 characters
+%%%
+secret rotation finished in 3s
+%%%
+token bucket is full
+%%%
+passwordless login is enabled
+%%%
+retry-after: 30

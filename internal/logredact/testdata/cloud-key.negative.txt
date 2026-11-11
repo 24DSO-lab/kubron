@@ -1,0 +1,9 @@
+AKIA is the prefix of AWS access key ids
+%%%
+short AKIAIOSFODNN7EXAMPL (19 chars) is not a key
+%%%
+the sk_live_ prefix marks Stripe live keys
+%%%
+github tokens start with ghp_ followed by 36 characters
+%%%
+AIza prefix only

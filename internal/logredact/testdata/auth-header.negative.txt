@@ -1,0 +1,7 @@
+authorization header is missing in the request
+%%%
+the authorization code flow is enabled for this client
+%%%
+Authorization: [REDACTED]
+%%%
+WWW-Authenticate: Bearer realm="kubron"

@@ -1,0 +1,7 @@
+Bearer of bad news
+%%%
+Basic authentication is required for this endpoint
+%%%
+bearer tokens are supported by the gateway
+%%%
+WWW-Authenticate: Bearer realm="kubron"

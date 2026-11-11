@@ -1,0 +1,8 @@
+GET /api/v1/pods HTTP/1.1
+Host: kubernetes.default.svc
+Authorization: Basic ⟦dXNlcjpwYXNzd29yZA==⟧
+Accept: */*
+%%%
+proxy-authorization: ⟦opaque-session-credential⟧
+%%%
+{"Authorization": "Token ⟦abc123def456⟧", "Accept": "*/*"}
