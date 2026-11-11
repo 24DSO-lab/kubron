@@ -765,5 +765,13 @@
   "resourceNotFound": "未找到资源",
   "accessToTheResourceIsForbidden": "禁止访问该资源",
   "clusterSourceIsUnavailable": "集群数据源不可用",
-  "responseIsTooLarge": "响应过大"
+  "responseIsTooLarge": "响应过大",
+  "clusterManagerIsNotAvailable": "集群管理器不可用",
+  "clusterConnectionIsIncomplete": "集群连接不完整",
+  "sourceIsPartiallyAvailable": "数据源部分可用",
+  "invalidOperationRequest": "操作请求无效",
+  "resourceNameIsRequired": "需要资源名称",
+  "namespaceIsRequiredForANamespacedResource": "命名空间资源需要指定命名空间",
+  "invalidLabelSelector": "标签选择器无效：{p0}",
+  "invalidFieldSelector": "字段选择器无效：{p0}"
 }

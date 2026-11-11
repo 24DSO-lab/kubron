@@ -765,5 +765,13 @@
   "resourceNotFound": "ресурс не найден",
   "accessToTheResourceIsForbidden": "доступ к ресурсу запрещён",
   "clusterSourceIsUnavailable": "источник данных кластера недоступен",
-  "responseIsTooLarge": "ответ слишком большой"
+  "responseIsTooLarge": "ответ слишком большой",
+  "clusterManagerIsNotAvailable": "менеджер кластеров недоступен",
+  "clusterConnectionIsIncomplete": "подключение к кластеру неполное",
+  "sourceIsPartiallyAvailable": "источник доступен частично",
+  "invalidOperationRequest": "некорректный запрос операции",
+  "resourceNameIsRequired": "требуется имя ресурса",
+  "namespaceIsRequiredForANamespacedResource": "для ресурса в namespace требуется namespace",
+  "invalidLabelSelector": "некорректный селектор меток: {p0}",
+  "invalidFieldSelector": "некорректный селектор полей: {p0}"
 }

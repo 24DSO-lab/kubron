@@ -765,5 +765,13 @@
   "resourceNotFound": "resource not found",
   "accessToTheResourceIsForbidden": "access to the resource is forbidden",
   "clusterSourceIsUnavailable": "cluster source is unavailable",
-  "responseIsTooLarge": "response is too large"
+  "responseIsTooLarge": "response is too large",
+  "clusterManagerIsNotAvailable": "cluster manager is not available",
+  "clusterConnectionIsIncomplete": "cluster connection is incomplete",
+  "sourceIsPartiallyAvailable": "source is partially available",
+  "invalidOperationRequest": "invalid operation request",
+  "resourceNameIsRequired": "resource name is required",
+  "namespaceIsRequiredForANamespacedResource": "namespace is required for a namespaced resource",
+  "invalidLabelSelector": "invalid label selector: {p0}",
+  "invalidFieldSelector": "invalid field selector: {p0}"
 }
