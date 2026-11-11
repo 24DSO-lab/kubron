@@ -1,0 +1,32 @@
+kind: Expect
+target: {kind: Pod, namespace: shop, name: api-1}
+symptoms: [pod.oom_killed, pod.crash_loop]
+hypotheses: ["oom.limit_too_low:medium", "oom.memory_growth:low"]
+absent: [crash.killed, crash.application_error, oom.node_memory_pressure]
+recommendations: [rec.raise_memory_limit]
+---
+apiVersion: v1
+kind: Pod
+metadata: {name: api-1, namespace: shop}
+spec:
+  nodeName: n1
+  containers: [{name: app, image: "app:2", resources: {limits: {memory: 128Mi}}}]
+status:
+  phase: Running
+  conditions: [{type: Ready, status: "False"}]
+  containerStatuses:
+    - name: app
+      restartCount: 5
+      state: {waiting: {reason: CrashLoopBackOff}}
+      lastState: {terminated: {exitCode: 137, reason: OOMKilled, finishedAt: "2026-11-11T09:57:00Z"}}
+---
+apiVersion: v1
+kind: Node
+metadata: {name: n1}
+status: {conditions: [{type: MemoryPressure, status: "False"}, {type: Ready, status: "True"}]}
+---
+kind: Log
+pod: api-1
+container: app
+previous: true
+text: "allocating cache\nallocating cache\n"

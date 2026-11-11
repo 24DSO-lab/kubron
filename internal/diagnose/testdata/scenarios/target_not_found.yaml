@@ -1,0 +1,3 @@
+kind: Expect
+target: {kind: Pod, namespace: shop, name: ghost}
+error: not_found

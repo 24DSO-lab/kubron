@@ -1,0 +1,25 @@
+kind: Expect
+target: {kind: Pod, namespace: shop, name: web-1}
+symptoms: [pod.pending]
+hypotheses: ["pending.insufficient_resources:high"]
+recommendations: [rec.reduce_requests_or_add_capacity]
+---
+apiVersion: v1
+kind: Pod
+metadata: {name: web-1, namespace: shop, uid: p1}
+spec: {containers: [{name: app, image: "reg.example/app:1"}]}
+status:
+  phase: Pending
+  conditions:
+    - {type: PodScheduled, status: "False", reason: Unschedulable, message: "0/3 nodes are available: 3 Insufficient memory."}
+---
+apiVersion: v1
+kind: Event
+metadata: {name: web-1.e1, namespace: shop}
+involvedObject: {kind: Pod, name: web-1, namespace: shop}
+type: Warning
+reason: FailedScheduling
+message: "0/3 nodes are available: 3 Insufficient memory. preemption: 0/3 nodes are available."
+count: 5
+firstTimestamp: "2026-11-11T09:40:00Z"
+lastTimestamp: "2026-11-11T09:59:00Z"

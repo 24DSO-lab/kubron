@@ -1,0 +1,10 @@
+# Нет ни условий, ни событий: правило не гадает, а просит больше контекста.
+kind: Expect
+target: {kind: Pod, namespace: shop, name: web-1}
+symptoms: [pod.pending]
+missing: [pending.no_scheduling_info]
+---
+apiVersion: v1
+kind: Pod
+metadata: {name: web-1, namespace: shop}
+status: {phase: Pending}
