@@ -53,6 +53,8 @@ type Metrics struct {
 	rpcTotal    *prometheus.CounterVec
 	rpcDuration *prometheus.HistogramVec
 	rateLimited prometheus.Counter
+	opsTotal    *prometheus.CounterVec
+	opsDuration *prometheus.HistogramVec
 }
 
 // New создаёт реестр. version — версия сборки (build info); snap вызывается при каждом скрейпе.
@@ -71,10 +73,11 @@ func New(version string, snap func() Snapshot) *Metrics {
 		Namespace: Namespace, Name: "http_rate_limited_total",
 		Help: "Responses with status 429 (any endpoint).",
 	})
+	m.opsTotal, m.opsDuration = newOpsCollectors()
 	m.reg.MustRegister(
 		collectors.NewGoCollector(),
 		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
-		m.rpcTotal, m.rpcDuration, m.rateLimited,
+		m.rpcTotal, m.rpcDuration, m.rateLimited, m.opsTotal, m.opsDuration,
 		newSnapshotCollector(version, snap),
 	)
 	return m

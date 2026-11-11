@@ -108,3 +108,24 @@ func TestOnlyGetAndHead(t *testing.T) {
 		t.Fatalf("POST /metrics: %d", rec.Code)
 	}
 }
+
+func TestObserveOpLabelsAreBounded(t *testing.T) {
+	m := New("dev", func() Snapshot { return Snapshot{} })
+	m.ObserveOp("incident", "open", "ok", time.Millisecond)
+	m.ObserveOp("incident", "open", "failed", time.Millisecond)
+	// значения, не похожие на идентификаторы из кода, сворачиваются
+	m.ObserveOp("alice@example.com", "prod-cluster-of-alice/ns", "weird status", time.Millisecond)
+	body := scrape(t, m)
+	for _, want := range []string{
+		`kubron_ops_operations_total{module="incident",operation="open",status="ok"} 1`,
+		`kubron_ops_operations_total{module="incident",operation="open",status="failed"} 1`,
+		`kubron_ops_operations_total{module="other",operation="other",status="other"} 1`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("missing %q in:\n%s", want, body)
+		}
+	}
+	if strings.Contains(body, "alice") || strings.Contains(body, "prod-cluster") {
+		t.Fatalf("a private value leaked into labels:\n%s", body)
+	}
+}
