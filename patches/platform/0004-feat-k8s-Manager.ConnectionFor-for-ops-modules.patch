@@ -1,0 +1,141 @@
+From f9e39c2fc167f1bffc569538a5af050d3c2edc45 Mon Sep 17 00:00:00 2001
+From: Vadim <vmilyash@mts.ru>
+Date: Wed, 11 Nov 2026 07:31:55 +0700
+Subject: [PATCH 04/10] feat(k8s): Manager.ConnectionFor for ops modules
+
+Per-session connection through PlanFor/ConfigFor without activating the cluster; ConnectToCluster now shares the same code path.
+
+Signed-off-by: Vadim <vmilyash@mts.ru>
+---
+ internal/k8s/client.go       | 23 +++++++++++++-----
+ internal/k8s/opsconn.go      | 13 ++++++++++
+ internal/k8s/opsconn_test.go | 47 ++++++++++++++++++++++++++++++++++++
+ 3 files changed, 77 insertions(+), 6 deletions(-)
+ create mode 100644 internal/k8s/opsconn.go
+ create mode 100644 internal/k8s/opsconn_test.go
+
+diff --git a/internal/k8s/client.go b/internal/k8s/client.go
+index cce67977..4586234e 100644
+--- a/internal/k8s/client.go
++++ b/internal/k8s/client.go
+@@ -392,6 +392,18 @@ func (m *Manager) AuthSessionOf() AuthSession {
+ }
+ 
+ func (m *Manager) ConnectToCluster(clusterID string) error {
++	plan, _, err := m.connect(clusterID)
++	if err != nil {
++		return err
++	}
++	m.viewMu.Lock()
++	defer m.viewMu.Unlock()
++	return m.activateLocked(clusterID, plan.Key)
++}
++
++// connect строит (или берёт из общего пула) подключение этого вида к кластеру, не делая кластер активным.
++// Конфигурацию даёт только ConfigFor по плану для пары «вид, кластер» (ADR-0018).
++func (m *Manager) connect(clusterID string) (ConnPlan, *ClusterConnection, error) {
+ 	sess := m.AuthSessionOf()
+ 	orig := sess.OnAuthRequired
+ 	var key string
+@@ -403,7 +415,7 @@ func (m *Manager) ConnectToCluster(clusterID string) error {
+ 	}
+ 	plan, err := PlanFor(sess, clusterID)
+ 	if err != nil {
+-		return err
++		return ConnPlan{}, nil, err
+ 	}
+ 	key = plan.Key
+ 	m.noteScope(plan)
+@@ -411,13 +423,12 @@ func (m *Manager) ConnectToCluster(clusterID string) error {
+ 	if build == nil {
+ 		build = buildPlanConnection
+ 	}
+-	if _, err := m.pool.getOrCreate(plan.Key, func() (*ClusterConnection, error) { return build(plan) }); err != nil {
+-		return err
++	conn, err := m.pool.getOrCreate(plan.Key, func() (*ClusterConnection, error) { return build(plan) })
++	if err != nil {
++		return ConnPlan{}, nil, err
+ 	}
+ 	m.authLost.Delete(plan.Key) // вход действует: пометка «нужен вход» снимается до первого отказа брокера
+-	m.viewMu.Lock()
+-	defer m.viewMu.Unlock()
+-	return m.activateLocked(clusterID, plan.Key)
++	return plan, conn, nil
+ }
+ 
+ // noteScope запоминает, чьи учётные данные у кластера, и ставит пометку «нужен вход» при отказе брокера.
+diff --git a/internal/k8s/opsconn.go b/internal/k8s/opsconn.go
+new file mode 100644
+index 00000000..f6099acc
+--- /dev/null
++++ b/internal/k8s/opsconn.go
+@@ -0,0 +1,13 @@
++// Copyright 2026 The Kubron Authors
++// SPDX-License-Identifier: Apache-2.0
++
++package k8s
++
++// ConnectionFor возвращает подключение этого вида (сессии) к кластеру для операционных модулей (ADR-0026 §1).
++// Кластер НЕ становится активным: активный кластер вида, informers и его удержание в пуле не меняются.
++// Подключение строится так же, как при ConnectToCluster: PlanFor для пары «вид, кластер» и ConfigFor, поэтому
++// действуют учётные данные именно этой сессии (личный вход, общий аккаунт команды), а не чужие.
++func (m *Manager) ConnectionFor(clusterID string) (*ClusterConnection, error) {
++	_, conn, err := m.connect(clusterID)
++	return conn, err
++}
+diff --git a/internal/k8s/opsconn_test.go b/internal/k8s/opsconn_test.go
+new file mode 100644
+index 00000000..c21a986d
+--- /dev/null
++++ b/internal/k8s/opsconn_test.go
+@@ -0,0 +1,47 @@
++// Copyright 2026 The Kubron Authors
++// SPDX-License-Identifier: Apache-2.0
++
++package k8s
++
++import (
++	"testing"
++
++	"github.com/24DSO-lab/kubron/internal/credential"
++)
++
++// ConnectionFor даёт подключение именно этой сессии и не делает кластер активным.
++func TestConnectionForDoesNotActivate(t *testing.T) {
++	id := storedCluster(t)
++	m, builds, _ := poolFixture(t)
++	b := &scriptBroker{kind: credential.KindOIDC}
++	alice, bob := viewFor(m, b, "alice"), viewFor(m, b, "bob")
++
++	ca, err := alice.ConnectionFor(id)
++	if err != nil || ca == nil {
++		t.Fatalf("ConnectionFor: %v", err)
++	}
++	if alice.GetActiveContext() != "" {
++		t.Fatalf("ConnectionFor changed the active cluster to %q", alice.GetActiveContext())
++	}
++	if again, _ := alice.ConnectionFor(id); again != ca {
++		t.Fatal("a second call must reuse the pooled connection")
++	}
++	cb, err := bob.ConnectionFor(id)
++	if err != nil {
++		t.Fatal(err)
++	}
++	if cb == ca {
++		t.Fatal("personal credentials: alice and bob must not share a connection")
++	}
++	if builds.Load() != 2 {
++		t.Fatalf("builds = %d, want 2 (one per user)", builds.Load())
++	}
++}
++
++func TestConnectionForUnknownCluster(t *testing.T) {
++	storedCluster(t)
++	m, _, _ := poolFixture(t)
++	if _, err := m.ConnectionFor("no-such-cluster"); err == nil {
++		t.Fatal("an unknown cluster must fail")
++	}
++}
+-- 
+2.43.0
+

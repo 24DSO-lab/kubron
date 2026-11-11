@@ -1,0 +1,57 @@
+From c59409601927c6ca25a0dfa726228dc71ca47594 Mon Sep 17 00:00:00 2001
+From: Vadim <vmilyash@mts.ru>
+Date: Wed, 11 Nov 2026 12:47:21 +0700
+Subject: [PATCH 10/10] chore(i18n): backend.json strings for logredact errors
+
+Signed-off-by: Vadim <vmilyash@mts.ru>
+---
+ frontend/src/i18n/locales/cn/backend.json | 5 ++++-
+ frontend/src/i18n/locales/en/backend.json | 5 ++++-
+ frontend/src/i18n/locales/ru/backend.json | 5 ++++-
+ 3 files changed, 12 insertions(+), 3 deletions(-)
+
+diff --git a/frontend/src/i18n/locales/cn/backend.json b/frontend/src/i18n/locales/cn/backend.json
+index fb902228..f4f75d2d 100644
+--- a/frontend/src/i18n/locales/cn/backend.json
++++ b/frontend/src/i18n/locales/cn/backend.json
+@@ -773,5 +773,8 @@
+   "resourceNameIsRequired": "需要资源名称",
+   "namespaceIsRequiredForANamespacedResource": "命名空间资源需要指定命名空间",
+   "invalidLabelSelector": "标签选择器无效：{p0}",
+-  "invalidFieldSelector": "字段选择器无效：{p0}"
++  "invalidFieldSelector": "字段选择器无效：{p0}",
++  "logIsNotValidUtf8Text": "日志不是有效的 UTF-8 文本",
++  "logIsTooLargeToRedact": "日志过大，无法脱敏",
++  "logRedactionFailed": "日志脱敏失败"
+ }
+diff --git a/frontend/src/i18n/locales/en/backend.json b/frontend/src/i18n/locales/en/backend.json
+index 662f9394..3d791173 100644
+--- a/frontend/src/i18n/locales/en/backend.json
++++ b/frontend/src/i18n/locales/en/backend.json
+@@ -773,5 +773,8 @@
+   "resourceNameIsRequired": "resource name is required",
+   "namespaceIsRequiredForANamespacedResource": "namespace is required for a namespaced resource",
+   "invalidLabelSelector": "invalid label selector: {p0}",
+-  "invalidFieldSelector": "invalid field selector: {p0}"
++  "invalidFieldSelector": "invalid field selector: {p0}",
++  "logIsNotValidUtf8Text": "log is not valid UTF-8 text",
++  "logIsTooLargeToRedact": "log is too large to redact",
++  "logRedactionFailed": "log redaction failed"
+ }
+diff --git a/frontend/src/i18n/locales/ru/backend.json b/frontend/src/i18n/locales/ru/backend.json
+index aff1947a..00daebfa 100644
+--- a/frontend/src/i18n/locales/ru/backend.json
++++ b/frontend/src/i18n/locales/ru/backend.json
+@@ -773,5 +773,8 @@
+   "resourceNameIsRequired": "требуется имя ресурса",
+   "namespaceIsRequiredForANamespacedResource": "для ресурса в namespace требуется namespace",
+   "invalidLabelSelector": "некорректный селектор меток: {p0}",
+-  "invalidFieldSelector": "некорректный селектор полей: {p0}"
++  "invalidFieldSelector": "некорректный селектор полей: {p0}",
++  "logIsNotValidUtf8Text": "лог не является текстом UTF-8",
++  "logIsTooLargeToRedact": "лог слишком велик для редактирования",
++  "logRedactionFailed": "не удалось отредактировать лог"
+ }
+-- 
+2.43.0
+

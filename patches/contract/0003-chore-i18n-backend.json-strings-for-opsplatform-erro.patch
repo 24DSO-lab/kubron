@@ -1,0 +1,60 @@
+From 79a295f8be1dce365ca60b8e121aa1d44efa4c93 Mon Sep 17 00:00:00 2001
+From: Vadim <vmilyash@mts.ru>
+Date: Wed, 11 Nov 2026 07:20:31 +0700
+Subject: [PATCH 3/3] chore(i18n): backend.json strings for opsplatform errors
+
+Signed-off-by: Vadim <vmilyash@mts.ru>
+---
+ frontend/src/i18n/locales/cn/backend.json | 6 +++++-
+ frontend/src/i18n/locales/en/backend.json | 6 +++++-
+ frontend/src/i18n/locales/ru/backend.json | 6 +++++-
+ 3 files changed, 15 insertions(+), 3 deletions(-)
+
+diff --git a/frontend/src/i18n/locales/cn/backend.json b/frontend/src/i18n/locales/cn/backend.json
+index 44264a76..9590ad5d 100644
+--- a/frontend/src/i18n/locales/cn/backend.json
++++ b/frontend/src/i18n/locales/cn/backend.json
+@@ -761,5 +761,9 @@
+   "bugReportTheReportReceiverAddressIsNotValid": "报告接收服务的地址无效",
+   "bugReportTheFolderForTheReportsThatWaitForDeliveryIsNotAvailable": "用于存放待发送报告的文件夹不可用",
+   "bugReportThereAreNoReportsWaitingForDelivery": "没有等待发送的报告",
+-  "bugReportTheArchiveOfTheReportsCouldNotBeWritten": "无法写入报告压缩包"
++  "bugReportTheArchiveOfTheReportsCouldNotBeWritten": "无法写入报告压缩包",
++  "resourceNotFound": "未找到资源",
++  "accessToTheResourceIsForbidden": "禁止访问该资源",
++  "clusterSourceIsUnavailable": "集群数据源不可用",
++  "responseIsTooLarge": "响应过大"
+ }
+diff --git a/frontend/src/i18n/locales/en/backend.json b/frontend/src/i18n/locales/en/backend.json
+index 989326ab..8e08d936 100644
+--- a/frontend/src/i18n/locales/en/backend.json
++++ b/frontend/src/i18n/locales/en/backend.json
+@@ -761,5 +761,9 @@
+   "bugReportTheReportReceiverAddressIsNotValid": "the report receiver address is not valid",
+   "bugReportTheFolderForTheReportsThatWaitForDeliveryIsNotAvailable": "the folder for the reports that wait for delivery is not available",
+   "bugReportThereAreNoReportsWaitingForDelivery": "there are no reports waiting for delivery",
+-  "bugReportTheArchiveOfTheReportsCouldNotBeWritten": "the archive of the reports could not be written"
++  "bugReportTheArchiveOfTheReportsCouldNotBeWritten": "the archive of the reports could not be written",
++  "resourceNotFound": "resource not found",
++  "accessToTheResourceIsForbidden": "access to the resource is forbidden",
++  "clusterSourceIsUnavailable": "cluster source is unavailable",
++  "responseIsTooLarge": "response is too large"
+ }
+diff --git a/frontend/src/i18n/locales/ru/backend.json b/frontend/src/i18n/locales/ru/backend.json
+index ea1d1412..3faa96cc 100644
+--- a/frontend/src/i18n/locales/ru/backend.json
++++ b/frontend/src/i18n/locales/ru/backend.json
+@@ -761,5 +761,9 @@
+   "bugReportTheReportReceiverAddressIsNotValid": "адрес приёмника отчётов недопустим",
+   "bugReportTheFolderForTheReportsThatWaitForDeliveryIsNotAvailable": "папка для отчётов, ожидающих отправки, недоступна",
+   "bugReportThereAreNoReportsWaitingForDelivery": "нет отчётов, ожидающих отправки",
+-  "bugReportTheArchiveOfTheReportsCouldNotBeWritten": "не удалось записать архив с отчётами"
++  "bugReportTheArchiveOfTheReportsCouldNotBeWritten": "не удалось записать архив с отчётами",
++  "resourceNotFound": "ресурс не найден",
++  "accessToTheResourceIsForbidden": "доступ к ресурсу запрещён",
++  "clusterSourceIsUnavailable": "источник данных кластера недоступен",
++  "responseIsTooLarge": "ответ слишком большой"
+ }
+-- 
+2.43.0
+

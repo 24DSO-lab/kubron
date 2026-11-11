@@ -1,0 +1,1028 @@
+From d4d179f9fb79f9308770787c1b67c01dca5740c9 Mon Sep 17 00:00:00 2001
+From: Vadim <vmilyash@mts.ru>
+Date: Wed, 11 Nov 2026 12:47:21 +0700
+Subject: [PATCH 09/10] =?UTF-8?q?feat(logredact):=20versioned=20fail-close?=
+ =?UTF-8?q?d=20log=20redactor=20(ADR-0024=20=C2=A75)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Nine rules (PEM, authorization headers, bearer, JWT, URL credentials, cloud keys, key=value, high-entropy hex/base64) with a per-rule positive/negative corpus, rule-coverage and fingerprint tests, and a fuzz test (no panic, idempotent, nothing detectable left).
+
+Signed-off-by: Vadim <vmilyash@mts.ru>
+---
+ internal/logredact/logredact.go               | 333 ++++++++++++++++
+ internal/logredact/logredact_test.go          | 368 ++++++++++++++++++
+ .../testdata/auth-header.negative.txt         |   7 +
+ .../testdata/auth-header.positive.txt         |   8 +
+ .../logredact/testdata/bearer.negative.txt    |   7 +
+ .../logredact/testdata/bearer.positive.txt    |   5 +
+ .../logredact/testdata/cloud-key.negative.txt |   9 +
+ .../logredact/testdata/cloud-key.positive.txt |  11 +
+ .../testdata/high-entropy-base64.negative.txt |   9 +
+ .../testdata/high-entropy-base64.positive.txt |   5 +
+ .../testdata/high-entropy-hex.negative.txt    |   7 +
+ .../testdata/high-entropy-hex.positive.txt    |   5 +
+ internal/logredact/testdata/jwt.negative.txt  |   5 +
+ internal/logredact/testdata/jwt.positive.txt  |   5 +
+ .../logredact/testdata/key-value.negative.txt |  17 +
+ .../logredact/testdata/key-value.positive.txt |  15 +
+ internal/logredact/testdata/pem.negative.txt  |   9 +
+ internal/logredact/testdata/pem.positive.txt  |  13 +
+ .../testdata/url-credentials.negative.txt     |   7 +
+ .../testdata/url-credentials.positive.txt     |   5 +
+ 20 files changed, 850 insertions(+)
+ create mode 100644 internal/logredact/logredact.go
+ create mode 100644 internal/logredact/logredact_test.go
+ create mode 100644 internal/logredact/testdata/auth-header.negative.txt
+ create mode 100644 internal/logredact/testdata/auth-header.positive.txt
+ create mode 100644 internal/logredact/testdata/bearer.negative.txt
+ create mode 100644 internal/logredact/testdata/bearer.positive.txt
+ create mode 100644 internal/logredact/testdata/cloud-key.negative.txt
+ create mode 100644 internal/logredact/testdata/cloud-key.positive.txt
+ create mode 100644 internal/logredact/testdata/high-entropy-base64.negative.txt
+ create mode 100644 internal/logredact/testdata/high-entropy-base64.positive.txt
+ create mode 100644 internal/logredact/testdata/high-entropy-hex.negative.txt
+ create mode 100644 internal/logredact/testdata/high-entropy-hex.positive.txt
+ create mode 100644 internal/logredact/testdata/jwt.negative.txt
+ create mode 100644 internal/logredact/testdata/jwt.positive.txt
+ create mode 100644 internal/logredact/testdata/key-value.negative.txt
+ create mode 100644 internal/logredact/testdata/key-value.positive.txt
+ create mode 100644 internal/logredact/testdata/pem.negative.txt
+ create mode 100644 internal/logredact/testdata/pem.positive.txt
+ create mode 100644 internal/logredact/testdata/url-credentials.negative.txt
+ create mode 100644 internal/logredact/testdata/url-credentials.positive.txt
+
+diff --git a/internal/logredact/logredact.go b/internal/logredact/logredact.go
+new file mode 100644
+index 00000000..1e492159
+--- /dev/null
++++ b/internal/logredact/logredact.go
+@@ -0,0 +1,333 @@
++// Copyright 2026 The Kubron Authors
++// SPDX-License-Identifier: Apache-2.0
++
++// Package logredact — версионированный редактор фрагментов логов контейнеров (ADR-0024 §5 п.4, ADR-0026).
++//
++// Фрагмент лога можно сохранить (история расследований) только после Redact. Редактор работает по принципу
++// fail-closed: любая неопределённость — не-UTF-8 или бинарный вход, превышение лимита, внутренняя ошибка, правила,
++// не дошедшие до неподвижной точки, — это ошибка, и вызывающий НЕ сохраняет фрагмент. Лучше потерять фрагмент,
++// чем сохранить секрет.
++//
++// Редактор намеренно предпочитает избыточное скрытие: «token: expired» в тексте ошибки будет скрыто. Все шаблоны
++// линейны по времени (RE2), поэтому вход произвольного вида не вызывает деградации.
++//
++// Правила и корпус: у каждого правила есть положительные и отрицательные примеры в testdata (тест покрытия не
++// принимает правило без них). Любое изменение правил поднимает Version (тест отпечатка правил подскажет).
++package logredact
++
++import (
++	"bytes"
++	"errors"
++	"math"
++	"regexp"
++	"strings"
++	"unicode/utf8"
++)
++
++// Version — версия набора правил. Сохранённый фрагмент хранит версию, которой он отредактирован: при смене правил
++// можно отличить старые фрагменты от новых. Поднимается при любом изменении правил, порогов или заменителя;
++// тест TestRulesFingerprint следит за этим.
++const Version = 1
++
++// MaxInputBytes — предельный размер входа. Больший вход отклоняется: вызывающий сам ограничивает лог (tail, байты).
++const MaxInputBytes = 1 << 20
++
++// Placeholder — замена скрытого значения.
++const Placeholder = "[REDACTED]"
++
++// maxPasses — число проходов до неподвижной точки. Обычно хватает двух; не сошлось — это сбой правил (ErrRedaction).
++const maxPasses = 6
++
++// Ошибки. Любая из них означает «фрагмент не сохранять».
++var (
++	// ErrBinary — вход не является текстом UTF-8 (или содержит NUL).
++	ErrBinary = errors.New("log is not valid UTF-8 text")
++	// ErrTooLarge — вход больше MaxInputBytes.
++	ErrTooLarge = errors.New("log is too large to redact")
++	// ErrRedaction — внутренняя ошибка редактирования или проверка результата не пройдена.
++	ErrRedaction = errors.New("log redaction failed")
++)
++
++// Result — результат редактирования.
++type Result struct {
++	Text         string // отредактированный текст
++	Replacements int    // число скрытых значений
++	Version      int    // версия правил
++}
++
++// Redact скрывает секреты во фрагменте лога. Вход не изменяется. При ошибке Result пуст, и сохранять нечего.
++func Redact(in []byte) (res Result, err error) {
++	defer func() {
++		if r := recover(); r != nil { // паника правила — тоже отказ, а не пропуск
++			res, err = Result{}, ErrRedaction
++		}
++	}()
++	if len(in) > MaxInputBytes {
++		return Result{}, ErrTooLarge
++	}
++	if !utf8.Valid(in) || bytes.IndexByte(in, 0) >= 0 {
++		return Result{}, ErrBinary
++	}
++	cur, total := in, 0
++	for range maxPasses {
++		n := 0
++		for i := range rules {
++			var k int
++			cur, k = rules[i].apply(cur)
++			n += k
++		}
++		total += n
++		if n == 0 {
++			// Независимая проверка результата: после неподвижной точки не должно остаться ничего, что правила скрыли бы.
++			if scan(cur) != 0 || !utf8.Valid(cur) {
++				return Result{}, ErrRedaction
++			}
++			return Result{Text: string(cur), Replacements: total, Version: Version}, nil
++		}
++	}
++	return Result{}, ErrRedaction
++}
++
++// rule — одно правило: шаблон находит кандидата, span выбирает, какую часть совпадения скрыть (и скрывать ли).
++type rule struct {
++	name   string
++	re     *regexp.Regexp
++	span   func(src []byte, m []int) (from, to int, ok bool)
++	params string // пороги и прочие параметры логики: входят в отпечаток правил
++}
++
++// apply заменяет найденные значения заменителем. Уже скрытые значения не трогает (идемпотентность).
++func (r *rule) apply(src []byte) ([]byte, int) {
++	ms := r.re.FindAllSubmatchIndex(src, -1)
++	if len(ms) == 0 {
++		return src, 0
++	}
++	var out []byte
++	last, n := 0, 0
++	for _, m := range ms {
++		from, to, ok := r.span(src, m)
++		if !ok || from >= to || bytes.HasPrefix(src[from:to], []byte("[REDACTED")) {
++			continue
++		}
++		out = append(out, src[last:from]...)
++		out = append(out, Placeholder...)
++		last = to
++		n++
++	}
++	if n == 0 {
++		return src, 0
++	}
++	return append(out, src[last:]...), n
++}
++
++// count возвращает число значений, которые правило скрыло бы (без изменения входа).
++func (r *rule) count(src []byte) int {
++	n := 0
++	for _, m := range r.re.FindAllSubmatchIndex(src, -1) {
++		if from, to, ok := r.span(src, m); ok && from < to && !bytes.HasPrefix(src[from:to], []byte("[REDACTED")) {
++			n++
++		}
++	}
++	return n
++}
++
++func scan(src []byte) int {
++	n := 0
++	for i := range rules {
++		n += rules[i].count(src)
++	}
++	return n
++}
++
++func whole(_ []byte, m []int) (int, int, bool) { return m[0], m[1], true }
++
++// group возвращает span для подгруппы g.
++func group(g int) func([]byte, []int) (int, int, bool) {
++	return func(_ []byte, m []int) (int, int, bool) {
++		if m[2*g] < 0 {
++			return 0, 0, false
++		}
++		return m[2*g], m[2*g+1], true
++	}
++}
++
++// Пороги энтропии (бит на символ) и минимальные длины.
++const (
++	minHexEntropy = 3.0
++	minB64Entropy = 4.0
++)
++
++var rules = []rule{
++	{
++		name: "pem",
++		re:   regexp.MustCompile(`(?s)-----BEGIN [A-Z0-9 ]*PRIVATE KEY(?: BLOCK)?-----.*?(?:-----END [A-Z0-9 ]*PRIVATE KEY(?: BLOCK)?-----|$)`),
++		span: whole,
++	},
++	{
++		name: "auth-header",
++		re:   regexp.MustCompile(`(?i)\b(?:proxy-)?authorization["']?\s*[:=]\s*["']?([^"'\r\n]+)`),
++		span: group(1),
++	},
++	{
++		name: "bearer",
++		re:   regexp.MustCompile(`(?i)\b(?:bearer|basic)\s+([A-Za-z0-9._~+/=\-]{8,})`),
++		span: func(src []byte, m []int) (int, int, bool) {
++			tok := src[m[2]:m[3]]
++			// «Basic authentication» и «bearer tokens» — слова, а не токены: нужен признак токена.
++			if !looksLikeToken(tok) {
++				return 0, 0, false
++			}
++			return m[2], m[3], true
++		},
++		params: "minBearerToken=8;tokenHint=digit|upper+lower|+/=_~",
++	},
++	{
++		name: "jwt",
++		re:   regexp.MustCompile(`\beyJ[A-Za-z0-9_\-]{5,}\.[A-Za-z0-9_\-]{5,}\.[A-Za-z0-9_\-]*`),
++		span: whole,
++	},
++	{
++		name: "url-credentials",
++		re:   regexp.MustCompile(`(?i)[a-z][a-z0-9+.\-]*://[^/\s:@"']*:([^/\s@"']+)@`),
++		span: group(1),
++	},
++	{
++		name: "cloud-key",
++		re: regexp.MustCompile(`\b(?:AKIA|ASIA|AGPA|AIDA|AROA|ANPA|ANVA|AIPA)[A-Z0-9]{16}\b` +
++			`|\bAIza[0-9A-Za-z_\-]{35}` +
++			`|\bya29\.[0-9A-Za-z_\-]{20,}` +
++			`|\bgh[pousr]_[A-Za-z0-9]{36,}` +
++			`|\bgithub_pat_[A-Za-z0-9_]{22,}` +
++			`|\bglpat-[A-Za-z0-9_\-]{20,}` +
++			`|\bxox[baprs]-[A-Za-z0-9\-]{10,}` +
++			`|\b[sr]k_(?:live|test)_[A-Za-z0-9]{16,}` +
++			`|\bnpm_[A-Za-z0-9]{36}\b` +
++			`|\bSG\.[A-Za-z0-9_\-]{16,}\.[A-Za-z0-9_\-]{16,}`),
++		span: whole,
++	},
++	{
++		name: "key-value",
++		re: regexp.MustCompile(`(?i)["']?([\w.\-]*(?:password|passwd|passphrase|pwd|secret|token|api[_\-]?key|access[_\-]?key|private[_\-]?key|auth[_\-]?key|account[_\-]?key|shared[_\-]?access[_\-]?key|credential|cookie|session[_\-]?id)[\w.\-]*)["']?\s*[:=]\s*` +
++			`(?:"([^"\r\n]*)"|'([^'\r\n]*)'|([^\s,;&}\]"']+))`),
++		span: func(src []byte, m []int) (int, int, bool) {
++			from, to := -1, -1
++			for _, g := range []int{2, 3, 4} { // значение в двойных, одинарных кавычках или без них
++				if m[2*g] >= 0 {
++					from, to = m[2*g], m[2*g+1]
++				}
++			}
++			if from < 0 || from == to {
++				return 0, 0, false
++			}
++			if isNonSecretValue(string(src[from:to])) || isCounter(string(src[m[2]:m[3]]), string(src[from:to])) {
++				return 0, 0, false
++			}
++			return from, to, true
++		},
++		params: "skip=null|nil|none|true|false;counter=*tokens+digits",
++	},
++	{
++		name: "high-entropy-hex",
++		re:   regexp.MustCompile(`\b[0-9a-fA-F]{32,}\b`),
++		span: func(src []byte, m []int) (int, int, bool) {
++			// Дайджест образа (sha256:…) — не секрет и нужен для диагностики.
++			if hasDigestPrefix(src[:m[0]]) || entropy(src[m[0]:m[1]]) < minHexEntropy {
++				return 0, 0, false
++			}
++			return m[0], m[1], true
++		},
++		params: "minHexLen=32;minHexEntropy=3.0;skipDigestPrefix=sha1|sha256|sha512",
++	},
++	{
++		name: "high-entropy-base64",
++		re:   regexp.MustCompile(`[A-Za-z0-9+/_\-]{40,}={0,2}`),
++		span: func(src []byte, m []int) (int, int, bool) {
++			s := src[m[0]:m[1]]
++			if !hasAllClasses(s) || entropy(s) < minB64Entropy {
++				return 0, 0, false
++			}
++			return m[0], m[1], true
++		},
++		params: "minB64Len=40;minB64Entropy=4.0;classes=upper+lower+digit",
++	},
++}
++
++func looksLikeToken(tok []byte) bool {
++	var upper, lower, digit bool
++	for _, c := range tok {
++		switch {
++		case c >= '0' && c <= '9':
++			digit = true
++		case c >= 'A' && c <= 'Z':
++			upper = true
++		case c >= 'a' && c <= 'z':
++			lower = true
++		}
++	}
++	return digit || (upper && lower) || bytes.ContainsAny(tok, "+/=_~")
++}
++
++func hasAllClasses(s []byte) bool {
++	var upper, lower, digit bool
++	for _, c := range s {
++		switch {
++		case c >= '0' && c <= '9':
++			digit = true
++		case c >= 'A' && c <= 'Z':
++			upper = true
++		case c >= 'a' && c <= 'z':
++			lower = true
++		}
++	}
++	return upper && lower && digit
++}
++
++func hasDigestPrefix(before []byte) bool {
++	for _, p := range []string{"sha256:", "sha512:", "sha1:"} {
++		if bytes.HasSuffix(bytes.ToLower(before[max(0, len(before)-len(p)):]), []byte(p)) {
++			return true
++		}
++	}
++	return false
++}
++
++// isNonSecretValue — значения-пустышки: у них нет секрета.
++func isNonSecretValue(v string) bool {
++	switch strings.ToLower(v) {
++	case "null", "nil", "none", "true", "false":
++		return true
++	}
++	return false
++}
++
++// isCounter — счётчики токенов (max_tokens: 4096): ключ во множественном числе и числовое значение.
++func isCounter(key, val string) bool {
++	if !strings.HasSuffix(strings.ToLower(key), "tokens") || val == "" {
++		return false
++	}
++	for _, c := range val {
++		if c < '0' || c > '9' {
++			return false
++		}
++	}
++	return true
++}
++
++// entropy — энтропия Шеннона в битах на байт.
++func entropy(s []byte) float64 {
++	if len(s) == 0 {
++		return 0
++	}
++	var freq [256]int
++	for _, c := range s {
++		freq[c]++
++	}
++	h := 0.0
++	for _, n := range freq {
++		if n > 0 {
++			p := float64(n) / float64(len(s))
++			h -= p * math.Log2(p)
++		}
++	}
++	return h
++}
+diff --git a/internal/logredact/logredact_test.go b/internal/logredact/logredact_test.go
+new file mode 100644
+index 00000000..86eb634d
+--- /dev/null
++++ b/internal/logredact/logredact_test.go
+@@ -0,0 +1,368 @@
++// Copyright 2026 The Kubron Authors
++// SPDX-License-Identifier: Apache-2.0
++
++package logredact
++
++import (
++	"bytes"
++	"crypto/sha256"
++	"encoding/hex"
++	"errors"
++	"os"
++	"path/filepath"
++	"strings"
++	"testing"
++	"time"
++	"unicode/utf8"
++)
++
++// Формат корпуса: testdata/<правило>.positive.txt и <правило>.negative.txt; случаи разделены строкой «%%%».
++// В положительных случаях секреты обведены ⟦…⟧: маркеры снимаются перед проверкой, а сам секрет не должен
++// остаться в результате. Отрицательные случаи после редактирования не меняются.
++const (
++	markOpen  = "⟦"
++	markClose = "⟧"
++	minCases  = 3 // минимум положительных и отрицательных случаев на правило
++)
++
++func loadCases(t testing.TB, name string) []string {
++	t.Helper()
++	raw, err := os.ReadFile(filepath.Join("testdata", name+".txt"))
++	if err != nil {
++		t.Fatalf("corpus file for %s: %v", name, err)
++	}
++	var out []string
++	for c := range strings.SplitSeq(strings.TrimSuffix(string(raw), "\n"), "\n%%%\n") {
++		if strings.TrimSpace(c) != "" {
++			out = append(out, c)
++		}
++	}
++	return out
++}
++
++// split разбирает положительный случай на вход (без маркеров) и список секретов.
++func split(t testing.TB, c string) (input string, secrets []string) {
++	t.Helper()
++	rest := c
++	var b strings.Builder
++	for {
++		i := strings.Index(rest, markOpen)
++		if i < 0 {
++			b.WriteString(rest)
++			break
++		}
++		j := strings.Index(rest[i:], markClose)
++		if j < 0 {
++			t.Fatalf("unterminated marker in corpus case: %q", c)
++		}
++		secret := rest[i+len(markOpen) : i+j]
++		b.WriteString(rest[:i])
++		b.WriteString(secret)
++		secrets = append(secrets, secret)
++		rest = rest[i+j+len(markClose):]
++	}
++	if len(secrets) == 0 {
++		t.Fatalf("positive corpus case without a marked secret: %q", c)
++	}
++	return b.String(), secrets
++}
++
++// Каждое правило покрыто корпусом: есть положительные и отрицательные случаи. Правило без примеров не принимается.
++func TestEveryRuleHasCorpus(t *testing.T) {
++	t.Parallel()
++	seen := map[string]bool{}
++	for _, r := range rules {
++		if seen[r.name] {
++			t.Fatalf("duplicate rule name %q", r.name)
++		}
++		seen[r.name] = true
++		for _, kind := range []string{"positive", "negative"} {
++			if n := len(loadCases(t, r.name+"."+kind)); n < minCases {
++				t.Errorf("rule %q has %d %s corpus cases, want at least %d", r.name, n, kind, minCases)
++			}
++		}
++	}
++	// и наоборот: нет файлов корпуса для несуществующих правил
++	files, _ := filepath.Glob(filepath.Join("testdata", "*.txt"))
++	for _, f := range files {
++		name := strings.TrimSuffix(filepath.Base(f), ".txt")
++		name = strings.TrimSuffix(strings.TrimSuffix(name, ".positive"), ".negative")
++		if !seen[name] {
++			t.Errorf("corpus file %s belongs to no rule", f)
++		}
++	}
++}
++
++// Положительные случаи: секрет скрыт и самим правилом (изолированно), и полным редактором.
++func TestCorpusPositive(t *testing.T) {
++	t.Parallel()
++	for i := range rules {
++		r := &rules[i]
++		for n, c := range loadCases(t, r.name+".positive") {
++			input, secrets := split(t, c)
++			t.Run(r.name+"/"+itoa(n), func(t *testing.T) {
++				t.Parallel()
++				alone, k := r.apply([]byte(input))
++				if k == 0 {
++					t.Fatalf("rule %s alone did not fire on %q", r.name, input)
++				}
++				for _, s := range secrets {
++					if bytes.Contains(alone, []byte(s)) {
++						t.Errorf("rule %s alone left the secret %q in %q", r.name, s, alone)
++					}
++				}
++				res, err := Redact([]byte(input))
++				if err != nil {
++					t.Fatal(err)
++				}
++				for _, s := range secrets {
++					if strings.Contains(res.Text, s) {
++						t.Errorf("secret %q survived: %q", s, res.Text)
++					}
++				}
++				if res.Replacements == 0 || !strings.Contains(res.Text, Placeholder) || res.Version != Version {
++					t.Errorf("result = %+v", res)
++				}
++			})
++		}
++	}
++}
++
++// Отрицательные случаи: обычный текст не портится — ни своим правилом, ни всеми.
++func TestCorpusNegative(t *testing.T) {
++	t.Parallel()
++	for i := range rules {
++		name := rules[i].name
++		for n, c := range loadCases(t, name+".negative") {
++			t.Run(name+"/"+itoa(n), func(t *testing.T) {
++				t.Parallel()
++				res, err := Redact([]byte(c))
++				if err != nil {
++					t.Fatal(err)
++				}
++				if res.Text != c || res.Replacements != 0 {
++					t.Errorf("ordinary text was changed:\n in: %q\nout: %q", c, res.Text)
++				}
++			})
++		}
++	}
++}
++
++// Ключи платёжного провайдера собираются из частей: цельная строка такого вида в репозитории блокируется push protection
++// даже будучи заведомо вымышленной, поэтому в текстовый корпус этот случай не вынесен.
++func TestCloudKeyPaymentProviderStyle(t *testing.T) {
++	t.Parallel()
++	for _, prefix := range []string{"sk_" + "live_", "rk_" + "test_"} {
++		secret := prefix + "0123456789abcdefghijklmn"
++		res, err := Redact([]byte("billing " + secret + " charged"))
++		if err != nil || strings.Contains(res.Text, secret) || res.Replacements == 0 {
++			t.Errorf("%s…: %+v, %v", prefix, res, err)
++		}
++	}
++	// короткий префикс без тела — обычный текст
++	if res, err := Redact([]byte("the sk_live_ prefix")); err != nil || res.Replacements != 0 {
++		t.Errorf("prefix only: %+v, %v", res, err)
++	}
++}
++
++func itoa(n int) string { return string(rune('0' + n)) } // случаев в корпусе меньше десяти на файл
++
++func TestRedactErrors(t *testing.T) {
++	t.Parallel()
++	tests := []struct {
++		name string
++		in   []byte
++		want error
++	}{
++		{"invalid utf-8", []byte("ok \xff\xfe broken"), ErrBinary},
++		{"NUL byte", []byte("text\x00more"), ErrBinary},
++		{"binary blob", bytes.Repeat([]byte{0x89, 0x50, 0x4e, 0x47, 0x00}, 10), ErrBinary},
++		{"too large", bytes.Repeat([]byte("a "), MaxInputBytes), ErrTooLarge},
++	}
++	for _, tc := range tests {
++		t.Run(tc.name, func(t *testing.T) {
++			t.Parallel()
++			res, err := Redact(tc.in)
++			if !errors.Is(err, tc.want) {
++				t.Fatalf("err = %v, want %v", err, tc.want)
++			}
++			if res != (Result{}) {
++				t.Fatalf("an error must come with an empty result (nothing to save): %+v", res)
++			}
++		})
++	}
++}
++
++func TestRedactBoundaries(t *testing.T) {
++	t.Parallel()
++	if res, err := Redact(nil); err != nil || res.Text != "" || res.Version != Version {
++		t.Fatalf("empty input: %+v, %v", res, err)
++	}
++	exact := bytes.Repeat([]byte("ab "), MaxInputBytes/3+1)[:MaxInputBytes]
++	if _, err := Redact(exact); err != nil {
++		t.Fatalf("input of exactly MaxInputBytes: %v", err)
++	}
++	if _, err := Redact(append(bytes.Clone(exact), 'x')); !errors.Is(err, ErrTooLarge) {
++		t.Fatalf("MaxInputBytes+1: %v", err)
++	}
++	// Юникод и ANSI-последовательности — обычный текст.
++	txt := "\x1b[31mошибка\x1b[0m 错误 ✓"
++	if res, err := Redact([]byte(txt)); err != nil || res.Text != txt {
++		t.Fatalf("unicode text: %+v, %v", res, err)
++	}
++}
++
++func TestRedactDoesNotMutateInput(t *testing.T) {
++	t.Parallel()
++	in := []byte("password=hunter2 and Authorization: Bearer AbCdEf0123456789")
++	orig := bytes.Clone(in)
++	if _, err := Redact(in); err != nil {
++		t.Fatal(err)
++	}
++	if !bytes.Equal(in, orig) {
++		t.Fatal("Redact modified its input")
++	}
++}
++
++func TestRedactIsIdempotentAndComplete(t *testing.T) {
++	t.Parallel()
++	for i := range rules {
++		for _, c := range loadCases(t, rules[i].name+".positive") {
++			input, _ := split(t, c)
++			once, err := Redact([]byte(input))
++			if err != nil {
++				t.Fatal(err)
++			}
++			twice, err := Redact([]byte(once.Text))
++			if err != nil || twice.Text != once.Text || twice.Replacements != 0 {
++				t.Errorf("not idempotent for %q: %q -> %q (%d more), %v", input, once.Text, twice.Text, twice.Replacements, err)
++			}
++			if scan([]byte(once.Text)) != 0 {
++				t.Errorf("a secret is still detectable in %q", once.Text)
++			}
++		}
++	}
++}
++
++// Несколько категорий в одном фрагменте скрываются все.
++func TestRedactMixedFragment(t *testing.T) {
++	t.Parallel()
++	in := strings.Join([]string{
++		"2026-01-01T00:00:00Z INFO starting",
++		"db=postgres://app:s3cr3tP4ss@db:5432/app",
++		"Authorization: Bearer AbCdEf0123456789",
++		"aws=AKIAIOSFODNN7EXAMPLE password=hunter2",
++		"2026-01-01T00:00:01Z INFO ready",
++	}, "\n")
++	res, err := Redact([]byte(in))
++	if err != nil {
++		t.Fatal(err)
++	}
++	for _, s := range []string{"s3cr3tP4ss", "AbCdEf0123456789", "AKIAIOSFODNN7EXAMPLE", "hunter2"} {
++		if strings.Contains(res.Text, s) {
++			t.Errorf("%q survived:\n%s", s, res.Text)
++		}
++	}
++	if !strings.Contains(res.Text, "INFO starting") || !strings.Contains(res.Text, "INFO ready") {
++		t.Errorf("ordinary lines were damaged:\n%s", res.Text)
++	}
++}
++
++// Время обработки не зависит от «неудобного» входа: шаблоны линейны.
++func TestRedactAdversarialInputIsFast(t *testing.T) {
++	t.Parallel()
++	inputs := map[string][]byte{
++		"one long token":       bytes.Repeat([]byte("aB3"), MaxInputBytes/3),
++		"many key fragments":   bytes.Repeat([]byte("token"), MaxInputBytes/5),
++		"many separators":      bytes.Repeat([]byte("a=b;"), MaxInputBytes/4),
++		"unterminated pem":     append([]byte("-----BEGIN PRIVATE KEY-----"), bytes.Repeat([]byte("x\n"), MaxInputBytes/2-20)...),
++		"password repetitions": bytes.Repeat([]byte("password="), MaxInputBytes/9),
++	}
++	for name, in := range inputs {
++		t.Run(name, func(t *testing.T) {
++			t.Parallel()
++			start := time.Now()
++			_, err := Redact(in)
++			if d := time.Since(start); d > 10*time.Second {
++				t.Fatalf("took %v", d)
++			}
++			if err != nil && !errors.Is(err, ErrRedaction) {
++				t.Fatalf("unexpected error: %v", err)
++			}
++		})
++	}
++}
++
++// rulesFingerprint — отпечаток правил текущей Version. Любое изменение шаблонов, порогов или заменителя меняет
++// отпечаток: тест требует поднять Version и обновить константу. Изменения логики внутри функций правил отпечаток
++// не видит — их фиксируют параметры (params) и корпус; при таком изменении поднимайте Version вручную.
++const rulesFingerprint = "5324308739b3c7e8"
++
++func fingerprint() string {
++	h := sha256.New()
++	h.Write([]byte(Placeholder))
++	for _, r := range rules {
++		h.Write([]byte("\x00" + r.name + "\x00" + r.re.String() + "\x00" + r.params))
++	}
++	return hex.EncodeToString(h.Sum(nil))[:16]
++}
++
++func TestRulesFingerprint(t *testing.T) {
++	t.Parallel()
++	if got := fingerprint(); got != rulesFingerprint {
++		t.Fatalf("the redaction rules changed (fingerprint %s, recorded %s for Version %d): bump Version and update rulesFingerprint",
++			got, rulesFingerprint, Version)
++	}
++}
++
++func FuzzRedact(f *testing.F) {
++	for i := range rules {
++		for _, kind := range []string{"positive", "negative"} {
++			for _, c := range loadCases(f, rules[i].name+"."+kind) {
++				in := c
++				if kind == "positive" {
++					in, _ = split(f, c)
++				}
++				f.Add([]byte(in))
++			}
++		}
++	}
++	f.Add([]byte(""))
++	f.Add([]byte("password=\"[REDACTED]\" token: [REDACTED"))
++	f.Add([]byte("\xff\x00binary"))
++	f.Fuzz(func(t *testing.T, in []byte) {
++		before := scan(in)
++		res, err := Redact(in)
++		if err != nil {
++			if res != (Result{}) {
++				t.Fatalf("an error with a non-empty result: %+v", res)
++			}
++			if !errors.Is(err, ErrBinary) && !errors.Is(err, ErrRedaction) && !errors.Is(err, ErrTooLarge) {
++				t.Fatalf("unexpected error %v", err)
++			}
++			if !utf8.Valid(in) && !errors.Is(err, ErrBinary) {
++				t.Fatalf("invalid UTF-8 must be ErrBinary, got %v", err)
++			}
++			return
++		}
++		if !utf8.Valid(in) {
++			t.Fatal("invalid UTF-8 input was accepted")
++		}
++		out := []byte(res.Text)
++		if !utf8.Valid(out) {
++			t.Fatal("the output is not valid UTF-8")
++		}
++		// не раскрывает больше, чем было: в результате не остаётся ничего, что правила скрыли бы
++		if after := scan(out); after > before || after != 0 {
++			t.Fatalf("secrets detectable: before=%d after=%d\nin=%q\nout=%q", before, after, in, out)
++		}
++		// идемпотентность
++		again, err := Redact(out)
++		if err != nil || again.Text != res.Text || again.Replacements != 0 {
++			t.Fatalf("not idempotent: %q -> %q (%v)", res.Text, again.Text, err)
++		}
++		if res.Version != Version {
++			t.Fatalf("version = %d", res.Version)
++		}
++	})
++}
+diff --git a/internal/logredact/testdata/auth-header.negative.txt b/internal/logredact/testdata/auth-header.negative.txt
+new file mode 100644
+index 00000000..c4a0a831
+--- /dev/null
++++ b/internal/logredact/testdata/auth-header.negative.txt
+@@ -0,0 +1,7 @@
++authorization header is missing in the request
++%%%
++the authorization code flow is enabled for this client
++%%%
++Authorization: [REDACTED]
++%%%
++WWW-Authenticate: Bearer realm="kubron"
+diff --git a/internal/logredact/testdata/auth-header.positive.txt b/internal/logredact/testdata/auth-header.positive.txt
+new file mode 100644
+index 00000000..d87aa9f6
+--- /dev/null
++++ b/internal/logredact/testdata/auth-header.positive.txt
+@@ -0,0 +1,8 @@
++GET /api/v1/pods HTTP/1.1
++Host: kubernetes.default.svc
++Authorization: Basic ⟦dXNlcjpwYXNzd29yZA==⟧
++Accept: */*
++%%%
++proxy-authorization: ⟦opaque-session-credential⟧
++%%%
++{"Authorization": "Token ⟦abc123def456⟧", "Accept": "*/*"}
+diff --git a/internal/logredact/testdata/bearer.negative.txt b/internal/logredact/testdata/bearer.negative.txt
+new file mode 100644
+index 00000000..466f8284
+--- /dev/null
++++ b/internal/logredact/testdata/bearer.negative.txt
+@@ -0,0 +1,7 @@
++Bearer of bad news
++%%%
++Basic authentication is required for this endpoint
++%%%
++bearer tokens are supported by the gateway
++%%%
++WWW-Authenticate: Bearer realm="kubron"
+diff --git a/internal/logredact/testdata/bearer.positive.txt b/internal/logredact/testdata/bearer.positive.txt
+new file mode 100644
+index 00000000..67233d86
+--- /dev/null
++++ b/internal/logredact/testdata/bearer.positive.txt
+@@ -0,0 +1,5 @@
++request failed with Bearer ⟦AbCdEf0123456789⟧ rejected
++%%%
++retrying with token Bearer ⟦sk_live_abc-123+xyz=⟧
++%%%
++proxy auth basic ⟦dXNlcjpwYXNz⟧ was sent
+diff --git a/internal/logredact/testdata/cloud-key.negative.txt b/internal/logredact/testdata/cloud-key.negative.txt
+new file mode 100644
+index 00000000..d58c2859
+--- /dev/null
++++ b/internal/logredact/testdata/cloud-key.negative.txt
+@@ -0,0 +1,9 @@
++AKIA is the prefix of AWS access key ids
++%%%
++short AKIAIOSFODNN7EXAMPL (19 chars) is not a key
++%%%
++the sk_live_ prefix marks Stripe live keys
++%%%
++github tokens start with ghp_ followed by 36 characters
++%%%
++AIza prefix only
+diff --git a/internal/logredact/testdata/cloud-key.positive.txt b/internal/logredact/testdata/cloud-key.positive.txt
+new file mode 100644
+index 00000000..a1690976
+--- /dev/null
++++ b/internal/logredact/testdata/cloud-key.positive.txt
+@@ -0,0 +1,11 @@
++aws key ⟦AKIAIOSFODNN7EXAMPLE⟧ is active
++%%%
++maps ⟦AIzaSyA-1234567890abcdefghijklmnopqrstu⟧ quota
++%%%
++github ⟦ghp_0123456789abcdefghijklmnopqrstuvwxyz⟧ pushed
++%%%
++slack ⟦xoxb-123456789012-abcdefghij⟧ posted
++%%%
++oauth ⟦ya29.a0AfH6SMBx0123456789abcdefghij⟧ refreshed
++%%%
++gitlab ⟦glpat-abcdefghijklmnopqrst⟧ cloned
+diff --git a/internal/logredact/testdata/high-entropy-base64.negative.txt b/internal/logredact/testdata/high-entropy-base64.negative.txt
+new file mode 100644
+index 00000000..25f01271
+--- /dev/null
++++ b/internal/logredact/testdata/high-entropy-base64.negative.txt
+@@ -0,0 +1,9 @@
++mounting /var/lib/kubelet/pods/volumes/kubernetes.io~configmap/config-volume/files
++%%%
++pod my-app-deployment-with-a-really-long-descriptive-name-for-testing
++%%%
++trace id 550e8400-e29b-41d4-a716-446655440000 started
++%%%
++aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
++%%%
++ThisIsAVeryLongCamelCaseIdentifierWithoutDigitsAtAll
+diff --git a/internal/logredact/testdata/high-entropy-base64.positive.txt b/internal/logredact/testdata/high-entropy-base64.positive.txt
+new file mode 100644
+index 00000000..7b73bf7a
+--- /dev/null
++++ b/internal/logredact/testdata/high-entropy-base64.positive.txt
+@@ -0,0 +1,5 @@
++secret blob ⟦q3Vw7ZkT9xLm2RnB8sYc4HdJ6fGa1Pe5UoXi0WtNzKvA⟧ read
++%%%
++key ⟦Xk2P9vLq0RtYb7Nw3HsMc5JdUe8FaGo1ZiTn4VuOy6BxA9Cz2QlWr7Ep⟧ loaded
++%%%
++cert-data ⟦Qm9u7Lx2Vt4Zp8Hk1Rd6Sc3Wn5Fy0Ge9AaTj2UiOb4MxEv7Ph1Kl⟧== end
+diff --git a/internal/logredact/testdata/high-entropy-hex.negative.txt b/internal/logredact/testdata/high-entropy-hex.negative.txt
+new file mode 100644
+index 00000000..2577536a
+--- /dev/null
++++ b/internal/logredact/testdata/high-entropy-hex.negative.txt
+@@ -0,0 +1,7 @@
++image nginx@sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08 pulled
++%%%
++padding 00000000000000000000000000000000 only
++%%%
++short deadbeefcafe0123456789abcdef012 is 31 chars
++%%%
++layer sha512:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08 cached
+diff --git a/internal/logredact/testdata/high-entropy-hex.positive.txt b/internal/logredact/testdata/high-entropy-hex.positive.txt
+new file mode 100644
+index 00000000..54c8df5b
+--- /dev/null
++++ b/internal/logredact/testdata/high-entropy-hex.positive.txt
+@@ -0,0 +1,5 @@
++api key ⟦9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08⟧ used
++%%%
++commit ⟦2fd4e1c67a2d28fced849ee1bb76e7391b93eb12⟧ deployed
++%%%
++md5 ⟦5d41402abc4b2a76b9719d911017c592⟧
+diff --git a/internal/logredact/testdata/jwt.negative.txt b/internal/logredact/testdata/jwt.negative.txt
+new file mode 100644
+index 00000000..fc8de846
+--- /dev/null
++++ b/internal/logredact/testdata/jwt.negative.txt
+@@ -0,0 +1,5 @@
++the header eyJhbGciOiJIUzI1NiJ9 alone has no payload
++%%%
++api version v1.2.3 of io.k8s.api.core.v1.Pod
++%%%
++eyJ is the base64 prefix of a JSON object
+diff --git a/internal/logredact/testdata/jwt.positive.txt b/internal/logredact/testdata/jwt.positive.txt
+new file mode 100644
+index 00000000..94d71028
+--- /dev/null
++++ b/internal/logredact/testdata/jwt.positive.txt
+@@ -0,0 +1,5 @@
++token eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4ifQ.⟦SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c⟧ expired
++%%%
++id_token=⟦eyJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJodHRwczovL2lkcC5leGFtcGxlIn0.c2lnbmF0dXJl⟧&state=1
++%%%
++unsigned ⟦eyJhbGciOiJub25lIn0.eyJzdWIiOiJhbGljZSJ9.⟧
+diff --git a/internal/logredact/testdata/key-value.negative.txt b/internal/logredact/testdata/key-value.negative.txt
+new file mode 100644
+index 00000000..7f79ff36
+--- /dev/null
++++ b/internal/logredact/testdata/key-value.negative.txt
+@@ -0,0 +1,17 @@
++max_tokens: 4096
++%%%
++tokens=250 consumed
++%%%
++token: null
++%%%
++password: ""
++%%%
++password policy requires 12 characters
++%%%
++secret rotation finished in 3s
++%%%
++token bucket is full
++%%%
++passwordless login is enabled
++%%%
++retry-after: 30
+diff --git a/internal/logredact/testdata/key-value.positive.txt b/internal/logredact/testdata/key-value.positive.txt
+new file mode 100644
+index 00000000..5743f249
+--- /dev/null
++++ b/internal/logredact/testdata/key-value.positive.txt
+@@ -0,0 +1,15 @@
++connecting with password=⟦hunter2⟧ to db
++%%%
++{"db_password": "⟦p@ss w0rd⟧", "port": 5432}
++%%%
++client_secret: ⟦abcd1234efgh⟧
++%%%
++X-Api-Key: ⟦k-12345⟧
++%%%
++DefaultEndpointsProtocol=https;AccountKey=⟦Zm9vYmFyYmF6⟧;EndpointSuffix=core.windows.net
++%%%
++DATABASE_PASSWORD='⟦x y z⟧'
++%%%
++accessToken: ⟦abc⟧
++%%%
++aws_session_token=⟦FwoGZXIvYXdzEBYaDExample⟧
+diff --git a/internal/logredact/testdata/pem.negative.txt b/internal/logredact/testdata/pem.negative.txt
+new file mode 100644
+index 00000000..8849c21d
+--- /dev/null
++++ b/internal/logredact/testdata/pem.negative.txt
+@@ -0,0 +1,9 @@
++-----BEGIN CERTIFICATE-----
++MIIDdzCCAl+gAwIBAgIE
++-----END CERTIFICATE-----
++%%%
++-----BEGIN PUBLIC KEY-----
++MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE
++-----END PUBLIC KEY-----
++%%%
++rotating the private key will begin after the maintenance window
+diff --git a/internal/logredact/testdata/pem.positive.txt b/internal/logredact/testdata/pem.positive.txt
+new file mode 100644
+index 00000000..39f569e6
+--- /dev/null
++++ b/internal/logredact/testdata/pem.positive.txt
+@@ -0,0 +1,13 @@
++error loading key from /etc/tls/key.pem
++-----BEGIN RSA PRIVATE KEY-----
++⟦MIIEowIBAAKCAQEAx8cXk0Zx1v7Qk3nO2mJb5r9wYtLd4HfGp6sVaUeNoIiXcZyB⟧
++⟦8TqWmEjRlKgDh1uSfPnOvA3bYtC7xZwLqMk92JrHsGdFeUa0iNpTyBoVcXzWmQ==⟧
++-----END RSA PRIVATE KEY-----
++retrying in 5s
++%%%
++-----BEGIN OPENSSH PRIVATE KEY-----
++⟦b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW⟧
++-----END OPENSSH PRIVATE KEY-----
++%%%
++config dump: -----BEGIN PRIVATE KEY-----
++⟦MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg⟧ (log line cut here, no END marker)
+diff --git a/internal/logredact/testdata/url-credentials.negative.txt b/internal/logredact/testdata/url-credentials.negative.txt
+new file mode 100644
+index 00000000..483602f4
+--- /dev/null
++++ b/internal/logredact/testdata/url-credentials.negative.txt
+@@ -0,0 +1,7 @@
++GET http://example.com:8080/health returned 200
++%%%
++cloning ssh://git@github.com/org/repo.git
++%%%
++dial postgres://db.internal:5432/app: connection refused
++%%%
++contact mailto:ops@example.com for access
+diff --git a/internal/logredact/testdata/url-credentials.positive.txt b/internal/logredact/testdata/url-credentials.positive.txt
+new file mode 100644
+index 00000000..aa536899
+--- /dev/null
++++ b/internal/logredact/testdata/url-credentials.positive.txt
+@@ -0,0 +1,5 @@
++connect failed: postgres://app:⟦s3cr3tP4ss⟧@db.internal:5432/app
++%%%
++pulling https://user:⟦p%40ssw0rd⟧@registry.example.com/v2/ failed
++%%%
++amqp://mq:⟦Zx9-pass⟧@rabbit/ refused
+-- 
+2.43.0
+

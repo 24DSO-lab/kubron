@@ -1,0 +1,257 @@
+From 52f2a59a5ed5134801dd2432bc348248ac8c3873 Mon Sep 17 00:00:00 2001
+From: Vadim <vmilyash@mts.ru>
+Date: Wed, 11 Nov 2026 07:20:31 +0700
+Subject: [PATCH 2/3] feat(auth): diagnostics.logs and baseline.manage
+ permissions (ADR-0026)
+
+diagnostics.logs: admin and operator (explicit entry). baseline.manage: admin only. Both are cluster-scoped.
+
+Signed-off-by: Vadim <vmilyash@mts.ru>
+---
+ frontend/src/i18n/locales/cn/auth.json |  4 +-
+ frontend/src/i18n/locales/en/auth.json |  4 +-
+ frontend/src/i18n/locales/ru/auth.json |  4 +-
+ frontend/src/types/auth.ts             |  4 ++
+ internal/auth/access.go                |  3 +-
+ internal/auth/permissions.go           | 13 +++-
+ internal/auth/permissions_ops_test.go  | 85 ++++++++++++++++++++++++++
+ internal/auth/permissions_test.go      |  2 +-
+ internal/auth/policy_test.go           |  3 +
+ 9 files changed, 115 insertions(+), 7 deletions(-)
+ create mode 100644 internal/auth/permissions_ops_test.go
+
+diff --git a/frontend/src/i18n/locales/cn/auth.json b/frontend/src/i18n/locales/cn/auth.json
+index ccaff825..26a5b485 100644
+--- a/frontend/src/i18n/locales/cn/auth.json
++++ b/frontend/src/i18n/locales/cn/auth.json
+@@ -66,6 +66,8 @@
+     "clustersManage": "管理集群",
+     "usersManage": "管理用户",
+     "auditRead": "查看审计日志",
+-    "debug": "Pod 内调试容器"
++    "debug": "Pod 内调试容器",
++    "diagnosticsLogs": "查看调查中保存的日志片段",
++    "baselineManage": "创建并接受配置基线"
+   }
+ }
+diff --git a/frontend/src/i18n/locales/en/auth.json b/frontend/src/i18n/locales/en/auth.json
+index 1e10bb29..ec6e1db1 100644
+--- a/frontend/src/i18n/locales/en/auth.json
++++ b/frontend/src/i18n/locales/en/auth.json
+@@ -66,6 +66,8 @@
+     "clustersManage": "Manage clusters",
+     "usersManage": "Manage users",
+     "auditRead": "View the audit log",
+-    "debug": "Debug containers in pods"
++    "debug": "Debug containers in pods",
++    "diagnosticsLogs": "View stored log excerpts in investigations",
++    "baselineManage": "Create and accept configuration baselines"
+   }
+ }
+diff --git a/frontend/src/i18n/locales/ru/auth.json b/frontend/src/i18n/locales/ru/auth.json
+index 1275136b..6b669dcb 100644
+--- a/frontend/src/i18n/locales/ru/auth.json
++++ b/frontend/src/i18n/locales/ru/auth.json
+@@ -66,6 +66,8 @@
+     "clustersManage": "Управление кластерами",
+     "usersManage": "Управление пользователями",
+     "auditRead": "Просмотр журнала аудита",
+-    "debug": "Отладочные контейнеры в подах"
++    "debug": "Отладочные контейнеры в подах",
++    "diagnosticsLogs": "Просмотр сохранённых фрагментов логов в расследованиях",
++    "baselineManage": "Создание и принятие эталонов конфигурации"
+   }
+ }
+diff --git a/frontend/src/types/auth.ts b/frontend/src/types/auth.ts
+index 38029203..73d9dbac 100644
+--- a/frontend/src/types/auth.ts
++++ b/frontend/src/types/auth.ts
+@@ -18,6 +18,8 @@ export const Perm = {
+   ClusterManage: 'clusters.manage',
+   UsersManage: 'users.manage',
+   AuditRead: 'audit.read',
++  DiagnosticsLogs: 'diagnostics.logs',
++  BaselineManage: 'baseline.manage',
+ } as const
+ 
+ export type Permission = (typeof Perm)[keyof typeof Perm]
+@@ -55,4 +57,6 @@ export const PERMISSION_LABELS: Record<string, string> = {
+   [Perm.ClusterManage]: 'auth.perm.clustersManage',
+   [Perm.UsersManage]: 'auth.perm.usersManage',
+   [Perm.AuditRead]: 'auth.perm.auditRead',
++  [Perm.DiagnosticsLogs]: 'auth.perm.diagnosticsLogs',
++  [Perm.BaselineManage]: 'auth.perm.baselineManage',
+ }
+diff --git a/internal/auth/access.go b/internal/auth/access.go
+index 46c1f7be..33cb9705 100644
+--- a/internal/auth/access.go
++++ b/internal/auth/access.go
+@@ -38,7 +38,8 @@ func (s *Service) SetAccess(a Access) {
+ // (остальные — права организации и управления кластерами).
+ func ClusterScoped(p Permission) bool {
+ 	switch p {
+-	case PermRead, PermSecretsRead, PermOperate, PermWrite, PermExec, PermNodeShell, PermDebug, PermPortForward:
++	case PermRead, PermSecretsRead, PermOperate, PermWrite, PermExec, PermNodeShell, PermDebug, PermPortForward,
++		PermDiagnosticsLogs, PermBaselineManage:
+ 		return true
+ 	}
+ 	return false
+diff --git a/internal/auth/permissions.go b/internal/auth/permissions.go
+index be5d9ca7..134894bf 100644
+--- a/internal/auth/permissions.go
++++ b/internal/auth/permissions.go
+@@ -40,6 +40,13 @@ const (
+ 	PermUsersManage Permission = "users.manage"
+ 	// PermAuditRead — просмотр журнала аудита.
+ 	PermAuditRead Permission = "audit.read"
++	// PermDiagnosticsLogs — просмотр сохранённых фрагментов логов в истории расследований (ADR-0024, ADR-0026 §5).
++	// Живой просмотр логов по-прежнему требует только read: сохранённые фрагменты живут дольше сессии и видны другим
++	// пользователям. По умолчанию у admin и operator, у user нет.
++	PermDiagnosticsLogs Permission = "diagnostics.logs"
++	// PermBaselineManage — создание и принятие baseline конфигурации (ADR-0027, ADR-0026 §5). По умолчанию только
++	// у admin; чтение результатов drift требует read.
++	PermBaselineManage Permission = "baseline.manage"
+ )
+ 
+ // allPermissions — полный список прав. Администратор получает все.
+@@ -55,6 +62,8 @@ var allPermissions = []Permission{
+ 	PermClusterManage,
+ 	PermUsersManage,
+ 	PermAuditRead,
++	PermDiagnosticsLogs,
++	PermBaselineManage,
+ }
+ 
+ // Role — роль пользователя.
+@@ -78,8 +87,8 @@ var roles = map[Role]roleDef{
+ 	RoleAdmin: {label: "Administrator", permissions: allPermissions},
+ 	// Оператор: всё, что может пользователь, плюс scale / restart / rollback / повтор Job.
+ 	// Не может удалять ресурсы, менять YAML, открывать терминал, пробрасывать порты и управлять
+-	// кластерами и пользователями.
+-	RoleOperator: {label: "Operator", permissions: []Permission{PermRead, PermSecretsRead, PermOperate}},
++	// кластерами и пользователями. diagnostics.logs выдан явной записью (ADR-0026 §5); baseline.manage — нет.
++	RoleOperator: {label: "Operator", permissions: []Permission{PermRead, PermSecretsRead, PermOperate, PermDiagnosticsLogs}},
+ 	// Пользователь: только чтение. Значения Secret, содержимое релизов Helm (values, манифест, diff ревизий) и сроки
+ 	// сертификатов требуют отдельного права secrets.read, которого у пользователя нет (оно у оператора и администратора).
+ 	RoleUser: {label: "User", permissions: []Permission{PermRead}},
+diff --git a/internal/auth/permissions_ops_test.go b/internal/auth/permissions_ops_test.go
+new file mode 100644
+index 00000000..52d163c5
+--- /dev/null
++++ b/internal/auth/permissions_ops_test.go
+@@ -0,0 +1,85 @@
++// Copyright 2026 The Kubron Authors
++// SPDX-License-Identifier: Apache-2.0
++
++package auth
++
++import (
++	"slices"
++	"testing"
++)
++
++// Права операционных модулей (ADR-0026 §5): diagnostics.logs и baseline.manage.
++
++func TestOpsPermissionsMatrix(t *testing.T) {
++	t.Parallel()
++	tests := []struct {
++		perm Permission
++		role Role
++		want bool
++	}{
++		{PermDiagnosticsLogs, RoleAdmin, true},
++		{PermDiagnosticsLogs, RoleOperator, true},
++		{PermDiagnosticsLogs, RoleUser, false},
++		{PermBaselineManage, RoleAdmin, true},
++		{PermBaselineManage, RoleOperator, false},
++		{PermBaselineManage, RoleUser, false},
++	}
++	for _, tc := range tests {
++		t.Run(string(tc.perm)+"/"+string(tc.role), func(t *testing.T) {
++			t.Parallel()
++			if got := tc.role.Has(tc.perm); got != tc.want {
++				t.Fatalf("%s.Has(%q) = %v, want %v", tc.role, tc.perm, got, tc.want)
++			}
++		})
++	}
++}
++
++func TestOpsPermissionsRegistered(t *testing.T) {
++	t.Parallel()
++	for _, p := range []Permission{PermDiagnosticsLogs, PermBaselineManage} {
++		if !KnownPermission(p) {
++			t.Errorf("%q is not a known permission", p)
++		}
++		if !slices.Contains(allPermissions, p) {
++			t.Errorf("%q is missing from allPermissions", p)
++		}
++		// Право действует внутри кластера: определяется ролью в команде-владельце (ADR-0006, ADR-0012).
++		if !ClusterScoped(p) {
++			t.Errorf("%q must be cluster-scoped", p)
++		}
++	}
++}
++
++// Оператор получает diagnostics.logs явной записью в таблице ролей, а не «по умолчанию»: новое право не расширяет
++// роли молча (ADR-0026 §5).
++func TestOperatorDiagnosticsLogsIsExplicit(t *testing.T) {
++	t.Parallel()
++	if !slices.Contains(roles[RoleOperator].permissions, PermDiagnosticsLogs) {
++		t.Fatal("operator must list diagnostics.logs explicitly in the roles table")
++	}
++	if slices.Contains(roles[RoleOperator].permissions, PermBaselineManage) {
++		t.Fatal("operator must not get baseline.manage")
++	}
++}
++
++// Пользователь по-прежнему только читает: новые права его не расширяют.
++func TestUserStaysReadOnlyWithOpsPermissions(t *testing.T) {
++	t.Parallel()
++	if got := RoleUser.Permissions(); !slices.Equal(got, []Permission{PermRead}) {
++		t.Fatalf("user permissions = %v, want [read]", got)
++	}
++}
++
++func TestOpsPermissionsExposedInRolesList(t *testing.T) {
++	t.Parallel()
++	byRole := map[Role][]Permission{}
++	for _, ri := range Roles() {
++		byRole[ri.ID] = ri.Permissions
++	}
++	if !slices.Contains(byRole[RoleAdmin], PermBaselineManage) || !slices.Contains(byRole[RoleAdmin], PermDiagnosticsLogs) {
++		t.Errorf("admin role list lacks ops permissions: %v", byRole[RoleAdmin])
++	}
++	if !slices.Contains(byRole[RoleOperator], PermDiagnosticsLogs) {
++		t.Errorf("operator role list lacks diagnostics.logs: %v", byRole[RoleOperator])
++	}
++}
+diff --git a/internal/auth/permissions_test.go b/internal/auth/permissions_test.go
+index 503dd2e0..b1165cd4 100644
+--- a/internal/auth/permissions_test.go
++++ b/internal/auth/permissions_test.go
+@@ -28,7 +28,7 @@ func TestUserIsReadOnly(t *testing.T) {
+ }
+ 
+ func TestOperatorCanOperateButNotDestroy(t *testing.T) {
+-	allowed := map[Permission]bool{PermRead: true, PermSecretsRead: true, PermOperate: true}
++	allowed := map[Permission]bool{PermRead: true, PermSecretsRead: true, PermOperate: true, PermDiagnosticsLogs: true}
+ 	for _, p := range allPermissions {
+ 		if got := RoleOperator.Has(p); got != allowed[p] {
+ 			t.Errorf("operator.Has(%q) = %v, expected %v", p, got, allowed[p])
+diff --git a/internal/auth/policy_test.go b/internal/auth/policy_test.go
+index 72d912ac..7e0cc9cd 100644
+--- a/internal/auth/policy_test.go
++++ b/internal/auth/policy_test.go
+@@ -179,6 +179,9 @@ var permByIdent = map[string]Permission{
+ 	"PermClusterManage": PermClusterManage,
+ 	"PermUsersManage":   PermUsersManage,
+ 	"PermAuditRead":     PermAuditRead,
++
++	"PermDiagnosticsLogs": PermDiagnosticsLogs,
++	"PermBaselineManage":  PermBaselineManage,
+ }
+ 
+ type methodGuard struct {
+-- 
+2.43.0
+

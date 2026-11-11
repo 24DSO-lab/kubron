@@ -1,0 +1,72 @@
+From 2a45b9e2b95c804f09f09fce3859cf4671849558 Mon Sep 17 00:00:00 2001
+From: Vadim <vmilyash@mts.ru>
+Date: Wed, 11 Nov 2026 12:42:53 +0700
+Subject: [PATCH 08/10] chore(i18n): backend.json strings for platform errors
+
+Signed-off-by: Vadim <vmilyash@mts.ru>
+---
+ frontend/src/i18n/locales/cn/backend.json | 10 +++++++++-
+ frontend/src/i18n/locales/en/backend.json | 10 +++++++++-
+ frontend/src/i18n/locales/ru/backend.json | 10 +++++++++-
+ 3 files changed, 27 insertions(+), 3 deletions(-)
+
+diff --git a/frontend/src/i18n/locales/cn/backend.json b/frontend/src/i18n/locales/cn/backend.json
+index 9590ad5d..fb902228 100644
+--- a/frontend/src/i18n/locales/cn/backend.json
++++ b/frontend/src/i18n/locales/cn/backend.json
+@@ -765,5 +765,13 @@
+   "resourceNotFound": "未找到资源",
+   "accessToTheResourceIsForbidden": "禁止访问该资源",
+   "clusterSourceIsUnavailable": "集群数据源不可用",
+-  "responseIsTooLarge": "响应过大"
++  "responseIsTooLarge": "响应过大",
++  "clusterManagerIsNotAvailable": "集群管理器不可用",
++  "clusterConnectionIsIncomplete": "集群连接不完整",
++  "sourceIsPartiallyAvailable": "数据源部分可用",
++  "invalidOperationRequest": "操作请求无效",
++  "resourceNameIsRequired": "需要资源名称",
++  "namespaceIsRequiredForANamespacedResource": "命名空间资源需要指定命名空间",
++  "invalidLabelSelector": "标签选择器无效：{p0}",
++  "invalidFieldSelector": "字段选择器无效：{p0}"
+ }
+diff --git a/frontend/src/i18n/locales/en/backend.json b/frontend/src/i18n/locales/en/backend.json
+index 8e08d936..662f9394 100644
+--- a/frontend/src/i18n/locales/en/backend.json
++++ b/frontend/src/i18n/locales/en/backend.json
+@@ -765,5 +765,13 @@
+   "resourceNotFound": "resource not found",
+   "accessToTheResourceIsForbidden": "access to the resource is forbidden",
+   "clusterSourceIsUnavailable": "cluster source is unavailable",
+-  "responseIsTooLarge": "response is too large"
++  "responseIsTooLarge": "response is too large",
++  "clusterManagerIsNotAvailable": "cluster manager is not available",
++  "clusterConnectionIsIncomplete": "cluster connection is incomplete",
++  "sourceIsPartiallyAvailable": "source is partially available",
++  "invalidOperationRequest": "invalid operation request",
++  "resourceNameIsRequired": "resource name is required",
++  "namespaceIsRequiredForANamespacedResource": "namespace is required for a namespaced resource",
++  "invalidLabelSelector": "invalid label selector: {p0}",
++  "invalidFieldSelector": "invalid field selector: {p0}"
+ }
+diff --git a/frontend/src/i18n/locales/ru/backend.json b/frontend/src/i18n/locales/ru/backend.json
+index 3faa96cc..aff1947a 100644
+--- a/frontend/src/i18n/locales/ru/backend.json
++++ b/frontend/src/i18n/locales/ru/backend.json
+@@ -765,5 +765,13 @@
+   "resourceNotFound": "ресурс не найден",
+   "accessToTheResourceIsForbidden": "доступ к ресурсу запрещён",
+   "clusterSourceIsUnavailable": "источник данных кластера недоступен",
+-  "responseIsTooLarge": "ответ слишком большой"
++  "responseIsTooLarge": "ответ слишком большой",
++  "clusterManagerIsNotAvailable": "менеджер кластеров недоступен",
++  "clusterConnectionIsIncomplete": "подключение к кластеру неполное",
++  "sourceIsPartiallyAvailable": "источник доступен частично",
++  "invalidOperationRequest": "некорректный запрос операции",
++  "resourceNameIsRequired": "требуется имя ресурса",
++  "namespaceIsRequiredForANamespacedResource": "для ресурса в namespace требуется namespace",
++  "invalidLabelSelector": "некорректный селектор меток: {p0}",
++  "invalidFieldSelector": "некорректный селектор полей: {p0}"
+ }
+-- 
+2.43.0
+
