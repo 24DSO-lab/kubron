@@ -28,7 +28,7 @@ func TestUserIsReadOnly(t *testing.T) {
 }
 
 func TestOperatorCanOperateButNotDestroy(t *testing.T) {
-	allowed := map[Permission]bool{PermRead: true, PermSecretsRead: true, PermOperate: true}
+	allowed := map[Permission]bool{PermRead: true, PermSecretsRead: true, PermOperate: true, PermDiagnosticsLogs: true}
 	for _, p := range allPermissions {
 		if got := RoleOperator.Has(p); got != allowed[p] {
 			t.Errorf("operator.Has(%q) = %v, expected %v", p, got, allowed[p])

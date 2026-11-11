@@ -179,6 +179,9 @@ var permByIdent = map[string]Permission{
 	"PermClusterManage": PermClusterManage,
 	"PermUsersManage":   PermUsersManage,
 	"PermAuditRead":     PermAuditRead,
+
+	"PermDiagnosticsLogs": PermDiagnosticsLogs,
+	"PermBaselineManage":  PermBaselineManage,
 }
 
 type methodGuard struct {

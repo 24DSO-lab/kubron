@@ -38,7 +38,8 @@ func (s *Service) SetAccess(a Access) {
 // (остальные — права организации и управления кластерами).
 func ClusterScoped(p Permission) bool {
 	switch p {
-	case PermRead, PermSecretsRead, PermOperate, PermWrite, PermExec, PermNodeShell, PermDebug, PermPortForward:
+	case PermRead, PermSecretsRead, PermOperate, PermWrite, PermExec, PermNodeShell, PermDebug, PermPortForward,
+		PermDiagnosticsLogs, PermBaselineManage:
 		return true
 	}
 	return false

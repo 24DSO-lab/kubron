@@ -18,6 +18,8 @@ export const Perm = {
   ClusterManage: 'clusters.manage',
   UsersManage: 'users.manage',
   AuditRead: 'audit.read',
+  DiagnosticsLogs: 'diagnostics.logs',
+  BaselineManage: 'baseline.manage',
 } as const
 
 export type Permission = (typeof Perm)[keyof typeof Perm]
@@ -55,4 +57,6 @@ export const PERMISSION_LABELS: Record<string, string> = {
   [Perm.ClusterManage]: 'auth.perm.clustersManage',
   [Perm.UsersManage]: 'auth.perm.usersManage',
   [Perm.AuditRead]: 'auth.perm.auditRead',
+  [Perm.DiagnosticsLogs]: 'auth.perm.diagnosticsLogs',
+  [Perm.BaselineManage]: 'auth.perm.baselineManage',
 }
