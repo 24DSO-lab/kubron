@@ -211,7 +211,7 @@ When `inCluster.enabled=true`, Kubron manages its own cluster through the chart'
 
 The profiles are derived from the Kubernetes API calls in the code for the `read` and `operate` permissions. The templates are `rbac.readonlyRules` and `rbac.operatorRules` in the chart's `values.yaml`.
 
-**What the profiles deliberately do not cover.** Pod terminals (`pods/exec`, `pods/attach`), port-forward, the node shell (it creates a privileged Pod), drain (`pods/eviction`), editing and deleting arbitrary objects, and Helm (releases are stored in Secrets and apply arbitrary manifests) need broad rights that must not be granted by default. Enable them knowingly through `custom`. You can still switch the matching Kubron permissions off for everyone with `kubron.disableExec`, `kubron.disableNodeShell` and `kubron.disablePortForward`.
+**What the profiles deliberately do not cover.** Pod terminals (`pods/exec`, `pods/attach`), debug containers (`pods/ephemeralcontainers`, see [Debug containers](/features/debug-containers)), port-forward, the node shell (it creates a privileged Pod), drain (`pods/eviction`), editing and deleting arbitrary objects, and Helm (releases are stored in Secrets and apply arbitrary manifests) need broad rights that must not be granted by default. Enable them knowingly through `custom`. You can still switch the matching Kubron permissions off for everyone with `kubron.disableExec`, `kubron.disableNodeShell` and `kubron.disablePortForward`.
 
 - **Secret values.** By default the ServiceAccount does not read `secrets`, so nobody can see Secret values. `rbac.allowSecretsRead=true` adds `get/list/watch` on cluster `secrets` to any profile; everyone with the Kubron `secrets.read` permission (`operator` and `admin`) can then see them.
 - **Custom resources** (CRDs, Argo CD `Application`, Flux objects and so on) are not in the profiles. Add the groups you need to `rbac.extraRules`; a ready-made fragment for Flux is [below](#rights-for-flux-cd).
@@ -375,6 +375,23 @@ helm upgrade kubron oci://ghcr.io/24dso-lab/charts/kubron \
 - Read the [changelog](https://github.com/24DSO-lab/kubron/blob/master/CHANGELOG.md) first. It lists behaviour changes, for example roles and permissions.
 - Take a database backup before every upgrade.
 - To roll back: `helm rollback kubron -n kubron`. A rollback cannot undo a database migration, so restore from backup if a release changed the schema and you need to go back further.
+
+## Update check {#update-check}
+
+Once a day the server asks `api.github.com` for the latest release. Every user sees the version number in the header; an administrator (the `users.manage` permission) sees a banner when a new version is out and the **Version and updates** dialog with the steps for your installation. The server never updates itself. See [Version and updates](/features/updates) for what the dialog shows.
+
+| Installation | Detected by | Shown |
+|---|---|---|
+| Helm | The chart sets `KUBRON_INSTALL_METHOD=helm`, `KUBRON_HELM_RELEASE`, `KUBRON_HELM_NAMESPACE` | `helm upgrade <release> oci://ghcr.io/24dso-lab/charts/kubron --version <version> --namespace <ns> --reset-then-reuse-values` |
+| Kubernetes without Helm | `KUBERNETES_SERVICE_HOST` is set | The new image tag for your manifests, Kustomize or GitOps |
+| Docker, Podman, Compose | Container markers (`/.dockerenv`, cgroup) | `docker pull` and `docker compose pull && docker compose up -d` |
+| Binary | Everything else | A link to the release |
+
+If the detection is wrong (for example, the image runs under your own orchestrator), set `KUBRON_INSTALL_METHOD` to `helm`, `kubernetes`, `docker` or `binary`.
+
+- **Turning it off.** `KUBRON_UPDATE_CHECK=off` (`kubron.updateCheck: false` in the chart) stops every outgoing check. Turn it off in air-gapped networks. A build without a version (`dev`) never checks. Any value other than `on` and `off` is a startup error.
+- **NetworkPolicy.** The default API-server egress rule allows port 443 to any address, so the server reaches GitHub. If you narrowed `networkPolicy.egress.clusterApi.cidrs`, add a rule for `api.github.com` to `networkPolicy.egress.extra`, or turn the check off; otherwise the dialog shows a network error.
+- **No token, no rate-limit use.** Requests are anonymous and conditional (`ETag`), so GitHub's limit (60 an hour per address) is not used up, and a manual check is allowed once a minute.
 
 ## Uninstall
 

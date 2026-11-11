@@ -193,6 +193,9 @@ Everything lives in one folder in your home directory:
 | `config.json` | Interface preferences such as theme and last active cluster |
 | `users.json` | Local accounts |
 | `clusters/` | Kubeconfigs of the clusters you added, plus their names, colours and tags |
+| `updates.json` | Whether the daily update check is on, and the last result |
+| `bugreport.json` | Optional mail server settings for [problem reports](/features/bug-reports); the password is encrypted |
+| `bugreports/` | Reports that could not be sent yet and wait for a connection |
 
 Kubron creates the folder so only your user can enter it (`0700`) and writes its configuration with owner-only permissions. Your original kubeconfig (for example `~/.kube/config`) is not modified.
 
@@ -205,7 +208,7 @@ Kubron creates the folder so only your user can enter it (`0700`) and writes its
 | **Update** | Replace `Kubron.exe` | Replace `Kubron.app` in Applications | `sudo apt install ./new.deb` | Replace the `Kubron` file |
 | **Uninstall** | Delete `Kubron.exe` | Drag `Kubron.app` to the Trash | `sudo apt remove kubron` | Delete the file |
 
-Your clusters and account stay in `~/.kubron` through updates. Delete that folder only if you also want to remove your data. See the [changelog](https://github.com/24DSO-lab/kubron/blob/master/CHANGELOG.md) before upgrading across major versions.
+Kubron checks once a day whether a newer version exists and shows how to update; it never installs an update itself. See [Version and updates](/features/updates). Your clusters and account stay in `~/.kubron` through updates. Delete that folder only if you also want to remove your data. See the [changelog](https://github.com/24DSO-lab/kubron/blob/master/CHANGELOG.md) before upgrading across major versions.
 
 ## Troubleshooting
 

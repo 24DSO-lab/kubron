@@ -1,0 +1,71 @@
+# Debug-контейнеры
+
+Во многих рабочих образах нет оболочки и средств отладки. **Debug-контейнер** позволяет подключить к работающему Pod временный контейнер с инструментами, не пересобирая образ и ничего не перезапуская. Это возможность Kubernetes, которая называется [ephemeral containers](https://kubernetes.io/docs/concepts/workloads/pods/ephemeral-containers/); то же делает `kubectl debug -it`.
+
+[[toc]]
+
+## Запуск
+
+1. Откройте контекстное меню Pod в списке Pod и выберите **Debug container**.
+2. Выберите **Image**. Kubron предлагает `docker.io/library/busybox:stable` (крошечная оболочка и базовые утилиты) и `docker.io/nicolaka/netshoot:latest` (сетевые утилиты вроде `curl`, `dig`, `tcpdump`). Можно ввести другой `registry/image:tag`, если администратор не ограничил образы.
+3. Выберите **Profile**.
+4. При необходимости выберите **Target container**. Тогда debug-контейнер делит с ним пространство процессов, и вы видите и можете трассировать его процессы. При **None** используются собственные пространства имён Pod.
+5. Нажмите **Start**. Kubron добавляет контейнер, ждёт его запуска до 60 секунд и открывает терминал, подключённый к нему. Если запуск сразу не удался, например образ не загрузился, Kubron сообщает об этом без ожидания.
+
+В терминале работает оболочка образа по умолчанию. Закрытие терминала завершает оболочку, и контейнер останавливается.
+
+## Профили
+
+| Профиль | Что делает | Когда использовать |
+|---|---|---|
+| **General** (по умолчанию) | Добавляет capability `SYS_PTRACE`, чтобы можно было трассировать процессы целевого контейнера такими инструментами, как `strace` | Namespace это позволяет |
+| **Restricted** | Работает от не-root пользователя (UID 65534, `nobody`), запрещает повышение привилегий, сбрасывает все capabilities и использует seccomp-профиль среды выполнения по умолчанию | Namespace требует Pod Security `restricted` |
+
+## Что нужно {#what-you-need}
+
+| Требование | Подробности |
+|---|---|
+| Kubernetes | 1.25 или новее, где ephemeral containers общедоступны |
+| Право Kubron `debug` | Отдельное право, по умолчанию у администраторов. Оно намеренно отделено от `exec`: контейнер запускается из любого образа, который вы выберете, работает в пространствах имён Pod и остаётся в spec Pod до его удаления |
+| Право Kubron `exec` | Терминал подключается к контейнеру, поэтому нужен и `exec` |
+| RBAC кластера | Учётной записи кластера нужно `patch` на `pods/ephemeralcontainers`. В профили RBAC in-cluster Kubron это право не входит. Добавьте его через `rbac.extraRules` или профиль `custom` |
+
+```yaml
+rbac:
+  extraRules:
+    - apiGroups: [""]
+      resources: [pods/ephemeralcontainers]
+      verbs: [patch]
+```
+
+Терминал подключается через `pods/attach`, поэтому учётной записи кластера нужно и это право. См. [Права ServiceAccount в режиме in-cluster](/ru/server/deploy#права-serviceaccount-в-режиме-in-cluster).
+
+## Что остаётся после сеанса
+
+Kubernetes не умеет удалять и изменять ephemeral-контейнер. Каждый сеанс отладки оставляет в spec Pod завершённый контейнер `kubron-debug-xxxxx` до удаления самого Pod. Kubron помечает такие контейнеры меткой **debug** в списке контейнеров. Переподключиться к тому же контейнеру нельзя, поэтому в следующий раз запускайте новый.
+
+Debug-контейнер работает в сети Pod и, при выбранной цели, в пространстве его процессов. Относитесь к нему как к терминалу: он может читать то, что может читать Pod.
+
+## Для администраторов
+
+| Параметр | Эффект |
+|---|---|
+| `KUBRON_DISABLE_DEBUG=1` (`kubron.disableDebug` в Helm-чарте) | Отключает возможность для всех |
+| `KUBRON_DEBUG_IMAGES` (`kubron.debugImages`) | Список разрешённых образов через запятую. Тогда диалог сообщает, что можно использовать только образы, разрешённые администратором. Пусто — любой образ |
+| `KUBRON_DISABLE_EXEC=1` | Отключает терминалы Pod, оболочку узла **и** debug-контейнеры |
+| Право `debug` | Выдавайте только тем, кому можно и открывать терминалы |
+
+Создание контейнера и каждый терминальный сеанс в нём записываются в [журнал аудита](/ru/features/administration#журнал-аудита): namespace, Pod, целевой контейнер, образ и профиль. См. [справочник по конфигурации](/ru/server/configuration).
+
+## Сообщения
+
+| Сообщение | Причина и решение |
+|---|---|
+| **debug containers are disabled by the administrator** | Задан `KUBRON_DISABLE_DEBUG` или `KUBRON_DISABLE_EXEC` |
+| **the cluster account is not allowed to add ephemeral containers to pod ... (RBAC: patch on pods/ephemeralcontainers)** | Добавьте правило RBAC выше |
+| **pod ... was not found (ephemeral containers need Kubernetes 1.25 or newer)** | Pod исчез либо кластер слишком старый |
+| **the cluster rejected the debug container (image, profile or Pod Security policy)** | Попробуйте профиль **Restricted**, другой образ либо запросите исключение для namespace |
+| **pod ... has already finished: a debug container cannot be added** | В завершённый или упавший Pod нельзя добавлять контейнеры |
+| **the debug container failed to start** / **exited before it was attached** | В образе нет подходящей оболочки по умолчанию либо он не может работать от выбранного пользователя. Попробуйте `busybox` |
+| **timed out waiting for the debug container ... to start; it stays in the pod spec and cannot be removed** | Загрузка образа медленная или заблокирована. Проверьте доступ узла к реестру |
+| Образ не принимается | Администратор ограничил образы через `KUBRON_DEBUG_IMAGES` |

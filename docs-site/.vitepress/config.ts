@@ -87,13 +87,16 @@ export default defineConfig({
             { text: 'Resources & YAML', link: '/features/resources' },
             { text: 'Working with resources', link: '/features/working-with-resources' },
             { text: 'Operations', link: '/features/operations' },
+            { text: 'Debug containers', link: '/features/debug-containers' },
             { text: 'Metrics stack & charts', link: '/features/metrics' },
             { text: 'Helm', link: '/features/helm' },
             { text: 'GitOps', link: '/features/gitops' },
             { text: 'Teams & shared access', link: '/features/teams' },
             { text: 'Security & access', link: '/features/security' },
             { text: 'Users & audit log', link: '/features/administration' },
-            { text: 'Settings', link: '/features/settings' }
+            { text: 'Settings', link: '/features/settings' },
+            { text: 'Version & updates', link: '/features/updates' },
+            { text: 'Report a problem', link: '/features/bug-reports' }
           ]}],
           '/server/': [{ text: 'Web version', items: [
             { text: 'Overview', link: '/server/' },
@@ -148,13 +151,16 @@ export default defineConfig({
             { text: 'Ресурсы и YAML', link: '/ru/features/resources' },
             { text: 'Работа с ресурсами', link: '/ru/features/working-with-resources' },
             { text: 'Операции', link: '/ru/features/operations' },
+            { text: 'Debug-контейнеры', link: '/ru/features/debug-containers' },
             { text: 'Стек метрик и графики', link: '/ru/features/metrics' },
             { text: 'Helm', link: '/ru/features/helm' },
             { text: 'GitOps', link: '/ru/features/gitops' },
             { text: 'Команды и совместный доступ', link: '/ru/features/teams' },
             { text: 'Безопасность и доступ', link: '/ru/features/security' },
             { text: 'Пользователи и аудит', link: '/ru/features/administration' },
-            { text: 'Настройки', link: '/ru/features/settings' }
+            { text: 'Настройки', link: '/ru/features/settings' },
+            { text: 'Версия и обновления', link: '/ru/features/updates' },
+            { text: 'Сообщить о проблеме', link: '/ru/features/bug-reports' }
           ]}],
           '/ru/server/': [{ text: 'Web-версия', items: [
             { text: 'Обзор', link: '/ru/server/' },

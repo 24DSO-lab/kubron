@@ -64,6 +64,7 @@ Kubron is a Kubernetes Operations Workspace available as a native Desktop applic
 - [Resources and YAML editor](/features/resources)
 - [Working with resources](/features/working-with-resources)
 - [Day-to-day operations](/features/operations)
+- [Debug containers](/features/debug-containers)
 - [Metrics stack and charts](/features/metrics)
 - [Helm](/features/helm)
 - [GitOps with Argo CD and Flux CD](/features/gitops)
@@ -71,3 +72,5 @@ Kubron is a Kubernetes Operations Workspace available as a native Desktop applic
 - [Security and access control](/features/security)
 - [Users and audit log](/features/administration)
 - [Settings and cluster settings](/features/settings)
+- [Version and updates](/features/updates)
+- [Report a problem](/features/bug-reports)

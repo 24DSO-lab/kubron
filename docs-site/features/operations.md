@@ -35,6 +35,8 @@ The node shell is a privileged operation: it uses a privileged helper Pod with a
 
 ### Debug containers
 
+This is a summary; the [Debug containers](/features/debug-containers) page has the full guide.
+
 The **Debug container** action on a Pod adds an [ephemeral container](https://kubernetes.io/docs/concepts/workloads/pods/ephemeral-containers/) to the running Pod and attaches a terminal to it. Use it when the application image has no shell or debugging tools. You choose an image, a profile and an optional target container whose process namespace the debug container shares.
 
 - **Permissions:** it needs the separate `debug` permission (administrators by default) and `exec`, because the terminal is attached to the container. The cluster account needs `patch` on `pods/ephemeralcontainers`.
@@ -56,7 +58,7 @@ Kubron can optionally install a small metrics stack in the active cluster:
 
 When it is available, Kubron can show resource usage, trends and workload/volume hotspots. Metrics are optional; the core resource browser and cluster overview do not require this stack.
 
-Installing or removing the stack changes cluster resources and requires the appropriate write permission.
+Installing or removing the stack changes cluster resources and requires the appropriate write permission. See [Metrics stack and charts](/features/metrics) for what is installed, who can see the charts and how long data is kept.
 
 ## Edition availability
 

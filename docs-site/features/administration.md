@@ -72,7 +72,7 @@ Export the filtered records as **CSV** or **JSON**, up to 10,000 records. If mor
 | Interactive access | Terminal, node shell and port-forward opened and closed; debug containers created |
 | Sensitive reads | Secret values viewed, Helm release values and manifest viewed |
 | GitOps | Argo CD sync, refresh, terminate, rollback, auto-sync changes, token changes, application deletion; Flux reconcile, suspend, resume and deletion, and views of Flux data |
-| Platform | Metrics stack installed or removed, audit log viewed and exported |
+| Platform | Metrics stack installed or removed, audit log viewed and exported, problem report sent (**bugreport.submit**, without its text) |
 
 ### When the log cannot be written
 

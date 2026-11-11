@@ -89,6 +89,19 @@ Find your symptom, read the likely cause, and follow the link when there is a lo
 | An object becomes suspended or active again by itself | `spec.suspend` is set in Git, and the parent Kustomization restores it. Change it in Git |
 | A deleted object came back | It is defined in Git and the parent Kustomization created it again. Remove it from Git |
 
+## Debug containers, updates and problem reports
+
+| Message or symptom | Cause and fix |
+|---|---|
+| **debug containers are disabled by the administrator** | `KUBRON_DISABLE_DEBUG` or `KUBRON_DISABLE_EXEC` is set. See [Debug containers](/features/debug-containers) |
+| The cluster account is not allowed to add ephemeral containers | Add `patch` on `pods/ephemeralcontainers` with `rbac.extraRules`. See [Debug containers](/features/debug-containers#what-you-need) |
+| **the cluster rejected the debug container (image, profile or Pod Security policy)** | Try the **Restricted** profile or another image |
+| **Could not reach GitHub. Check the network connection.** | The update check cannot reach `api.github.com`. Fix the proxy, firewall or `NetworkPolicy`, or turn the check off. See [Version and updates](/features/updates#network-access) |
+| No update banner although a new version exists | Only administrators see it, it can be hidden until the next version, a development build never checks, and the check may be off (`KUBRON_UPDATE_CHECK=off`) |
+| **The mail server is not set up yet** or **The mail server for reports is not set up** | No delivery channel is available. On Web an administrator sets `KUBRON_BUGREPORT_SMTP_*` or `KUBRON_BUGREPORT_RELAY_URL`. See [Report a problem](/features/bug-reports) |
+| **No connection: the report is saved on this computer and will be sent automatically.** | Desktop queued the report and retries; use **Save as archive** to hand it over by other means |
+| The Report a problem button is missing (Web) | No mail server or receiver is configured on the server |
+
 ## Running the Web server
 
 | Message or symptom | Cause and fix |
@@ -106,7 +119,7 @@ Find your symptom, read the likely cause, and follow the link when there is a lo
 
 **Do I need `kubectl`?** No. Kubron talks to the Kubernetes API itself. You only need `kubectl`-style plugins (such as `aws` or `kubelogin`) when a kubeconfig uses an `exec` plugin that Kubron does not handle itself.
 
-**Does Kubron send data anywhere?** No telemetry. Desktop connects only to your clusters (and to identity providers you sign in with). The Web edition connects from your server.
+**Does Kubron send data anywhere?** There is no telemetry. Kubron connects to your clusters (from your computer on Desktop, from your server on Web) and to the identity providers you sign in with. It also asks GitHub once a day whether a newer version exists; you can turn that off ([Version and updates](/features/updates)). A problem report leaves your computer only when you press **Send** in **Report a problem** ([details](/features/bug-reports)).
 
 **Where is my data?** Desktop and single-user server: `~/.kubron` (`%USERPROFILE%\.kubron` on Windows). Web with PostgreSQL: in the database, with secrets encrypted by `KUBRON_SECRET_KEY`. See [Backup, restore and key rotation](/server/backup).
 
