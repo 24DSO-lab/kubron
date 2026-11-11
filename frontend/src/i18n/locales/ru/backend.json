@@ -773,5 +773,8 @@
   "resourceNameIsRequired": "требуется имя ресурса",
   "namespaceIsRequiredForANamespacedResource": "для ресурса в namespace требуется namespace",
   "invalidLabelSelector": "некорректный селектор меток: {p0}",
-  "invalidFieldSelector": "некорректный селектор полей: {p0}"
+  "invalidFieldSelector": "некорректный селектор полей: {p0}",
+  "logIsNotValidUtf8Text": "лог не является текстом UTF-8",
+  "logIsTooLargeToRedact": "лог слишком велик для редактирования",
+  "logRedactionFailed": "не удалось отредактировать лог"
 }

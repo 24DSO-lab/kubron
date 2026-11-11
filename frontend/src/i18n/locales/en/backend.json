@@ -773,5 +773,8 @@
   "resourceNameIsRequired": "resource name is required",
   "namespaceIsRequiredForANamespacedResource": "namespace is required for a namespaced resource",
   "invalidLabelSelector": "invalid label selector: {p0}",
-  "invalidFieldSelector": "invalid field selector: {p0}"
+  "invalidFieldSelector": "invalid field selector: {p0}",
+  "logIsNotValidUtf8Text": "log is not valid UTF-8 text",
+  "logIsTooLargeToRedact": "log is too large to redact",
+  "logRedactionFailed": "log redaction failed"
 }

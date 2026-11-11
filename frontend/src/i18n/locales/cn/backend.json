@@ -773,5 +773,8 @@
   "resourceNameIsRequired": "需要资源名称",
   "namespaceIsRequiredForANamespacedResource": "命名空间资源需要指定命名空间",
   "invalidLabelSelector": "标签选择器无效：{p0}",
-  "invalidFieldSelector": "字段选择器无效：{p0}"
+  "invalidFieldSelector": "字段选择器无效：{p0}",
+  "logIsNotValidUtf8Text": "日志不是有效的 UTF-8 文本",
+  "logIsTooLargeToRedact": "日志过大，无法脱敏",
+  "logRedactionFailed": "日志脱敏失败"
 }
