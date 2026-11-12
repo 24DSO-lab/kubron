@@ -1,0 +1,260 @@
+{
+  "title": "升级就绪检查",
+  "subtitle": "检查集群是否已为 Kubernetes 升级做好准备：已弃用和已移除的 API、组件兼容性，以及检查未能覆盖的内容",
+  "cluster": "集群",
+  "selectCluster": "选择集群",
+  "target": "目标版本",
+  "noTarget": "未选择",
+  "run": "运行检查",
+  "running": "检查中…",
+  "hint": "只读：Kubron 只读取集群对象，不做任何更改。未选择目标版本时，仅报告已弃用的 API。",
+  "empty": "请选择集群并运行检查，或从历史记录中打开报告。",
+  "notCheckedShort": "未检查",
+  "disclaimer": "这是评估，而不是升级一定成功的保证。通用 Kubernetes 模式：不执行特定云服务商的检查。",
+  "notChecked": {
+    "title": "未检查"
+  },
+  "severity": {
+    "blocker": "阻塞项",
+    "warning": "警告",
+    "info": "信息"
+  },
+  "status": {
+    "deprecated": "已弃用",
+    "removed": "已移除",
+    "confirmed": "来源已确认兼容",
+    "known_limitation": "已知限制",
+    "insufficient_data": "数据不足",
+    "not_recognized": "未识别的组件",
+    "ok": "正常",
+    "attention": "需要关注",
+    "not_checked": "未检查",
+    "partial": "部分检查"
+  },
+  "source": {
+    "live_api": "实时 API",
+    "gitops_manifests": "GitOps 清单",
+    "local_files": "本地文件"
+  },
+  "findings": {
+    "priority": "优先级",
+    "recommendation": "建议",
+    "none": {
+      "blocker": "在已检查的内容中未发现阻塞项。",
+      "warning": "在已检查的内容中未发现警告。",
+      "info": "无需报告。"
+    }
+  },
+  "api": {
+    "deprecatedIn": "自 {v} 起弃用",
+    "removedIn": "在 {v} 中移除",
+    "replacement": "替代：{v}",
+    "objects": "{n} 个对象",
+    "more": "… 另有 {n} 个",
+    "guide": "弃用迁移指南",
+    "evidence": {
+      "managed_fields": "managedFields",
+      "last_applied": "last-applied-configuration"
+    }
+  },
+  "component": {
+    "version": "版本 {v}",
+    "more": "详情",
+    "source": "兼容性来源",
+    "docs": "文档",
+    "checkedAt": "检查于 {date}",
+    "state": {
+      "ready": "就绪（{ready}/{desired}）",
+      "degraded": "降级（{ready}/{desired}）",
+      "unavailable": "不可用（{ready}/{desired}）",
+      "unknown": "未知"
+    }
+  },
+  "coverage": {
+    "title": "覆盖范围：已检查与未检查的内容",
+    "lead": "请先阅读此处：报告仅覆盖标记为“已检查”的来源。其余内容未被检查，也不对其作出任何结论。",
+    "mode": "模式",
+    "modes": {
+      "generic_kubernetes": "通用 Kubernetes（无云服务商专项检查）"
+    },
+    "evaluatedAgainst": "API 评估所依据的 Kubernetes 版本",
+    "apiMatrix": "API 矩阵",
+    "catalog": "组件目录",
+    "generated": "生成于 {date}",
+    "checked": "核对于 {date}",
+    "window": "目标 {window}",
+    "components": "{n} 个组件",
+    "sources": {
+      "live_api": "实时 Kubernetes API 对象",
+      "gitops_manifests": "GitOps 清单（Argo CD、Flux、Git）",
+      "local_files": "本地清单文件"
+    },
+    "state": {
+      "checked": "已检查",
+      "partial": "部分检查",
+      "unchecked": "未检查"
+    },
+    "methods": "方法",
+    "methodNames": {
+      "server_version": "服务器版本",
+      "server_resources": "已提供的 API",
+      "managed_fields": "managedFields",
+      "last_applied": "last-applied-configuration",
+      "workload_images": "工作负载镜像",
+      "node_info": "节点信息"
+    },
+    "scanned": "已扫描的 API 类型（{n}）",
+    "notCovered": "未覆盖的 API 类型（{n}）",
+    "limitations": "一般限制"
+  },
+  "diff": {
+    "title": "自上次检查以来的变化",
+    "first": "这是该集群的首次检查：没有可比较的对象。",
+    "against": "与报告 {id} 比较",
+    "targetChanged": "目标版本不同（{before} → {after}）：两次发现回答的是不同的问题。",
+    "matrixChanged": "API 矩阵不同（{before} → {after}）。",
+    "catalogChanged": "组件目录不同（{before} → {after}）。",
+    "same": "{n} 项发现无变化。",
+    "new": "新增（{n}）",
+    "resolved": "已解决（{n}）",
+    "changed": "已变化（{n}）",
+    "unchanged": "{n} 项发现无变化。"
+  },
+  "actions": {
+    "before": "升级前的准备",
+    "after": "升级后的检查",
+    "open": "打开",
+    "note": "以上均为建议。Kubron 不会更改集群，也不会执行升级。"
+  },
+  "history": {
+    "title": "历史记录",
+    "empty": "该集群尚无检查记录。",
+    "more": "显示更早的",
+    "notChecked": "未检查"
+  },
+  "export": {
+    "json": "导出 JSON",
+    "markdown": "导出 Markdown",
+    "saved": "已保存 {name}",
+    "copied": "已复制到剪贴板",
+    "copyFailed": "无法复制到剪贴板"
+  },
+  "codes": {
+    "action": {
+      "backup": "确保集群可以恢复：请按所用发行版或云服务商的流程进行备份。",
+      "checkManifests": "检查 Git 或 GitOps 仓库中的清单是否使用已弃用和已移除的 API：Kubron 只分析集群中的实时对象。",
+      "fixUnhealthy": "修复未就绪的组件。",
+      "migrateDeprecatedAPIs": "规划迁移使用已弃用 API 的对象。",
+      "migrateRemovedAPIs": "迁移所有使用目标版本中已移除 API 的对象，并更新生成这些对象的清单。",
+      "planStepwise": "将升级拆分为每次一个次版本的步骤。",
+      "readReleaseNotes": "阅读目标 Kubernetes 版本的发行说明。",
+      "rerunReadiness": "升级后再次运行就绪检查，并与本报告对比。",
+      "resolveComponents": "升级前解决文档中记载的组件限制。",
+      "reviewNotChecked": "查看标记为“未检查”的部分：报告未覆盖它们。",
+      "reviewUnrecognized": "查看不在目录中的组件：Kubron 未检查它们的兼容性。",
+      "verifyAddons": "升级后对照文档检查附加组件（CNI、DNS、ingress、指标）。",
+      "verifyComponentDocs": "对照各项目文档，确认状态为“数据不足”的组件的兼容性。",
+      "verifyNodesReady": "升级后确认所有节点为 Ready 且运行目标版本。",
+      "verifyWorkloads": "升级后确认系统工作负载和您的应用运行正常。"
+    },
+    "api": {
+      "deprecated": "{kind}（{apiVersion}）自 Kubernetes {deprecatedIn} 起已弃用；集群中有 {count} 个对象通过该 API 版本创建或管理。",
+      "migrate": "升级前请将这些清单迁移到 {replacement}。",
+      "migrateNoReplacement": "请迁移到受支持的 API 版本；上游数据未给出直接替代项。请参阅弃用指南。",
+      "removed": "{kind}（{apiVersion}）在 Kubernetes {target} 中已移除（移除于 {removedIn}）；集群中有 {count} 个对象通过该 API 版本创建或管理。"
+    },
+    "catalog": {
+      "noMatchingRule": "目录中没有规则覆盖该组件版本与目标 Kubernetes 版本的组合。",
+      "noRules": "目录中没有该组件的兼容性规则：其项目文档不足以推导出规则。"
+    },
+    "component": {
+      "confirmed": "{name} {version}：项目文档确认与 Kubernetes {target} 兼容。",
+      "insufficientData": "无法根据目录确认 {name} {version} 与 Kubernetes {target} 的兼容性：数据不足。这不代表已确认兼容。",
+      "knownLimitation": "项目文档记载了 {name} {version} 与 Kubernetes {target} 的已知限制。",
+      "notReady": "{name} 未完全就绪（{desired} 个实例中有 {ready} 个就绪）。",
+      "notRecognized": "{name} 不在组件目录中；未检查其与 Kubernetes {target} 的兼容性。"
+    },
+    "coverage": {
+      "live": {
+        "componentsCatalogOnly": "组件按工作负载名称和镜像与有限的目录匹配；其余一律报告为未识别。",
+        "customResources": "不会扫描自定义资源的 API 使用情况。",
+        "helmReleases": "不分析 Helm 发布和 chart 模板。",
+        "kindsScanned": "仅扫描了 Kubron 有权读取的 API 类型（见已扫描和未覆盖的类型列表）。",
+        "managedFieldsOnly": "API 使用情况根据实时对象的 managedFields 和 last-applied-configuration 注解检测；没有这些信息的对象不在覆盖范围内。",
+        "onlyLiveObjects": "仅分析集群中的实时对象。",
+        "readClientsInvisible": "仅读取 API 的客户端（控制器、脚本）不会在对象中留下痕迹，因此无法检测。"
+      },
+      "matrix": {
+        "clusterOlderThanData": "集群版本早于 API 矩阵覆盖的最早发行版；更早移除的 API 未列出。",
+        "staleForCluster": "集群运行的 Kubernetes 版本比 API 矩阵已知的版本更新：对该集群而言矩阵已过时。"
+      },
+      "noTarget": "未选择目标版本：API 按当前版本评估，因此只报告已经弃用的 API。",
+      "notAGuarantee": "本报告是评估，而不是升级一定成功的保证。",
+      "provider": {
+        "notChecked": "通用 Kubernetes 模式：不执行特定服务商（EKS、GKE、AKS 等）的专项检查，报告不是对托管服务的完整检查。"
+      },
+      "source": {
+        "notAnalyzed": "此版本不分析该来源，因此其中没有检查任何内容。"
+      }
+    },
+    "ingress-nginx": {
+      "retired": "Kubernetes 项目已停止维护 Ingress NGINX：不再发布新版本和安全修复。"
+    },
+    "metrics-server": {
+      "beyond-matrix": "项目文档称该 Metrics Server 系列仅支持到 Kubernetes 1.21。"
+    },
+    "platform": {
+      "currentUnsupported": "Kubernetes {current} 早于上游当前支持的版本（{window}）。",
+      "path": {
+        "ok": "从 {current} 升级到 {target} 是一个次版本的单步升级。",
+        "sameVersion": "目标版本与当前版本相同；只可能有补丁级别的变化。",
+        "skipsMinor": "从 {current} 升级到 {target} 跨越 {steps} 个次版本；Kubernetes 支持控制平面每次升级一个次版本。"
+      }
+    },
+    "rec": {
+      "component": {
+        "limitation": "请查看文档中记载的限制，并在升级 Kubernetes 前升级或替换该组件。",
+        "unhealthy": "升级前使该组件恢复正常。",
+        "unrecognized": "请手动检查该组件是否支持目标 Kubernetes 版本。",
+        "verify": "对照项目的兼容性文档，核对该组件及版本与目标 Kubernetes 版本。"
+      },
+      "platform": {
+        "stepwise": "控制平面每次升级一个次版本。",
+        "supportedVersion": "规划迁移到上游仍在支持的 Kubernetes 版本。"
+      },
+      "source": {
+        "checkManually": "请手动检查此部分。",
+        "rerun": "待该来源可用后重新检查，或手动检查此部分。"
+      }
+    },
+    "skew": {
+      "newerThanAPIServer": "该版本比目标 kube-apiserver 更新，版本偏差策略不允许这种情况。",
+      "targetUnknown": "无法将该版本与目标版本比较。",
+      "tooOld": "该版本比版本偏差策略对目标版本允许的更旧。",
+      "within": "该版本在目标版本的版本偏差策略范围内。"
+    },
+    "source": {
+      "api": {
+        "notCovered": "Kubron 无法读取有 {count} 种已弃用或已移除版本的 API 类型；未检查其使用情况：{kinds}。"
+      },
+      "list": {
+        "truncated": "{kinds} 的列表超出读取上限；仅检查了前面的对象。",
+        "unavailable": "无法读取 {kinds} 的对象；未检查其 API 使用情况。"
+      },
+      "nodes": {
+        "unavailable": "无法读取节点；未检查 kubelet 版本。"
+      },
+      "resources": {
+        "partial": "仅部分读取了已提供的 API 列表（不可用：{failed}）。",
+        "unavailable": "无法读取已提供的 API 列表；未检查已弃用和已移除 API 的使用情况。"
+      },
+      "workloads": {
+        "truncated": "{namespaces} 中的工作负载列表超出读取上限；报告中可能缺少部分组件。",
+        "unavailable": "无法读取 {namespaces} 中的工作负载；未检查其中的组件。"
+      }
+    },
+    "version": {
+      "unknown": "无法根据镜像标签确定组件版本。"
+    }
+  }
+}

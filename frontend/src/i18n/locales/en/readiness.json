@@ -1,0 +1,260 @@
+{
+  "title": "Upgrade readiness",
+  "subtitle": "Check whether a cluster is ready for a Kubernetes upgrade: deprecated and removed APIs, component compatibility, and what the check could not see",
+  "cluster": "Cluster",
+  "selectCluster": "Select a cluster",
+  "target": "Target version",
+  "noTarget": "Not chosen",
+  "run": "Run check",
+  "running": "Checking…",
+  "hint": "Read-only: Kubron reads cluster objects and changes nothing. Without a target version only already deprecated APIs are reported.",
+  "empty": "Select a cluster and run a check, or open a report from the history.",
+  "notCheckedShort": "not checked",
+  "disclaimer": "This is an assessment, not a guarantee that the upgrade will succeed. Generic Kubernetes mode: provider-specific checks are not performed.",
+  "notChecked": {
+    "title": "Not checked"
+  },
+  "severity": {
+    "blocker": "Blockers",
+    "warning": "Warnings",
+    "info": "Informational"
+  },
+  "status": {
+    "deprecated": "Deprecated",
+    "removed": "Removed",
+    "confirmed": "Compatibility confirmed by the source",
+    "known_limitation": "Known limitation",
+    "insufficient_data": "Not enough data",
+    "not_recognized": "Component not recognized",
+    "ok": "OK",
+    "attention": "Needs attention",
+    "not_checked": "Not checked",
+    "partial": "Partially checked"
+  },
+  "source": {
+    "live_api": "Live API",
+    "gitops_manifests": "GitOps manifests",
+    "local_files": "Local files"
+  },
+  "findings": {
+    "priority": "Priority",
+    "recommendation": "Recommendation",
+    "none": {
+      "blocker": "No blockers were found in what was checked.",
+      "warning": "No warnings were found in what was checked.",
+      "info": "Nothing to report."
+    }
+  },
+  "api": {
+    "deprecatedIn": "Deprecated in {v}",
+    "removedIn": "Removed in {v}",
+    "replacement": "Replacement: {v}",
+    "objects": "{n} object(s)",
+    "more": "… and {n} more",
+    "guide": "Deprecation guide",
+    "evidence": {
+      "managed_fields": "managedFields",
+      "last_applied": "last-applied-configuration"
+    }
+  },
+  "component": {
+    "version": "Version {v}",
+    "more": "More",
+    "source": "Compatibility source",
+    "docs": "Documentation",
+    "checkedAt": "checked {date}",
+    "state": {
+      "ready": "ready ({ready}/{desired})",
+      "degraded": "degraded ({ready}/{desired})",
+      "unavailable": "unavailable ({ready}/{desired})",
+      "unknown": "unknown"
+    }
+  },
+  "coverage": {
+    "title": "Coverage: what was and was not checked",
+    "lead": "Read this first: the report covers only the sources listed as checked. Anything else was not examined, and no conclusion about it is made.",
+    "mode": "Mode",
+    "modes": {
+      "generic_kubernetes": "Generic Kubernetes (no provider-specific checks)"
+    },
+    "evaluatedAgainst": "APIs evaluated against Kubernetes",
+    "apiMatrix": "API matrix",
+    "catalog": "Component catalog",
+    "generated": "generated {date}",
+    "checked": "checked {date}",
+    "window": "targets {window}",
+    "components": "{n} components",
+    "sources": {
+      "live_api": "Live Kubernetes API objects",
+      "gitops_manifests": "GitOps manifests (Argo CD, Flux, Git)",
+      "local_files": "Local manifest files"
+    },
+    "state": {
+      "checked": "Checked",
+      "partial": "Checked partially",
+      "unchecked": "Not checked"
+    },
+    "methods": "Methods",
+    "methodNames": {
+      "server_version": "server version",
+      "server_resources": "served APIs",
+      "managed_fields": "managedFields",
+      "last_applied": "last-applied-configuration",
+      "workload_images": "workload images",
+      "node_info": "node info"
+    },
+    "scanned": "Scanned API kinds ({n})",
+    "notCovered": "Not covered API kinds ({n})",
+    "limitations": "General limitations"
+  },
+  "diff": {
+    "title": "What changed since the previous check",
+    "first": "This is the first check of this cluster: there is nothing to compare with.",
+    "against": "Compared with report {id}",
+    "targetChanged": "The target version differs ({before} → {after}): the findings answer a different question.",
+    "matrixChanged": "The API matrix differs ({before} → {after}).",
+    "catalogChanged": "The component catalog differs ({before} → {after}).",
+    "same": "No changes in {n} finding(s).",
+    "new": "New ({n})",
+    "resolved": "Resolved ({n})",
+    "changed": "Changed ({n})",
+    "unchanged": "{n} finding(s) unchanged."
+  },
+  "actions": {
+    "before": "Preparation before the upgrade",
+    "after": "Checks after the upgrade",
+    "open": "Open",
+    "note": "These are recommendations. Kubron does not change the cluster and does not run the upgrade."
+  },
+  "history": {
+    "title": "History",
+    "empty": "No checks yet for this cluster.",
+    "more": "Show older",
+    "notChecked": "Not checked"
+  },
+  "export": {
+    "json": "Export JSON",
+    "markdown": "Export Markdown",
+    "saved": "Saved {name}",
+    "copied": "Copied to the clipboard",
+    "copyFailed": "Could not copy to the clipboard"
+  },
+  "codes": {
+    "action": {
+      "backup": "Make sure you can restore the cluster: take a backup using the procedure of your distribution or provider.",
+      "checkManifests": "Check the manifests in Git or GitOps repositories for deprecated and removed APIs: Kubron analyzes only live cluster objects.",
+      "fixUnhealthy": "Fix the components that are not ready.",
+      "migrateDeprecatedAPIs": "Plan the migration of objects that use deprecated APIs.",
+      "migrateRemovedAPIs": "Migrate all objects that use APIs removed in the target version, and update the manifests that produce them.",
+      "planStepwise": "Split the upgrade into single minor version steps.",
+      "readReleaseNotes": "Read the release notes of the target Kubernetes version.",
+      "rerunReadiness": "After the upgrade, run the readiness check again and compare it with this report.",
+      "resolveComponents": "Resolve the documented component limitations before upgrading.",
+      "reviewNotChecked": "Review the areas marked \"not checked\"; the report does not cover them.",
+      "reviewUnrecognized": "Review the components that are not in the catalog; Kubron did not check their compatibility.",
+      "verifyAddons": "After the upgrade, check the add-ons (CNI, DNS, ingress, metrics) against their documentation.",
+      "verifyComponentDocs": "Confirm compatibility of the components marked \"not enough data\" in their projects' documentation.",
+      "verifyNodesReady": "After the upgrade, check that all nodes are Ready and run the target version.",
+      "verifyWorkloads": "After the upgrade, check that system workloads and your applications are healthy."
+    },
+    "api": {
+      "deprecated": "{kind} ({apiVersion}) is deprecated since Kubernetes {deprecatedIn}; {count} object(s) in the cluster were created or managed with this API version.",
+      "migrate": "Migrate these manifests to {replacement} before upgrading.",
+      "migrateNoReplacement": "Migrate to a supported API version; the upstream data names no direct replacement. See the deprecation guide.",
+      "removed": "{kind} ({apiVersion}) is removed in Kubernetes {target} (removed in {removedIn}); {count} object(s) in the cluster were created or managed with this API version."
+    },
+    "catalog": {
+      "noMatchingRule": "The catalog has no rule that covers this component version with the target Kubernetes version.",
+      "noRules": "The catalog has no compatibility rules for this component: its project documentation does not allow deriving them."
+    },
+    "component": {
+      "confirmed": "{name} {version} is documented by the project as compatible with Kubernetes {target}.",
+      "insufficientData": "The compatibility of {name} {version} with Kubernetes {target} could not be confirmed from the catalog: not enough data. This is not a confirmation of compatibility.",
+      "knownLimitation": "The project documents a limitation for {name} {version} with Kubernetes {target}.",
+      "notReady": "{name} is not fully ready ({ready} of {desired} instances).",
+      "notRecognized": "{name} is not in the component catalog; its compatibility with Kubernetes {target} was not checked."
+    },
+    "coverage": {
+      "live": {
+        "componentsCatalogOnly": "Components are matched against a limited catalog by workload name and image; anything else is reported as not recognized.",
+        "customResources": "Custom resources are not scanned for API usage.",
+        "helmReleases": "Helm releases and chart templates are not analyzed.",
+        "kindsScanned": "Only API kinds that Kubron is allowed to read were scanned (see the list of scanned and not covered kinds).",
+        "managedFieldsOnly": "API usage is detected from managedFields and the last-applied-configuration annotation of live objects; objects without them are not covered.",
+        "onlyLiveObjects": "Only live cluster objects are analyzed.",
+        "readClientsInvisible": "Clients that only read an API (controllers, scripts) leave no trace in objects and are not detected."
+      },
+      "matrix": {
+        "clusterOlderThanData": "The cluster version is older than the oldest release the API matrix covers; APIs removed earlier are not listed.",
+        "staleForCluster": "The cluster runs a Kubernetes version newer than the API matrix knows; the matrix is out of date for this cluster."
+      },
+      "noTarget": "No target version was chosen: APIs are evaluated against the current version, so only already deprecated APIs are reported.",
+      "notAGuarantee": "The report is an assessment, not a guarantee that the upgrade will succeed.",
+      "provider": {
+        "notChecked": "Generic Kubernetes mode: provider-specific checks (EKS, GKE, AKS and others) are not performed, and the report is not a full check of a managed service."
+      },
+      "source": {
+        "notAnalyzed": "This source is not analyzed in this version, so nothing was checked in it."
+      }
+    },
+    "ingress-nginx": {
+      "retired": "Ingress NGINX is retired by the Kubernetes project: no further releases or security fixes."
+    },
+    "metrics-server": {
+      "beyond-matrix": "The project lists this Metrics Server series as supported only up to Kubernetes 1.21."
+    },
+    "platform": {
+      "currentUnsupported": "Kubernetes {current} is older than the versions upstream currently supports ({window}).",
+      "path": {
+        "ok": "The upgrade from {current} to {target} is a single minor version step.",
+        "sameVersion": "The target version equals the current version; only patch-level changes are possible.",
+        "skipsMinor": "The upgrade from {current} to {target} spans {steps} minor versions; Kubernetes supports upgrading the control plane one minor version at a time."
+      }
+    },
+    "rec": {
+      "component": {
+        "limitation": "Review the documented limitation and upgrade or replace the component before upgrading Kubernetes.",
+        "unhealthy": "Bring the component to a healthy state before upgrading.",
+        "unrecognized": "Check manually whether this component supports the target Kubernetes version.",
+        "verify": "Check the project's compatibility documentation for this component and version against the target Kubernetes version."
+      },
+      "platform": {
+        "stepwise": "Upgrade the control plane one minor version at a time.",
+        "supportedVersion": "Plan the move to a Kubernetes version that upstream still supports."
+      },
+      "source": {
+        "checkManually": "Check this area manually.",
+        "rerun": "Repeat the check when the source is available, or check this area manually."
+      }
+    },
+    "skew": {
+      "newerThanAPIServer": "The version is newer than the target kube-apiserver, which the version skew policy does not allow.",
+      "targetUnknown": "The version could not be compared with the target version.",
+      "tooOld": "The version is older than the Kubernetes version skew policy allows for the target version.",
+      "within": "The version is within the Kubernetes version skew policy for the target version."
+    },
+    "source": {
+      "api": {
+        "notCovered": "{count} API kind(s) with deprecated or removed versions cannot be read by Kubron; usage of them was not checked: {kinds}."
+      },
+      "list": {
+        "truncated": "The list of {kinds} was larger than the read limit; only the first objects were checked.",
+        "unavailable": "Objects of {kinds} could not be read; their API usage was not checked."
+      },
+      "nodes": {
+        "unavailable": "Nodes could not be read; kubelet versions were not checked."
+      },
+      "resources": {
+        "partial": "The list of served APIs was read only partially (unavailable: {failed}).",
+        "unavailable": "The list of served APIs could not be read; deprecated and removed API usage was not checked."
+      },
+      "workloads": {
+        "truncated": "The list of workloads in {namespaces} was larger than the read limit; some components may be missing from the report.",
+        "unavailable": "Workloads in {namespaces} could not be read; the components there were not checked."
+      }
+    },
+    "version": {
+      "unknown": "The component version could not be determined from the image tag."
+    }
+  }
+}
