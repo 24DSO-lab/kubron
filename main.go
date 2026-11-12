@@ -10,6 +10,7 @@ import (
 	"os"
 
 	"github.com/24DSO-lab/kubron/internal/app"
+	"github.com/24DSO-lab/kubron/internal/jobs"
 	"github.com/24DSO-lab/kubron/internal/k8s"
 	wailsplatform "github.com/24DSO-lab/kubron/internal/platform/wails"
 
@@ -53,6 +54,12 @@ func main() {
 			setupDesktopBroker(ctx, a.App, platform)
 			setupDesktopUpdates(ctx, a.App, os.Getenv)
 			app.OnStartup(a.App)(ctx)
+			// Retention истории Readiness: десктоп — один процесс, исполнитель не выбирается.
+			if job, err := app.ReadinessRetentionJob(a.App, nil); err != nil {
+				slog.Error("readiness retention is off", "error", err)
+			} else {
+				go jobs.Run(ctx, job)
+			}
 		},
 		OnShutdown: app.OnShutdown(a.App),
 		Bind: []interface{}{

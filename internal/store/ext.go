@@ -9,6 +9,7 @@ import (
 	"github.com/24DSO-lab/kubron/internal/audit"
 	"github.com/24DSO-lab/kubron/internal/auth"
 	"github.com/24DSO-lab/kubron/internal/k8s"
+	"github.com/24DSO-lab/kubron/internal/readiness"
 	"github.com/24DSO-lab/kubron/pkg/ext"
 )
 
@@ -18,8 +19,13 @@ func FromExt(s ext.Store) Store { return extStore{s} }
 
 type extStore struct{ s ext.Store }
 
-func (e extStore) Users() auth.Backend        { return auth.FromExt(e.s.Users()) }
-func (e extStore) Audit() audit.Backend       { return e.s.Audit() }
+func (e extStore) Users() auth.Backend  { return auth.FromExt(e.s.Users()) }
+func (e extStore) Audit() audit.Backend { return e.s.Audit() }
+
+// Readiness: публичное хранилище (pkg/ext) отчётов не знает, они лежат в каталоге данных (файловая реализация).
+func (e extStore) Readiness() readiness.Backend {
+	return fileStore{dir: k8s.GetKubronDir()}.Readiness()
+}
 func (e extStore) ArgoTokens() k8s.TokenStore { return e.s.ArgoTokens() }
 
 // webOIDCSettingsStore is an optional extension for public stores that persist application-wide web settings.

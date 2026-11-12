@@ -23,7 +23,7 @@ const (
 
 // maintenanceJobs — фоновые задачи сервиса с PostgreSQL. Каждую такт выполняет одна реплика: исполнитель выбирается
 // блокировкой pg_try_advisory_lock (ADR-0016, раздел 6), поэтому реплик может быть сколько угодно.
-func maintenanceJobs(pg *pgstore.Store, sessions websession.Backend, auditRetention time.Duration) []*jobs.Job {
+func maintenanceJobs(pg *pgstore.Store, sessions websession.Backend, auditRetention time.Duration, extra ...*jobs.Job) []*jobs.Job {
 	lock := pg.Leader(pgstore.JobsKey) // одно соединение с БД на всю группу
 	list := []*jobs.Job{{
 		Name: "expired web sessions", Every: maintenanceEvery, Lock: lock, Logf: log.Printf,
@@ -48,6 +48,13 @@ func maintenanceJobs(pg *pgstore.Store, sessions websession.Backend, auditRetent
 				return pg.DeleteAuditBefore(ctx, time.Now().Add(-auditRetention))
 			},
 		})
+	}
+	// Задачи доменов (retention отчётов Readiness и др.) делят исполнителя с остальными.
+	for _, j := range extra {
+		if j != nil {
+			j.Lock = lock
+			list = append(list, j)
+		}
 	}
 	return list
 }

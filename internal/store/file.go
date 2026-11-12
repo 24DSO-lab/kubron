@@ -12,6 +12,7 @@ import (
 	"github.com/24DSO-lab/kubron/internal/audit"
 	"github.com/24DSO-lab/kubron/internal/auth"
 	"github.com/24DSO-lab/kubron/internal/k8s"
+	"github.com/24DSO-lab/kubron/internal/readiness"
 )
 
 type webOIDCSettings struct {
@@ -28,8 +29,11 @@ type fileStore struct {
 // — в собственном каталоге k8s (argoTokenDir), как раньше.
 func NewFile(dir string) Store { return fileStore{dir: dir} }
 
-func (s fileStore) Users() auth.Backend        { return auth.NewFileBackend(s.dir) }
-func (s fileStore) Audit() audit.Backend       { return audit.NewFileBackend(s.dir) }
+func (s fileStore) Users() auth.Backend  { return auth.NewFileBackend(s.dir) }
+func (s fileStore) Audit() audit.Backend { return audit.NewFileBackend(s.dir) }
+func (s fileStore) Readiness() readiness.Backend {
+	return readiness.NewFileBackend(filepath.Join(s.dir, "readiness"))
+}
 func (s fileStore) ArgoTokens() k8s.TokenStore { return k8s.NewFileTokenStore() }
 
 // Clusters — каталог clusters в каталоге данных (k8s.GetKubronDir): путь к kubeconfig нужен client-go и Helm.
