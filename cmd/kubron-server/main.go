@@ -192,9 +192,16 @@ func main() {
 	go terminals.Run(ctx.Done(), 5*time.Second)
 	app.StartHealthMonitor(ctx, core, cfg.ClusterCheckInterval)
 	startEvents() // слушатель стартует после монитора: первая сверка читает результаты проверок
+	readinessJob, err := app.ReadinessRetentionJob(core, nil)
+	if err != nil {
+		slog.Error("readiness retention is off", "error", err)
+		readinessJob = nil
+	}
 	if pgStore != nil {
 		// Очистка просроченных строк и хранение аудита: исполняет одна реплика (pg_try_advisory_lock).
-		go jobs.Run(ctx, maintenanceJobs(pgStore, sessionBackend, cfg.AuditRetention)...)
+		go jobs.Run(ctx, maintenanceJobs(pgStore, sessionBackend, cfg.AuditRetention, readinessJob)...)
+	} else if readinessJob != nil {
+		go jobs.Run(ctx, readinessJob) // одна реплика: блокировка не нужна
 	}
 	// Фоновая уборка веб-сессий: закрывает те, у которых ядро уже завершило пользовательскую сессию
 	// (простой, отключение пользователя) или истёк срок, и освобождает их ресурсы и ссылки пула.

@@ -15,6 +15,7 @@ import (
 	"github.com/24DSO-lab/kubron/internal/audit"
 	"github.com/24DSO-lab/kubron/internal/auth"
 	"github.com/24DSO-lab/kubron/internal/k8s"
+	"github.com/24DSO-lab/kubron/internal/readiness"
 )
 
 // Store — всё, что приложение хранит постоянно.
@@ -23,6 +24,8 @@ type Store interface {
 	Users() auth.Backend
 	// Audit — журнал аудита.
 	Audit() audit.Backend
+	// Readiness — история отчётов Upgrade Readiness (ADR-0025).
+	Readiness() readiness.Backend
 	// ArgoTokens — токены Argo CD API по кластерам.
 	ArgoTokens() k8s.TokenStore
 	// Clusters — кластеры: метаданные и kubeconfig (владение командой добавит этап 3).

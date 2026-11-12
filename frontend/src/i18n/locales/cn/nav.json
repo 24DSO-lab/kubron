@@ -28,7 +28,8 @@
     "helmRepos": "仓库",
     "helmCatalog": "目录",
     "helmOps": "操作",
-    "fluxDashboard": "Dashboard"
+    "fluxDashboard": "Dashboard",
+    "readiness": "升级就绪检查"
   },
   "teams": "团队"
 }

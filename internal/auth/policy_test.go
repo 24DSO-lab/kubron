@@ -148,6 +148,14 @@ var exactPermission = map[string]Permission{
 	"CancelChallenge":   PermRead,
 	"ListMyConnections": PermRead,
 	"DisconnectCluster": PermRead,
+
+	// Upgrade Readiness (ADR-0025): только чтение, ничего в кластере не меняется.
+	"ReadinessInfo":    PermRead,
+	"ReadinessRun":     PermRead,
+	"ReadinessHistory": PermRead,
+	"ReadinessGet":     PermRead,
+	"ReadinessCompare": PermRead,
+	"ReadinessExport":  PermRead,
 }
 
 // Глаголы, по которым метод считается изменяющим: слабое право чтения для них недопустимо.

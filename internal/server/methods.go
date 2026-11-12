@@ -217,6 +217,12 @@ var allowedMethods = []string{
 	"UpdateUserRole",
 	"UpgradeHelmChart",
 	"UpgradeHelmRelease",
+	"ReadinessInfo",
+	"ReadinessRun",
+	"ReadinessHistory",
+	"ReadinessGet",
+	"ReadinessCompare",
+	"ReadinessExport",
 }
 
 // deniedMethods — методы, которые в веб-режиме недоступны намеренно.

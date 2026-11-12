@@ -1,0 +1,143 @@
+# Каталог компонентов для проверки совместимости при обновлении Kubernetes (ADR-0025 §4).
+#
+# Каталог намеренно мал: в него входят только компоненты, для которых в этом репозитории записана ссылка на
+# официальную документацию совместимости проекта и дата, когда документ был прочитан. Правило (rules) переносит в
+# данные только то, что документ утверждает прямо; всё остальное остаётся без правила и даёт статус
+# «данных недостаточно», а не «совместимо». Компонент вне каталога получает статус «не распознан».
+#
+# Как обновлять — docs/lifecycle-readiness.md («Обновление каталога компонентов»): перечитать документ проекта,
+# поправить правила, поставить checkedAt записи и общий checkedAt. Тест требует, чтобы дата записи не была
+# позже общей даты каталога.
+schemaVersion: 1
+checkedAt: "2026-11-11"
+
+# Системные пространства имён: рабочие нагрузки в них, не найденные в каталоге, попадают в отчёт как «не распознан».
+systemNamespaces: [kube-system, kube-public, kube-node-lease]
+
+components:
+  # kubelet и kube-proxy: политика совместимости версий Kubernetes (version skew policy).
+  # Источник: «kubelet не новее kube-apiserver и может отставать не более чем на три минорные версии
+  # (для версий старше 1.25 — на две)»; для kube-proxy то же.
+  - id: kubelet
+    name: kubelet
+    type: nodes
+    docs: https://kubernetes.io/releases/version-skew-policy/#kubelet
+    checkedAt: "2026-11-11"
+    skew: {maxBehind: 3, legacyBefore: "1.25", legacyMaxBehind: 2}
+
+  - id: kube-proxy
+    name: kube-proxy
+    type: workload
+    docs: https://kubernetes.io/releases/version-skew-policy/#kube-proxy
+    checkedAt: "2026-11-11"
+    detect:
+      workloads:
+        - kind: DaemonSet
+          namespaces: [kube-system]
+          names: [kube-proxy]
+          images: [registry.k8s.io/kube-proxy, k8s.gcr.io/kube-proxy]
+    skew: {maxBehind: 3, legacyBefore: "1.25", legacyMaxBehind: 2}
+
+  # Metrics Server: таблица совместимости в README проекта («Compatibility Matrix»). Верхняя граница у серий
+  # не указана («1.34+»), поэтому правила её не задают. Серия 0.3.x поддерживает Kubernetes 1.8–1.21.
+  - id: metrics-server
+    name: Metrics Server
+    type: workload
+    docs: https://github.com/kubernetes-sigs/metrics-server#compatibility-matrix
+    checkedAt: "2026-11-11"
+    detect:
+      workloads:
+        - kind: Deployment
+          namespaces: [kube-system]
+          names: [metrics-server]
+          images: [registry.k8s.io/metrics-server/metrics-server, k8s.gcr.io/metrics-server/metrics-server]
+    rules:
+      - {versions: {from: "0.9.0", before: "0.10.0"}, kubernetes: {from: "1.34"}, status: confirmed}
+      - {versions: {from: "0.8.0", before: "0.9.0"}, kubernetes: {from: "1.31"}, status: confirmed}
+      - {versions: {from: "0.7.0", before: "0.8.0"}, kubernetes: {from: "1.27"}, status: confirmed}
+      - {versions: {from: "0.6.0", before: "0.7.0"}, kubernetes: {from: "1.25"}, status: confirmed}
+      - {versions: {from: "0.4.0", before: "0.6.0"}, kubernetes: {from: "1.8"}, status: confirmed}
+      - {versions: {from: "0.3.0", before: "0.4.0"}, kubernetes: {from: "1.8", to: "1.21"}, status: confirmed}
+      - versions: {from: "0.3.0", before: "0.4.0"}
+        kubernetes: {from: "1.22"}
+        status: known_limitation
+        code: metrics-server.beyond-matrix
+        note: The project lists Metrics Server 0.3.x as supported only for Kubernetes 1.8 to 1.21.
+
+  # ingress-nginx: таблица «Supported Versions table» в README — версии Kubernetes, на которых пройдены e2e-тесты.
+  # Для версий вне строки проект ничего не гарантирует: комбинация остаётся без правила («данных недостаточно»).
+  # Серии старше 1.11 в каталог не вошли: их строки не пересекаются с окном целей.
+  - id: ingress-nginx
+    name: Ingress NGINX Controller
+    type: workload
+    docs: https://github.com/kubernetes/ingress-nginx#supported-versions-table
+    checkedAt: "2026-11-11"
+    detect:
+      workloads:
+        - kind: Deployment
+          namespaces: [ingress-nginx, kube-system]
+          names: [ingress-nginx-controller]
+          images: [registry.k8s.io/ingress-nginx/controller]
+        - kind: DaemonSet
+          namespaces: [ingress-nginx, kube-system]
+          names: [ingress-nginx-controller]
+          images: [registry.k8s.io/ingress-nginx/controller]
+    rules:
+      - {versions: {from: "1.15.0", before: "1.16.0"}, kubernetes: {from: "1.31", to: "1.35"}, status: confirmed}
+      - {versions: {from: "1.14.0", before: "1.15.0"}, kubernetes: {from: "1.30", to: "1.34"}, status: confirmed}
+      - {versions: {from: "1.13.0", before: "1.14.0"}, kubernetes: {from: "1.29", to: "1.33"}, status: confirmed}
+      - {versions: {from: "1.12.0", before: "1.13.0"}, kubernetes: {from: "1.28", to: "1.32"}, status: confirmed}
+      - {versions: {from: "1.11.0", before: "1.12.0"}, kubernetes: {from: "1.26", to: "1.30"}, status: confirmed}
+    advisories:
+      - code: ingress-nginx.retired
+        severity: warning
+        note: The Kubernetes project announced the retirement of Ingress NGINX; best-effort maintenance was to continue until March 2026, with no further releases or security fixes afterwards.
+        url: https://www.kubernetes.io/blog/2025/11/11/ingress-nginx-retirement/
+
+  # Компоненты ниже распознаются и показываются с версией и состоянием, но правил у них нет: документ проекта
+  # не позволяет вывести совместимость для установленной версии и целевой версии Kubernetes (статус
+  # «данных недостаточно»). Причина указана у каждого.
+
+  # CoreDNS: документ перечисляет версии, которые ставит kubeadm, и прямо говорит, что это не рекомендация.
+  - id: coredns
+    name: CoreDNS
+    type: workload
+    docs: https://github.com/coredns/deployment/blob/master/kubernetes/CoreDNS-k8s_version.md
+    checkedAt: "2026-11-11"
+    detect:
+      workloads:
+        - kind: Deployment
+          namespaces: [kube-system]
+          names: [coredns]
+          images: [registry.k8s.io/coredns/coredns, k8s.gcr.io/coredns/coredns, coredns/coredns]
+
+  # Cilium: матрица принадлежит каждому релизу Cilium; документ ветки main не определяет установленную версию.
+  - id: cilium
+    name: Cilium
+    type: workload
+    docs: https://docs.cilium.io/en/stable/network/kubernetes/compatibility/
+    checkedAt: "2026-11-11"
+    detect:
+      workloads:
+        - kind: DaemonSet
+          namespaces: [kube-system, cilium]
+          names: [cilium]
+          images: [quay.io/cilium/cilium]
+        - kind: Deployment
+          namespaces: [kube-system, cilium]
+          names: [cilium-operator, cilium-operator-generic]
+          images: [quay.io/cilium/operator, quay.io/cilium/operator-generic]
+
+  # Flux: документ описывает требования к кластеру для текущего релиза Flux; версии контроллеров
+  # (source-controller и др.) не совпадают с версией дистрибутива Flux.
+  - id: flux
+    name: Flux controllers
+    type: workload
+    docs: https://fluxcd.io/flux/installation/#prerequisites
+    checkedAt: "2026-11-11"
+    detect:
+      workloads:
+        - kind: Deployment
+          namespaces: [flux-system]
+          names: [source-controller, kustomize-controller, helm-controller, notification-controller, image-reflector-controller, image-automation-controller]
+          images: [ghcr.io/fluxcd/source-controller, ghcr.io/fluxcd/kustomize-controller, ghcr.io/fluxcd/helm-controller, ghcr.io/fluxcd/notification-controller, ghcr.io/fluxcd/image-reflector-controller, ghcr.io/fluxcd/image-automation-controller]

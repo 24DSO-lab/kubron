@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Upgrade readiness:** a read-only assessment of whether a cluster is ready for a Kubernetes upgrade. It finds deprecated and removed APIs in live objects, checks kubelet and common system components against a catalog (with the source and check date), and flags risky upgrade paths. Every report states what was and was not checked (GitOps manifests and local files are "not checked"; there are no provider-specific checks). Reports are kept in history (50 per cluster for 180 days by default, `KUBRON_READINESS_KEEP_PER_CLUSTER` and `KUBRON_READINESS_MAX_AGE`), compared with the previous one and exported as JSON or Markdown. It is not an upgrade guarantee and Kubron does not run the upgrade. See `docs/lifecycle-readiness.md`.
+
 ## [1.2.1] - 2026-11-10
 
 ### Added

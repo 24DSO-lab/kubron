@@ -28,7 +28,8 @@
     "helmRepos": "Репозитории",
     "helmCatalog": "Каталог",
     "helmOps": "Операции",
-    "fluxDashboard": "Dashboard"
+    "fluxDashboard": "Dashboard",
+    "readiness": "Готовность к обновлению"
   },
   "teams": "Команды"
 }
