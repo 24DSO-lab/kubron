@@ -1,0 +1,293 @@
+{
+  "title": "事件",
+  "subtitle": "工作负载的确定性诊断：事实、假设与建议。",
+  "refresh": "刷新",
+  "back": "返回列表",
+  "open": {
+    "title": "发起调查",
+    "kind": "类型",
+    "namespace": "命名空间",
+    "name": "名称",
+    "submit": "开始调查",
+    "noLogs": "本次调查不保存日志片段",
+    "opening": "正在收集上下文…",
+    "failed": "无法发起调查：{error}"
+  },
+  "kinds": {
+    "Pod": "Pod",
+    "Deployment": "Deployment",
+    "ReplicaSet": "ReplicaSet"
+  },
+  "list": {
+    "title": "历史",
+    "empty": "暂无调查。",
+    "more": "加载更多",
+    "filter": {
+      "all": "全部",
+      "open": "进行中",
+      "closed": "已关闭"
+    },
+    "columns": {
+      "target": "工作负载",
+      "opened": "发起时间",
+      "status": "状态",
+      "symptoms": "症状",
+      "result": "结果"
+    }
+  },
+  "status": {
+    "open": "进行中",
+    "closed": "已关闭"
+  },
+  "detail": {
+    "opened": "{user} 于 {time} 发起",
+    "ruleSet": "规则集 v{version}",
+    "delete": "删除调查",
+    "deleteConfirm": "删除本次调查及其已保存的日志片段？",
+    "export": "导出",
+    "exportFragments": "包含日志片段（需要日志访问权限）",
+    "refreshEvents": "更新事件",
+    "eventsUpdated": "事件更新于 {time}"
+  },
+  "sections": {
+    "symptoms": "症状",
+    "facts": "事实",
+    "hypotheses": "假设",
+    "recommendations": "建议",
+    "steps": "诊断步骤",
+    "missing": "缺失的上下文",
+    "events": "事件快照",
+    "evidence": "日志证据",
+    "outcome": "结果"
+  },
+  "kindLabels": {
+    "fact": "事实",
+    "hypothesis": "假设",
+    "recommendation": "建议",
+    "step": "步骤"
+  },
+  "hypothesisNote": "假设不是已确定的原因：只有您通过核实才能确认。",
+  "confidence": {
+    "label": "置信度：{level}",
+    "low": "低",
+    "medium": "中",
+    "high": "高"
+  },
+  "supporting": "支持的事实",
+  "contradicting": "相反的事实",
+  "none": "无",
+  "source": {
+    "label": "来源：{source}",
+    "kinds": {
+      "resource": "对象字段",
+      "event": "事件",
+      "log": "容器日志",
+      "derived": "推导"
+    }
+  },
+  "observedAt": "获取于 {time}",
+  "partial": "部分来源仅被部分读取：{sources}。",
+  "events": {
+    "empty": "未获取到事件。",
+    "columns": {
+      "time": "最近出现",
+      "object": "对象",
+      "reason": "原因",
+      "message": "消息",
+      "count": "次数"
+    }
+  },
+  "evidence": {
+    "saved": "证据已保存",
+    "notSaved": "证据未保存：{reason}",
+    "hidden": "内容已隐藏：您没有读取日志的权限。",
+    "reasons": "原因",
+    "container": "Pod {pod} 的容器 {container}（{instance}）",
+    "instance": {
+      "previous": "上一实例",
+      "current": "当前实例"
+    },
+    "meta": "尾部第 {start}–{end} 行，锚点 {anchor}；{lines} 行，{bytes} 字节；{replacements} 处替换；脱敏器 v{version}",
+    "truncated": "已截断",
+    "auto": "自动保存",
+    "manual": "用户保存",
+    "show": "显示内容",
+    "hide": "隐藏内容",
+    "delete": "删除片段",
+    "deleteConfirm": "删除该日志片段？",
+    "save": "保存为证据",
+    "saveDone": "片段已保存。",
+    "saveFailed": "片段未保存：{reason}",
+    "neverExternal": "片段绝不会发送给外部 AI。",
+    "captureOn": "在本次调查中保存日志片段",
+    "deleteAll": "删除所有已保存的片段",
+    "deleteAllConfirm": "删除本次调查的所有日志片段？",
+    "loadFailed": "无法读取片段：{error}"
+  },
+  "outcome": {
+    "result": "核实结果",
+    "results": {
+      "resolved": "已解决",
+      "unresolved": "未解决",
+      "inconclusive": "无法确定"
+    },
+    "confirmed": "您确认的原因",
+    "noneConfirmed": "未确认任何假设",
+    "note": "备注",
+    "submit": "标记结果并关闭",
+    "done": "结果：{result}",
+    "by": "{user} 于 {time} 标记",
+    "confirmedBy": "由人工确认：{hypothesis}"
+  },
+  "settings": {
+    "title": "存储设置",
+    "subtitle": "对整个组织生效（桌面版为应用）。",
+    "disableLogs": "不保存日志片段",
+    "excluded": "不保存日志的命名空间（每行一个）",
+    "fragmentDays": "片段保留天数（1–{max}）",
+    "incidentDays": "调查保留天数（1–{max}）",
+    "limits": "固定上限：每个片段 {lines} 行、{bytes} KiB，单行截断为 {line} KiB，每次调查最多 {count} 个片段、{total} KiB。",
+    "save": "保存",
+    "saved": "设置已保存。",
+    "readonly": "只有管理员可以更改这些设置。",
+    "open": "存储设置"
+  },
+  "confirm": {
+    "yes": "删除"
+  },
+  "symptoms": {
+    "pod_pending": "Pod 处于 Pending",
+    "pod_crash_loop": "容器循环重启（CrashLoopBackOff）",
+    "pod_oom_killed": "容器因内存被杀死（OOMKilled）",
+    "pod_startup_failure": "容器启动失败",
+    "workload_rollout": "发布未推进",
+    "none": "未发现问题"
+  },
+  "facts": {
+    "pod_pending": "Pod 阶段为 {phase}。",
+    "pod_unscheduled": "Pod 未被调度：{reason}。{message}",
+    "event": "事件 {type}/{reason}（×{count}）：{message}",
+    "pod_image_pull_secrets": "Pod 引用了 {count} 个 imagePullSecrets。",
+    "pod_no_image_pull_secrets": "Pod 没有 imagePullSecrets。",
+    "container_waiting": "容器 {container} 处于等待状态：{reason}。{message}",
+    "container_start_failed": "容器 {container} 启动失败：{message}",
+    "container_restarts": "容器 {container} 已重启 {count} 次。",
+    "container_last_terminated": "容器 {container} 上次退出码为 {exitCode}（{reason}），时间 {finishedAt}。",
+    "container_log_tail": "容器 {container} 的最后日志行。",
+    "container_oom_killed": "容器 {container} 被 OOMKilled（退出码 {exitCode}，重启 {restarts} 次）。",
+    "container_memory_limit": "容器 {container} 的内存限制为 {limit}。",
+    "container_no_memory_limit": "容器 {container} 没有内存限制。",
+    "node_memory_pressure": "节点 {node} 报告 MemoryPressure。",
+    "deployment_condition": "Deployment 条件 {type}={status}：{reason}。{message}",
+    "deployment_replicas": "副本：期望 {desired}，已更新 {updated}，就绪 {ready}，可用 {available}，不可用 {unavailable}。",
+    "deployment_paused": "Deployment 已暂停。",
+    "deployment_generation_lag": "控制器已观察到第 {observed} 代（共 {generation} 代）。",
+    "replicaset_condition": "ReplicaSet 条件 ReplicaFailure：{reason}。{message}",
+    "replicaset_replicas": "ReplicaSet {name}：期望 {desired}，就绪 {ready}，副本 {replicas}。",
+    "replicaset_pods_ready": "ReplicaSet {name} 有 {ready} 个就绪 Pod。",
+    "no_problem_detected": "在 {pods} 个 Pod 中未发现问题。"
+  },
+  "hypotheses": {
+    "pending_insufficient_resources": "集群没有足够的 {resource} 供该 Pod 使用。",
+    "pending_no_nodes": "没有可用于调度 Pod 的节点。",
+    "pending_node_selector_mismatch": "Pod 的 nodeSelector 或亲和性没有匹配的节点。",
+    "pending_untolerated_taint": "所有合适的节点都有 Pod 不容忍的污点。",
+    "pending_unbound_pvc": "Pod 的 PersistentVolumeClaim 尚未绑定。",
+    "image_invalid_name": "容器 {container} 的镜像名称无效。",
+    "image_never_pull_policy": "imagePullPolicy 为 Never，但节点上没有该镜像（容器 {container}）。",
+    "image_not_found": "镜像或标签 {image} 在镜像仓库中不存在。",
+    "image_registry_auth": "镜像仓库拒绝了访问 {image} 的凭据。",
+    "image_registry_unreachable": "节点无法连接到 {image} 的镜像仓库。",
+    "config_missing_reference": "容器 {container} 引用的 {kind} 不存在或缺少键。",
+    "startup_volume_mount_failed": "Pod 的卷无法挂载。",
+    "startup_wrong_architecture": "容器 {container} 的镜像是为其他 CPU 架构构建的。",
+    "startup_command_not_found": "在镜像中找不到容器 {container} 的命令。",
+    "startup_permission_denied": "容器 {container} 的命令没有执行权限。",
+    "startup_run_as_non_root": "容器 {container} 的 securityContext 与镜像用户冲突。",
+    "startup_runtime_error": "容器运行时无法启动容器 {container}。",
+    "crash_liveness_probe_failed": "容器 {container} 的存活探针失败，kubelet 将其重启。",
+    "crash_application_error": "容器 {container} 中的应用以退出码 {exitCode} 结束。",
+    "crash_exited_normally": "容器 {container} 的进程正常退出（退出码 0），但本应持续运行。",
+    "crash_command_not_executable": "容器 {container} 的命令不可执行。",
+    "crash_command_not_found": "找不到容器 {container} 的命令。",
+    "crash_killed": "容器 {container} 被 SIGKILL 杀死（退出码 {exitCode}）；原因尚未确定。",
+    "crash_segfault": "容器 {container} 的进程因段错误崩溃。",
+    "crash_terminated": "容器 {container} 被 SIGTERM 停止（退出码 {exitCode}）。",
+    "oom_limit_too_low": "容器 {container} 的内存限制 {limit} 低于其需求。",
+    "oom_memory_growth": "容器 {container} 可能存在内存泄漏或负载突增。",
+    "oom_node_memory_pressure": "节点（{node}）内存不足，容器被驱逐或杀死。",
+    "rollout_paused": "发布已暂停。",
+    "rollout_controller_lag": "控制器尚未观察到最新的变更。",
+    "rollout_quota_exceeded": "命名空间的资源配额阻止了 Pod 的创建。",
+    "rollout_pod_creation_denied": "准入控制拒绝创建新 ReplicaSet 的 Pod。",
+    "rollout_new_pods_unhealthy": "新 ReplicaSet {replicaset} 的 Pod 不健康，发布无法继续。"
+  },
+  "recommendations": {
+    "rec_reduce_requests_or_add_capacity": "降低 Pod 的资源请求或为集群增加容量。",
+    "rec_add_nodes": "为集群添加节点或检查节点池。",
+    "rec_fix_node_selector": "修正 nodeSelector/亲和性，或为合适的节点打标签。",
+    "rec_add_toleration": "为 Pod 添加容忍或移除节点污点。",
+    "rec_fix_volume_claim": "检查 PersistentVolumeClaim 及其存储类或供应器。",
+    "rec_fix_image_reference": "更正镜像名称或标签，或发布缺失的镜像。",
+    "rec_fix_image_pull_policy": "更改 imagePullPolicy 或将镜像加载到节点。",
+    "rec_fix_registry_credentials": "检查 imagePullSecrets 引用的仓库凭据（Kubron 不读取 Secret）。",
+    "rec_check_registry_network": "检查从节点到镜像仓库的网络和 DNS。",
+    "rec_fix_config_reference": "创建被引用的对象或键，或修正引用。",
+    "rec_fix_container_command": "对照镜像检查容器的 command、args 和 entrypoint。",
+    "rec_fix_image_architecture": "使用与节点架构匹配的镜像。",
+    "rec_fix_security_context": "使 runAsUser/runAsNonRoot 与镜像中定义的用户一致。",
+    "rec_fix_application_error": "查看容器上一实例的日志并修复故障原因。",
+    "rec_use_job_or_keep_process": "将一次性任务作为 Job 运行，或让主进程保持运行。",
+    "rec_tune_liveness_probe": "放宽存活探针（延迟、超时、阈值）或修复其检查的端点。",
+    "rec_check_kill_reason": "查明信号来源：探针、OOM、驱逐或手动操作。",
+    "rec_raise_memory_limit": "在确认实际用量后，将容器 {container} 的内存限制提高到 {limit} 以上。",
+    "rec_set_memory_limit": "为容器 {container} 设置内存限制（和请求）。",
+    "rec_investigate_memory_usage": "对比内存用量随时间的变化与限制，以区分泄漏和突增。",
+    "rec_resume_rollout": "如果暂停并非有意，请恢复发布。",
+    "rec_raise_quota_or_reduce_requests": "提高命名空间配额或降低工作负载的请求。",
+    "rec_fix_admission_denial": "修正 Pod 模板使其通过准入策略。",
+    "rec_fix_new_pods": "请先修复 ReplicaSet {replicaset} 中失败的 Pod（见其发现）。"
+  },
+  "steps": {
+    "step_check_events": "查看对象的事件以获取更多细节。",
+    "step_check_node_capacity": "将 Pod 的请求与节点可分配资源进行对比。",
+    "step_check_node_taints": "列出节点污点和 Pod 的容忍。",
+    "step_check_pvc": "检查 claim 的状态和存储类。",
+    "step_check_image_exists": "确认镜像和标签存在于镜像仓库中。",
+    "step_check_pull_secret_reference": "确认 imagePullSecret 存在于命名空间中并与仓库匹配。",
+    "step_check_node_network": "检查节点到镜像仓库的 DNS 和出站流量。",
+    "step_check_referenced_object": "确认被引用的 {kind} 存在（Kubron 不读取 Secret）。",
+    "step_read_previous_logs": "查看容器 {container} 上一实例的日志。",
+    "step_check_memory_metrics": "查看容器 {container} 被杀死前的内存用量。",
+    "step_check_quota": "检查命名空间中 ResourceQuota 的用量。",
+    "step_rollout_history": "对比新旧 ReplicaSet 以了解变化。"
+  },
+  "missing": {
+    "context_insufficient": "上下文不足，无法指出原因。",
+    "crash_no_termination_info": "没有容器 {container} 的终止记录。",
+    "deployment_selector_missing": "Deployment 没有可读取的选择器。",
+    "replicaset_selector_missing": "ReplicaSet 没有可读取的选择器。",
+    "events_truncated": "事件列表被截断，较早的事件可能缺失。",
+    "events_unavailable": "无法读取事件（{reason}）。",
+    "logs_unavailable": "无法读取容器 {container} 的日志（{reason}）。",
+    "object_unreadable": "某个对象无法解析，已跳过。",
+    "pending_no_scheduling_info": "Pod 既没有调度条件也没有调度事件。",
+    "pending_reason_unrecognized": "规则无法识别调度消息。",
+    "rollout_no_pods": "未找到新 ReplicaSet 的 Pod。",
+    "rule_failed": "规则 {rule} 失败，已跳过。",
+    "source_unavailable": "无法读取该来源（{reason}）。",
+    "startup_reason_unrecognized": "规则无法识别容器 {container} 的启动消息。"
+  },
+  "reasons": {
+    "not_text": "日志不是文本",
+    "limit_exceeded": "片段超过大小限制",
+    "redaction_failed": "脱敏失败",
+    "disabled_org": "已关闭日志片段保存",
+    "disabled_namespace": "该命名空间被排除",
+    "disabled_incident": "已对本次调查关闭",
+    "incident_quota": "已达到每次调查的片段上限",
+    "log_unavailable": "无法读取日志",
+    "empty_log": "日志为空",
+    "deleted": "已被用户删除"
+  }
+}

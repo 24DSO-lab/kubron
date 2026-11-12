@@ -1,0 +1,293 @@
+{
+  "title": "Инциденты",
+  "subtitle": "Детерминированная диагностика workload: факты, гипотезы и рекомендации.",
+  "refresh": "Обновить",
+  "back": "К списку",
+  "open": {
+    "title": "Открыть расследование",
+    "kind": "Вид",
+    "namespace": "Namespace",
+    "name": "Имя",
+    "submit": "Расследовать",
+    "noLogs": "Не сохранять фрагменты логов в этом расследовании",
+    "opening": "Собираем контекст…",
+    "failed": "Не удалось открыть расследование: {error}"
+  },
+  "kinds": {
+    "Pod": "Pod",
+    "Deployment": "Deployment",
+    "ReplicaSet": "ReplicaSet"
+  },
+  "list": {
+    "title": "История",
+    "empty": "Расследований пока нет.",
+    "more": "Показать ещё",
+    "filter": {
+      "all": "Все",
+      "open": "Открытые",
+      "closed": "Закрытые"
+    },
+    "columns": {
+      "target": "Workload",
+      "opened": "Открыто",
+      "status": "Статус",
+      "symptoms": "Симптомы",
+      "result": "Результат"
+    }
+  },
+  "status": {
+    "open": "Открыто",
+    "closed": "Закрыто"
+  },
+  "detail": {
+    "opened": "Открыто {time}, {user}",
+    "ruleSet": "Набор правил v{version}",
+    "delete": "Удалить расследование",
+    "deleteConfirm": "Удалить это расследование вместе с сохранёнными фрагментами логов?",
+    "export": "Выгрузить",
+    "exportFragments": "Включить фрагменты логов (нужно право на логи)",
+    "refreshEvents": "Обновить события",
+    "eventsUpdated": "События обновлены {time}"
+  },
+  "sections": {
+    "symptoms": "Симптомы",
+    "facts": "Факты",
+    "hypotheses": "Гипотезы",
+    "recommendations": "Рекомендации",
+    "steps": "Диагностические шаги",
+    "missing": "Недостающий контекст",
+    "events": "Снимок событий",
+    "evidence": "Логи как доказательства",
+    "outcome": "Результат"
+  },
+  "kindLabels": {
+    "fact": "Факт",
+    "hypothesis": "Гипотеза",
+    "recommendation": "Рекомендация",
+    "step": "Шаг"
+  },
+  "hypothesisNote": "Гипотеза — не установленная причина: подтвердить её можете только вы, проверив.",
+  "confidence": {
+    "label": "Уверенность: {level}",
+    "low": "низкая",
+    "medium": "средняя",
+    "high": "высокая"
+  },
+  "supporting": "Подтверждающие факты",
+  "contradicting": "Противоречащие факты",
+  "none": "нет",
+  "source": {
+    "label": "Источник: {source}",
+    "kinds": {
+      "resource": "поле объекта",
+      "event": "событие",
+      "log": "лог контейнера",
+      "derived": "вычислено"
+    }
+  },
+  "observedAt": "получено {time}",
+  "partial": "Некоторые источники прочитаны частично: {sources}.",
+  "events": {
+    "empty": "События не получены.",
+    "columns": {
+      "time": "Последний раз",
+      "object": "Объект",
+      "reason": "Причина",
+      "message": "Сообщение",
+      "count": "Раз"
+    }
+  },
+  "evidence": {
+    "saved": "Доказательство сохранено",
+    "notSaved": "Доказательство не сохранено: {reason}",
+    "hidden": "Содержимое скрыто: у вас нет права на чтение логов.",
+    "reasons": "Причины",
+    "container": "Контейнер {container} пода {pod} ({instance})",
+    "instance": {
+      "previous": "предыдущий экземпляр",
+      "current": "текущий экземпляр"
+    },
+    "meta": "Строки {start}–{end} хвоста, якорь {anchor}; строк {lines}, байт {bytes}; замен {replacements}; редактор v{version}",
+    "truncated": "усечено",
+    "auto": "сохранено автоматически",
+    "manual": "сохранено пользователем",
+    "show": "Показать содержимое",
+    "hide": "Скрыть содержимое",
+    "delete": "Удалить фрагмент",
+    "deleteConfirm": "Удалить этот фрагмент лога?",
+    "save": "Сохранить как доказательство",
+    "saveDone": "Фрагмент сохранён.",
+    "saveFailed": "Фрагмент не сохранён: {reason}",
+    "neverExternal": "Фрагменты никогда не передаются во внешний AI.",
+    "captureOn": "Сохранять фрагменты логов в этом расследовании",
+    "deleteAll": "Удалить все сохранённые фрагменты",
+    "deleteAllConfirm": "Удалить все сохранённые фрагменты логов этого расследования?",
+    "loadFailed": "Не удалось прочитать фрагмент: {error}"
+  },
+  "outcome": {
+    "result": "Результат проверки",
+    "results": {
+      "resolved": "Проблема устранена",
+      "unresolved": "Не устранена",
+      "inconclusive": "Проверить не удалось"
+    },
+    "confirmed": "Причина, которую вы подтвердили",
+    "noneConfirmed": "Ни одна гипотеза не подтверждена",
+    "note": "Комментарий",
+    "submit": "Отметить результат и закрыть",
+    "done": "Результат: {result}",
+    "by": "Отметил {user}, {time}",
+    "confirmedBy": "Подтверждено человеком: {hypothesis}"
+  },
+  "settings": {
+    "title": "Настройки хранения",
+    "subtitle": "Действуют для всей организации (приложения — в десктопе).",
+    "disableLogs": "Не сохранять фрагменты логов",
+    "excluded": "Namespace, логи которых не сохраняются (по одному в строке)",
+    "fragmentDays": "Хранить фрагменты, дней (1–{max})",
+    "incidentDays": "Хранить расследования, дней (1–{max})",
+    "limits": "Фиксированные пределы: {lines} строк и {bytes} КиБ на фрагмент, строка режется на {line} КиБ, до {count} фрагментов и {total} КиБ на расследование.",
+    "save": "Сохранить",
+    "saved": "Настройки сохранены.",
+    "readonly": "Менять эти настройки может только администратор.",
+    "open": "Настройки хранения"
+  },
+  "confirm": {
+    "yes": "Удалить"
+  },
+  "symptoms": {
+    "pod_pending": "Pod в состоянии Pending",
+    "pod_crash_loop": "Контейнер перезапускается в цикле (CrashLoopBackOff)",
+    "pod_oom_killed": "Контейнер убит из-за памяти (OOMKilled)",
+    "pod_startup_failure": "Контейнер не запускается",
+    "workload_rollout": "Выкат не продвигается",
+    "none": "Проблем не обнаружено"
+  },
+  "facts": {
+    "pod_pending": "Фаза Pod — {phase}.",
+    "pod_unscheduled": "Pod не назначен на узел: {reason}. {message}",
+    "event": "Событие {type}/{reason} (×{count}): {message}",
+    "pod_image_pull_secrets": "Pod ссылается на imagePullSecrets: {count}.",
+    "pod_no_image_pull_secrets": "У Pod нет imagePullSecrets.",
+    "container_waiting": "Контейнер {container} ожидает: {reason}. {message}",
+    "container_start_failed": "Контейнер {container} не запустился: {message}",
+    "container_restarts": "Контейнер {container} перезапускался раз: {count}.",
+    "container_last_terminated": "Контейнер {container} последний раз завершился с кодом {exitCode} ({reason}) в {finishedAt}.",
+    "container_log_tail": "Последние строки лога контейнера {container}.",
+    "container_oom_killed": "Контейнер {container} завершён по OOMKilled (код {exitCode}, перезапусков: {restarts}).",
+    "container_memory_limit": "У контейнера {container} лимит памяти {limit}.",
+    "container_no_memory_limit": "У контейнера {container} нет лимита памяти.",
+    "node_memory_pressure": "Узел {node} сообщает MemoryPressure.",
+    "deployment_condition": "Условие Deployment {type}={status}: {reason}. {message}",
+    "deployment_replicas": "Реплики: нужно {desired}, обновлено {updated}, готово {ready}, доступно {available}, недоступно {unavailable}.",
+    "deployment_paused": "Deployment приостановлен.",
+    "deployment_generation_lag": "Контроллер увидел поколение {observed} из {generation}.",
+    "replicaset_condition": "Условие ReplicaSet ReplicaFailure: {reason}. {message}",
+    "replicaset_replicas": "ReplicaSet {name}: нужно {desired}, готово {ready}, реплик {replicas}.",
+    "replicaset_pods_ready": "В ReplicaSet {name} готовых Pod: {ready}.",
+    "no_problem_detected": "Проблем не обнаружено среди Pod: {pods}."
+  },
+  "hypotheses": {
+    "pending_insufficient_resources": "В кластере не хватает ресурса {resource} для этого Pod.",
+    "pending_no_nodes": "Нет узлов, на которые можно назначить Pod.",
+    "pending_node_selector_mismatch": "nodeSelector или affinity Pod не подходят ни одному узлу.",
+    "pending_untolerated_taint": "На всех подходящих узлах есть taint, которых Pod не переносит.",
+    "pending_unbound_pvc": "PersistentVolumeClaim этого Pod не привязан.",
+    "image_invalid_name": "Имя образа контейнера {container} некорректно.",
+    "image_never_pull_policy": "imagePullPolicy=Never, но образа нет на узле (контейнер {container}).",
+    "image_not_found": "Образ или тег {image} не найден в реестре.",
+    "image_registry_auth": "Реестр отклонил учётные данные для {image}.",
+    "image_registry_unreachable": "Узел не может связаться с реестром для {image}.",
+    "config_missing_reference": "Контейнер {container} ссылается на {kind}, которого нет или в нём нет ключа.",
+    "startup_volume_mount_failed": "Том Pod не удаётся подключить или смонтировать.",
+    "startup_wrong_architecture": "Образ контейнера {container} собран под другую архитектуру CPU.",
+    "startup_command_not_found": "Команда контейнера {container} не найдена в образе.",
+    "startup_permission_denied": "Команде контейнера {container} запрещён запуск.",
+    "startup_run_as_non_root": "securityContext контейнера {container} конфликтует с пользователем образа.",
+    "startup_runtime_error": "Среда выполнения не смогла запустить контейнер {container}.",
+    "crash_liveness_probe_failed": "Liveness-проба контейнера {container} не проходит, kubelet перезапускает его.",
+    "crash_application_error": "Приложение в контейнере {container} завершается с кодом {exitCode}.",
+    "crash_exited_normally": "Процесс контейнера {container} завершается штатно (код 0), хотя должен работать постоянно.",
+    "crash_command_not_executable": "Команда контейнера {container} не исполняемая.",
+    "crash_command_not_found": "Команда контейнера {container} не найдена.",
+    "crash_killed": "Контейнер {container} убит сигналом SIGKILL (код {exitCode}); причина не установлена.",
+    "crash_segfault": "Процесс контейнера {container} упал с ошибкой сегментации.",
+    "crash_terminated": "Контейнер {container} остановлен сигналом SIGTERM (код {exitCode}).",
+    "oom_limit_too_low": "Лимит памяти {limit} контейнера {container} меньше, чем ему нужно.",
+    "oom_memory_growth": "Контейнер {container} может утекать по памяти или получил всплеск нагрузки.",
+    "oom_node_memory_pressure": "На узле ({node}) не хватает памяти, и контейнеры вытесняются или убиваются.",
+    "rollout_paused": "Выкат приостановлен.",
+    "rollout_controller_lag": "Контроллер ещё не увидел последнее изменение.",
+    "rollout_quota_exceeded": "Квота ресурсов namespace блокирует создание Pod.",
+    "rollout_pod_creation_denied": "Admission-контроль запрещает создание Pod нового ReplicaSet.",
+    "rollout_new_pods_unhealthy": "Pod нового ReplicaSet {replicaset} нездоровы, поэтому выкат не продвигается."
+  },
+  "recommendations": {
+    "rec_reduce_requests_or_add_capacity": "Уменьшите requests Pod или добавьте ресурсов в кластер.",
+    "rec_add_nodes": "Добавьте узлы в кластер или проверьте пул узлов.",
+    "rec_fix_node_selector": "Исправьте nodeSelector/affinity или пометьте подходящий узел меткой.",
+    "rec_add_toleration": "Добавьте toleration в Pod или снимите taint с узла.",
+    "rec_fix_volume_claim": "Проверьте PersistentVolumeClaim, его storage class и провижинер.",
+    "rec_fix_image_reference": "Исправьте имя или тег образа либо опубликуйте недостающий образ.",
+    "rec_fix_image_pull_policy": "Измените imagePullPolicy или загрузите образ на узел.",
+    "rec_fix_registry_credentials": "Проверьте учётные данные реестра в imagePullSecrets (Kubron не читает Secret).",
+    "rec_check_registry_network": "Проверьте сеть и DNS от узла до реестра.",
+    "rec_fix_config_reference": "Создайте объект или ключ, на который есть ссылка, или исправьте ссылку.",
+    "rec_fix_container_command": "Проверьте command, args и entrypoint контейнера относительно образа.",
+    "rec_fix_image_architecture": "Используйте образ, собранный под архитектуру узла.",
+    "rec_fix_security_context": "Согласуйте runAsUser/runAsNonRoot с пользователем, заданным в образе.",
+    "rec_fix_application_error": "Прочитайте лог предыдущего экземпляра контейнера и устраните причину сбоя.",
+    "rec_use_job_or_keep_process": "Запускайте разовую работу как Job или не давайте основному процессу завершаться.",
+    "rec_tune_liveness_probe": "Ослабьте liveness-пробу (задержка, таймаут, порог) или исправьте проверяемый endpoint.",
+    "rec_check_kill_reason": "Выясните, кто шлёт сигнал: пробы, OOM, вытеснение или ручное действие.",
+    "rec_raise_memory_limit": "Увеличьте лимит памяти контейнера {container} выше {limit}, проверив реальное потребление.",
+    "rec_set_memory_limit": "Задайте лимит (и request) памяти для контейнера {container}.",
+    "rec_investigate_memory_usage": "Сравните потребление памяти во времени с лимитом, чтобы отличить утечку от всплеска.",
+    "rec_resume_rollout": "Возобновите выкат, если пауза не намеренная.",
+    "rec_raise_quota_or_reduce_requests": "Увеличьте квоту namespace или уменьшите requests нагрузки.",
+    "rec_fix_admission_denial": "Исправьте шаблон Pod, чтобы он проходил политику допуска.",
+    "rec_fix_new_pods": "Сначала исправьте падающие Pod в ReplicaSet {replicaset} (см. их находки)."
+  },
+  "steps": {
+    "step_check_events": "Посмотрите события объекта: там может быть больше деталей.",
+    "step_check_node_capacity": "Сравните requests Pod с доступными ресурсами узлов.",
+    "step_check_node_taints": "Сравните taint узлов и toleration Pod.",
+    "step_check_pvc": "Проверьте статус и storage class claim.",
+    "step_check_image_exists": "Проверьте, что образ и тег есть в реестре.",
+    "step_check_pull_secret_reference": "Проверьте, что imagePullSecret есть в namespace и подходит к реестру.",
+    "step_check_node_network": "Проверьте DNS и исходящий трафик с узла к реестру.",
+    "step_check_referenced_object": "Проверьте, что указанный {kind} существует (Kubron не читает Secret).",
+    "step_read_previous_logs": "Прочитайте лог предыдущего экземпляра контейнера {container}.",
+    "step_check_memory_metrics": "Посмотрите потребление памяти контейнера {container} до остановки.",
+    "step_check_quota": "Проверьте использование ResourceQuota в namespace.",
+    "step_rollout_history": "Сравните новый и предыдущий ReplicaSet, чтобы понять, что изменилось."
+  },
+  "missing": {
+    "context_insufficient": "Недостаточно контекста, чтобы назвать причину.",
+    "crash_no_termination_info": "Нет записи о завершении контейнера {container}.",
+    "deployment_selector_missing": "У Deployment нет читаемого селектора.",
+    "replicaset_selector_missing": "У ReplicaSet нет читаемого селектора.",
+    "events_truncated": "Список событий усечён; старые события могут отсутствовать.",
+    "events_unavailable": "События прочитать не удалось ({reason}).",
+    "logs_unavailable": "Лог контейнера {container} прочитать не удалось ({reason}).",
+    "object_unreadable": "Объект не удалось разобрать, он пропущен.",
+    "pending_no_scheduling_info": "У Pod нет ни условия планирования, ни событий планирования.",
+    "pending_reason_unrecognized": "Сообщение планировщика не распознано правилами.",
+    "rollout_no_pods": "Pod нового ReplicaSet не найдены.",
+    "rule_failed": "Правило {rule} завершилось сбоем и пропущено.",
+    "source_unavailable": "Источник прочитать не удалось ({reason}).",
+    "startup_reason_unrecognized": "Сообщение о запуске контейнера {container} не распознано правилами."
+  },
+  "reasons": {
+    "not_text": "лог не является текстом",
+    "limit_exceeded": "фрагмент превышает лимит размера",
+    "redaction_failed": "сбой редактирования",
+    "disabled_org": "сохранение фрагментов логов выключено",
+    "disabled_namespace": "namespace исключён из сохранения",
+    "disabled_incident": "отключено для этого расследования",
+    "incident_quota": "достигнут лимит фрагментов на расследование",
+    "log_unavailable": "лог прочитать не удалось",
+    "empty_log": "лог пуст",
+    "deleted": "удалён пользователем"
+  }
+}

@@ -1,0 +1,293 @@
+{
+  "title": "Incidents",
+  "subtitle": "Deterministic diagnostics of workloads: facts, hypotheses and recommendations.",
+  "refresh": "Refresh",
+  "back": "Back to the list",
+  "open": {
+    "title": "Open an investigation",
+    "kind": "Kind",
+    "namespace": "Namespace",
+    "name": "Name",
+    "submit": "Investigate",
+    "noLogs": "Do not save log fragments in this investigation",
+    "opening": "Collecting context…",
+    "failed": "Could not open the investigation: {error}"
+  },
+  "kinds": {
+    "Pod": "Pod",
+    "Deployment": "Deployment",
+    "ReplicaSet": "ReplicaSet"
+  },
+  "list": {
+    "title": "History",
+    "empty": "No investigations yet.",
+    "more": "Load more",
+    "filter": {
+      "all": "All",
+      "open": "Open",
+      "closed": "Closed"
+    },
+    "columns": {
+      "target": "Workload",
+      "opened": "Opened",
+      "status": "Status",
+      "symptoms": "Symptoms",
+      "result": "Result"
+    }
+  },
+  "status": {
+    "open": "Open",
+    "closed": "Closed"
+  },
+  "detail": {
+    "opened": "Opened {time} by {user}",
+    "ruleSet": "Rule set v{version}",
+    "delete": "Delete investigation",
+    "deleteConfirm": "Delete this investigation together with its saved log fragments?",
+    "export": "Export",
+    "exportFragments": "Include log fragments (requires the log access right)",
+    "refreshEvents": "Update Events",
+    "eventsUpdated": "Events updated {time}"
+  },
+  "sections": {
+    "symptoms": "Symptoms",
+    "facts": "Facts",
+    "hypotheses": "Hypotheses",
+    "recommendations": "Recommendations",
+    "steps": "Diagnostic steps",
+    "missing": "Missing context",
+    "events": "Events snapshot",
+    "evidence": "Log evidence",
+    "outcome": "Outcome"
+  },
+  "kindLabels": {
+    "fact": "Fact",
+    "hypothesis": "Hypothesis",
+    "recommendation": "Recommendation",
+    "step": "Step"
+  },
+  "hypothesisNote": "A hypothesis is not an established cause: only you can confirm it by checking.",
+  "confidence": {
+    "label": "Confidence: {level}",
+    "low": "low",
+    "medium": "medium",
+    "high": "high"
+  },
+  "supporting": "Supporting facts",
+  "contradicting": "Contradicting facts",
+  "none": "none",
+  "source": {
+    "label": "Source: {source}",
+    "kinds": {
+      "resource": "object field",
+      "event": "event",
+      "log": "container log",
+      "derived": "derived"
+    }
+  },
+  "observedAt": "received {time}",
+  "partial": "Some sources were read partially: {sources}.",
+  "events": {
+    "empty": "No Events were captured.",
+    "columns": {
+      "time": "Last seen",
+      "object": "Object",
+      "reason": "Reason",
+      "message": "Message",
+      "count": "Count"
+    }
+  },
+  "evidence": {
+    "saved": "Evidence saved",
+    "notSaved": "Evidence not saved: {reason}",
+    "hidden": "Content hidden: you do not have the right to read logs.",
+    "reasons": "Reasons",
+    "container": "Container {container} of Pod {pod} ({instance})",
+    "instance": {
+      "previous": "previous instance",
+      "current": "current instance"
+    },
+    "meta": "Lines {start}–{end} of the tail, anchor {anchor}; {lines} lines, {bytes} bytes; {replacements} replacement(s); redactor v{version}",
+    "truncated": "truncated",
+    "auto": "saved automatically",
+    "manual": "saved by a user",
+    "show": "Show content",
+    "hide": "Hide content",
+    "delete": "Delete fragment",
+    "deleteConfirm": "Delete this log fragment?",
+    "save": "Save as evidence",
+    "saveDone": "Fragment saved.",
+    "saveFailed": "Fragment not saved: {reason}",
+    "neverExternal": "Fragments are never sent to an external AI.",
+    "captureOn": "Save log fragments in this investigation",
+    "deleteAll": "Delete all saved fragments",
+    "deleteAllConfirm": "Delete all saved log fragments of this investigation?",
+    "loadFailed": "Could not read the fragment: {error}"
+  },
+  "outcome": {
+    "result": "Result of the check",
+    "results": {
+      "resolved": "Resolved",
+      "unresolved": "Not resolved",
+      "inconclusive": "Inconclusive"
+    },
+    "confirmed": "Cause you confirmed",
+    "noneConfirmed": "No hypothesis confirmed",
+    "note": "Note",
+    "submit": "Mark the result and close",
+    "done": "Result: {result}",
+    "by": "Marked by {user} at {time}",
+    "confirmedBy": "Confirmed by a person: {hypothesis}"
+  },
+  "settings": {
+    "title": "Storage settings",
+    "subtitle": "Apply to the whole organization (the application on desktop).",
+    "disableLogs": "Do not save log fragments",
+    "excluded": "Namespaces excluded from log saving (one per line)",
+    "fragmentDays": "Keep fragments, days (1–{max})",
+    "incidentDays": "Keep investigations, days (1–{max})",
+    "limits": "Fixed limits: {lines} lines and {bytes} KiB per fragment, a line is cut at {line} KiB, up to {count} fragments and {total} KiB per investigation.",
+    "save": "Save",
+    "saved": "Settings saved.",
+    "readonly": "Only an administrator can change these settings.",
+    "open": "Storage settings"
+  },
+  "confirm": {
+    "yes": "Delete"
+  },
+  "symptoms": {
+    "pod_pending": "Pod is Pending",
+    "pod_crash_loop": "Container restarts in a loop (CrashLoopBackOff)",
+    "pod_oom_killed": "Container killed for memory (OOMKilled)",
+    "pod_startup_failure": "Container fails to start",
+    "workload_rollout": "Rollout is not progressing",
+    "none": "No problem detected"
+  },
+  "facts": {
+    "pod_pending": "Pod phase is {phase}.",
+    "pod_unscheduled": "Pod is not scheduled: {reason}. {message}",
+    "event": "Event {type}/{reason} (×{count}): {message}",
+    "pod_image_pull_secrets": "The Pod references {count} imagePullSecret(s).",
+    "pod_no_image_pull_secrets": "The Pod has no imagePullSecrets.",
+    "container_waiting": "Container {container} is waiting: {reason}. {message}",
+    "container_start_failed": "Container {container} failed to start: {message}",
+    "container_restarts": "Container {container} restarted {count} time(s).",
+    "container_last_terminated": "Container {container} last terminated with exit code {exitCode} ({reason}) at {finishedAt}.",
+    "container_log_tail": "Last log lines of container {container}.",
+    "container_oom_killed": "Container {container} was OOMKilled (exit code {exitCode}, {restarts} restart(s)).",
+    "container_memory_limit": "Container {container} has a memory limit of {limit}.",
+    "container_no_memory_limit": "Container {container} has no memory limit.",
+    "node_memory_pressure": "Node {node} reports MemoryPressure.",
+    "deployment_condition": "Deployment condition {type}={status}: {reason}. {message}",
+    "deployment_replicas": "Replicas: desired {desired}, updated {updated}, ready {ready}, available {available}, unavailable {unavailable}.",
+    "deployment_paused": "The Deployment is paused.",
+    "deployment_generation_lag": "The controller observed generation {observed} of {generation}.",
+    "replicaset_condition": "ReplicaSet condition ReplicaFailure: {reason}. {message}",
+    "replicaset_replicas": "ReplicaSet {name}: desired {desired}, ready {ready}, replicas {replicas}.",
+    "replicaset_pods_ready": "ReplicaSet {name} has {ready} ready pod(s).",
+    "no_problem_detected": "No problem was detected among {pods} pod(s)."
+  },
+  "hypotheses": {
+    "pending_insufficient_resources": "The cluster does not have enough {resource} for this Pod.",
+    "pending_no_nodes": "There are no nodes available to schedule the Pod.",
+    "pending_node_selector_mismatch": "The Pod's nodeSelector or affinity matches no node.",
+    "pending_untolerated_taint": "All suitable nodes have taints the Pod does not tolerate.",
+    "pending_unbound_pvc": "A PersistentVolumeClaim of the Pod is not bound.",
+    "image_invalid_name": "The image name of container {container} is invalid.",
+    "image_never_pull_policy": "imagePullPolicy is Never but the image is not on the node (container {container}).",
+    "image_not_found": "The image or tag {image} does not exist in the registry.",
+    "image_registry_auth": "The registry rejected the credentials for {image}.",
+    "image_registry_unreachable": "The node cannot reach the registry for {image}.",
+    "config_missing_reference": "Container {container} references a {kind} that does not exist or lacks a key.",
+    "startup_volume_mount_failed": "A volume of the Pod cannot be attached or mounted.",
+    "startup_wrong_architecture": "The image of container {container} was built for another CPU architecture.",
+    "startup_command_not_found": "The command of container {container} was not found in the image.",
+    "startup_permission_denied": "The command of container {container} is not permitted to run.",
+    "startup_run_as_non_root": "The security context of container {container} conflicts with the image user.",
+    "startup_runtime_error": "The container runtime could not start container {container}.",
+    "crash_liveness_probe_failed": "The liveness probe of container {container} fails and the kubelet restarts it.",
+    "crash_application_error": "The application in container {container} exits with code {exitCode}.",
+    "crash_exited_normally": "The process of container {container} exits normally (code 0) although it is expected to keep running.",
+    "crash_command_not_executable": "The command of container {container} is not executable.",
+    "crash_command_not_found": "The command of container {container} is not found.",
+    "crash_killed": "Container {container} was killed with SIGKILL (code {exitCode}); the reason is not established.",
+    "crash_segfault": "The process of container {container} crashed with a segmentation fault.",
+    "crash_terminated": "Container {container} was stopped with SIGTERM (code {exitCode}).",
+    "oom_limit_too_low": "The memory limit {limit} of container {container} is lower than it needs.",
+    "oom_memory_growth": "Container {container} may be leaking memory or has a load spike.",
+    "oom_node_memory_pressure": "The node ({node}) is short of memory and evicts or kills containers.",
+    "rollout_paused": "The rollout is paused.",
+    "rollout_controller_lag": "The controller has not yet observed the latest change.",
+    "rollout_quota_exceeded": "A resource quota of the namespace blocks the creation of pods.",
+    "rollout_pod_creation_denied": "Admission control denies creating pods of the new ReplicaSet.",
+    "rollout_new_pods_unhealthy": "Pods of the new ReplicaSet {replicaset} are unhealthy, so the rollout cannot progress."
+  },
+  "recommendations": {
+    "rec_reduce_requests_or_add_capacity": "Lower the resource requests of the Pod or add capacity to the cluster.",
+    "rec_add_nodes": "Add nodes to the cluster or check the node pool.",
+    "rec_fix_node_selector": "Fix the nodeSelector/affinity or label a suitable node.",
+    "rec_add_toleration": "Add a toleration to the Pod or remove the taint from the node.",
+    "rec_fix_volume_claim": "Check the PersistentVolumeClaim and its storage class or provisioner.",
+    "rec_fix_image_reference": "Correct the image name or tag, or publish the missing image.",
+    "rec_fix_image_pull_policy": "Change imagePullPolicy or load the image onto the node.",
+    "rec_fix_registry_credentials": "Check the registry credentials referenced by imagePullSecrets (Kubron does not read Secrets).",
+    "rec_check_registry_network": "Check the network path and DNS from the node to the registry.",
+    "rec_fix_config_reference": "Create the referenced object or key, or fix the reference.",
+    "rec_fix_container_command": "Check the command, args and entrypoint of the container against the image.",
+    "rec_fix_image_architecture": "Use an image built for the architecture of the node.",
+    "rec_fix_security_context": "Align runAsUser/runAsNonRoot with the user defined in the image.",
+    "rec_fix_application_error": "Read the previous container log and fix the cause of the failure.",
+    "rec_use_job_or_keep_process": "Run one-shot work as a Job, or keep the main process running.",
+    "rec_tune_liveness_probe": "Relax the liveness probe (delay, timeout, threshold) or fix the endpoint it checks.",
+    "rec_check_kill_reason": "Find who sends the signal: probes, OOM, eviction or a manual action.",
+    "rec_raise_memory_limit": "Raise the memory limit of container {container} above {limit} after checking real usage.",
+    "rec_set_memory_limit": "Set a memory limit (and request) for container {container}.",
+    "rec_investigate_memory_usage": "Compare memory usage over time with the limit to tell a leak from a spike.",
+    "rec_resume_rollout": "Resume the rollout if the pause is not intended.",
+    "rec_raise_quota_or_reduce_requests": "Raise the namespace quota or reduce the requests of the workload.",
+    "rec_fix_admission_denial": "Fix the Pod template so that it passes the admission policy.",
+    "rec_fix_new_pods": "Fix the failing pods of ReplicaSet {replicaset} first (see their findings)."
+  },
+  "steps": {
+    "step_check_events": "Check the Events of the object for more detail.",
+    "step_check_node_capacity": "Compare the Pod requests with the allocatable resources of the nodes.",
+    "step_check_node_taints": "List the taints of the nodes and the tolerations of the Pod.",
+    "step_check_pvc": "Check the status and storage class of the claim.",
+    "step_check_image_exists": "Check that the image and tag exist in the registry.",
+    "step_check_pull_secret_reference": "Check that the imagePullSecret exists in the namespace and matches the registry.",
+    "step_check_node_network": "Check DNS and egress from the node to the registry.",
+    "step_check_referenced_object": "Check that the referenced {kind} exists (Kubron does not read Secrets).",
+    "step_read_previous_logs": "Read the log of the previous instance of container {container}.",
+    "step_check_memory_metrics": "Look at the memory usage of container {container} before the kill.",
+    "step_check_quota": "Check the ResourceQuota usage in the namespace.",
+    "step_rollout_history": "Compare the new and the previous ReplicaSet to see what changed."
+  },
+  "missing": {
+    "context_insufficient": "Not enough context to name a cause.",
+    "crash_no_termination_info": "There is no termination record of container {container}.",
+    "deployment_selector_missing": "The Deployment has no readable selector.",
+    "replicaset_selector_missing": "The ReplicaSet has no readable selector.",
+    "events_truncated": "The list of Events was truncated; older events may be missing.",
+    "events_unavailable": "Events could not be read ({reason}).",
+    "logs_unavailable": "The log of container {container} could not be read ({reason}).",
+    "object_unreadable": "An object could not be parsed and was skipped.",
+    "pending_no_scheduling_info": "The Pod has neither a scheduling condition nor scheduling events.",
+    "pending_reason_unrecognized": "The scheduling message is not recognised by the rules.",
+    "rollout_no_pods": "No pods of the new ReplicaSet were found.",
+    "rule_failed": "The rule {rule} failed and was skipped.",
+    "source_unavailable": "The source could not be read ({reason}).",
+    "startup_reason_unrecognized": "The startup message of container {container} is not recognised by the rules."
+  },
+  "reasons": {
+    "not_text": "the log is not text",
+    "limit_exceeded": "the fragment exceeds the size limit",
+    "redaction_failed": "redaction failed",
+    "disabled_org": "saving log fragments is turned off",
+    "disabled_namespace": "the namespace is excluded",
+    "disabled_incident": "turned off for this investigation",
+    "incident_quota": "the limit of fragments per investigation is reached",
+    "log_unavailable": "the log could not be read",
+    "empty_log": "the log is empty",
+    "deleted": "deleted by a user"
+  }
+}
