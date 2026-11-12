@@ -1,0 +1,156 @@
+{
+  "title": "Configuration baseline",
+  "subtitle": "Record the current state of selected resources and see later what has drifted. Checks only read the cluster; nothing is applied or fixed automatically.",
+  "refresh": "Refresh",
+  "new": "New baseline",
+  "empty": "No baselines yet. Create one to record the current configuration.",
+  "noManage": "Creating baselines requires the “Manage configuration baselines” permission.",
+  "select": "Baseline",
+  "activeVersion": "Active version",
+  "objects": "{count} resources",
+  "version": "Version {seq}",
+  "scope": "Scope",
+  "scopeNamespaces": "namespaces: {list}",
+  "scopeRefs": "{count} listed resources",
+  "check": "Run check",
+  "checking": "Checking…",
+  "newVersion": "New version",
+  "delete": "Delete",
+  "confirmDelete": "Delete baseline “{name}” with all its versions, exceptions and check history? This cannot be undone.",
+  "result": {
+    "title": "Check result",
+    "checkedAt": "Checked {time}",
+    "by": "by {user}",
+    "none": "Run a check to compare the cluster with the active version.",
+    "rulesVersions": "Comparison rules: current {current}, version {version}",
+    "empty": "No resources in this baseline.",
+    "columns": {
+      "resource": "Resource",
+      "status": "Status",
+      "priority": "Priority",
+      "details": "Details"
+    },
+    "showChanges": "Show changes",
+    "hideChanges": "Hide changes",
+    "suppressed": "Hidden by exceptions: {ids}"
+  },
+  "summary": {
+    "total": "Resources: {count}",
+    "matched": "Match: {count}",
+    "changed": "Changed: {count}",
+    "missing": "Missing: {count}",
+    "unchecked": "Not checked: {count}",
+    "suppressed": "Changes hidden by exceptions: {count}",
+    "uncheckedNote": "Resources that were not checked are not reported as matching."
+  },
+  "status": {
+    "match": "Match",
+    "changed": "Changed",
+    "missing": "Missing in cluster",
+    "unchecked": "Not checked",
+    "new": "New"
+  },
+  "priority": {
+    "high": "High",
+    "medium": "Medium",
+    "low": "Low"
+  },
+  "reason": {
+    "forbidden": "No permission in Kubernetes",
+    "unavailable": "Cluster API error",
+    "too-large": "Response is too large",
+    "kind-unavailable": "Resource type is not available in the cluster",
+    "rules-version-mismatch": "Created with different comparison rules: make a new version",
+    "secret-unsupported": "Secrets are not supported and are never read",
+    "unsupported-kind": "Resource type is not supported",
+    "truncated": "List was truncated by the size limit",
+    "not-found": "Not found in the cluster"
+  },
+  "caveat": {
+    "hpa-unreadable": "The HorizontalPodAutoscaler could not be read: replica counts were compared as is, so workloads under autoscaling may show false differences."
+  },
+  "change": {
+    "op": {
+      "changed": "changed",
+      "added": "added",
+      "removed": "removed"
+    },
+    "sensitive": "Value of “{key}” {op} (the value is not shown)",
+    "sensitiveNoKey": "A sensitive value {op} (the value is not shown)",
+    "old": "was",
+    "new": "now",
+    "sourceManagedFields": "According to managedFields: {manager}, {time}",
+    "sourceManagedFieldsNoName": "According to managedFields, {time}",
+    "sourceAudit": "Applied from Kubron (audit record confirmed by cluster data), {time}",
+    "addException": "Add exception"
+  },
+  "create": {
+    "title": "New baseline",
+    "name": "Name",
+    "namespaces": "Namespaces",
+    "namespacesHint": "Comma or space separated",
+    "selector": "Label selector",
+    "kinds": "Resource types",
+    "kindsAll": "All supported types",
+    "preview": "Preview",
+    "previewing": "Reading the cluster…",
+    "found": "Will be recorded: {objects} resources, {hashed} sensitive values as hashes.",
+    "nothing": "Nothing selected: there is nothing to record.",
+    "skipped": "Skipped",
+    "comment": "Comment (required)",
+    "confirm": "I understand that the current state is recorded as is, including deviations that already exist.",
+    "submit": "Record baseline",
+    "cancel": "Cancel",
+    "stale": "The cluster changed after the preview. Preview again and confirm what you see.",
+    "expires": "The preview is valid until {time}."
+  },
+  "version_dialog": {
+    "title": "New version",
+    "added": "New resources: {count}",
+    "removed": "No longer present: {count}",
+    "changed": "Changed since the active version: {count}",
+    "unchanged": "Unchanged: {count}",
+    "rulesChanged": "The active version was recorded with different comparison rules; differences cannot be shown.",
+    "submit": "Record version",
+    "note": "The new version becomes active. Exceptions of the current version are carried over."
+  },
+  "versions": {
+    "title": "Versions",
+    "seq": "Version",
+    "author": "Author",
+    "comment": "Comment",
+    "created": "Created",
+    "active": "active",
+    "makeActive": "Make active",
+    "more": "Show more",
+    "confirmActive": "Make version {seq} active? Later checks will compare against it."
+  },
+  "exceptions": {
+    "title": "Exceptions",
+    "none": "No exceptions. An exception excludes a field from comparison for a resource or a whole resource type.",
+    "scope": "Applies to",
+    "scopeResource": "One resource",
+    "scopeKind": "Resource type",
+    "kind": "Type",
+    "namespace": "Namespace",
+    "name": "Resource name",
+    "path": "Field path",
+    "pathHint": "For example spec.replicas",
+    "comment": "Comment (required)",
+    "expires": "Expires",
+    "never": "no expiry",
+    "expired": "expired",
+    "add": "Add exception",
+    "remove": "Remove",
+    "confirmRemove": "Remove this exception?",
+    "createdBy": "Added by {user}"
+  },
+  "history": {
+    "title": "Check history",
+    "none": "No checks yet.",
+    "open": "Open",
+    "more": "Show more",
+    "initiator": "Initiator",
+    "time": "Time"
+  }
+}

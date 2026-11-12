@@ -1,0 +1,156 @@
+{
+  "title": "配置基线",
+  "subtitle": "记录所选资源的当前状态，之后查看发生了哪些漂移。检查只读取集群，不会自动应用或修复任何内容。",
+  "refresh": "刷新",
+  "new": "新建基线",
+  "empty": "还没有基线。创建一个以记录当前配置。",
+  "noManage": "创建基线需要“管理配置基线”权限。",
+  "select": "基线",
+  "activeVersion": "活动版本",
+  "objects": "{count} 个资源",
+  "version": "版本 {seq}",
+  "scope": "范围",
+  "scopeNamespaces": "命名空间：{list}",
+  "scopeRefs": "列出的资源：{count}",
+  "check": "运行检查",
+  "checking": "检查中…",
+  "newVersion": "新版本",
+  "delete": "删除",
+  "confirmDelete": "删除基线“{name}”及其所有版本、例外和检查历史？此操作无法撤销。",
+  "result": {
+    "title": "检查结果",
+    "checkedAt": "检查时间 {time}",
+    "by": "发起人 {user}",
+    "none": "运行检查，将集群与活动版本进行比较。",
+    "rulesVersions": "比较规则：当前 {current}，版本 {version}",
+    "empty": "此基线中没有资源。",
+    "columns": {
+      "resource": "资源",
+      "status": "状态",
+      "priority": "优先级",
+      "details": "详情"
+    },
+    "showChanges": "显示更改",
+    "hideChanges": "隐藏更改",
+    "suppressed": "被例外隐藏：{ids}"
+  },
+  "summary": {
+    "total": "资源：{count}",
+    "matched": "一致：{count}",
+    "changed": "已更改：{count}",
+    "missing": "缺失：{count}",
+    "unchecked": "未检查：{count}",
+    "suppressed": "被例外隐藏的更改：{count}",
+    "uncheckedNote": "未检查的资源不会被报告为一致。"
+  },
+  "status": {
+    "match": "一致",
+    "changed": "已更改",
+    "missing": "集群中不存在",
+    "unchecked": "未检查",
+    "new": "新增"
+  },
+  "priority": {
+    "high": "高",
+    "medium": "中",
+    "low": "低"
+  },
+  "reason": {
+    "forbidden": "Kubernetes 中没有权限",
+    "unavailable": "集群 API 错误",
+    "too-large": "响应过大",
+    "kind-unavailable": "集群中没有此资源类型",
+    "rules-version-mismatch": "按不同的比较规则创建：请新建版本",
+    "secret-unsupported": "不支持 Secret，且绝不会读取",
+    "unsupported-kind": "不支持此资源类型",
+    "truncated": "列表因大小限制被截断",
+    "not-found": "集群中未找到"
+  },
+  "caveat": {
+    "hpa-unreadable": "无法读取 HorizontalPodAutoscaler：副本数按原样比较，处于自动伸缩下的工作负载可能出现误报差异。"
+  },
+  "change": {
+    "op": {
+      "changed": "已更改",
+      "added": "已添加",
+      "removed": "已删除"
+    },
+    "sensitive": "“{key}”的值{op}（不显示该值）",
+    "sensitiveNoKey": "敏感值{op}（不显示该值）",
+    "old": "原值",
+    "new": "现值",
+    "sourceManagedFields": "根据 managedFields：{manager}，{time}",
+    "sourceManagedFieldsNoName": "根据 managedFields，{time}",
+    "sourceAudit": "由 Kubron 应用（审计记录已由集群数据确认），{time}",
+    "addException": "添加例外"
+  },
+  "create": {
+    "title": "新建基线",
+    "name": "名称",
+    "namespaces": "命名空间",
+    "namespacesHint": "用逗号或空格分隔",
+    "selector": "标签选择器",
+    "kinds": "资源类型",
+    "kindsAll": "所有支持的类型",
+    "preview": "预览",
+    "previewing": "正在读取集群…",
+    "found": "将记录：{objects} 个资源，{hashed} 个敏感值以哈希形式保存。",
+    "nothing": "未选择任何内容：没有可记录的资源。",
+    "skipped": "已跳过",
+    "comment": "备注（必填）",
+    "confirm": "我了解当前状态将按原样记录，包括已经存在的偏差。",
+    "submit": "记录基线",
+    "cancel": "取消",
+    "stale": "预览之后集群发生了变化。请重新预览并确认所见内容。",
+    "expires": "预览有效期至 {time}。"
+  },
+  "version_dialog": {
+    "title": "新版本",
+    "added": "新增资源：{count}",
+    "removed": "已不存在：{count}",
+    "changed": "相对活动版本已更改：{count}",
+    "unchanged": "未更改：{count}",
+    "rulesChanged": "活动版本按不同的比较规则记录，无法显示差异。",
+    "submit": "记录版本",
+    "note": "新版本将成为活动版本，当前版本的例外会一并带入。"
+  },
+  "versions": {
+    "title": "版本",
+    "seq": "版本",
+    "author": "作者",
+    "comment": "备注",
+    "created": "创建时间",
+    "active": "活动",
+    "makeActive": "设为活动",
+    "more": "显示更多",
+    "confirmActive": "将版本 {seq} 设为活动版本？之后的检查将与其比较。"
+  },
+  "exceptions": {
+    "title": "例外",
+    "none": "没有例外。例外会把字段从某个资源或整个资源类型的比较中排除。",
+    "scope": "适用于",
+    "scopeResource": "单个资源",
+    "scopeKind": "资源类型",
+    "kind": "类型",
+    "namespace": "命名空间",
+    "name": "资源名称",
+    "path": "字段路径",
+    "pathHint": "例如 spec.replicas",
+    "comment": "备注（必填）",
+    "expires": "到期时间",
+    "never": "永不过期",
+    "expired": "已过期",
+    "add": "添加例外",
+    "remove": "移除",
+    "confirmRemove": "移除此例外？",
+    "createdBy": "添加人 {user}"
+  },
+  "history": {
+    "title": "检查历史",
+    "none": "还没有检查记录。",
+    "open": "打开",
+    "more": "显示更多",
+    "initiator": "发起人",
+    "time": "时间"
+  }
+}
