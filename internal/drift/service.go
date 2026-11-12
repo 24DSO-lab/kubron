@@ -310,7 +310,7 @@ func (s *Service) AddException(ctx context.Context, sess Session, baselineID str
 		Comment: strings.TrimSpace(in.Comment), ExpiresAt: in.ExpiresAt, CreatedBy: sess.Actor, CreatedAt: baseline.Normalize(s.now()),
 	}
 	if ex.Scope == baseline.ExceptionKind {
-		ex.Ref = baseline.Ref{Kind: in.Ref.Kind} // исключение по типу не привязано к ресурсу
+		ex.Ref = baseline.Ref{Group: in.Ref.Group, Kind: in.Ref.Kind, Namespace: in.Ref.Namespace} // по типу: без версии API и имени
 	}
 	if err := ex.Validate(); err != nil {
 		return baseline.Exception{}, err

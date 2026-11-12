@@ -318,18 +318,18 @@ func (e *Engine) snapshotOf(c *collected) Snapshot {
 
 // Preview — предпросмотр новой версии: что будет зафиксировано и чем это отличается от предыдущей версии.
 type Preview struct {
-	Token       string
-	ExpiresAt   time.Time
-	Objects     int
-	Hashed      int
-	Skipped     []Skip
-	HasPrevious bool
+	Token       string    `json:"token"`
+	ExpiresAt   time.Time `json:"expiresAt"`
+	Objects     int       `json:"objects"`
+	Hashed      int       `json:"hashed"`
+	Skipped     []Skip    `json:"skipped,omitempty"`
+	HasPrevious bool      `json:"hasPrevious"`
 	// RulesChanged — предыдущая версия снята по другим правилам: сравнение с ней невозможно.
-	RulesChanged bool
-	Added        []baseline.Ref
-	Removed      []baseline.Ref
-	Changed      []baseline.ItemResult
-	Unchanged    int
+	RulesChanged bool                  `json:"rulesChanged"`
+	Added        []baseline.Ref        `json:"added,omitempty"`
+	Removed      []baseline.Ref        `json:"removed,omitempty"`
+	Changed      []baseline.ItemResult `json:"changed,omitempty"`
+	Unchanged    int                   `json:"unchanged"`
 }
 
 func (e *Engine) tokenMAC(fp, bind string, exp int64) string {
