@@ -1,0 +1,22 @@
+{
+  "apiVersion": "v1",
+  "kind": "ConfigMap",
+  "metadata": {
+    "name": "web-config", "namespace": "prod", "uid": "f5f5f5f5-0000-4000-8000-000000000005", "resourceVersion": "45000000",
+    "creationTimestamp": "2026-03-02T09:10:00Z",
+    "labels": {"app": "web"},
+    "annotations": {
+      "example.com/contact": "ops@example.com",
+      "example.com/note": "rotate when password=canary-annotation-pw-31337 changes"
+    },
+    "managedFields": [{"manager": "argocd-controller", "operation": "Apply", "apiVersion": "v1", "time": "2026-11-10T07:00:00Z",
+      "fieldsType": "FieldsV1", "fieldsV1": {"f:data": {"f:app.yaml": {}}}}]
+  },
+  "data": {
+    "app.yaml": "listen: :8080\ndb_dsn: canary-dsn-value-424242\n",
+    "feature.flags": "new-checkout=true",
+    "empty": ""
+  },
+  "binaryData": {"logo.png": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGD4DwABBAEAHnOcQAAAAABJRU5ErkJggg=="},
+  "immutable": false
+}

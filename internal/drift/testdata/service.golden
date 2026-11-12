@@ -1,0 +1,16 @@
+# v1 Service prod/web
+metadata.annotations["example.com/scrape"] = "true"
+metadata.labels.app = "web"
+spec.externalTrafficPolicy = "Cluster"
+spec.ports[port=443].name = "https"
+spec.ports[port=443].port = 443
+spec.ports[port=443].targetPort = 8443
+spec.ports[port=53,protocol=UDP].name = "dns"
+spec.ports[port=53,protocol=UDP].port = 53
+spec.ports[port=53,protocol=UDP].protocol = "UDP"
+spec.ports[port=53,protocol=UDP].targetPort = 5353
+spec.ports[port=80].name = "http"
+spec.ports[port=80].port = 80
+spec.ports[port=80].targetPort = "http"
+spec.selector.app = "web"
+spec.type = "NodePort"
