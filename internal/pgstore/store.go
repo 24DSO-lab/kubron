@@ -15,6 +15,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
 
+	"github.com/24DSO-lab/kubron/internal/incident"
 	"github.com/24DSO-lab/kubron/internal/migrate"
 	"github.com/24DSO-lab/kubron/internal/secretbox"
 )
@@ -43,6 +44,9 @@ type Store struct {
 // это делает Init.
 // OrgID возвращает идентификатор организации каталога (tenant.Scope операционных модулей, ADR-0026 §4).
 func (s *Store) OrgID() string { return s.orgID }
+
+// Incidents — история расследований Kubron Intelligence (ADR-0024, миграция 0011).
+func (s *Store) Incidents() incident.Backend { return newIncidentBackend(s) }
 
 func Open(ctx context.Context, url string, keys *secretbox.Keyring) (*Store, error) {
 	if keys == nil {

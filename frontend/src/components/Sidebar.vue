@@ -44,6 +44,10 @@
         @click="emit('navigate', 'teams')">
         <span class="nav-icon">🧩</span> {{ $t('nav.teams') }}
       </div>
+      <div :class="['nav-item', { active: currentView === 'incidents' }]" data-testid="nav-incidents"
+        @click="emit('navigate', 'incidents')">
+        <span class="nav-icon">🩺</span> {{ $t('nav.incidents') }}
+      </div>
       <div v-if="can(Perm.UsersManage)" :class="['nav-item', { active: currentView === 'users' }]"
         @click="emit('navigate', 'users')">
         <span class="nav-icon">👥</span> {{ $t('nav.users') }}

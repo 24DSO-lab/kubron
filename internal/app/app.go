@@ -12,6 +12,7 @@ import (
 	"github.com/24DSO-lab/kubron/internal/auth"
 	"github.com/24DSO-lab/kubron/internal/clusterhealth"
 	"github.com/24DSO-lab/kubron/internal/credential"
+	"github.com/24DSO-lab/kubron/internal/incident"
 	"github.com/24DSO-lab/kubron/internal/k8s"
 	"github.com/24DSO-lab/kubron/internal/pfproxy"
 	"github.com/24DSO-lab/kubron/internal/readiness"
@@ -34,6 +35,9 @@ type App struct {
 	// updates — проверка новых версий (ADR-0028). Один на процесс: виды веб-сессий копируют указатель с корневого
 	// экземпляра. nil — оболочка проверку не подключала (тесты).
 	updates *update.Checker
+	// incidents — сервис расследований Kubron Intelligence (ADR-0024); один на процесс, виды веб-сессий копируют
+	// указатель. nil — оболочка сервис не подключала (тесты): методы Incident* отвечают ошибкой.
+	incidents *incident.Service
 	// sessionID — веб-сессия владельца вида (пусто у корневого экземпляра и в десктопе).
 	sessionID string
 	// Port-forward в вебе (ADR-0017): режим и прокси; задаются до создания видов (SetPortForwardMode/Proxy).

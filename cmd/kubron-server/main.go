@@ -135,6 +135,11 @@ func main() {
 			sessionBackend = p.Sessions()
 		}
 	}
+	// Расследования Kubron Intelligence (ADR-0024): до первых видов сессий, потому что виды копируют сервис.
+	incidentJob, err := app.SetupIncidents(core, os.Getenv)
+	if err != nil {
+		fatal("incidents", err)
+	}
 	if err := setupBroker(ctx, cfg, pgStore, core); err != nil {
 		fatal("sign-in", err)
 	}
@@ -199,9 +204,13 @@ func main() {
 	}
 	if pgStore != nil {
 		// Очистка просроченных строк и хранение аудита: исполняет одна реплика (pg_try_advisory_lock).
-		go jobs.Run(ctx, maintenanceJobs(pgStore, sessionBackend, cfg.AuditRetention, readinessJob)...)
-	} else if readinessJob != nil {
-		go jobs.Run(ctx, readinessJob) // одна реплика: блокировка не нужна
+		go jobs.Run(ctx, maintenanceJobs(pgStore, sessionBackend, cfg.AuditRetention, readinessJob, incidentJob)...)
+	} else {
+		for _, j := range []*jobs.Job{readinessJob, incidentJob} {
+			if j != nil {
+				go jobs.Run(ctx, j) // файловое хранилище: одна реплика, блокировка не нужна
+			}
+		}
 	}
 	// Фоновая уборка веб-сессий: закрывает те, у которых ядро уже завершило пользовательскую сессию
 	// (простой, отключение пользователя) или истёк срок, и освобождает их ресурсы и ссылки пула.

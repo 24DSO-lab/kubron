@@ -138,7 +138,16 @@
     "StartDebugContainer": "调试容器",
     "bugreport": {
       "submit": "已发送错误报告"
-    }
+    },
+    "IncidentOpen": "发起调查",
+    "IncidentMarkOutcome": "标记调查结果",
+    "IncidentSaveFragment": "日志片段保存为证据",
+    "IncidentDeleteFragment": "删除日志片段",
+    "IncidentSetLogCapture": "更改调查的日志片段保存",
+    "IncidentReadFragment": "读取日志片段",
+    "IncidentExport": "导出调查",
+    "IncidentDelete": "删除调查",
+    "IncidentSaveSettings": "更改调查存储设置"
   },
   "export": {
     "csv": "导出 CSV",

@@ -49,7 +49,7 @@ func maintenanceJobs(pg *pgstore.Store, sessions websession.Backend, auditRetent
 			},
 		})
 	}
-	// Задачи доменов (retention отчётов Readiness и др.) делят исполнителя с остальными.
+	// Задачи доменов (retention отчётов Readiness, retention расследований и др.) делят исполнителя с остальными.
 	for _, j := range extra {
 		if j != nil {
 			j.Lock = lock

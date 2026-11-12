@@ -18,6 +18,8 @@ type RekeyReport struct {
 
 	Credentials       int // записи входа в кластеры (cluster_credentials), перешифрованные или переведённые в envelope-v1
 	LegacyCredentials int // записей legacy-v1, оставшихся после перешифрования (должно быть 0)
+
+	IncidentFragments int // фрагменты логов расследований (incident_fragments), перешифрованные текущим ключом
 }
 
 // Rekey перешифровывает текущим ключом все секреты, зашифрованные другим ключом (ротация, задача 3.1c).
@@ -118,6 +120,9 @@ func (s *Store) Rekey(ctx context.Context) (RekeyReport, error) {
 	cr, err := s.Credentials().RekeyCredentials(ctx)
 	rep.Credentials, rep.LegacyCredentials = cr.Changed, cr.LegacyRemaining
 	if err != nil {
+		return rep, err
+	}
+	if rep.IncidentFragments, err = s.RekeyIncidentFragments(ctx); err != nil {
 		return rep, err
 	}
 	return rep, nil

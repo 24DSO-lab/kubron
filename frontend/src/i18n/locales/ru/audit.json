@@ -138,7 +138,16 @@
     "StartDebugContainer": "Отладочный контейнер",
     "bugreport": {
       "submit": "Отчёт об ошибке отправлен"
-    }
+    },
+    "IncidentOpen": "Расследование открыто",
+    "IncidentMarkOutcome": "Результат расследования отмечен",
+    "IncidentSaveFragment": "Фрагмент лога сохранён как доказательство",
+    "IncidentDeleteFragment": "Фрагмент лога удалён",
+    "IncidentSetLogCapture": "Изменено сохранение фрагментов логов расследования",
+    "IncidentReadFragment": "Прочитан фрагмент лога",
+    "IncidentExport": "Расследование выгружено",
+    "IncidentDelete": "Расследование удалено",
+    "IncidentSaveSettings": "Изменены настройки хранения расследований"
   },
   "export": {
     "csv": "Выгрузить CSV",

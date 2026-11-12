@@ -9,6 +9,19 @@ package server
 // или в deniedMethods (см. TestEveryAppMethodIsClassified). Каждый метод по-прежнему сам
 // проверяет права через authz.
 var allowedMethods = []string{
+	"IncidentOpen",
+	"IncidentRefresh",
+	"IncidentGet",
+	"IncidentList",
+	"IncidentMarkOutcome",
+	"IncidentSaveFragment",
+	"IncidentDeleteFragment",
+	"IncidentSetLogCapture",
+	"IncidentReadFragment",
+	"IncidentExport",
+	"IncidentDelete",
+	"IncidentGetSettings",
+	"IncidentSaveSettings",
 	"GetBugReportStatus",
 	"SubmitBugReport",
 	"ExportAuditLog",

@@ -138,7 +138,16 @@
     "StartDebugContainer": "Debug container",
     "bugreport": {
       "submit": "Bug report sent"
-    }
+    },
+    "IncidentOpen": "Investigation opened",
+    "IncidentMarkOutcome": "Investigation outcome marked",
+    "IncidentSaveFragment": "Log fragment saved as evidence",
+    "IncidentDeleteFragment": "Log fragment deleted",
+    "IncidentSetLogCapture": "Log fragment saving changed for an investigation",
+    "IncidentReadFragment": "Log fragment read",
+    "IncidentExport": "Investigation exported",
+    "IncidentDelete": "Investigation deleted",
+    "IncidentSaveSettings": "Incident storage settings changed"
   },
   "export": {
     "csv": "Export CSV",

@@ -52,6 +52,8 @@ export const viewRegistry: Record<string, ViewConfig> = {
   teams: {
     component: lazy('TeamsView'),
   },
+  // Расследования Kubron Intelligence (ADR-0024): диагностика workload, факты, гипотезы, рекомендации
+  incidents: { component: lazy('IncidentsView') },
   // Журнал аудита; бэкенд всё равно требует право audit.read
   audit: {
     component: lazy('AuditView'),

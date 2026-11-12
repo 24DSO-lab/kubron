@@ -31,5 +31,6 @@
     "fluxDashboard": "Dashboard",
     "readiness": "Upgrade readiness"
   },
-  "teams": "Teams"
+  "teams": "Teams",
+  "incidents": "Incidents"
 }

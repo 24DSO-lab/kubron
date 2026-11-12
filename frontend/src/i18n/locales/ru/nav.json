@@ -31,5 +31,6 @@
     "fluxDashboard": "Dashboard",
     "readiness": "Готовность к обновлению"
   },
-  "teams": "Команды"
+  "teams": "Команды",
+  "incidents": "Инциденты"
 }

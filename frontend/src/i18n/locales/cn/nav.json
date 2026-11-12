@@ -31,5 +31,6 @@
     "fluxDashboard": "Dashboard",
     "readiness": "升级就绪检查"
   },
-  "teams": "团队"
+  "teams": "团队",
+  "incidents": "事件"
 }

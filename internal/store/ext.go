@@ -5,9 +5,11 @@ package store
 
 import (
 	"errors"
+	"path/filepath"
 
 	"github.com/24DSO-lab/kubron/internal/audit"
 	"github.com/24DSO-lab/kubron/internal/auth"
+	"github.com/24DSO-lab/kubron/internal/incident"
 	"github.com/24DSO-lab/kubron/internal/k8s"
 	"github.com/24DSO-lab/kubron/internal/readiness"
 	"github.com/24DSO-lab/kubron/pkg/ext"
@@ -27,6 +29,15 @@ func (e extStore) Readiness() readiness.Backend {
 	return fileStore{dir: k8s.GetKubronDir()}.Readiness()
 }
 func (e extStore) ArgoTokens() k8s.TokenStore { return e.s.ArgoTokens() }
+
+// Incidents использует хранилище расследований внешнего хранилища, если оно его предоставляет (необязательная
+// возможность, как WebOIDC); иначе история лежит в файлах каталога данных приложения.
+func (e extStore) Incidents() incident.Backend {
+	if c, ok := e.s.(interface{ Incidents() incident.Backend }); ok {
+		return c.Incidents()
+	}
+	return incident.NewFileBackend(filepath.Join(k8s.GetKubronDir(), "incidents"))
+}
 
 // webOIDCSettingsStore is an optional extension for public stores that persist application-wide web settings.
 // It uses plain types only, so that a store of another module can implement it.

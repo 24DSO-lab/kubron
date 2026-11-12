@@ -53,6 +53,7 @@ func main() {
 			}
 			setupDesktopBroker(ctx, a.App, platform)
 			setupDesktopUpdates(ctx, a.App, os.Getenv)
+			setupDesktopIncidents(ctx, a.App, os.Getenv)
 			app.OnStartup(a.App)(ctx)
 			// Retention истории Readiness: десктоп — один процесс, исполнитель не выбирается.
 			if job, err := app.ReadinessRetentionJob(a.App, nil); err != nil {
