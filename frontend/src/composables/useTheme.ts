@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { computed, readonly, ref } from 'vue'
+import { setWindowTheme } from '../platform/windowTheme'
 
 /** Выбор пользователя: фиксированная тема или следование настройке ОС */
 export type ThemeMode = 'dark' | 'light' | 'system'
@@ -32,6 +33,7 @@ let initialized = false
 function applyToDocument(): void {
   if (typeof document === 'undefined') return
   document.documentElement.dataset.theme = resolved.value
+  setWindowTheme(resolved.value)
 }
 
 /**

@@ -56,7 +56,7 @@ export default defineConfig(({ mode }) => {
           if (/wailsjs\/(runtime|go\/main)\//.test(id)) return '\0wails-stub'
         },
         load(id: string) {
-          if (id === '\0wails-stub') return 'export const EventsOn = () => () => {}\nexport const BrowserOpenURL = () => {}\nexport default {}'
+          if (id === '\0wails-stub') return 'export const EventsOn = () => () => {}\nexport const BrowserOpenURL = () => {}\nexport const WindowSetLightTheme = () => {}\nexport const WindowSetDarkTheme = () => {}\nexport default {}'
         },
       }] : []),
       {

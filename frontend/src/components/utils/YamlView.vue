@@ -49,6 +49,7 @@
 <script lang="ts" setup>
 import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import 'monaco-editor'
+import { useMonacoTheme } from '../../composables/useMonacoTheme'
 import * as monaco from 'monaco-editor/editor/editor.api'
 import { useI18n } from 'vue-i18n'
 import { errorText } from '../../composables/errorText'
@@ -59,6 +60,7 @@ import { askConfirm } from '../../resources/confirm'
 import type { YamlTab } from '../../composables/useTabbedPanel'
 import { callApp } from '../../platform/api'
 
+const monacoTheme = useMonacoTheme(n => monaco.editor.setTheme(n))
 const props = defineProps<{ tab: YamlTab; active: boolean }>()
 const emit = defineEmits<{ (e: 'apply', tabId: string): void }>()
 
@@ -89,7 +91,7 @@ function createEditor() {
   editor = monaco.editor.create(editorEl.value, {
     value: props.tab.content,
     language: 'yaml',
-    theme: 'vs-dark',
+    theme: monacoTheme(),
     automaticLayout: true,
     minimap: { enabled: true },
     scrollBeyondLastLine: false,
@@ -110,7 +112,7 @@ function createDiff() {
   const original = monaco.editor.createModel(props.tab.originalContent, 'yaml')
   const modified = monaco.editor.createModel(props.tab.content, 'yaml')
   const ed = monaco.editor.createDiffEditor(diffEl.value, {
-    theme: 'vs-dark',
+    theme: monacoTheme(),
     automaticLayout: true,
     readOnly: true,
     originalEditable: false,

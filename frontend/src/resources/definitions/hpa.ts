@@ -34,7 +34,7 @@ export const horizontalPodAutoscaler = defineResource<k8s.HPAInfo>({
     { key: 'minReplicas', label: 'defs.columns.minPods' },
     { key: 'maxReplicas', label: 'defs.columns.maxPods' },
     { key: 'currentReplicas', label: 'defs.columns.replicas' },
-    { key: 'status', label: 'common.status', formatter: (h: any) => h.status || '—', colorFn: (h: any) => (scalingOk(h) ? '#4ade80' : '#facc15') },
+    { key: 'status', label: 'common.status', formatter: (h: any) => h.status || '—', colorFn: (h: any) => (scalingOk(h) ? 'var(--green)' : 'var(--yellow)') },
     ageCol,
   ],
 

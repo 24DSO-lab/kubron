@@ -69,6 +69,10 @@
   --bar-warn: #a8860f;
   --bar-err: #b23b3b;
   --avatar-accent-pct: 100%;
+  --term-chrome: #252526;
+  --term-bg: #1e1e1e;
+  --term-scroll: #444444;
+  --term-scroll-hover: #555555;
 }
 
 :root[data-theme='light'] {
@@ -130,4 +134,8 @@
   --bar-warn: #f2d48a;
   --bar-err: #f0a0b0;
   --avatar-accent-pct: 58%;
+  --term-chrome: #e6e9ef;
+  --term-bg: #eff1f5;
+  --term-scroll: #bcc0cc;
+  --term-scroll-hover: #acb0be;
 }

@@ -58,9 +58,9 @@ export function badgeClass(status?: string): string {
 /** Цвет текста для колонок списка (colorFn) */
 export function statusColor(status?: string): string {
   switch (badgeClass(status)) {
-    case 'rd-ok': return '#4ade80'
-    case 'rd-warn': return '#facc15'
-    case 'rd-err': return '#ef4444'
-    default: return '#868d8a'
+    case 'rd-ok': return 'var(--green)'
+    case 'rd-warn': return 'var(--yellow)'
+    case 'rd-err': return 'var(--red)'
+    default: return 'var(--text-gray)'
   }
 }

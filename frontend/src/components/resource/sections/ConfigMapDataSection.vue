@@ -24,6 +24,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, onUpdated, reactive } from 'vue'
 
 import 'monaco-editor'
+import { useMonacoTheme } from '../../../composables/useMonacoTheme'
 import * as monaco from 'monaco-editor/editor/editor.api'
 import editorWorker from 'monaco-editor/editor/editor.worker?worker'
 
@@ -40,6 +41,7 @@ import { useNotifications } from '../../../composables/useNotifications'
 import { t } from '../../../i18n'
 import { errorText } from '../../../composables/errorText'
 
+const monacoTheme = useMonacoTheme(n => monaco.editor.setTheme(n))
 const props = defineProps<{ resource: any }>()
 const entries = computed(() => Object.entries(props.resource?.data ?? {}) as [string, string][])
 
@@ -93,7 +95,7 @@ function createOrUpdateEditors() {
     const editor = monaco.editor.create(container, {
       value: val,
       language: detectLanguage(val),
-      theme: 'vs-dark',
+      theme: monacoTheme(),
       automaticLayout: true,
       minimap: { enabled: false, scale: 1, showSlider: 'mouseover' },
       scrollBeyondLastLine: false,

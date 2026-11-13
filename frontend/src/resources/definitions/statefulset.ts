@@ -41,7 +41,7 @@ export const statefulSet = defineResource<k8s.StatefulSetInfo>({
       key: 'pods',
       label: 'defs.columns.pods',
       formatter: s => `${s.readyReplicas ?? 0}/${s.replicas ?? 0}`,
-      colorFn: s => stsStatus(s) === 'Scaled to 0' ? '#888' : (s.readyReplicas === s.replicas ? '#4ade80' : '#facc15'),
+      colorFn: s => stsStatus(s) === 'Scaled to 0' ? '#888' : (s.readyReplicas === s.replicas ? 'var(--green)' : 'var(--yellow)'),
     },
     ageCol,
   ],

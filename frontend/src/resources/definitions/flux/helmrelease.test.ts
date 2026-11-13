@@ -74,10 +74,10 @@ describe('колонки', () => {
   })
   it('цвета состояний', () => {
     const c = (state: FluxHelmReleaseInfo['state']) => col('state').colorFn!(hr({ state }))
-    expect(c('Ready')).toBe('#4ade80')
-    expect(c('Reconciling')).toBe('#facc15')
-    expect(c('Stalled')).toBe('#ef4444')
-    expect(c('Failed')).toBe('#ef4444')
+    expect(c('Ready')).toBe('var(--green)')
+    expect(c('Reconciling')).toBe('var(--yellow)')
+    expect(c('Stalled')).toBe('var(--red)')
+    expect(c('Failed')).toBe('var(--red)')
   })
   it('ревизия сокращается', () => {
     expect(col('revision').formatter!(hr({ revision: 'sha256:' + 'a'.repeat(64) }))).toBe('sha256:aaaaaaa')

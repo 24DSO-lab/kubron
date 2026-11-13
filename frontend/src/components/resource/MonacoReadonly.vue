@@ -7,6 +7,7 @@
 <script lang="ts" setup>
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import 'monaco-editor'
+import { useMonacoTheme } from '../../composables/useMonacoTheme'
 import * as monaco from 'monaco-editor/editor/editor.api'
 import editorWorker from 'monaco-editor/editor/editor.worker?worker'
 
@@ -16,6 +17,7 @@ if (typeof window !== 'undefined' && !(window as any).MonacoEnvironment) {
 
 const CODICON_STYLE_ID = 'kubron-codicon-font'
 
+const monacoTheme = useMonacoTheme(n => monaco.editor.setTheme(n))
 const props = defineProps<{ value: string; language?: string }>()
 const el = ref<HTMLDivElement | null>(null)
 let editor: monaco.editor.IStandaloneCodeEditor | null = null
@@ -30,7 +32,7 @@ onMounted(() => {
   editor = monaco.editor.create(el.value!, {
     value: props.value,
     language: props.language ?? 'yaml',
-    theme: 'vs-dark',
+    theme: monacoTheme(),
     readOnly: true,
     domReadOnly: true,
     automaticLayout: true,
