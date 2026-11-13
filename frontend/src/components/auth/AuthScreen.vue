@@ -181,7 +181,11 @@ async function run(fn: () => Promise<void>) {
   text-align: center;
 }
 .auth-lang { position: absolute; top: 16px; right: 16px; }
-.auth-logo { height: 36px; margin-bottom: 18px; }
+.auth-logo {
+  height: 36px; margin-bottom: 18px;
+  box-sizing: border-box; border-radius: 9px; background: var(--logo-plate);
+}
+:root[data-theme='light'] .auth-logo { padding: 3px 8px; }
 h1 { margin: 0 0 8px; font-size: 20px; font-weight: 700; color: var(--text); }
 .auth-hint { margin: 0 0 18px; font-size: 13px; line-height: 1.5; color: var(--text-muted); }
 .auth-hint code { background: var(--bg-crust); padding: 1px 5px; border-radius: 4px; color: var(--text); }

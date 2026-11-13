@@ -32,6 +32,9 @@
   --accent-rgb: 137, 180, 250;  /* для rgba(var(--accent-rgb), a) */
   --danger-rgb: 243, 139, 168;
 
+  /* Плашка под логотипом: в тёмной теме прозрачна, в светлой нужна, т.к. надпись «KUB» белая */
+  --logo-plate: transparent;
+
   /* Второй уровень: панели и диалоги (индиго-палитра), серые и статусные цвета */
   --panel: #1a1b2e;
   --panel-raised: #1e1f35;
@@ -83,6 +86,8 @@
   --overlay-scrim: rgba(76, 79, 105, 0.45);
   --accent-rgb: 30, 102, 245;
   --danger-rgb: 210, 15, 57;
+
+  --logo-plate: #1e1e2e;
 
   --panel: #e6e9ef;
   --panel-raised: #f5f6fa;
