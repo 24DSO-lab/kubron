@@ -137,10 +137,23 @@ func (p *provider) Begin(ctx context.Context, req OpRequest) (context.Context, *
 	}
 	ctx, cancel := context.WithTimeout(ctx, p.cfg.OpTimeout)
 
-	clients, err := p.env.Clients(ctx, req.ClusterID)
-	if err != nil {
-		cancel()
-		return ctx, nil, fmt.Errorf("%w: %w", ErrUnavailable, err)
+	var reader Reader
+	if req.StoredOnly {
+		// Подключения нет, поэтому существование кластера проверяет окружение (если умеет): иначе на десктопе
+		// несуществующий id выглядел бы как кластер с пустой историей.
+		if k, ok := p.env.(interface{ ClusterKnown(clusterID string) error }); ok {
+			if err := k.ClusterKnown(req.ClusterID); err != nil {
+				cancel()
+				return ctx, nil, err
+			}
+		}
+	} else {
+		clients, err := p.env.Clients(ctx, req.ClusterID)
+		if err != nil {
+			cancel()
+			return ctx, nil, fmt.Errorf("%w: %w", ErrUnavailable, err)
+		}
+		reader = NewReader(req.ClusterID, clients, p.cfg.Limiter, p.cfg.Limits)
 	}
 	op := &opState{p: p, req: req, actor: actor, scope: scope, corr: corr, started: p.cfg.Now(), cancel: cancel}
 	return ctx, NewOp(&Op{
@@ -149,7 +162,7 @@ func (p *provider) Begin(ctx context.Context, req OpRequest) (context.Context, *
 		SessionID:     p.env.SessionID(),
 		CorrelationID: corr,
 		StartedAt:     op.started,
-		Reader:        NewReader(req.ClusterID, clients, p.cfg.Limiter, p.cfg.Limits),
+		Reader:        reader,
 	}, Hooks{Require: op.require, Audit: op.audit, Notify: op.notify, End: op.end}), nil
 }
 

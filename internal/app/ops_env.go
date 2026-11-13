@@ -6,6 +6,7 @@ package app
 import (
 	"context"
 	"errors"
+	"io/fs"
 
 	"github.com/24DSO-lab/kubron/internal/audit"
 	"github.com/24DSO-lab/kubron/internal/auth"
@@ -83,6 +84,18 @@ func (e opsEnv) Clients(_ context.Context, clusterID string) (opsplatform.Client
 		return opsplatform.Clients{}, errors.New("cluster connection is incomplete")
 	}
 	return c, nil
+}
+
+// ClusterKnown — кластер есть в каталоге; нужен операциям без подключения (opsplatform.OpRequest.StoredOnly).
+// Неизвестный кластер неотличим от чужого: auth.ErrClusterNotFound.
+func (e opsEnv) ClusterKnown(clusterID string) error {
+	if _, err := k8s.LoadClusterMeta(clusterID); err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return auth.ErrClusterNotFound
+		}
+		return err
+	}
+	return nil
 }
 
 func (e opsEnv) RecordAudit(ev audit.Event) {

@@ -12,8 +12,8 @@
 
 ## Что НЕ сделано / ограничения
 - Только живые объекты кластера; GitOps и локальные файлы — «не проверено» (по ADR). Drift/baseline — Dev 4.
-- allowlist платформы содержит мало видов с deprecated API: часть видов матрицы попадает в `coverage.notCovered`. Просьба: расширить allowlist видами из матрицы (по GroupKind).
-- `beginOp` требует подключённого кластера даже для истории и экспорта.
+- ~~allowlist платформы содержит мало видов с deprecated API…~~ **Закрыто (Dev 1, `integrate/adr-0026`):** allowlist расширен видами матрицы, страж — `internal/app/allowlist_matrix_test.go`.
+- ~~`beginOp` требует подключённого кластера даже для истории и экспорта.~~ **Закрыто (Dev 1):** `OpRequest.StoredOnly`, History/Get/Compare/Export переведены на него.
 - Markdown-экспорт только на английском (JSON — коды сообщений).
 - e2e и тесты pgstore в этой среде не гонялись целиком: e2e нужен kind (`E2E_READINESS=1`, `E2E_PF_URL`, `E2E_KUBECONFIG`); pgstore — PG16 запускался ранее, к концу работы был остановлен.
 
@@ -27,7 +27,7 @@
 7. Десктоп копирует экспорт в буфер обмена (скачивание файла только в вебе).
 
 ## Просьбы к другим
-- Dev 1: allowlist `Reader` — виды из `internal/readiness/apimatrix/matrix.json`; опционально — `beginOp` без подключения для чтения истории.
+- ✅ Выполнено (Dev 1) — Dev 1: allowlist `Reader` — виды из `internal/readiness/apimatrix/matrix.json`; опционально — `beginOp` без подключения для чтения истории.
 - Интеграция: удалить локальную заглушку `internal/pgstore/migrations/0011_incidents.{up,down}.sql` (в коммиты она не входит) перед применением патчей Dev 2; `vendor/` и `frontend/dist` не коммитить.
 
 ## Новые строки ошибок Go

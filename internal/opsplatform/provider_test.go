@@ -505,3 +505,52 @@ func (r *recordingObserver) snapshot() []string {
 	defer r.mu.Unlock()
 	return append([]string(nil), r.got...)
 }
+
+// StoredOnly: история и экспорт не требуют подключения к кластеру, но права и принадлежность проверяются как всегда.
+func TestBeginStoredOnlyDoesNotConnect(t *testing.T) {
+	t.Parallel()
+	env := newFakeEnv()
+	env.clientErr = errors.New("cluster is unreachable") // подключение сломано: StoredOnly его не трогает
+	p, _ := newProvider(t, env)
+	r := req("c1", auth.PermRead)
+	r.StoredOnly = true
+	_, op, err := p.Begin(t.Context(), r)
+	if err != nil {
+		t.Fatalf("a stored-only operation must not need the cluster: %v", err)
+	}
+	defer op.End(nil)
+	if op.Reader != nil || env.clientCalls != 0 {
+		t.Fatalf("Reader=%v, client calls=%d: no connection expected", op.Reader, env.clientCalls)
+	}
+	if op.Scope.ClusterID != "c1" || op.Scope.TeamID != "teamA" {
+		t.Fatalf("scope = %+v", op.Scope)
+	}
+	// чужой кластер и отсутствие права — по-прежнему отказ
+	r.ClusterID = "c2"
+	if _, _, err := p.Begin(t.Context(), r); !errors.Is(err, auth.ErrClusterNotFound) {
+		t.Fatalf("foreign cluster: %v", err)
+	}
+	r.ClusterID, r.Permission = "c1", auth.PermBaselineManage
+	if _, _, err := p.Begin(t.Context(), r); !errors.Is(err, auth.ErrForbidden) {
+		t.Fatalf("no permission: %v", err)
+	}
+}
+
+// knownEnv — окружение, умеющее проверять существование кластера без подключения.
+type knownEnv struct {
+	*fakeEnv
+	err error
+}
+
+func (e knownEnv) ClusterKnown(string) error { return e.err }
+
+func TestBeginStoredOnlyChecksClusterKnown(t *testing.T) {
+	t.Parallel()
+	env := knownEnv{fakeEnv: newFakeEnv(), err: auth.ErrClusterNotFound}
+	p := NewProvider(env, Config{Limiter: NewClusterLimiter(2), OpTimeout: 5 * time.Second})
+	r := req("c1", auth.PermRead)
+	r.StoredOnly = true
+	if _, _, err := p.Begin(t.Context(), r); !errors.Is(err, auth.ErrClusterNotFound) {
+		t.Fatalf("unknown cluster: %v", err)
+	}
+}

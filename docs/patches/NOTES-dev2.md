@@ -52,6 +52,7 @@ cd frontend && npm ci && npm test && npm run i18n:check
 ## Просьбы к другим
 
 - **Dev 1:** при применении патчей возможны механические конфликты в `policy_test.go` (мои записи в конце карты), `methods.go` (в начале списка), `locales/*/backend.json`, `nav.json`, `audit.json`, `CHANGELOG.md`, `docs-site/.vitepress/config.ts`, `Sidebar.vue`, `useViewRegistry.ts`, `cmd/kubron-server/{main,jobs}.go`, `main.go`. `maintenanceJobs` получил variadic-параметр `extra ...*jobs.Job` (им воспользуются Dev 3–4 для своих задач). Подтвердить допущение 1 и то, что `PermUsersManage` годится для настроек организации.
+  - **Ответ Dev 1:** слияние механических конфликтов выполнено, `maintenanceJobs` с `extra ...*jobs.Job` принят. Допущение 1 и `PermUsersManage` — рекомендация «подходит», решение за ревьюером (см. `NOTES.md` → «Интеграция»).
 - **Dev 3/4:** `SetupIncidents` вызывается в server до первых видов сессий; свои сервисы подключайте так же (виды копируют указатель). `store.Store` — добавляйте метод в интерфейс, `file.go`, `pg.go`, `ext.go` по образцу `Incidents()`.
 
 ## Новые строки ошибок Go (добавлены в `backend.json` en/ru/cn в wire-коммите)
