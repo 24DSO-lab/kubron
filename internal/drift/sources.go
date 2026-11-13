@@ -42,7 +42,7 @@ func parseManagedFields(u *unstructured.Unstructured) []ownedField {
 			continue
 		}
 		var tree map[string]any
-		if json.Unmarshal(e.FieldsV1.Raw, &tree) != nil {
+		if json.Unmarshal(e.FieldsV1.GetRawBytes(), &tree) != nil {
 			continue
 		}
 		var paths []string
