@@ -91,6 +91,10 @@ type Reader interface {
 type OpRequest struct {
 	Module, Operation, ClusterID string
 	Permission                   auth.Permission
+	// StoredOnly — операция работает только с уже сохранёнными данными (история, экспорт): подключение к кластеру не
+	// строится, Op.Reader == nil, права и принадлежность кластера команде проверяются как обычно. Дополнение к
+	// замороженному контракту (нулевое значение — прежнее поведение); зафиксировано в NOTES.md.
+	StoredOnly bool
 }
 
 // Hooks — побочные эффекты Op. Заполняются платформой (Provider) или тестом; nil-поле безопасно:

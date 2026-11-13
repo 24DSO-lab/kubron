@@ -76,13 +76,13 @@ func (a *App) ReadinessInfo() (ReadinessInfo, error) {
 	return ReadinessInfo{Window: svc.Window(), APIMatrix: svc.MatrixInfo(), Catalog: svc.CatalogInfo()}, nil
 }
 
-// readinessOp начинает операцию модуля и возвращает сервис, контекст и Op; закрывать Op обязан вызывающий.
-func (a *App) readinessOp(clusterID, operation string) (*readiness.Service, context.Context, *opsplatform.Op, error) {
+// readinessOp начинает операцию модуля (storedOnly — без подключения к кластеру: история, экспорт) и возвращает сервис, контекст и Op; закрывать Op обязан вызывающий.
+func (a *App) readinessOp(clusterID, operation string, storedOnly bool) (*readiness.Service, context.Context, *opsplatform.Op, error) {
 	svc, err := a.readinessService()
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	ctx, op, err := a.beginOp(opsplatform.OpRequest{Module: readinessModule, Operation: operation, ClusterID: clusterID, Permission: auth.PermRead})
+	ctx, op, err := a.beginOp(opsplatform.OpRequest{Module: readinessModule, Operation: operation, ClusterID: clusterID, Permission: auth.PermRead, StoredOnly: storedOnly})
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -95,7 +95,7 @@ func (a *App) ReadinessRun(clusterID, target string) (rep *readiness.Report, err
 	if err := a.authzCluster(auth.PermRead, clusterID, "target", target); err != nil {
 		return nil, err
 	}
-	svc, ctx, op, err := a.readinessOp(clusterID, "run")
+	svc, ctx, op, err := a.readinessOp(clusterID, "run", false)
 	if err != nil {
 		return nil, err
 	}
@@ -121,7 +121,7 @@ func (a *App) ReadinessHistory(clusterID, cursor string, limit int) (page readin
 	if err := a.authzCluster(auth.PermRead, clusterID); err != nil {
 		return readiness.Page{}, err
 	}
-	svc, ctx, op, err := a.readinessOp(clusterID, "history")
+	svc, ctx, op, err := a.readinessOp(clusterID, "history", true)
 	if err != nil {
 		return readiness.Page{}, err
 	}
@@ -134,7 +134,7 @@ func (a *App) ReadinessGet(clusterID, id string) (rep *readiness.Report, err err
 	if err := a.authzCluster(auth.PermRead, clusterID); err != nil {
 		return nil, err
 	}
-	svc, ctx, op, err := a.readinessOp(clusterID, "get")
+	svc, ctx, op, err := a.readinessOp(clusterID, "get", true)
 	if err != nil {
 		return nil, err
 	}
@@ -147,7 +147,7 @@ func (a *App) ReadinessCompare(clusterID, id, previousID string) (d readiness.Di
 	if err := a.authzCluster(auth.PermRead, clusterID); err != nil {
 		return readiness.Diff{}, err
 	}
-	svc, ctx, op, err := a.readinessOp(clusterID, "compare")
+	svc, ctx, op, err := a.readinessOp(clusterID, "compare", true)
 	if err != nil {
 		return readiness.Diff{}, err
 	}
@@ -160,7 +160,7 @@ func (a *App) ReadinessExport(clusterID, id, format string) (out readiness.Expor
 	if err := a.authzCluster(auth.PermRead, clusterID, "id", id, "format", format); err != nil {
 		return readiness.ExportedReport{}, err
 	}
-	svc, ctx, op, err := a.readinessOp(clusterID, "export")
+	svc, ctx, op, err := a.readinessOp(clusterID, "export", true)
 	if err != nil {
 		return readiness.ExportedReport{}, err
 	}
