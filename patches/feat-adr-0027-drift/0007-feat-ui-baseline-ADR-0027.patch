@@ -1,0 +1,1693 @@
+From 5745e51acfaeafba95784d9f63e2dd0dd2f1b276 Mon Sep 17 00:00:00 2001
+From: Vadim <vmilyash@mts.ru>
+Date: Thu, 12 Nov 2026 23:30:23 +0700
+Subject: [PATCH 7/9] =?UTF-8?q?feat(ui):=20=D1=80=D0=B0=D0=B7=D0=B4=D0=B5?=
+ =?UTF-8?q?=D0=BB=20baseline=20=D0=BA=D0=BE=D0=BD=D1=84=D0=B8=D0=B3=D1=83?=
+ =?UTF-8?q?=D1=80=D0=B0=D1=86=D0=B8=D0=B8=20(ADR-0027)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+BaselineView с дочерними компонентами, composable useBaseline, локали en/ru/cn,
+vitest и e2e. Создание версии только после предпросмотра, комментария и явного
+подтверждения; значения чувствительных полей в интерфейс не приходят.
+
+Signed-off-by: Vadim <vmilyash@mts.ru>
+---
+ frontend/e2e/baseline.spec.ts                 |  16 ++
+ .../baseline/BaselineCheckResult.vue          | 140 ++++++++++++
+ .../baseline/BaselineCreateDialog.vue         | 174 ++++++++++++++
+ .../baseline/BaselineExceptions.vue           | 120 ++++++++++
+ .../src/components/views/BaselineView.vue     | 177 +++++++++++++++
+ frontend/src/composables/useBaseline.test.ts  | 120 ++++++++++
+ frontend/src/composables/useBaseline.ts       | 213 ++++++++++++++++++
+ frontend/src/i18n/locales/cn/baseline.json    | 156 +++++++++++++
+ frontend/src/i18n/locales/en/baseline.json    | 156 +++++++++++++
+ frontend/src/i18n/locales/ru/baseline.json    | 156 +++++++++++++
+ frontend/src/types/baseline.ts                | 156 +++++++++++++
+ 11 files changed, 1584 insertions(+)
+ create mode 100644 frontend/e2e/baseline.spec.ts
+ create mode 100644 frontend/src/components/baseline/BaselineCheckResult.vue
+ create mode 100644 frontend/src/components/baseline/BaselineCreateDialog.vue
+ create mode 100644 frontend/src/components/baseline/BaselineExceptions.vue
+ create mode 100644 frontend/src/components/views/BaselineView.vue
+ create mode 100644 frontend/src/composables/useBaseline.test.ts
+ create mode 100644 frontend/src/composables/useBaseline.ts
+ create mode 100644 frontend/src/i18n/locales/cn/baseline.json
+ create mode 100644 frontend/src/i18n/locales/en/baseline.json
+ create mode 100644 frontend/src/i18n/locales/ru/baseline.json
+ create mode 100644 frontend/src/types/baseline.ts
+
+diff --git a/frontend/e2e/baseline.spec.ts b/frontend/e2e/baseline.spec.ts
+new file mode 100644
+index 00000000..c3d78cf6
+--- /dev/null
++++ b/frontend/e2e/baseline.spec.ts
+@@ -0,0 +1,16 @@
++// Copyright 2026 The Kubron Authors
++// SPDX-License-Identifier: Apache-2.0
++
++import { expect, test } from '@playwright/test'
++
++// Методы baseline (ADR-0027) закрыты аутентификацией и CSRF, как и остальные методы RPC.
++// Сценарии с кластером (создание версии, проверка, исключения) требуют живого kube-apiserver и здесь не запускаются:
++// они покрыты тестами внутренних пакетов на двойниках и общим контрактом хранилища.
++test.describe('baseline: доступ к RPC', () => {
++  for (const method of ['BaselineList', 'BaselineKinds', 'DriftCheck', 'BaselineDelete']) {
++    test(`${method} без сессии отклоняется`, async ({ request }) => {
++      const res = await request.post(`/api/rpc/${method}`, { data: [], headers: { 'Content-Type': 'application/json' } })
++      expect([401, 403]).toContain(res.status())
++    })
++  }
++})
+diff --git a/frontend/src/components/baseline/BaselineCheckResult.vue b/frontend/src/components/baseline/BaselineCheckResult.vue
+new file mode 100644
+index 00000000..aed8131c
+--- /dev/null
++++ b/frontend/src/components/baseline/BaselineCheckResult.vue
+@@ -0,0 +1,140 @@
++<!-- Copyright 2026 The Kubron Authors -->
++<!-- SPDX-License-Identifier: Apache-2.0 -->
++<template>
++  <section class="br" :aria-label="$t('baseline.result.title')">
++    <header class="br-head">
++      <h3>{{ $t('baseline.result.title') }}</h3>
++      <span class="br-muted">
++        {{ $t('baseline.result.checkedAt', { time: formatDateTime(result.checkedAt) }) }}
++        <template v-if="result.initiator"> · {{ $t('baseline.result.by', { user: result.initiator }) }}</template>
++      </span>
++    </header>
++
++    <p v-if="result.rulesVersion !== result.versionRulesVersion" class="br-warn">
++      {{ $t('baseline.result.rulesVersions', { current: result.rulesVersion, version: result.versionRulesVersion }) }}
++    </p>
++    <p v-for="c in result.caveats ?? []" :key="c" class="br-warn">{{ $te(`baseline.caveat.${c}`) ? $t(`baseline.caveat.${c}`) : c }}</p>
++
++    <ul class="br-summary">
++      <li>{{ $t('baseline.summary.total', { count: result.summary.total }) }}</li>
++      <li class="ok">{{ $t('baseline.summary.matched', { count: result.summary.matched }) }}</li>
++      <li class="warn">{{ $t('baseline.summary.changed', { count: result.summary.changed }) }}</li>
++      <li class="bad">{{ $t('baseline.summary.missing', { count: result.summary.missing }) }}</li>
++      <li class="muted">{{ $t('baseline.summary.unchecked', { count: result.summary.unchecked }) }}</li>
++      <li v-if="result.summary.suppressedChanges" class="muted">{{ $t('baseline.summary.suppressed', { count: result.summary.suppressedChanges }) }}</li>
++    </ul>
++    <p v-if="result.summary.unchecked" class="br-muted">
++      {{ $t('baseline.summary.uncheckedNote') }}
++      <template v-for="(n, reason) in result.summary.uncheckedByReason ?? {}" :key="reason">
++        <br />{{ $t(`baseline.reason.${reason}`) }}: {{ n }}
++      </template>
++    </p>
++
++    <p v-if="!rows.length" class="br-muted">{{ $t('baseline.result.empty') }}</p>
++    <table v-else class="br-table">
++      <thead>
++        <tr>
++          <th>{{ $t('baseline.result.columns.resource') }}</th>
++          <th>{{ $t('baseline.result.columns.status') }}</th>
++          <th>{{ $t('baseline.result.columns.priority') }}</th>
++          <th>{{ $t('baseline.result.columns.details') }}</th>
++        </tr>
++      </thead>
++      <tbody>
++        <template v-for="it in rows" :key="it.ref.kind + it.ref.namespace + it.ref.name">
++          <tr>
++            <td><strong>{{ refLabel(it.ref) }}</strong></td>
++            <td><span class="br-badge" :class="statusTone(it.status)">{{ $t(`baseline.status.${it.status}`) }}</span></td>
++            <td class="br-muted">{{ it.priority ? $t(`baseline.priority.${it.priority}`) : $t('common.dash') }}</td>
++            <td>
++              <span v-if="it.status === 'unchecked' && it.reason" class="br-muted">{{ $t(`baseline.reason.${it.reason}`) }}</span>
++              <button v-else-if="it.changes?.length" class="br-link" type="button" :aria-expanded="open.has(key(it))" @click="toggle(it)">
++                {{ open.has(key(it)) ? $t('baseline.result.hideChanges') : $t('baseline.result.showChanges') }} ({{ it.changes.length }})
++              </button>
++              <span v-if="it.suppressed?.length" class="br-muted br-sup">{{ $t('baseline.result.suppressed', { ids: it.suppressed.join(', ') }) }}</span>
++            </td>
++          </tr>
++          <tr v-if="open.has(key(it))" class="br-detail">
++            <td colspan="4">
++              <ul class="br-changes">
++                <li v-for="c in it.changes" :key="c.path">
++                  <code class="br-path">{{ c.path }}</code>
++                  <span class="br-badge" :class="priorityTone(c.priority)">{{ $t(`baseline.priority.${c.priority}`) }}</span>
++                  <template v-if="c.sensitive">
++                    <span>{{ c.key
++                      ? $t('baseline.change.sensitive', { key: c.key, op: $t(`baseline.change.op.${c.op}`) })
++                      : $t('baseline.change.sensitiveNoKey', { op: $t(`baseline.change.op.${c.op}`) }) }}</span>
++                  </template>
++                  <template v-else>
++                    <span v-if="c.old !== undefined && c.old !== ''" class="br-val old">{{ $t('baseline.change.old') }}: <code>{{ c.old }}</code></span>
++                    <span v-if="c.new !== undefined && c.new !== ''" class="br-val new">{{ $t('baseline.change.new') }}: <code>{{ c.new }}</code></span>
++                    <span v-if="!c.old && !c.new" class="br-muted">{{ $t(`baseline.change.op.${c.op}`) }}</span>
++                  </template>
++                  <span v-if="c.source" class="br-muted br-src">{{ sourceText(c.source) }}</span>
++                  <button v-if="canManage && it.status === 'changed'" class="br-link" type="button" @click="emit('add-exception', it.ref, c.path)">
++                    {{ $t('baseline.change.addException') }}
++                  </button>
++                </li>
++              </ul>
++            </td>
++          </tr>
++        </template>
++      </tbody>
++    </table>
++  </section>
++</template>
++
++<script setup lang="ts">
++import { computed, reactive } from 'vue'
++import { t } from '../../i18n'
++import { formatDateTime } from '../../i18n/format'
++import { refLabel, sortItems, statusTone } from '../../composables/useBaseline'
++import type { BaselineChangeSource, BaselineCheckResult, BaselineItem, BaselinePriority, BaselineRef } from '../../types/baseline'
++
++const props = defineProps<{ result: BaselineCheckResult; canManage: boolean }>()
++const emit = defineEmits<{ 'add-exception': [ref: BaselineRef, path: string] }>()
++
++const rows = computed(() => sortItems(props.result.items))
++const open = reactive(new Set<string>())
++
++const key = (it: BaselineItem) => `${it.ref.kind}/${it.ref.namespace ?? ''}/${it.ref.name}`
++function toggle(it: BaselineItem) { const k = key(it); if (open.has(k)) open.delete(k); else open.add(k) }
++
++function priorityTone(p: BaselinePriority): string { return p === 'high' ? 'bad' : p === 'medium' ? 'warn' : 'muted' }
++
++/** Источник показывается только с доказательством; имя человека бэкенд не отдаёт */
++function sourceText(s: BaselineChangeSource): string {
++  const time = formatDateTime(s.at)
++  if (s.kind === 'kubron-audit') return t('baseline.change.sourceAudit', { time })
++  return s.manager
++    ? t('baseline.change.sourceManagedFields', { manager: s.manager, time })
++    : t('baseline.change.sourceManagedFieldsNoName', { time })
++}
++</script>
++
++<style scoped>
++.br { display: flex; flex-direction: column; gap: 10px; }
++.br-head { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
++.br-head h3 { margin: 0; font-size: 15px; }
++.br-muted { color: #6c7086; font-size: 12px; }
++.br-warn { color: #f9e2af; margin: 0; font-size: 13px; }
++.br-summary { display: flex; gap: 14px; flex-wrap: wrap; list-style: none; margin: 0; padding: 0; font-size: 13px; }
++.br-summary .ok { color: #a6e3a1; } .br-summary .warn { color: #f9e2af; } .br-summary .bad { color: #f38ba8; } .br-summary .muted { color: #a6adc8; }
++.br-table { width: 100%; border-collapse: collapse; font-size: 13px; }
++.br-table th { text-align: left; padding: 8px 10px; color: #a6adc8; font-weight: 600; border-bottom: 1px solid #313244; }
++.br-table td { padding: 8px 10px; border-bottom: 1px solid #232334; vertical-align: top; }
++.br-badge { padding: 1px 8px; border-radius: 10px; font-size: 12px; background: #313244; }
++.br-badge.ok { color: #a6e3a1; background: rgba(166, 227, 161, 0.12); }
++.br-badge.warn { color: #f9e2af; background: rgba(249, 226, 175, 0.12); }
++.br-badge.bad { color: #f38ba8; background: rgba(243, 139, 168, 0.12); }
++.br-badge.muted { color: #a6adc8; }
++.br-link { background: none; border: 0; color: #89b4fa; cursor: pointer; padding: 0; font-size: 12px; }
++.br-sup { display: block; }
++.br-detail td { background: #181825; }
++.br-changes { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
++.br-changes li { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; }
++.br-path { color: #cdd6f4; }
++.br-val code { font-family: ui-monospace, Menlo, Consolas, monospace; word-break: break-all; }
++.br-val.old code { color: #f38ba8; } .br-val.new code { color: #a6e3a1; }
++.br-src { flex-basis: 100%; }
++</style>
+diff --git a/frontend/src/components/baseline/BaselineCreateDialog.vue b/frontend/src/components/baseline/BaselineCreateDialog.vue
+new file mode 100644
+index 00000000..8a9277fc
+--- /dev/null
++++ b/frontend/src/components/baseline/BaselineCreateDialog.vue
+@@ -0,0 +1,174 @@
++<!-- Copyright 2026 The Kubron Authors -->
++<!-- SPDX-License-Identifier: Apache-2.0 -->
++<template>
++  <div class="bd-overlay" @mousedown.self="pressed = true" @click.self="onOverlay">
++    <div class="bd-dialog" role="dialog" aria-modal="true" aria-labelledby="bd-title">
++      <header class="bd-head">
++        <h3 id="bd-title">{{ mode === 'new' ? $t('baseline.create.title') : $t('baseline.version_dialog.title') }}</h3>
++        <button type="button" class="bd-close" :aria-label="$t('common.close')" :disabled="busy" @click="emit('close')">✕</button>
++      </header>
++
++      <div class="bd-body">
++        <template v-if="mode === 'new'">
++          <label class="bd-field">{{ $t('baseline.create.name') }}
++            <input v-model.trim="name" class="form-input" maxlength="120" autocomplete="off" spellcheck="false" />
++          </label>
++          <label class="bd-field">{{ $t('baseline.create.namespaces') }}
++            <input v-model="namespacesText" class="form-input" autocomplete="off" spellcheck="false" :placeholder="$t('baseline.create.namespacesHint')" @input="invalidate" />
++          </label>
++          <label class="bd-field">{{ $t('baseline.create.selector') }}
++            <input v-model.trim="selector" class="form-input" autocomplete="off" spellcheck="false" :placeholder="SELECTOR_EXAMPLE" @input="invalidate" />
++          </label>
++          <fieldset class="bd-field bd-kinds" :aria-label="$t('baseline.create.kinds')">
++            <legend>{{ $t('baseline.create.kinds') }}</legend>
++            <label v-for="k in store.kinds.value" :key="k" class="bd-check">
++              <input v-model="pickedKinds" type="checkbox" :value="k" @change="invalidate" /> {{ k }}
++            </label>
++            <span v-if="!pickedKinds.length" class="bd-muted">{{ $t('baseline.create.kindsAll') }}</span>
++          </fieldset>
++        </template>
++
++        <div class="bd-row">
++          <button class="btn" type="button" :disabled="busy || (mode === 'new' && !ready)" @click="runPreview">
++            {{ previewing ? $t('baseline.create.previewing') : $t('baseline.create.preview') }}
++          </button>
++          <span v-if="preview" class="bd-muted">{{ $t('baseline.create.expires', { time: formatTime(preview.expiresAt) }) }}</span>
++        </div>
++
++        <section v-if="preview" class="bd-preview" aria-live="polite">
++          <p v-if="previewEmpty(preview)" class="bd-warn">{{ $t('baseline.create.nothing') }}</p>
++          <p v-else>{{ $t('baseline.create.found', { objects: preview.objects, hashed: preview.hashed }) }}</p>
++
++          <template v-if="mode === 'version' && preview.hasPrevious">
++            <p v-if="preview.rulesChanged" class="bd-warn">{{ $t('baseline.version_dialog.rulesChanged') }}</p>
++            <ul v-else class="bd-diff">
++              <li>{{ $t('baseline.version_dialog.added', { count: preview.added?.length ?? 0 }) }}</li>
++              <li>{{ $t('baseline.version_dialog.removed', { count: preview.removed?.length ?? 0 }) }}</li>
++              <li>{{ $t('baseline.version_dialog.changed', { count: preview.changed?.length ?? 0 }) }}</li>
++              <li>{{ $t('baseline.version_dialog.unchanged', { count: preview.unchanged }) }}</li>
++            </ul>
++            <p class="bd-muted">{{ $t('baseline.version_dialog.note') }}</p>
++          </template>
++
++          <div v-if="preview.skipped?.length" class="bd-skipped">
++            <strong>{{ $t('baseline.create.skipped') }}</strong>
++            <ul>
++              <li v-for="(s, i) in preview.skipped" :key="i">{{ s.ref.kind }}{{ s.ref.name ? ` ${s.ref.namespace ? s.ref.namespace + '/' : ''}${s.ref.name}` : s.ref.namespace ? ` (${s.ref.namespace})` : '' }} — {{ $t(`baseline.reason.${s.reason}`) }}</li>
++            </ul>
++          </div>
++
++          <template v-if="!previewEmpty(preview)">
++            <label class="bd-field">{{ $t('baseline.create.comment') }}
++              <textarea v-model.trim="comment" class="form-input" rows="2" maxlength="2000" />
++            </label>
++            <label class="bd-check bd-confirm">
++              <input v-model="confirmed" type="checkbox" /> {{ $t('baseline.create.confirm') }}
++            </label>
++          </template>
++        </section>
++        <p v-else-if="stale" class="bd-warn">{{ $t('baseline.create.stale') }}</p>
++
++        <p v-if="store.error.value" class="form-error" role="alert">{{ store.error.value }}</p>
++      </div>
++
++      <footer class="bd-foot">
++        <button class="btn" type="button" :disabled="busy" @click="emit('close')">{{ $t('baseline.create.cancel') }}</button>
++        <button class="btn btn-primary" type="button" :disabled="!canSubmit" @click="submit">
++          {{ mode === 'new' ? $t('baseline.create.submit') : $t('baseline.version_dialog.submit') }}
++        </button>
++      </footer>
++    </div>
++  </div>
++</template>
++
++<script setup lang="ts">
++import { computed, onMounted, ref } from 'vue'
++import { formatTime } from '../../i18n/format'
++import { emptySpec, parseList, previewEmpty, specReady, type BaselineStore } from '../../composables/useBaseline'
++import type { BaselinePreview, BaselineSpec } from '../../types/baseline'
++
++/** Пример селектора меток: синтаксис Kubernetes, не переводится */
++const SELECTOR_EXAMPLE = 'app=web'
++
++const props = defineProps<{ store: BaselineStore; mode: 'new' | 'version' }>()
++const emit = defineEmits<{ close: []; done: [] }>()
++
++const name = ref('')
++const namespacesText = ref('')
++const selector = ref('')
++const pickedKinds = ref<string[]>([])
++const comment = ref('')
++const confirmed = ref(false)
++const preview = ref<BaselinePreview | null>(null)
++const previewing = ref(false)
++const submitting = ref(false)
++const stale = ref(false)
++const pressed = ref(false)
++
++const busy = computed(() => previewing.value || submitting.value)
++
++const spec = computed<BaselineSpec>(() => ({
++  ...emptySpec(), namespaces: parseList(namespacesText.value), selector: selector.value, kinds: pickedKinds.value,
++}))
++const ready = computed(() => specReady(spec.value))
++const canSubmit = computed(() =>
++  !busy.value && !!preview.value && !previewEmpty(preview.value) && confirmed.value && comment.value.trim() !== ''
++  && (props.mode === 'version' || name.value !== ''))
++
++onMounted(() => { if (props.mode === 'new') void props.store.loadKinds() })
++
++/** Любое изменение выборки обесценивает предпросмотр и подтверждение: подтверждается только увиденное */
++function invalidate() {
++  preview.value = null
++  confirmed.value = false
++}
++
++async function runPreview() {
++  previewing.value = true
++  stale.value = false
++  confirmed.value = false
++  const p = props.mode === 'new' ? await props.store.previewNew(spec.value) : await props.store.previewVersion()
++  previewing.value = false
++  preview.value = p ?? null
++}
++
++async function submit() {
++  if (!preview.value) return
++  submitting.value = true
++  const ok = props.mode === 'new'
++    ? await props.store.create(name.value, spec.value, comment.value, preview.value.token, confirmed.value)
++    : await props.store.addVersion(comment.value, preview.value.token, confirmed.value)
++  submitting.value = false
++  if (ok) { emit('done'); return }
++  // Токен мог устареть (кластер изменился): нужен новый предпросмотр и новое подтверждение
++  stale.value = true
++  invalidate()
++}
++
++function onOverlay() {
++  if (pressed.value && !busy.value) emit('close')
++  pressed.value = false
++}
++</script>
++
++<style scoped>
++.bd-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.55); display: flex; align-items: center; justify-content: center; z-index: 60; padding: 16px; }
++.bd-dialog { background: #1e1e2e; border: 1px solid #313244; border-radius: 10px; width: min(640px, 100%); max-height: 90vh; display: flex; flex-direction: column; }
++.bd-head { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; border-bottom: 1px solid #313244; }
++.bd-head h3 { margin: 0; font-size: 16px; }
++.bd-close { background: none; border: 0; color: #a6adc8; cursor: pointer; font-size: 16px; }
++.bd-body { padding: 16px 18px; overflow: auto; display: flex; flex-direction: column; gap: 12px; }
++.bd-field { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #a6adc8; border: 0; padding: 0; margin: 0; }
++.bd-kinds { flex-direction: row; flex-wrap: wrap; gap: 6px 14px; align-items: center; }
++.bd-kinds legend { padding: 0; margin-bottom: 4px; }
++.bd-check { display: flex; gap: 6px; align-items: center; font-size: 13px; color: #cdd6f4; }
++.bd-confirm { align-items: flex-start; }
++.bd-row { display: flex; gap: 12px; align-items: center; }
++.bd-muted { color: #6c7086; font-size: 12px; }
++.bd-warn { color: #f9e2af; margin: 0; }
++.bd-preview { background: #181825; border-radius: 8px; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; font-size: 13px; }
++.bd-preview p { margin: 0; }
++.bd-diff { margin: 0; padding-left: 18px; }
++.bd-skipped ul { margin: 4px 0 0; padding-left: 18px; color: #a6adc8; }
++.bd-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 18px; border-top: 1px solid #313244; }
++</style>
+diff --git a/frontend/src/components/baseline/BaselineExceptions.vue b/frontend/src/components/baseline/BaselineExceptions.vue
+new file mode 100644
+index 00000000..5962e0ca
+--- /dev/null
++++ b/frontend/src/components/baseline/BaselineExceptions.vue
+@@ -0,0 +1,120 @@
++<!-- Copyright 2026 The Kubron Authors -->
++<!-- SPDX-License-Identifier: Apache-2.0 -->
++<template>
++  <section class="bx" :aria-label="$t('baseline.exceptions.title')">
++    <h3>{{ $t('baseline.exceptions.title') }}</h3>
++    <p v-if="!store.exceptions.value.length" class="bx-muted">{{ $t('baseline.exceptions.none') }}</p>
++    <table v-else class="bx-table">
++      <tbody>
++        <tr v-for="e in store.exceptions.value" :key="e.id">
++          <td>
++            <strong>{{ e.scope === 'kind' ? e.ref.kind : refLabel(e.ref) }}</strong>
++            <code class="bx-path">{{ e.path }}</code>
++            <div class="bx-muted">{{ e.comment }}</div>
++            <div class="bx-muted">
++              {{ $t('baseline.exceptions.createdBy', { user: e.createdBy }) }} ·
++              <span :class="{ bad: expired(e) }">{{ e.expiresAt ? (expired(e) ? $t('baseline.exceptions.expired') + ' ' : '') + formatDateTime(e.expiresAt) : $t('baseline.exceptions.never') }}</span>
++            </div>
++          </td>
++          <td class="bx-act">
++            <button v-if="canManage" class="btn" type="button" @click="remove(e.id)">{{ $t('baseline.exceptions.remove') }}</button>
++          </td>
++        </tr>
++      </tbody>
++    </table>
++
++    <form v-if="canManage" class="bx-form" @submit.prevent="add">
++      <label class="bx-field">{{ $t('baseline.exceptions.scope') }}
++        <select v-model="scope" class="form-input">
++          <option value="resource">{{ $t('baseline.exceptions.scopeResource') }}</option>
++          <option value="kind">{{ $t('baseline.exceptions.scopeKind') }}</option>
++        </select>
++      </label>
++      <label class="bx-field">{{ $t('baseline.exceptions.kind') }}
++        <input v-model.trim="kind" class="form-input" required autocomplete="off" spellcheck="false" />
++      </label>
++      <label class="bx-field">{{ $t('baseline.exceptions.namespace') }}
++        <input v-model.trim="namespace" class="form-input" autocomplete="off" spellcheck="false" />
++      </label>
++      <label v-if="scope === 'resource'" class="bx-field">{{ $t('baseline.exceptions.name') }}
++        <input v-model.trim="name" class="form-input" required autocomplete="off" spellcheck="false" />
++      </label>
++      <label class="bx-field">{{ $t('baseline.exceptions.path') }}
++        <input v-model.trim="path" class="form-input" required maxlength="512" autocomplete="off" spellcheck="false" :placeholder="$t('baseline.exceptions.pathHint')" />
++      </label>
++      <label class="bx-field">{{ $t('baseline.exceptions.expires') }}
++        <input v-model="expires" class="form-input" type="date" />
++      </label>
++      <label class="bx-field bx-wide">{{ $t('baseline.exceptions.comment') }}
++        <input v-model.trim="comment" class="form-input" required maxlength="2000" autocomplete="off" />
++      </label>
++      <button class="btn btn-primary" type="submit" :disabled="!valid">{{ $t('baseline.exceptions.add') }}</button>
++    </form>
++  </section>
++</template>
++
++<script setup lang="ts">
++import { computed, ref, watch } from 'vue'
++import { t } from '../../i18n'
++import { formatDateTime } from '../../i18n/format'
++import { askConfirm } from '../../resources/confirm'
++import { refLabel, type BaselineStore } from '../../composables/useBaseline'
++import type { BaselineException, BaselineRef } from '../../types/baseline'
++
++const props = defineProps<{ store: BaselineStore; canManage: boolean; prefill: { ref: BaselineRef; path: string } | null }>()
++
++const scope = ref<'resource' | 'kind'>('resource')
++const kind = ref('')
++const namespace = ref('')
++const name = ref('')
++const path = ref('')
++const expires = ref('')
++const comment = ref('')
++
++watch(() => props.prefill, p => {
++  if (!p) return
++  scope.value = 'resource'
++  kind.value = p.ref.kind
++  namespace.value = p.ref.namespace ?? ''
++  name.value = p.ref.name
++  path.value = p.path
++}, { immediate: true })
++
++const valid = computed(() =>
++  kind.value !== '' && path.value !== '' && comment.value !== '' && (scope.value === 'kind' || name.value !== ''))
++
++const expired = (e: BaselineException) => !!e.expiresAt && new Date(e.expiresAt).getTime() < Date.now()
++
++/** Версия API ресурса для исключения не важна: сопоставление идёт по группе, типу, пространству и имени */
++async function add() {
++  const group = props.prefill && props.prefill.ref.kind === kind.value ? props.prefill.ref.group ?? '' : ''
++  const ok = await props.store.addException({
++    scope: scope.value,
++    ref: { group, version: 'v1', kind: kind.value, namespace: namespace.value, name: scope.value === 'resource' ? name.value : '' },
++    path: path.value,
++    comment: comment.value,
++    // дата без времени → конец этого дня по UTC
++    expiresAt: expires.value ? `${expires.value}T23:59:59Z` : undefined,
++  })
++  if (ok) { path.value = ''; comment.value = ''; expires.value = '' }
++}
++
++async function remove(id: string) {
++  if (!(await askConfirm(t('baseline.exceptions.confirmRemove')))) return
++  await props.store.removeException(id)
++}
++</script>
++
++<style scoped>
++.bx { display: flex; flex-direction: column; gap: 10px; }
++.bx h3 { margin: 0; font-size: 15px; }
++.bx-muted { color: #6c7086; font-size: 12px; }
++.bx-muted .bad { color: #f38ba8; }
++.bx-table { width: 100%; border-collapse: collapse; font-size: 13px; }
++.bx-table td { padding: 8px 10px; border-bottom: 1px solid #232334; vertical-align: top; }
++.bx-path { margin-left: 8px; color: #cdd6f4; }
++.bx-act { width: 1%; white-space: nowrap; }
++.bx-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; align-items: end; }
++.bx-field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #a6adc8; }
++.bx-wide { grid-column: 1 / -1; }
++</style>
+diff --git a/frontend/src/components/views/BaselineView.vue b/frontend/src/components/views/BaselineView.vue
+new file mode 100644
+index 00000000..1b91135c
+--- /dev/null
++++ b/frontend/src/components/views/BaselineView.vue
+@@ -0,0 +1,177 @@
++<!-- Copyright 2026 The Kubron Authors -->
++<!-- SPDX-License-Identifier: Apache-2.0 -->
++<template>
++  <div class="bv">
++    <header class="bv-head">
++      <div>
++        <h2>{{ $t('baseline.title') }}</h2>
++        <p class="bv-sub">{{ $t('baseline.subtitle') }}</p>
++      </div>
++      <div class="bv-actions">
++        <button class="btn" type="button" :disabled="store.loading.value" @click="reload">{{ $t('baseline.refresh') }}</button>
++        <button v-if="canManage" class="btn btn-primary" type="button" @click="dialog = 'new'">{{ $t('baseline.new') }}</button>
++      </div>
++    </header>
++
++    <p v-if="store.error.value" class="form-error" role="alert">{{ store.error.value }}</p>
++    <p v-if="!canManage" class="bv-muted">{{ $t('baseline.noManage') }}</p>
++
++    <p v-if="loaded && !store.baselines.value.length" class="bv-empty">{{ $t('baseline.empty') }}</p>
++
++    <template v-if="store.selected.value">
++      <section class="bv-card">
++        <div class="bv-pick">
++          <label class="bv-field">{{ $t('baseline.select') }}
++            <select class="form-input" :value="store.selectedId.value" @change="select(($event.target as HTMLSelectElement).value)">
++              <option v-for="b in store.baselines.value" :key="b.id" :value="b.id">{{ b.name }}</option>
++            </select>
++          </label>
++          <div class="bv-meta">
++            <div v-if="store.activeVersion.value">
++              {{ $t('baseline.activeVersion') }}: <strong>{{ $t('baseline.version', { seq: store.activeVersion.value.seq }) }}</strong>
++              · {{ $t('baseline.objects', { count: store.activeVersion.value.objectCount }) }}
++              · {{ formatDateTime(store.activeVersion.value.createdAt) }}
++            </div>
++            <div class="bv-muted">
++              {{ $t('baseline.scope') }}:
++              <template v-if="store.selected.value.refs.length">{{ $t('baseline.scopeRefs', { count: store.selected.value.refs.length }) }}</template>
++              <template v-else>{{ $t('baseline.scopeNamespaces', { list: store.selected.value.namespaces.join(', ') }) }}</template>
++              <template v-if="store.selected.value.selector"> · {{ store.selected.value.selector }}</template>
++            </div>
++          </div>
++        </div>
++        <div class="bv-actions">
++          <button class="btn btn-primary" type="button" :disabled="store.checking.value || !store.selected.value.activeVersionId" @click="store.check()">
++            {{ store.checking.value ? $t('baseline.checking') : $t('baseline.check') }}
++          </button>
++          <button v-if="canManage" class="btn" type="button" @click="dialog = 'version'">{{ $t('baseline.newVersion') }}</button>
++          <button v-if="canManage" class="btn bv-danger" type="button" @click="remove">{{ $t('baseline.delete') }}</button>
++        </div>
++      </section>
++
++      <section class="bv-card">
++        <BaselineCheckResult v-if="store.result.value" :result="store.result.value" :can-manage="canManage" @add-exception="onAddException" />
++        <p v-else class="bv-muted">{{ $t('baseline.result.none') }}</p>
++      </section>
++
++      <section class="bv-card">
++        <BaselineExceptions :store="store" :can-manage="canManage" :prefill="prefill" />
++      </section>
++
++      <section class="bv-card">
++        <h3>{{ $t('baseline.versions.title') }}</h3>
++        <table class="bv-table">
++          <thead><tr>
++            <th>{{ $t('baseline.versions.seq') }}</th><th>{{ $t('baseline.versions.created') }}</th>
++            <th>{{ $t('baseline.versions.author') }}</th><th>{{ $t('baseline.versions.comment') }}</th><th />
++          </tr></thead>
++          <tbody>
++            <tr v-for="v in store.versions.value" :key="v.id">
++              <td>{{ v.seq }} <span v-if="v.id === store.selected.value.activeVersionId" class="bv-badge">{{ $t('baseline.versions.active') }}</span></td>
++              <td class="bv-muted">{{ formatDateTime(v.createdAt) }}</td>
++              <td>{{ v.author }}</td>
++              <td class="bv-comment">{{ v.comment }}</td>
++              <td class="bv-act">
++                <button v-if="canManage && v.id !== store.selected.value.activeVersionId" class="btn" type="button" @click="activate(v.seq, v.id)">{{ $t('baseline.versions.makeActive') }}</button>
++              </td>
++            </tr>
++          </tbody>
++        </table>
++        <button v-if="store.versionsNext.value" class="btn" type="button" @click="store.moreVersions()">{{ $t('baseline.versions.more') }}</button>
++      </section>
++
++      <section class="bv-card">
++        <h3>{{ $t('baseline.history.title') }}</h3>
++        <p v-if="!store.results.value.length" class="bv-muted">{{ $t('baseline.history.none') }}</p>
++        <table v-else class="bv-table">
++          <thead><tr><th>{{ $t('baseline.history.time') }}</th><th>{{ $t('baseline.history.initiator') }}</th><th /><th /></tr></thead>
++          <tbody>
++            <tr v-for="r in store.results.value" :key="r.id">
++              <td class="bv-muted">{{ formatDateTime(r.checkedAt) }}</td>
++              <td>{{ r.initiator }}</td>
++              <td class="bv-muted">{{ $t('baseline.summary.changed', { count: r.summary.changed }) }} · {{ $t('baseline.summary.missing', { count: r.summary.missing }) }} · {{ $t('baseline.summary.unchecked', { count: r.summary.unchecked }) }}</td>
++              <td class="bv-act"><button class="btn" type="button" @click="store.openResult(r.id)">{{ $t('baseline.history.open') }}</button></td>
++            </tr>
++          </tbody>
++        </table>
++        <button v-if="store.resultsNext.value" class="btn" type="button" @click="store.moreResults()">{{ $t('baseline.history.more') }}</button>
++      </section>
++    </template>
++
++    <BaselineCreateDialog v-if="dialog" :store="store" :mode="dialog" @close="dialog = null" @done="dialog = null" />
++  </div>
++</template>
++
++<script setup lang="ts">
++import { computed, onMounted, ref } from 'vue'
++import { t } from '../../i18n'
++import { formatDateTime } from '../../i18n/format'
++import { askConfirm } from '../../resources/confirm'
++import { can } from '../../composables/useAuth'
++import { useBaseline } from '../../composables/useBaseline'
++import { Perm } from '../../types/auth'
++import type { BaselineRef } from '../../types/baseline'
++import BaselineCheckResult from '../baseline/BaselineCheckResult.vue'
++import BaselineCreateDialog from '../baseline/BaselineCreateDialog.vue'
++import BaselineExceptions from '../baseline/BaselineExceptions.vue'
++
++const store = useBaseline()
++const loaded = ref(false)
++const dialog = ref<'new' | 'version' | null>(null)
++const prefill = ref<{ ref: BaselineRef; path: string } | null>(null)
++
++/** Скрытая кнопка — только удобство: право проверяет бэкенд в каждом методе */
++const canManage = computed(() => can(Perm.BaselineManage))
++
++async function reload() {
++  await store.loadList()
++  await store.loadDetails()
++}
++
++async function select(id: string) {
++  store.result.value = null
++  await store.loadDetails(id)
++}
++
++onMounted(async () => {
++  await reload()
++  loaded.value = true
++})
++
++function onAddException(ref: BaselineRef, path: string) {
++  prefill.value = { ref, path }
++}
++
++async function activate(seq: number, id: string) {
++  if (!(await askConfirm(t('baseline.versions.confirmActive', { seq })))) return
++  await store.setActive(id)
++}
++
++async function remove() {
++  const name = store.selected.value?.name ?? ''
++  if (!(await askConfirm(t('baseline.confirmDelete', { name })))) return
++  await store.remove()
++}
++</script>
++
++<style scoped>
++.bv { display: flex; flex-direction: column; gap: 14px; padding: 16px 20px; }
++.bv-head { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
++.bv-head h2 { margin: 0; }
++.bv-sub { margin: 4px 0 0; color: #a6adc8; font-size: 13px; max-width: 760px; }
++.bv-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
++.bv-muted { color: #6c7086; font-size: 12px; }
++.bv-empty { color: #a6adc8; }
++.bv-card { background: #1e1e2e; border: 1px solid #313244; border-radius: 8px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
++.bv-card h3 { margin: 0; font-size: 15px; }
++.bv-pick { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-end; }
++.bv-field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #a6adc8; min-width: 220px; }
++.bv-meta { font-size: 13px; display: flex; flex-direction: column; gap: 2px; }
++.bv-danger { color: #f38ba8; }
++.bv-table { width: 100%; border-collapse: collapse; font-size: 13px; }
++.bv-table th { text-align: left; padding: 6px 10px; color: #a6adc8; font-weight: 600; border-bottom: 1px solid #313244; }
++.bv-table td { padding: 6px 10px; border-bottom: 1px solid #232334; vertical-align: top; }
++.bv-comment { max-width: 420px; word-break: break-word; }
++.bv-act { width: 1%; white-space: nowrap; }
++.bv-badge { padding: 1px 8px; border-radius: 10px; font-size: 12px; color: #a6e3a1; background: rgba(166, 227, 161, 0.12); }
++</style>
+diff --git a/frontend/src/composables/useBaseline.test.ts b/frontend/src/composables/useBaseline.test.ts
+new file mode 100644
+index 00000000..3ac5cf8d
+--- /dev/null
++++ b/frontend/src/composables/useBaseline.test.ts
+@@ -0,0 +1,120 @@
++// Copyright 2026 The Kubron Authors
++// SPDX-License-Identifier: Apache-2.0
++
++import { beforeEach, describe, expect, it, vi } from 'vitest'
++
++vi.mock('../resources/wails', () => ({ callApp: vi.fn() }))
++
++import { callApp } from '../resources/wails'
++import { emptySpec, parseList, previewEmpty, priorityRank, refLabel, sortItems, specReady, statusTone, useBaseline } from './useBaseline'
++import type { BaselineItem } from '../types/baseline'
++
++const call = vi.mocked(callApp) as unknown as ReturnType<typeof vi.fn>
++
++const baseline = (id: string, active = 'v1') => ({
++  id, name: id, namespaces: ['prod'], selector: '', kinds: [], refs: [], activeVersionId: active, createdBy: 'a', createdAt: '2026-11-12T10:00:00Z',
++})
++
++beforeEach(() => call.mockReset())
++
++describe('чистые функции', () => {
++  it('parseList: запятые, пробелы, повторы', () => {
++    expect(parseList('prod, stage  prod\nqa,')).toEqual(['prod', 'stage', 'qa'])
++    expect(parseList('  ')).toEqual([])
++  })
++
++  it('specReady: нужны пространства имён или ресурсы', () => {
++    expect(specReady(emptySpec())).toBe(false)
++    expect(specReady({ ...emptySpec(), namespaces: ['a'] })).toBe(true)
++    expect(specReady({ ...emptySpec(), refs: [{ version: 'v1', kind: 'ConfigMap', name: 'x' }] })).toBe(true)
++  })
++
++  it('«не проверено» не выглядит как «соответствует»', () => {
++    expect(statusTone('match')).toBe('ok')
++    expect(statusTone('unchecked')).not.toBe('ok')
++    expect(statusTone('missing')).toBe('bad')
++  })
++
++  it('sortItems: изменённые и важные выше, соответствующие внизу', () => {
++    const mk = (name: string, status: BaselineItem['status'], priority?: BaselineItem['priority']): BaselineItem =>
++      ({ ref: { version: 'v1', kind: 'Deployment', namespace: 'p', name }, status, priority })
++    const out = sortItems([mk('a', 'match'), mk('b', 'unchecked'), mk('c', 'changed', 'low'), mk('d', 'changed', 'high'), mk('e', 'missing')])
++    expect(out.map(i => i.ref.name)).toEqual(['d', 'c', 'e', 'b', 'a'])
++  })
++
++  it('refLabel и priorityRank', () => {
++    expect(refLabel({ version: 'v1', kind: 'Service', namespace: 'p', name: 's' })).toBe('Service p/s')
++    expect(refLabel({ version: 'v1', kind: 'Node', name: 'n1' })).toBe('Node n1')
++    expect(priorityRank('high')).toBeGreaterThan(priorityRank('low'))
++    expect(priorityRank(undefined)).toBe(0)
++  })
++
++  it('previewEmpty: пустой предпросмотр не даёт создать версию', () => {
++    expect(previewEmpty(null)).toBe(true)
++    expect(previewEmpty({ token: 't', expiresAt: '', objects: 0, hashed: 0, hasPrevious: false, rulesChanged: false, unchanged: 0 })).toBe(true)
++    expect(previewEmpty({ token: 't', expiresAt: '', objects: 2, hashed: 0, hasPrevious: false, rulesChanged: false, unchanged: 0 })).toBe(false)
++  })
++})
++
++describe('useBaseline', () => {
++  it('loadList выбирает первый baseline и сбрасывает пропавший', async () => {
++    call.mockResolvedValueOnce([baseline('b1'), baseline('b2')])
++    const s = useBaseline()
++    await s.loadList()
++    expect(s.selectedId.value).toBe('b1')
++    s.selectedId.value = 'gone'
++    call.mockResolvedValueOnce([baseline('b2')])
++    await s.loadList()
++    expect(s.selectedId.value).toBe('b2')
++  })
++
++  it('ошибка бэкенда показывается, состояние не ломается', async () => {
++    call.mockRejectedValueOnce('boom')
++    const s = useBaseline()
++    await s.loadList()
++    expect(s.error.value).toBeTruthy()
++    expect(s.baselines.value).toEqual([])
++  })
++
++  it('create передаёт подтверждение и токен; без ответа — false', async () => {
++    const s = useBaseline()
++    call.mockRejectedValueOnce('confirmation is required')
++    expect(await s.create('n', emptySpec(), 'c', 'tok', false)).toBe(false)
++    expect(call).toHaveBeenCalledWith('BaselineCreate', { name: 'n', spec: emptySpec(), comment: 'c', token: 'tok', confirmed: false })
++  })
++
++  it('check: результат остаётся после обновления истории', async () => {
++    const s = useBaseline()
++    s.selectedId.value = 'b1'
++    const res = { id: 'r1', summary: { total: 1 }, items: [] }
++    call.mockImplementation(async (fn: string) => {
++      if (fn === 'DriftCheck') return res
++      if (fn === 'BaselineVersions' || fn === 'DriftResults') return { items: [] }
++      return []
++    })
++    expect(await s.check()).toBe(true)
++    expect(s.result.value).toEqual(res)
++    expect(s.checking.value).toBe(false)
++  })
++
++  it('removeException убирает исключение из списка после успеха', async () => {
++    const s = useBaseline()
++    s.selectedId.value = 'b1'
++    s.exceptions.value = [{ id: 'e1' } as any, { id: 'e2' } as any]
++    call.mockResolvedValueOnce(undefined)
++    expect(await s.removeException('e1')).toBe(true)
++    expect(s.exceptions.value.map(e => e.id)).toEqual(['e2'])
++  })
++
++  it('смена выбора во время загрузки не затирает новый baseline', async () => {
++    const s = useBaseline()
++    let release!: (v: unknown) => void
++    call.mockImplementation((fn: string) =>
++      fn === 'BaselineVersions' ? new Promise(r => { release = r }) : Promise.resolve(fn === 'DriftResults' ? { items: [] } : []))
++    const p = s.loadDetails('b1')
++    s.selectedId.value = 'b2'
++    release({ items: [{ id: 'old' }] })
++    await p
++    expect(s.versions.value).toEqual([])
++  })
++})
+diff --git a/frontend/src/composables/useBaseline.ts b/frontend/src/composables/useBaseline.ts
+new file mode 100644
+index 00000000..82668c89
+--- /dev/null
++++ b/frontend/src/composables/useBaseline.ts
+@@ -0,0 +1,213 @@
++// Copyright 2026 The Kubron Authors
++// SPDX-License-Identifier: Apache-2.0
++
++import { computed, ref } from 'vue'
++import { callApp } from '../resources/wails'
++import { errorText } from './errorText'
++import type {
++  Baseline, BaselineCheckResult, BaselineException, BaselinePreview, BaselinePriority, BaselineRef,
++  BaselineResultRow, BaselineSpec, BaselineStatus, BaselineVersionSummary,
++} from '../types/baseline'
++
++const PAGE_SIZE = 20
++
++/** Порядок статусов в таблице результата: сначала то, что требует внимания */
++const STATUS_ORDER: Record<BaselineStatus, number> = { changed: 0, missing: 1, unchecked: 2, new: 3, match: 4 }
++const PRIORITY_RANK: Record<BaselinePriority, number> = { high: 3, medium: 2, low: 1 }
++
++export function statusOrder(s: BaselineStatus): number { return STATUS_ORDER[s] ?? 9 }
++export function priorityRank(p?: BaselinePriority): number { return p ? PRIORITY_RANK[p] ?? 0 : 0 }
++
++/** «Не проверено» никогда не считается «соответствует»: класс оформления отличается от success */
++export function statusTone(s: BaselineStatus): 'ok' | 'warn' | 'bad' | 'muted' {
++  switch (s) {
++    case 'match': return 'ok'
++    case 'changed': return 'warn'
++    case 'missing': return 'bad'
++    default: return 'muted'
++  }
++}
++
++/** Разбор поля «пространства имён»: запятые и пробелы, без пустых и повторов */
++export function parseList(text: string): string[] {
++  return [...new Set(text.split(/[\s,]+/).map(s => s.trim()).filter(Boolean))]
++}
++
++/** Подпись ресурса: kind ns/name */
++export function refLabel(r: BaselineRef): string {
++  return `${r.kind} ${r.namespace ? `${r.namespace}/` : ''}${r.name}`.trim()
++}
++
++export function emptySpec(): BaselineSpec {
++  return { namespaces: [], selector: '', kinds: [], refs: [] }
++}
++
++/** Спецификация пригодна для предпросмотра: есть пространства имён или явный список ресурсов */
++export function specReady(s: BaselineSpec): boolean {
++  return s.namespaces.length > 0 || s.refs.length > 0
++}
++
++/** Строки результата в порядке показа: статус, затем приоритет (важные выше), затем ресурс */
++export function sortItems<T extends { status: BaselineStatus; priority?: BaselinePriority; ref: BaselineRef }>(items: T[]): T[] {
++  return [...items].sort((a, b) =>
++    statusOrder(a.status) - statusOrder(b.status)
++    || priorityRank(b.priority) - priorityRank(a.priority)
++    || refLabel(a.ref).localeCompare(refLabel(b.ref)))
++}
++
++/** Предпросмотр пуст: нечего фиксировать, создавать версию нельзя */
++export function previewEmpty(p: BaselinePreview | null): boolean {
++  return !p || p.objects === 0
++}
++
++/**
++ * Состояние раздела baseline: список, выбранный baseline, история версий и проверок, исключения, последний результат.
++ * Все обращения идут через callApp; ошибки бэкенда показываются через errorText.
++ */
++export function useBaseline() {
++  const baselines = ref<Baseline[]>([])
++  const selectedId = ref('')
++  const versions = ref<BaselineVersionSummary[]>([])
++  const versionsNext = ref('')
++  const results = ref<BaselineResultRow[]>([])
++  const resultsNext = ref('')
++  const exceptions = ref<BaselineException[]>([])
++  const result = ref<BaselineCheckResult | null>(null)
++  const kinds = ref<string[]>([])
++  const loading = ref(false)
++  const checking = ref(false)
++  const error = ref('')
++
++  const selected = computed(() => baselines.value.find(b => b.id === selectedId.value) ?? null)
++  const activeVersion = computed(() => versions.value.find(v => v.id === selected.value?.activeVersionId) ?? null)
++
++  async function guard<T>(fn: () => Promise<T>): Promise<T | undefined> {
++    error.value = ''
++    try { return await fn() } catch (e) { error.value = errorText(e); return undefined }
++  }
++
++  async function loadList() {
++    loading.value = true
++    const list = await guard(() => callApp('BaselineList'))
++    loading.value = false
++    if (!list) return
++    baselines.value = list as Baseline[]
++    if (!baselines.value.some(b => b.id === selectedId.value)) selectedId.value = baselines.value[0]?.id ?? ''
++  }
++
++  async function loadKinds() {
++    const k = await guard(() => callApp('BaselineKinds'))
++    if (k) kinds.value = k as string[]
++  }
++
++  async function loadDetails(id = selectedId.value) {
++    if (!id) return
++    selectedId.value = id
++    const [v, r, e] = await Promise.all([
++      guard(() => callApp('BaselineVersions', id, '', PAGE_SIZE)),
++      guard(() => callApp('DriftResults', id, '', PAGE_SIZE)),
++      guard(() => callApp('BaselineExceptions', id)),
++    ])
++    if (selectedId.value !== id) return // пользователь уже выбрал другой baseline
++    if (v) { versions.value = (v as any).items ?? []; versionsNext.value = (v as any).next ?? '' }
++    if (r) { results.value = (r as any).items ?? []; resultsNext.value = (r as any).next ?? '' }
++    if (e) exceptions.value = e as BaselineException[]
++    result.value = null
++  }
++
++  async function moreVersions() {
++    if (!versionsNext.value) return
++    const v = await guard(() => callApp('BaselineVersions', selectedId.value, versionsNext.value, PAGE_SIZE))
++    if (v) { versions.value.push(...((v as any).items ?? [])); versionsNext.value = (v as any).next ?? '' }
++  }
++
++  async function moreResults() {
++    if (!resultsNext.value) return
++    const r = await guard(() => callApp('DriftResults', selectedId.value, resultsNext.value, PAGE_SIZE))
++    if (r) { results.value.push(...((r as any).items ?? [])); resultsNext.value = (r as any).next ?? '' }
++  }
++
++  async function check(): Promise<boolean> {
++    if (!selectedId.value || checking.value) return false
++    checking.value = true
++    const res = await guard(() => callApp('DriftCheck', selectedId.value))
++    checking.value = false
++    if (!res) return false
++    result.value = res as BaselineCheckResult
++    await loadDetails()
++    result.value = res as BaselineCheckResult
++    return true
++  }
++
++  async function openResult(id: string) {
++    const res = await guard(() => callApp('DriftResult', selectedId.value, id))
++    if (res) result.value = res as BaselineCheckResult
++  }
++
++  async function previewNew(spec: BaselineSpec): Promise<BaselinePreview | undefined> {
++    return await guard(() => callApp('BaselinePreviewNew', spec as never)) as BaselinePreview | undefined
++  }
++
++  async function previewVersion(): Promise<BaselinePreview | undefined> {
++    return await guard(() => callApp('BaselinePreviewVersion', selectedId.value)) as BaselinePreview | undefined
++  }
++
++  /** Создание только с подтверждением и комментарием; без них бэкенд ничего не создаёт */
++  async function create(name: string, spec: BaselineSpec, comment: string, token: string, confirmed: boolean): Promise<boolean> {
++    const b = await guard(() => callApp('BaselineCreate', { name, spec, comment, token, confirmed } as never))
++    if (!b) return false
++    await loadList()
++    await loadDetails((b as Baseline).id)
++    return true
++  }
++
++  async function addVersion(comment: string, token: string, confirmed: boolean): Promise<boolean> {
++    const v = await guard(() => callApp('BaselineAddVersion', { id: selectedId.value, comment, token, confirmed } as never))
++    if (!v) return false
++    await loadList()
++    await loadDetails()
++    return true
++  }
++
++  async function setActive(versionId: string): Promise<boolean> {
++    const b = await guard(() => callApp('BaselineSetActive', selectedId.value, versionId))
++    if (!b) return false
++    await loadList()
++    await loadDetails()
++    return true
++  }
++
++  async function addException(input: { scope: 'resource' | 'kind'; ref: BaselineRef; path: string; comment: string; expiresAt?: string }): Promise<boolean> {
++    const e = await guard(() => callApp('BaselineAddException', selectedId.value, input as never))
++    if (!e) return false
++    exceptions.value = await callApp('BaselineExceptions', selectedId.value) as BaselineException[]
++    return true
++  }
++
++  async function removeException(id: string): Promise<boolean> {
++    const ok = await guard(async () => { await callApp('BaselineRemoveException', selectedId.value, id); return true })
++    if (!ok) return false
++    exceptions.value = exceptions.value.filter(e => e.id !== id)
++    return true
++  }
++
++  async function remove(): Promise<boolean> {
++    const id = selectedId.value
++    const ok = await guard(async () => { await callApp('BaselineDelete', id); return true })
++    if (!ok) return false
++    selectedId.value = ''
++    result.value = null
++    await loadList()
++    await loadDetails()
++    return true
++  }
++
++  return {
++    baselines, selectedId, selected, activeVersion, versions, versionsNext, results, resultsNext, exceptions, result, kinds,
++    loading, checking, error,
++    loadList, loadKinds, loadDetails, moreVersions, moreResults, check, openResult,
++    previewNew, previewVersion, create, addVersion, setActive, addException, removeException, remove,
++  }
++}
++
++export type BaselineStore = ReturnType<typeof useBaseline>
+diff --git a/frontend/src/i18n/locales/cn/baseline.json b/frontend/src/i18n/locales/cn/baseline.json
+new file mode 100644
+index 00000000..fbafbe55
+--- /dev/null
++++ b/frontend/src/i18n/locales/cn/baseline.json
+@@ -0,0 +1,156 @@
++{
++  "title": "配置基线",
++  "subtitle": "记录所选资源的当前状态，之后查看发生了哪些漂移。检查只读取集群，不会自动应用或修复任何内容。",
++  "refresh": "刷新",
++  "new": "新建基线",
++  "empty": "还没有基线。创建一个以记录当前配置。",
++  "noManage": "创建基线需要“管理配置基线”权限。",
++  "select": "基线",
++  "activeVersion": "活动版本",
++  "objects": "{count} 个资源",
++  "version": "版本 {seq}",
++  "scope": "范围",
++  "scopeNamespaces": "命名空间：{list}",
++  "scopeRefs": "列出的资源：{count}",
++  "check": "运行检查",
++  "checking": "检查中…",
++  "newVersion": "新版本",
++  "delete": "删除",
++  "confirmDelete": "删除基线“{name}”及其所有版本、例外和检查历史？此操作无法撤销。",
++  "result": {
++    "title": "检查结果",
++    "checkedAt": "检查时间 {time}",
++    "by": "发起人 {user}",
++    "none": "运行检查，将集群与活动版本进行比较。",
++    "rulesVersions": "比较规则：当前 {current}，版本 {version}",
++    "empty": "此基线中没有资源。",
++    "columns": {
++      "resource": "资源",
++      "status": "状态",
++      "priority": "优先级",
++      "details": "详情"
++    },
++    "showChanges": "显示更改",
++    "hideChanges": "隐藏更改",
++    "suppressed": "被例外隐藏：{ids}"
++  },
++  "summary": {
++    "total": "资源：{count}",
++    "matched": "一致：{count}",
++    "changed": "已更改：{count}",
++    "missing": "缺失：{count}",
++    "unchecked": "未检查：{count}",
++    "suppressed": "被例外隐藏的更改：{count}",
++    "uncheckedNote": "未检查的资源不会被报告为一致。"
++  },
++  "status": {
++    "match": "一致",
++    "changed": "已更改",
++    "missing": "集群中不存在",
++    "unchecked": "未检查",
++    "new": "新增"
++  },
++  "priority": {
++    "high": "高",
++    "medium": "中",
++    "low": "低"
++  },
++  "reason": {
++    "forbidden": "Kubernetes 中没有权限",
++    "unavailable": "集群 API 错误",
++    "too-large": "响应过大",
++    "kind-unavailable": "集群中没有此资源类型",
++    "rules-version-mismatch": "按不同的比较规则创建：请新建版本",
++    "secret-unsupported": "不支持 Secret，且绝不会读取",
++    "unsupported-kind": "不支持此资源类型",
++    "truncated": "列表因大小限制被截断",
++    "not-found": "集群中未找到"
++  },
++  "caveat": {
++    "hpa-unreadable": "无法读取 HorizontalPodAutoscaler：副本数按原样比较，处于自动伸缩下的工作负载可能出现误报差异。"
++  },
++  "change": {
++    "op": {
++      "changed": "已更改",
++      "added": "已添加",
++      "removed": "已删除"
++    },
++    "sensitive": "“{key}”的值{op}（不显示该值）",
++    "sensitiveNoKey": "敏感值{op}（不显示该值）",
++    "old": "原值",
++    "new": "现值",
++    "sourceManagedFields": "根据 managedFields：{manager}，{time}",
++    "sourceManagedFieldsNoName": "根据 managedFields，{time}",
++    "sourceAudit": "由 Kubron 应用（审计记录已由集群数据确认），{time}",
++    "addException": "添加例外"
++  },
++  "create": {
++    "title": "新建基线",
++    "name": "名称",
++    "namespaces": "命名空间",
++    "namespacesHint": "用逗号或空格分隔",
++    "selector": "标签选择器",
++    "kinds": "资源类型",
++    "kindsAll": "所有支持的类型",
++    "preview": "预览",
++    "previewing": "正在读取集群…",
++    "found": "将记录：{objects} 个资源，{hashed} 个敏感值以哈希形式保存。",
++    "nothing": "未选择任何内容：没有可记录的资源。",
++    "skipped": "已跳过",
++    "comment": "备注（必填）",
++    "confirm": "我了解当前状态将按原样记录，包括已经存在的偏差。",
++    "submit": "记录基线",
++    "cancel": "取消",
++    "stale": "预览之后集群发生了变化。请重新预览并确认所见内容。",
++    "expires": "预览有效期至 {time}。"
++  },
++  "version_dialog": {
++    "title": "新版本",
++    "added": "新增资源：{count}",
++    "removed": "已不存在：{count}",
++    "changed": "相对活动版本已更改：{count}",
++    "unchanged": "未更改：{count}",
++    "rulesChanged": "活动版本按不同的比较规则记录，无法显示差异。",
++    "submit": "记录版本",
++    "note": "新版本将成为活动版本，当前版本的例外会一并带入。"
++  },
++  "versions": {
++    "title": "版本",
++    "seq": "版本",
++    "author": "作者",
++    "comment": "备注",
++    "created": "创建时间",
++    "active": "活动",
++    "makeActive": "设为活动",
++    "more": "显示更多",
++    "confirmActive": "将版本 {seq} 设为活动版本？之后的检查将与其比较。"
++  },
++  "exceptions": {
++    "title": "例外",
++    "none": "没有例外。例外会把字段从某个资源或整个资源类型的比较中排除。",
++    "scope": "适用于",
++    "scopeResource": "单个资源",
++    "scopeKind": "资源类型",
++    "kind": "类型",
++    "namespace": "命名空间",
++    "name": "资源名称",
++    "path": "字段路径",
++    "pathHint": "例如 spec.replicas",
++    "comment": "备注（必填）",
++    "expires": "到期时间",
++    "never": "永不过期",
++    "expired": "已过期",
++    "add": "添加例外",
++    "remove": "移除",
++    "confirmRemove": "移除此例外？",
++    "createdBy": "添加人 {user}"
++  },
++  "history": {
++    "title": "检查历史",
++    "none": "还没有检查记录。",
++    "open": "打开",
++    "more": "显示更多",
++    "initiator": "发起人",
++    "time": "时间"
++  }
++}
+diff --git a/frontend/src/i18n/locales/en/baseline.json b/frontend/src/i18n/locales/en/baseline.json
+new file mode 100644
+index 00000000..e6ae5bb6
+--- /dev/null
++++ b/frontend/src/i18n/locales/en/baseline.json
+@@ -0,0 +1,156 @@
++{
++  "title": "Configuration baseline",
++  "subtitle": "Record the current state of selected resources and see later what has drifted. Checks only read the cluster; nothing is applied or fixed automatically.",
++  "refresh": "Refresh",
++  "new": "New baseline",
++  "empty": "No baselines yet. Create one to record the current configuration.",
++  "noManage": "Creating baselines requires the “Manage configuration baselines” permission.",
++  "select": "Baseline",
++  "activeVersion": "Active version",
++  "objects": "{count} resources",
++  "version": "Version {seq}",
++  "scope": "Scope",
++  "scopeNamespaces": "namespaces: {list}",
++  "scopeRefs": "{count} listed resources",
++  "check": "Run check",
++  "checking": "Checking…",
++  "newVersion": "New version",
++  "delete": "Delete",
++  "confirmDelete": "Delete baseline “{name}” with all its versions, exceptions and check history? This cannot be undone.",
++  "result": {
++    "title": "Check result",
++    "checkedAt": "Checked {time}",
++    "by": "by {user}",
++    "none": "Run a check to compare the cluster with the active version.",
++    "rulesVersions": "Comparison rules: current {current}, version {version}",
++    "empty": "No resources in this baseline.",
++    "columns": {
++      "resource": "Resource",
++      "status": "Status",
++      "priority": "Priority",
++      "details": "Details"
++    },
++    "showChanges": "Show changes",
++    "hideChanges": "Hide changes",
++    "suppressed": "Hidden by exceptions: {ids}"
++  },
++  "summary": {
++    "total": "Resources: {count}",
++    "matched": "Match: {count}",
++    "changed": "Changed: {count}",
++    "missing": "Missing: {count}",
++    "unchecked": "Not checked: {count}",
++    "suppressed": "Changes hidden by exceptions: {count}",
++    "uncheckedNote": "Resources that were not checked are not reported as matching."
++  },
++  "status": {
++    "match": "Match",
++    "changed": "Changed",
++    "missing": "Missing in cluster",
++    "unchecked": "Not checked",
++    "new": "New"
++  },
++  "priority": {
++    "high": "High",
++    "medium": "Medium",
++    "low": "Low"
++  },
++  "reason": {
++    "forbidden": "No permission in Kubernetes",
++    "unavailable": "Cluster API error",
++    "too-large": "Response is too large",
++    "kind-unavailable": "Resource type is not available in the cluster",
++    "rules-version-mismatch": "Created with different comparison rules: make a new version",
++    "secret-unsupported": "Secrets are not supported and are never read",
++    "unsupported-kind": "Resource type is not supported",
++    "truncated": "List was truncated by the size limit",
++    "not-found": "Not found in the cluster"
++  },
++  "caveat": {
++    "hpa-unreadable": "The HorizontalPodAutoscaler could not be read: replica counts were compared as is, so workloads under autoscaling may show false differences."
++  },
++  "change": {
++    "op": {
++      "changed": "changed",
++      "added": "added",
++      "removed": "removed"
++    },
++    "sensitive": "Value of “{key}” {op} (the value is not shown)",
++    "sensitiveNoKey": "A sensitive value {op} (the value is not shown)",
++    "old": "was",
++    "new": "now",
++    "sourceManagedFields": "According to managedFields: {manager}, {time}",
++    "sourceManagedFieldsNoName": "According to managedFields, {time}",
++    "sourceAudit": "Applied from Kubron (audit record confirmed by cluster data), {time}",
++    "addException": "Add exception"
++  },
++  "create": {
++    "title": "New baseline",
++    "name": "Name",
++    "namespaces": "Namespaces",
++    "namespacesHint": "Comma or space separated",
++    "selector": "Label selector",
++    "kinds": "Resource types",
++    "kindsAll": "All supported types",
++    "preview": "Preview",
++    "previewing": "Reading the cluster…",
++    "found": "Will be recorded: {objects} resources, {hashed} sensitive values as hashes.",
++    "nothing": "Nothing selected: there is nothing to record.",
++    "skipped": "Skipped",
++    "comment": "Comment (required)",
++    "confirm": "I understand that the current state is recorded as is, including deviations that already exist.",
++    "submit": "Record baseline",
++    "cancel": "Cancel",
++    "stale": "The cluster changed after the preview. Preview again and confirm what you see.",
++    "expires": "The preview is valid until {time}."
++  },
++  "version_dialog": {
++    "title": "New version",
++    "added": "New resources: {count}",
++    "removed": "No longer present: {count}",
++    "changed": "Changed since the active version: {count}",
++    "unchanged": "Unchanged: {count}",
++    "rulesChanged": "The active version was recorded with different comparison rules; differences cannot be shown.",
++    "submit": "Record version",
++    "note": "The new version becomes active. Exceptions of the current version are carried over."
++  },
++  "versions": {
++    "title": "Versions",
++    "seq": "Version",
++    "author": "Author",
++    "comment": "Comment",
++    "created": "Created",
++    "active": "active",
++    "makeActive": "Make active",
++    "more": "Show more",
++    "confirmActive": "Make version {seq} active? Later checks will compare against it."
++  },
++  "exceptions": {
++    "title": "Exceptions",
++    "none": "No exceptions. An exception excludes a field from comparison for a resource or a whole resource type.",
++    "scope": "Applies to",
++    "scopeResource": "One resource",
++    "scopeKind": "Resource type",
++    "kind": "Type",
++    "namespace": "Namespace",
++    "name": "Resource name",
++    "path": "Field path",
++    "pathHint": "For example spec.replicas",
++    "comment": "Comment (required)",
++    "expires": "Expires",
++    "never": "no expiry",
++    "expired": "expired",
++    "add": "Add exception",
++    "remove": "Remove",
++    "confirmRemove": "Remove this exception?",
++    "createdBy": "Added by {user}"
++  },
++  "history": {
++    "title": "Check history",
++    "none": "No checks yet.",
++    "open": "Open",
++    "more": "Show more",
++    "initiator": "Initiator",
++    "time": "Time"
++  }
++}
+diff --git a/frontend/src/i18n/locales/ru/baseline.json b/frontend/src/i18n/locales/ru/baseline.json
+new file mode 100644
+index 00000000..86214279
+--- /dev/null
++++ b/frontend/src/i18n/locales/ru/baseline.json
+@@ -0,0 +1,156 @@
++{
++  "title": "Baseline конфигурации",
++  "subtitle": "Зафиксируйте текущее состояние выбранных ресурсов и позже смотрите, что изменилось. Проверка только читает кластер: ничего не применяется и не исправляется автоматически.",
++  "refresh": "Обновить",
++  "new": "Новый baseline",
++  "empty": "Baseline пока нет. Создайте его, чтобы зафиксировать текущую конфигурацию.",
++  "noManage": "Для создания baseline нужно право «Управление baseline конфигурации».",
++  "select": "Baseline",
++  "activeVersion": "Активная версия",
++  "objects": "Ресурсов: {count}",
++  "version": "Версия {seq}",
++  "scope": "Область",
++  "scopeNamespaces": "пространства имён: {list}",
++  "scopeRefs": "ресурсов в списке: {count}",
++  "check": "Запустить проверку",
++  "checking": "Проверяем…",
++  "newVersion": "Новая версия",
++  "delete": "Удалить",
++  "confirmDelete": "Удалить baseline «{name}» со всеми версиями, исключениями и историей проверок? Это нельзя отменить.",
++  "result": {
++    "title": "Результат проверки",
++    "checkedAt": "Проверено {time}",
++    "by": "запустил {user}",
++    "none": "Запустите проверку, чтобы сравнить кластер с активной версией.",
++    "rulesVersions": "Правила сравнения: текущие {current}, версии {version}",
++    "empty": "В этом baseline нет ресурсов.",
++    "columns": {
++      "resource": "Ресурс",
++      "status": "Статус",
++      "priority": "Приоритет",
++      "details": "Подробности"
++    },
++    "showChanges": "Показать изменения",
++    "hideChanges": "Скрыть изменения",
++    "suppressed": "Скрыто исключениями: {ids}"
++  },
++  "summary": {
++    "total": "Ресурсов: {count}",
++    "matched": "Соответствует: {count}",
++    "changed": "Изменено: {count}",
++    "missing": "Отсутствует: {count}",
++    "unchecked": "Не проверено: {count}",
++    "suppressed": "Изменений скрыто исключениями: {count}",
++    "uncheckedNote": "Непроверенные ресурсы не считаются соответствующими."
++  },
++  "status": {
++    "match": "Соответствует",
++    "changed": "Изменён",
++    "missing": "Нет в кластере",
++    "unchecked": "Не проверено",
++    "new": "Новый"
++  },
++  "priority": {
++    "high": "Высокий",
++    "medium": "Средний",
++    "low": "Низкий"
++  },
++  "reason": {
++    "forbidden": "Нет прав в Kubernetes",
++    "unavailable": "Ошибка API кластера",
++    "too-large": "Ответ слишком большой",
++    "kind-unavailable": "Тип ресурса недоступен в кластере",
++    "rules-version-mismatch": "Создан по другим правилам сравнения: создайте новую версию",
++    "secret-unsupported": "Secret не поддерживаются и никогда не читаются",
++    "unsupported-kind": "Тип ресурса не поддерживается",
++    "truncated": "Список обрезан по лимиту размера",
++    "not-found": "Не найден в кластере"
++  },
++  "caveat": {
++    "hpa-unreadable": "HorizontalPodAutoscaler прочитать не удалось: число реплик сравнивалось как есть, у нагрузок под автомасштабированием возможны ложные отличия."
++  },
++  "change": {
++    "op": {
++      "changed": "изменено",
++      "added": "добавлено",
++      "removed": "удалено"
++    },
++    "sensitive": "Значение «{key}» {op} (само значение не показывается)",
++    "sensitiveNoKey": "Чувствительное значение {op} (само значение не показывается)",
++    "old": "было",
++    "new": "стало",
++    "sourceManagedFields": "По данным managedFields: {manager}, {time}",
++    "sourceManagedFieldsNoName": "По данным managedFields, {time}",
++    "sourceAudit": "Применено из Kubron (запись аудита, подтверждённая данными кластера), {time}",
++    "addException": "Добавить исключение"
++  },
++  "create": {
++    "title": "Новый baseline",
++    "name": "Название",
++    "namespaces": "Пространства имён",
++    "namespacesHint": "Через запятую или пробел",
++    "selector": "Селектор меток",
++    "kinds": "Типы ресурсов",
++    "kindsAll": "Все поддерживаемые типы",
++    "preview": "Предпросмотр",
++    "previewing": "Читаем кластер…",
++    "found": "Будет зафиксировано: ресурсов {objects}, чувствительных значений в виде хешей {hashed}.",
++    "nothing": "Ничего не выбрано: фиксировать нечего.",
++    "skipped": "Пропущено",
++    "comment": "Комментарий (обязателен)",
++    "confirm": "Я понимаю, что текущее состояние фиксируется как есть, включая уже существующие отклонения.",
++    "submit": "Зафиксировать baseline",
++    "cancel": "Отмена",
++    "stale": "Кластер изменился после предпросмотра. Сделайте предпросмотр заново и подтвердите увиденное.",
++    "expires": "Предпросмотр действует до {time}."
++  },
++  "version_dialog": {
++    "title": "Новая версия",
++    "added": "Новых ресурсов: {count}",
++    "removed": "Больше нет: {count}",
++    "changed": "Изменено относительно активной версии: {count}",
++    "unchanged": "Без изменений: {count}",
++    "rulesChanged": "Активная версия снята по другим правилам сравнения: различия показать нельзя.",
++    "submit": "Зафиксировать версию",
++    "note": "Новая версия становится активной. Исключения текущей версии переносятся."
++  },
++  "versions": {
++    "title": "Версии",
++    "seq": "Версия",
++    "author": "Автор",
++    "comment": "Комментарий",
++    "created": "Создана",
++    "active": "активная",
++    "makeActive": "Сделать активной",
++    "more": "Показать ещё",
++    "confirmActive": "Сделать версию {seq} активной? Следующие проверки будут сравнивать с ней."
++  },
++  "exceptions": {
++    "title": "Исключения",
++    "none": "Исключений нет. Исключение убирает поле из сравнения для ресурса или для всего типа ресурсов.",
++    "scope": "Действует на",
++    "scopeResource": "Один ресурс",
++    "scopeKind": "Тип ресурсов",
++    "kind": "Тип",
++    "namespace": "Пространство имён",
++    "name": "Имя ресурса",
++    "path": "Путь к полю",
++    "pathHint": "Например, spec.replicas",
++    "comment": "Комментарий (обязателен)",
++    "expires": "Действует до",
++    "never": "бессрочно",
++    "expired": "просрочено",
++    "add": "Добавить исключение",
++    "remove": "Убрать",
++    "confirmRemove": "Убрать это исключение?",
++    "createdBy": "Добавил {user}"
++  },
++  "history": {
++    "title": "История проверок",
++    "none": "Проверок пока не было.",
++    "open": "Открыть",
++    "more": "Показать ещё",
++    "initiator": "Кто запустил",
++    "time": "Время"
++  }
++}
+diff --git a/frontend/src/types/baseline.ts b/frontend/src/types/baseline.ts
+new file mode 100644
+index 00000000..640a310f
+--- /dev/null
++++ b/frontend/src/types/baseline.ts
+@@ -0,0 +1,156 @@
++// Copyright 2026 The Kubron Authors
++// SPDX-License-Identifier: Apache-2.0
++
++/** Типы baseline конфигурации и результатов проверки (ADR-0027). Повторяют JSON бэкенда (internal/baseline, internal/drift). */
++
++export type BaselineStatus = 'match' | 'changed' | 'missing' | 'unchecked' | 'new'
++export type BaselinePriority = 'high' | 'medium' | 'low'
++export type BaselineChangeOp = 'changed' | 'added' | 'removed'
++
++/** Причина статуса «не проверено» (и пропуска при снимке) */
++export type BaselineReason =
++  | 'forbidden' | 'unavailable' | 'too-large' | 'kind-unavailable' | 'rules-version-mismatch'
++  | 'secret-unsupported' | 'unsupported-kind' | 'truncated' | 'not-found'
++
++export interface BaselineRef {
++  group?: string
++  version: string
++  kind: string
++  namespace?: string
++  name: string
++}
++
++export interface Baseline {
++  id: string
++  name: string
++  namespaces: string[]
++  selector: string
++  kinds: string[]
++  refs: BaselineRef[]
++  activeVersionId: string
++  createdBy: string
++  createdAt: string
++}
++
++/** Что снимать: пространства имён + селектор + типы либо явный список ресурсов */
++export interface BaselineSpec {
++  namespaces: string[]
++  selector: string
++  kinds: string[]
++  refs: BaselineRef[]
++}
++
++export interface BaselineVersionSummary {
++  id: string
++  baselineId: string
++  seq: number
++  rulesVersion: number
++  source: string
++  author: string
++  comment: string
++  createdAt: string
++  objectCount: number
++}
++
++export interface BaselineVersionPage { items: BaselineVersionSummary[]; next?: string }
++
++export interface BaselineChangeSource {
++  kind: 'managedFields' | 'kubron-audit'
++  manager?: string
++  at: string
++}
++
++export interface BaselineChange {
++  path: string
++  op: BaselineChangeOp
++  /** Значения для показа. У чувствительных изменений пусты: бэкенд их не отдаёт */
++  old?: string
++  new?: string
++  sensitive?: boolean
++  key?: string
++  priority: BaselinePriority
++  source?: BaselineChangeSource
++}
++
++export interface BaselineItem {
++  ref: BaselineRef
++  status: BaselineStatus
++  reason?: BaselineReason
++  priority?: BaselinePriority
++  changes?: BaselineChange[]
++  suppressed?: string[]
++}
++
++export interface BaselineSummary {
++  total: number
++  matched: number
++  changed: number
++  missing: number
++  unchecked: number
++  checked: number
++  uncheckedByReason?: Partial<Record<BaselineReason, number>>
++  suppressedChanges: number
++}
++
++export interface BaselineException {
++  id: string
++  scope: 'resource' | 'kind'
++  ref: BaselineRef
++  path: string
++  comment: string
++  expiresAt?: string
++  createdBy: string
++  createdAt: string
++}
++
++export interface BaselineAppliedException {
++  id: string
++  scope: 'resource' | 'kind'
++  ref: BaselineRef
++  path: string
++  comment: string
++  expiresAt?: string
++  hits: number
++}
++
++export interface BaselineCheckResult {
++  id: string
++  baselineId: string
++  versionId: string
++  rulesVersion: number
++  versionRulesVersion: number
++  checkedAt: string
++  initiator: string
++  summary: BaselineSummary
++  items: BaselineItem[]
++  exceptions: { applied?: BaselineAppliedException[]; expired?: string[] }
++  caveats?: string[]
++}
++
++export interface BaselineResultRow {
++  id: string
++  baselineId: string
++  versionId: string
++  checkedAt: string
++  initiator: string
++  rulesVersion: number
++  summary: BaselineSummary
++}
++
++export interface BaselineResultPage { items: BaselineResultRow[]; next?: string }
++
++export interface BaselineSkip { ref: BaselineRef; reason: BaselineReason }
++
++export interface BaselinePreview {
++  token: string
++  expiresAt: string
++  objects: number
++  hashed: number
++  skipped?: BaselineSkip[]
++  hasPrevious: boolean
++  rulesChanged: boolean
++  added?: BaselineRef[]
++  removed?: BaselineRef[]
++  changed?: BaselineItem[]
++  unchanged: number
++}
+-- 
+2.43.0
+

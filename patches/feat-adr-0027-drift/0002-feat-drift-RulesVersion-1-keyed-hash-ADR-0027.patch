@@ -1,0 +1,2185 @@
+From 12d2d283c3c5faf600f1e9daef5ec311f39ef63a Mon Sep 17 00:00:00 2001
+From: Vadim <vmilyash@mts.ru>
+Date: Thu, 12 Nov 2026 13:45:26 +0700
+Subject: [PATCH 2/9] =?UTF-8?q?feat(drift):=20=D0=BD=D0=BE=D1=80=D0=BC?=
+ =?UTF-8?q?=D0=B0=D0=BB=D0=B8=D0=B7=D0=B0=D1=86=D0=B8=D1=8F=20=D1=80=D0=B5?=
+ =?UTF-8?q?=D1=81=D1=83=D1=80=D1=81=D0=BE=D0=B2=20=D0=BF=D0=BE=20=D0=BF?=
+ =?UTF-8?q?=D1=80=D0=B0=D0=B2=D0=B8=D0=BB=D0=B0=D0=BC=20RulesVersion=3D1?=
+ =?UTF-8?q?=20=D0=B8=20keyed=20hash=20=D1=87=D1=83=D0=B2=D1=81=D1=82=D0=B2?=
+ =?UTF-8?q?=D0=B8=D1=82=D0=B5=D0=BB=D1=8C=D0=BD=D1=8B=D1=85=20=D0=B7=D0=BD?=
+ =?UTF-8?q?=D0=B0=D1=87=D0=B5=D0=BD=D0=B8=D0=B9=20(ADR-0027)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Signed-off-by: Vadim <vmilyash@mts.ru>
+---
+ internal/drift/flatten.go                    | 154 ++++++
+ internal/drift/normalize.go                  | 267 ++++++++++
+ internal/drift/normalize_test.go             | 534 +++++++++++++++++++
+ internal/drift/paths.go                      | 214 ++++++++
+ internal/drift/rules.go                      | 396 ++++++++++++++
+ internal/drift/testdata/configmap.golden     |   9 +
+ internal/drift/testdata/configmap.json       |  22 +
+ internal/drift/testdata/daemonset.golden     |  24 +
+ internal/drift/testdata/daemonset.json       |  34 ++
+ internal/drift/testdata/deployment.golden    |  68 +++
+ internal/drift/testdata/deployment.json      |  97 ++++
+ internal/drift/testdata/ingress.golden       |  21 +
+ internal/drift/testdata/ingress.json         |  26 +
+ internal/drift/testdata/networkpolicy.golden |  17 +
+ internal/drift/testdata/networkpolicy.json   |  23 +
+ internal/drift/testdata/service.golden       |  16 +
+ internal/drift/testdata/service.json         |  24 +
+ internal/drift/testdata/statefulset.golden   |  23 +
+ internal/drift/testdata/statefulset.json     |  43 ++
+ 19 files changed, 2012 insertions(+)
+ create mode 100644 internal/drift/flatten.go
+ create mode 100644 internal/drift/normalize.go
+ create mode 100644 internal/drift/normalize_test.go
+ create mode 100644 internal/drift/paths.go
+ create mode 100644 internal/drift/rules.go
+ create mode 100644 internal/drift/testdata/configmap.golden
+ create mode 100644 internal/drift/testdata/configmap.json
+ create mode 100644 internal/drift/testdata/daemonset.golden
+ create mode 100644 internal/drift/testdata/daemonset.json
+ create mode 100644 internal/drift/testdata/deployment.golden
+ create mode 100644 internal/drift/testdata/deployment.json
+ create mode 100644 internal/drift/testdata/ingress.golden
+ create mode 100644 internal/drift/testdata/ingress.json
+ create mode 100644 internal/drift/testdata/networkpolicy.golden
+ create mode 100644 internal/drift/testdata/networkpolicy.json
+ create mode 100644 internal/drift/testdata/service.golden
+ create mode 100644 internal/drift/testdata/service.json
+ create mode 100644 internal/drift/testdata/statefulset.golden
+ create mode 100644 internal/drift/testdata/statefulset.json
+
+diff --git a/internal/drift/flatten.go b/internal/drift/flatten.go
+new file mode 100644
+index 00000000..f33acd8d
+--- /dev/null
++++ b/internal/drift/flatten.go
+@@ -0,0 +1,154 @@
++// Copyright 2026 The Kubron Authors
++// SPDX-License-Identifier: Apache-2.0
++
++package drift
++
++import (
++	"crypto/hmac"
++	"crypto/rand"
++	"crypto/sha256"
++	"encoding/binary"
++	"slices"
++	"sort"
++	"strings"
++
++	"github.com/24DSO-lab/kubron/internal/baseline"
++	"github.com/24DSO-lab/kubron/internal/logging"
++)
++
++// SaltSize — размер соли версии в байтах (ADR-0027 §4).
++const SaltSize = 32
++
++// NewSalt возвращает случайную соль версии: crypto/rand, одна на версию, не связана с ключами keyring.
++func NewSalt() []byte {
++	b := make([]byte, SaltSize)
++	_, _ = rand.Read(b) // с Go 1.24 crypto/rand.Read не возвращает ошибку
++	return b
++}
++
++// hashDomain разделяет область применения HMAC: тот же ключ-соль не даёт тех же значений в другом контексте.
++const hashDomain = "kubron/baseline/hash/v1\x00"
++
++// hashValue вычисляет HMAC-SHA256 литерала значения с солью версии. В сообщение входят ресурс (без версии API) и путь
++// поля: одинаковые значения в разных ключах или ресурсах дают разные hash, и по hash нельзя заметить, что два секрета
++// совпадают. Сравнение — только через hmac.Equal (Field.Equal).
++func hashValue(salt []byte, ref baseline.Ref, path, lit string) []byte {
++	mac := hmac.New(sha256.New, salt)
++	mac.Write([]byte(hashDomain))
++	for _, part := range []string{ref.Key(), path, lit} {
++		var n [4]byte
++		binary.BigEndian.PutUint32(n[:], uint32(len(part)))
++		mac.Write(n[:])
++		mac.Write([]byte(part))
++	}
++	return mac.Sum(nil)
++}
++
++// flattener — вторая стадия: дерево → плоская карта «путь → значение»; чувствительные значения заменяются hash.
++type flattener struct {
++	ref    baseline.Ref
++	salt   []byte
++	rules  *kindRules
++	out    map[string]baseline.Field
++	hashed int
++}
++
++// value обходит значение; path — путь поля, sp — схемный путь (для правил).
++func (f *flattener) value(v any, path, sp string) {
++	switch t := v.(type) {
++	case map[string]any:
++		if len(t) == 0 {
++			if path != "" {
++				f.out[path] = baseline.Field{Plain: "{}"}
++			}
++			return
++		}
++		keys := make([]string, 0, len(t))
++		for k := range t {
++			keys = append(keys, k)
++		}
++		sort.Strings(keys)
++		for _, k := range keys {
++			csp := k
++			if sp != "" {
++				csp = sp + "." + k
++			}
++			f.value(t[k], fieldPath(path, k), csp)
++		}
++	case []any:
++		f.list(t, path, sp)
++	default:
++		f.leaf(v, path, sp)
++	}
++}
++
++func (f *flattener) list(items []any, path, sp string) {
++	ep := sp + "[]"
++	keys, keyed := f.rules.keyed[ep]
++	if keyed {
++		keys = slices.Clone(keys)
++		sort.Strings(keys) // имена ключей в пути — по алфавиту, как и в managedFields
++	}
++	var order []string
++	seen := map[string]struct{}{} // два элемента с одним ключом не должны слиться в один путь
++	for i, e := range items {
++		p := indexPath(path, i)
++		if keyed {
++			if kp, ok := keyedElementPath(path, e, keys); ok {
++				if _, dup := seen[kp]; !dup {
++					seen[kp] = struct{}{}
++					p = kp
++				}
++			}
++			if f.rules.ordered.has(ep) {
++				order = append(order, strings.TrimPrefix(p, path))
++			}
++		}
++		f.value(e, p, ep)
++	}
++	if len(order) > 0 {
++		// Порядок init-контейнеров значим, а путь с ключом его не хранит: порядок записывается отдельным значением.
++		f.out[path+".@order"] = baseline.Field{Plain: literal(order)}
++	}
++}
++
++// keyedElementPath строит путь элемента по значениям его ключей. Отсутствующие ключи в путь не входят.
++func keyedElementPath(parent string, elem any, keys []string) (string, bool) {
++	m, ok := elem.(map[string]any)
++	if !ok {
++		return "", false
++	}
++	var pairs [][2]string
++	for _, k := range keys {
++		v := lookup(m, k)
++		if v == nil {
++			continue
++		}
++		s, isStr := v.(string)
++		if !isStr {
++			s = literal(v)
++		}
++		pairs = append(pairs, [2]string{k, s})
++	}
++	if len(pairs) == 0 {
++		return "", false
++	}
++	return keyedPath(parent, pairs), true
++}
++
++// leaf записывает скалярное значение: литерал или hash.
++func (f *flattener) leaf(v any, path, sp string) {
++	lit := literal(v)
++	sensitive := isSensitiveSchema(f.ref.Kind, sp)
++	if s, ok := v.(string); ok && !sensitive && logging.Redact(s) != s {
++		// Остальные текстовые поля проходят редакцию (ADR-0022). Если она что-то нашла, значение не хранится:
++		// иначе два разных секрета после редакции выглядели бы одинаково, и их смена осталась бы незамеченной.
++		sensitive = true
++	}
++	if sensitive {
++		f.out[path] = baseline.Field{Hash: &baseline.HashedValue{HMAC: hashValue(f.salt, f.ref, path, lit)}}
++		f.hashed++
++		return
++	}
++	f.out[path] = baseline.Field{Plain: lit}
++}
+diff --git a/internal/drift/normalize.go b/internal/drift/normalize.go
+new file mode 100644
+index 00000000..f501ed7d
+--- /dev/null
++++ b/internal/drift/normalize.go
+@@ -0,0 +1,267 @@
++// Copyright 2026 The Kubron Authors
++// SPDX-License-Identifier: Apache-2.0
++
++package drift
++
++import (
++	"encoding/json"
++	"errors"
++	"slices"
++	"strings"
++
++	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
++
++	"github.com/24DSO-lab/kubron/internal/baseline"
++)
++
++// Ошибки нормализации.
++var (
++	// ErrSecretUnsupported — Secret не поддерживается и не читается ни при каких условиях (ADR-0027 §3).
++	ErrSecretUnsupported = errors.New("secrets are not supported by baselines")
++	// ErrUnsupportedKind — тип ресурса вне списка MVP.
++	ErrUnsupportedKind = errors.New("resource kind is not supported by baselines")
++)
++
++// normOptions — параметры нормализации, зависящие от окружения объекта.
++type normOptions struct {
++	// excludeReplicas исключает spec.replicas у Deployment и StatefulSet, на которые указывает HPA: число реплик
++	// управляется автомасштабированием, а не конфигурацией.
++	excludeReplicas bool
++}
++
++// refOf строит ссылку на ресурс по объекту кластера.
++func refOf(u *unstructured.Unstructured) baseline.Ref {
++	gvk := u.GroupVersionKind()
++	return baseline.Ref{Group: gvk.Group, Version: gvk.Version, Kind: gvk.Kind, Namespace: u.GetNamespace(), Name: u.GetName()}
++}
++
++// specFor возвращает описание типа или ошибку: Secret — ErrSecretUnsupported, остальное — ErrUnsupportedKind.
++func specFor(group, kind string) (*kindSpec, error) {
++	if group == "" && strings.EqualFold(kind, "Secret") {
++		return nil, ErrSecretUnsupported
++	}
++	ks, ok := kindFor(group, kind)
++	if !ok {
++		return nil, ErrUnsupportedKind
++	}
++	return ks, nil
++}
++
++// normalizeObject нормализует живой объект и вычисляет keyed hash чувствительных значений с солью salt.
++// Второй результат — число значений, сохранённых только как hash.
++func normalizeObject(u *unstructured.Unstructured, salt []byte, opt normOptions) (baseline.Object, int, error) {
++	ref := refOf(u)
++	ks, err := specFor(ref.Group, ref.Kind)
++	if err != nil {
++		return baseline.Object{}, 0, err
++	}
++	tree := normalizeTree(ks, u.Object, opt)
++	f := &flattener{ref: ref, salt: salt, rules: ks.rules, out: map[string]baseline.Field{}}
++	f.value(tree, "", "")
++	return baseline.Object{Ref: ref, Fields: f.out}, f.hashed, nil
++}
++
++// normalizeTree — первая стадия: убирает служебные и назначаемые сервером поля, значения по умолчанию, null и пустые
++// контейнеры, упорядочивает списки. Результат — новое дерево той же формы, в нём могут лежать исходные строки
++// (в том числе чувствительные: их превращает в hash вторая стадия). Функция идемпотентна: повторный вызов на своём
++// результате ничего не меняет (проверяется свойством в тестах).
++func normalizeTree(ks *kindSpec, obj map[string]any, opt normOptions) map[string]any {
++	r := ks.rules
++	n := &normalizer{rules: r, exclude: r.exclude}
++	if opt.excludeReplicas {
++		n.exclude = mergeSets(r.exclude, newSet("spec.replicas"))
++	}
++	out := map[string]any{}
++
++	if md, ok := obj["metadata"].(map[string]any); ok {
++		meta := map[string]any{}
++		if labels, ok := md["labels"].(map[string]any); ok && len(labels) > 0 {
++			meta["labels"] = cloneValue(labels)
++		}
++		if ann, ok := md["annotations"].(map[string]any); ok {
++			kept := map[string]any{}
++			for k, v := range ann {
++				if !r.annotationExcluded(k) {
++					kept[k] = v
++				}
++			}
++			if len(kept) > 0 {
++				meta["annotations"] = kept
++			}
++		}
++		if len(meta) > 0 {
++			out["metadata"] = meta
++		}
++	}
++	for _, name := range ks.top {
++		v, ok := obj[name]
++		if !ok || n.exclude.has(name) {
++			continue
++		}
++		nv, keep := n.walk(v, name)
++		if !keep || n.empty(name, nv) {
++			continue
++		}
++		out[name] = nv
++	}
++	return out
++}
++
++type normalizer struct {
++	rules   *kindRules
++	exclude set
++}
++
++// empty сообщает, что значение — пустой объект или список, который нужно отбросить (кроме полей из keepEmpty).
++func (n *normalizer) empty(path string, v any) bool {
++	name := path
++	if i := strings.LastIndexByte(path, '.'); i >= 0 {
++		name = path[i+1:]
++	}
++	switch t := v.(type) {
++	case map[string]any:
++		return len(t) == 0 && !keepEmpty.has(name)
++	case []any:
++		return len(t) == 0
++	}
++	return false
++}
++
++// walk нормализует значение по схемному пути sp. Второй результат false — значение нужно отбросить (null).
++func (n *normalizer) walk(v any, sp string) (any, bool) {
++	switch t := v.(type) {
++	case nil:
++		return nil, false
++	case map[string]any:
++		out := make(map[string]any, len(t))
++		for k, child := range t {
++			csp := k
++			if sp != "" {
++				csp = sp + "." + k
++			}
++			if n.exclude.has(csp) {
++				continue
++			}
++			nv, keep := n.walk(child, csp)
++			if !keep || n.empty(csp, nv) {
++				continue
++			}
++			if d, ok := n.rules.defaults[csp]; ok && literal(nv) == d {
++				continue
++			}
++			out[k] = nv
++		}
++		dropDefaultPullPolicy(sp, out)
++		return out, true
++	case []any:
++		ep := sp + "[]"
++		items := make([]any, 0, len(t))
++		for _, e := range t {
++			if nv, keep := n.walk(e, ep); keep {
++				items = append(items, nv)
++			}
++		}
++		keys, keyed := n.rules.keyed[ep]
++		switch {
++		case n.rules.ordered.has(ep):
++			// порядок значим
++		case keyed:
++			slices.SortStableFunc(items, func(a, b any) int {
++				if c := strings.Compare(keyTuple(a, keys), keyTuple(b, keys)); c != 0 {
++					return c
++				}
++				return strings.Compare(literal(a), literal(b))
++			})
++		case n.rules.sets.has(ep):
++			slices.SortStableFunc(items, func(a, b any) int { return strings.Compare(literal(a), literal(b)) })
++		}
++		return items, true
++	default:
++		return v, true
++	}
++}
++
++// dropDefaultPullPolicy убирает imagePullPolicy, равную значению по умолчанию для образа: Always для тега latest
++// и образа без тега, иначе IfNotPresent. Таблица defaults так не умеет: значение зависит от соседнего поля.
++func dropDefaultPullPolicy(sp string, container map[string]any) {
++	// containers[], initContainers[] и ephemeralContainers[]: у всех одна и та же схема контейнера.
++	if !strings.HasSuffix(strings.ToLower(sp), "containers[]") {
++		return
++	}
++	img, _ := container["image"].(string)
++	pol, _ := container["imagePullPolicy"].(string)
++	if img == "" || pol == "" {
++		return
++	}
++	if pol == defaultPullPolicy(img) {
++		delete(container, "imagePullPolicy")
++	}
++}
++
++func defaultPullPolicy(image string) string {
++	if i := strings.IndexByte(image, '@'); i >= 0 {
++		return "IfNotPresent" // образ по digest не обновляется
++	}
++	name := image[strings.LastIndexByte(image, '/')+1:]
++	tag, hasTag := "", false
++	if i := strings.LastIndexByte(name, ':'); i >= 0 {
++		tag, hasTag = name[i+1:], true
++	}
++	if !hasTag || tag == "latest" {
++		return "Always"
++	}
++	return "IfNotPresent"
++}
++
++// keyTuple собирает значения ключей элемента списка для упорядочивания.
++func keyTuple(elem any, keys []string) string {
++	m, _ := elem.(map[string]any)
++	var b strings.Builder
++	for _, k := range keys {
++		b.WriteString(literal(lookup(m, k)))
++		b.WriteByte(0)
++	}
++	return b.String()
++}
++
++// lookup читает значение по пути из точек («metadata.name»).
++func lookup(m map[string]any, path string) any {
++	var cur any = m
++	for _, part := range strings.Split(path, ".") {
++		mm, ok := cur.(map[string]any)
++		if !ok {
++			return nil
++		}
++		cur = mm[part]
++	}
++	return cur
++}
++
++// literal — канонический JSON-литерал значения: ключи объектов по алфавиту, числа без лишних знаков.
++func literal(v any) string {
++	b, err := json.Marshal(v)
++	if err != nil {
++		return "null" // типы из unstructured всегда сериализуются; недостижимо
++	}
++	return string(b)
++}
++
++// cloneValue копирует дерево, чтобы нормализация не меняла объект вызывающего.
++func cloneValue(v any) any {
++	switch t := v.(type) {
++	case map[string]any:
++		m := make(map[string]any, len(t))
++		for k, c := range t {
++			m[k] = cloneValue(c)
++		}
++		return m
++	case []any:
++		s := make([]any, len(t))
++		for i, c := range t {
++			s[i] = cloneValue(c)
++		}
++		return s
++	default:
++		return v
++	}
++}
+diff --git a/internal/drift/normalize_test.go b/internal/drift/normalize_test.go
+new file mode 100644
+index 00000000..a71d8083
+--- /dev/null
++++ b/internal/drift/normalize_test.go
+@@ -0,0 +1,534 @@
++// Copyright 2026 The Kubron Authors
++// SPDX-License-Identifier: Apache-2.0
++
++package drift
++
++import (
++	"bytes"
++	"encoding/hex"
++	"encoding/json"
++	"errors"
++	"flag"
++	"fmt"
++	"log/slog"
++	"math/rand/v2"
++	"os"
++	"path/filepath"
++	"reflect"
++	"sort"
++	"strings"
++	"testing"
++
++	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
++
++	"github.com/24DSO-lab/kubron/internal/baseline"
++)
++
++var update = flag.Bool("update", false, "переписать golden-файлы")
++
++// Заведомо ненастоящие значения-«канарейки»: ни одно из них не должно появиться нигде, кроме входных фикстур.
++var canaries = []string{"canary-db-password-7f3a9c", "canary-annotation-pw-31337", "canary-dsn-value-424242"}
++
++var testSalt = bytes.Repeat([]byte{'s'}, SaltSize)
++
++func loadFixture(t testing.TB, name string) *unstructured.Unstructured {
++	t.Helper()
++	raw, err := os.ReadFile(filepath.Join("testdata", name+".json"))
++	if err != nil {
++		t.Fatal(err)
++	}
++	u := &unstructured.Unstructured{}
++	if err := u.UnmarshalJSON(raw); err != nil {
++		t.Fatal(err)
++	}
++	return u
++}
++
++// render печатает нормализованный объект построчно: «путь = значение»; hash — первые 8 hex-знаков.
++func render(o baseline.Object) string {
++	paths := make([]string, 0, len(o.Fields))
++	for p := range o.Fields {
++		paths = append(paths, p)
++	}
++	sort.Strings(paths)
++	var b strings.Builder
++	fmt.Fprintf(&b, "# %s\n", o.Ref)
++	for _, p := range paths {
++		f := o.Fields[p]
++		if f.Hash != nil {
++			fmt.Fprintf(&b, "%s = HASH:%s\n", p, hex.EncodeToString(f.Hash.HMAC)[:8])
++		} else {
++			fmt.Fprintf(&b, "%s = %s\n", p, f.Plain)
++		}
++	}
++	return b.String()
++}
++
++var fixtureNames = []string{"deployment", "statefulset", "daemonset", "service", "ingress", "networkpolicy", "configmap"}
++
++// Golden-тест на каждый тип. Golden-файлы проверены вручную: это снимок ожидаемого результата, а не «что выдал код».
++func TestNormalizeGolden(t *testing.T) {
++	for _, name := range fixtureNames {
++		t.Run(name, func(t *testing.T) {
++			t.Parallel()
++			obj, _, err := normalizeObject(loadFixture(t, name), testSalt, normOptions{})
++			if err != nil {
++				t.Fatal(err)
++			}
++			got := render(obj)
++			golden := filepath.Join("testdata", name+".golden")
++			if *update {
++				if err := os.WriteFile(golden, []byte(got), 0o644); err != nil {
++					t.Fatal(err)
++				}
++			}
++			want, err := os.ReadFile(golden)
++			if err != nil {
++				t.Fatalf("%v (создайте golden: go test -run TestNormalizeGolden -update)", err)
++			}
++			if got != string(want) {
++				t.Errorf("нормализация %s изменилась:\n--- got ---\n%s\n--- want ---\n%s", name, got, want)
++			}
++		})
++	}
++}
++
++// Служебные поля кластера не попадают в нормализованный объект ни у одного типа.
++func TestNormalizeDropsServiceFields(t *testing.T) {
++	forbidden := []string{"status", "metadata.managedFields", "metadata.resourceVersion", "metadata.uid", "metadata.generation",
++		"metadata.creationTimestamp", "metadata.selfLink", "metadata.name", "metadata.namespace", "apiVersion", "kind"}
++	for _, name := range fixtureNames {
++		t.Run(name, func(t *testing.T) {
++			obj, _, err := normalizeObject(loadFixture(t, name), testSalt, normOptions{})
++			if err != nil {
++				t.Fatal(err)
++			}
++			for p := range obj.Fields {
++				for _, f := range forbidden {
++					if p == f || strings.HasPrefix(p, f+".") {
++						t.Errorf("служебное поле %q осталось в результате (%s)", p, f)
++					}
++				}
++				if strings.Contains(p, "last-applied-configuration") || strings.Contains(p, "creationTimestamp") {
++					t.Errorf("служебное поле осталось: %s", p)
++				}
++			}
++			if len(obj.Fields) == 0 {
++				t.Error("нормализация вернула пустой объект")
++			}
++		})
++	}
++}
++
++// Свойство: нормализация идемпотентна — повторный проход по результату ничего не меняет.
++func TestNormalizeTreeIdempotentOnFixtures(t *testing.T) {
++	for _, name := range fixtureNames {
++		for _, opt := range []normOptions{{}, {excludeReplicas: true}} {
++			t.Run(fmt.Sprintf("%s/replicas-excluded=%v", name, opt.excludeReplicas), func(t *testing.T) {
++				u := loadFixture(t, name)
++				ks, err := specFor(u.GroupVersionKind().Group, u.GetKind())
++				if err != nil {
++					t.Fatal(err)
++				}
++				once := normalizeTree(ks, u.Object, opt)
++				twice := normalizeTree(ks, once, opt)
++				if !reflect.DeepEqual(once, twice) {
++					t.Errorf("нормализация не идемпотентна:\nпервый проход: %s\nвторой проход: %s", literal(once), literal(twice))
++				}
++			})
++		}
++	}
++}
++
++// Нормализация не меняет входной объект: он принадлежит вызывающему (кэшу или ответу кластера).
++func TestNormalizeDoesNotMutateInput(t *testing.T) {
++	for _, name := range fixtureNames {
++		u := loadFixture(t, name)
++		before := literal(u.Object)
++		if _, _, err := normalizeObject(u, testSalt, normOptions{excludeReplicas: true}); err != nil {
++			t.Fatal(err)
++		}
++		if after := literal(u.Object); after != before {
++			t.Errorf("%s: входной объект изменён нормализацией", name)
++		}
++	}
++}
++
++// Порядок элементов списков, у которых порядок не значим, не влияет на результат.
++func TestNormalizeIgnoresOrderOfUnorderedLists(t *testing.T) {
++	cases := []struct {
++		fixture string
++		shuffle func(m map[string]any)
++	}{
++		{"deployment", func(m map[string]any) {
++			spec := m["spec"].(map[string]any)["template"].(map[string]any)["spec"].(map[string]any)
++			reverse(spec["containers"].([]any))
++			reverse(spec["volumes"].([]any))
++			reverse(spec["tolerations"].([]any))
++			web := spec["containers"].([]any)[0].(map[string]any)
++			for _, c := range spec["containers"].([]any) {
++				if c.(map[string]any)["name"] == "web" {
++					web = c.(map[string]any)
++				}
++			}
++			reverse(web["env"].([]any))
++			reverse(web["ports"].([]any))
++			reverse(web["volumeMounts"].([]any))
++		}},
++		{"service", func(m map[string]any) { reverse(m["spec"].(map[string]any)["ports"].([]any)) }},
++		{"ingress", func(m map[string]any) {
++			spec := m["spec"].(map[string]any)
++			reverse(spec["rules"].([]any))
++			reverse(spec["rules"].([]any)[0].(map[string]any)["http"].(map[string]any)["paths"].([]any))
++			reverse(spec["tls"].([]any)[0].(map[string]any)["hosts"].([]any))
++		}},
++		{"networkpolicy", func(m map[string]any) {
++			spec := m["spec"].(map[string]any)
++			reverse(spec["policyTypes"].([]any))
++			reverse(spec["egress"].([]any))
++			from := spec["ingress"].([]any)[0].(map[string]any)["from"].([]any)
++			reverse(from)
++			reverse(spec["ingress"].([]any)[0].(map[string]any)["ports"].([]any))
++			reverse(spec["egress"].([]any)[1].(map[string]any)["to"].([]any))
++		}},
++	}
++	for _, c := range cases {
++		t.Run(c.fixture, func(t *testing.T) {
++			base, _, err := normalizeObject(loadFixture(t, c.fixture), testSalt, normOptions{})
++			if err != nil {
++				t.Fatal(err)
++			}
++			shuffled := loadFixture(t, c.fixture)
++			c.shuffle(shuffled.Object)
++			got, _, err := normalizeObject(shuffled, testSalt, normOptions{})
++			if err != nil {
++				t.Fatal(err)
++			}
++			if render(base) != render(got) {
++				t.Errorf("порядок списка повлиял на результат:\n%s\n---\n%s", render(base), render(got))
++			}
++		})
++	}
++}
++
++func reverse(s []any) {
++	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
++		s[i], s[j] = s[j], s[i]
++	}
++}
++
++// Порядок init-контейнеров значим: его смена — отличие, хотя адресация идёт по имени.
++func TestInitContainerOrderMatters(t *testing.T) {
++	a, _, _ := normalizeObject(loadFixture(t, "deployment"), testSalt, normOptions{})
++	u := loadFixture(t, "deployment")
++	reverse(u.Object["spec"].(map[string]any)["template"].(map[string]any)["spec"].(map[string]any)["initContainers"].([]any))
++	b, _, _ := normalizeObject(u, testSalt, normOptions{})
++	const p = "spec.template.spec.initContainers.@order"
++	if a.Fields[p].Plain == "" || a.Fields[p].Equal(b.Fields[p]) {
++		t.Errorf("смена порядка init-контейнеров не видна: %q и %q", a.Fields[p].Plain, b.Fields[p].Plain)
++	}
++}
++
++// Значения по умолчанию не сравниваются: обновление кластера, добавляющее defaulted-поле, не создаёт дрейфа.
++func TestNormalizeIgnoresDefaultedFields(t *testing.T) {
++	plain, _, _ := normalizeObject(loadFixture(t, "deployment"), testSalt, normOptions{})
++	u := loadFixture(t, "deployment")
++	spec := u.Object["spec"].(map[string]any)["template"].(map[string]any)["spec"].(map[string]any)
++	delete(spec, "dnsPolicy")
++	delete(spec, "terminationGracePeriodSeconds")
++	delete(spec["containers"].([]any)[1].(map[string]any), "terminationMessagePath")
++	delete(spec["containers"].([]any)[1].(map[string]any), "imagePullPolicy") // IfNotPresent — умолчание для тега 3.8.2
++	stripped, _, _ := normalizeObject(u, testSalt, normOptions{})
++	if render(plain) != render(stripped) {
++		t.Errorf("отсутствие defaulted-полей дало отличие:\n%s\n---\n%s", render(plain), render(stripped))
++	}
++	// А не-умолчание сохраняется: Always для версионного тега — осознанный выбор.
++	u2 := loadFixture(t, "deployment")
++	u2.Object["spec"].(map[string]any)["template"].(map[string]any)["spec"].(map[string]any)["containers"].([]any)[1].(map[string]any)["imagePullPolicy"] = "Always"
++	changed, _, _ := normalizeObject(u2, testSalt, normOptions{})
++	if _, ok := changed.Fields["spec.template.spec.containers[name=web].imagePullPolicy"]; !ok {
++		t.Error("недефолтная imagePullPolicy потеряна")
++	}
++}
++
++func TestDefaultPullPolicy(t *testing.T) {
++	for image, want := range map[string]string{
++		"nginx":                                    "Always",
++		"nginx:latest":                             "Always",
++		"nginx:1.27":                               "IfNotPresent",
++		"registry.example.com:5000/app":            "Always", // «:5000» — порт реестра, а не тег
++		"registry.example.com:5000/app:2.0":        "IfNotPresent",
++		"app@sha256:0123456789abcdef":              "IfNotPresent",
++		"registry.example.com/app:latest@sha256:1": "IfNotPresent",
++	} {
++		if got := defaultPullPolicy(image); got != want {
++			t.Errorf("defaultPullPolicy(%q) = %s, want %s", image, got, want)
++		}
++	}
++}
++
++// spec.replicas исключается только там, где на нагрузку указывает HPA.
++func TestExcludeReplicasForHPA(t *testing.T) {
++	with, _, _ := normalizeObject(loadFixture(t, "deployment"), testSalt, normOptions{})
++	without, _, _ := normalizeObject(loadFixture(t, "deployment"), testSalt, normOptions{excludeReplicas: true})
++	if _, ok := with.Fields["spec.replicas"]; !ok {
++		t.Fatal("spec.replicas должен сравниваться без HPA")
++	}
++	if _, ok := without.Fields["spec.replicas"]; ok {
++		t.Fatal("spec.replicas должен исключаться при HPA")
++	}
++	// Остальное содержимое не пострадало.
++	delete(with.Fields, "spec.replicas")
++	if render(with) != render(without) {
++		t.Error("исключение replicas задело другие поля")
++	}
++}
++
++// --- чувствительные значения ------------------------------------------------------------------------------------
++
++func TestSensitiveValuesAreHashed(t *testing.T) {
++	obj, hashed, err := normalizeObject(loadFixture(t, "deployment"), testSalt, normOptions{})
++	if err != nil {
++		t.Fatal(err)
++	}
++	env := obj.Fields["spec.template.spec.containers[name=web].env[name=DB_PASSWORD].value"]
++	if env.Hash == nil || env.Plain != "" {
++		t.Fatalf("литерал env должен храниться только как hash: %+v", env)
++	}
++	if lg := obj.Fields["spec.template.spec.containers[name=web].env[name=LOG_LEVEL].value"]; lg.Hash == nil {
++		t.Error("любой литерал env — чувствителен, не только «похожий на пароль»")
++	}
++	// valueFrom — ссылка, а не значение: имя Secret и ключ остаются читаемыми.
++	if ref := obj.Fields["spec.template.spec.containers[name=web].env[name=API_KEY].valueFrom.secretKeyRef.name"]; ref.Plain != `"web-api"` {
++		t.Errorf("ссылка на Secret потеряна: %+v", ref)
++	}
++	if hashed != 2 {
++		t.Errorf("hash у %d значений, want 2 (LOG_LEVEL, DB_PASSWORD)", hashed)
++	}
++
++	cm, hashed, _ := normalizeObject(loadFixture(t, "configmap"), testSalt, normOptions{})
++	for _, p := range []string{"data[\"app.yaml\"]", `data["feature.flags"]`, "data.empty", `binaryData["logo.png"]`} {
++		if f, ok := cm.Fields[p]; !ok || f.Hash == nil {
++			t.Errorf("%s должно храниться как hash: %+v (есть=%v)", p, f, ok)
++		}
++	}
++	// Аннотация с «password=…» прошла редакцию и тоже не хранится открыто.
++	if f := cm.Fields[`metadata.annotations["example.com/note"]`]; f.Hash == nil {
++		t.Errorf("аннотация с паролем хранится открыто: %+v", f)
++	}
++	if f := cm.Fields[`metadata.annotations["example.com/contact"]`]; f.Hash != nil || f.Plain == "" {
++		t.Errorf("обычная аннотация не должна скрываться: %+v", f)
++	}
++	if hashed != 5 {
++		t.Errorf("hash у %d значений ConfigMap, want 5", hashed)
++	}
++}
++
++// Ни канарейки, ни их части не встречаются ни в нормализованном объекте, ни в его текстовых представлениях.
++func TestNoCanaryInAnyRepresentation(t *testing.T) {
++	var logBuf bytes.Buffer
++	log := slog.New(slog.NewJSONHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelDebug}))
++	for _, name := range []string{"deployment", "configmap"} {
++		obj, _, err := normalizeObject(loadFixture(t, name), testSalt, normOptions{})
++		if err != nil {
++			t.Fatal(err)
++		}
++		raw, _ := json.Marshal(obj)
++		v := baseline.Version{ID: "v1", BaselineID: "b1", Seq: 1, Source: baseline.SourceLiveSnapshot, Salt: testSalt,
++			Objects: []baseline.Object{obj}}
++		log.Info("object", "obj", obj, "version", v, "ref", obj.Ref)
++		log.Info("fields", slog.Any("fields", obj.Fields))
++		texts := []string{
++			string(raw), render(obj), fmt.Sprintf("%v", obj), fmt.Sprintf("%+v", obj), fmt.Sprintf("%#v", obj),
++			fmt.Sprintf("%v", v), fmt.Sprintf("%+v", v), fmt.Sprintf("%#v", v), v.String(),
++			fmt.Sprintf("%v", obj.Fields), fmt.Sprintf("%+v", obj.Fields), fmt.Sprintf("%#v", obj.Fields),
++		}
++		texts = append(texts, logBuf.String())
++		for _, text := range texts {
++			for _, c := range canaries {
++				if strings.Contains(text, c) {
++					t.Errorf("%s: канарейка %q просочилась:\n%s", name, c, text)
++				}
++			}
++			if strings.Contains(text, string(testSalt)) {
++				t.Errorf("%s: соль просочилась в представление", name)
++			}
++		}
++	}
++}
++
++// hash зависит от соли, значения, ресурса и пути; не зависит ни от чего внешнего (ключей keyring).
++func TestHashProperties(t *testing.T) {
++	ref := baseline.Ref{Group: "apps", Version: "v1", Kind: "Deployment", Namespace: "prod", Name: "web"}
++	base := hashValue(testSalt, ref, "p", `"x"`)
++	if !bytes.Equal(base, hashValue(testSalt, ref, "p", `"x"`)) {
++		t.Fatal("hash недетерминирован")
++	}
++	other := ref
++	other.Version = "v1beta2" // версия API не входит в hash: обновление кластера не ломает сравнение
++	if !bytes.Equal(base, hashValue(testSalt, other, "p", `"x"`)) {
++		t.Error("смена версии API изменила hash")
++	}
++	for name, h := range map[string][]byte{
++		"другая соль":     hashValue(bytes.Repeat([]byte{'t'}, SaltSize), ref, "p", `"x"`),
++		"другое значение": hashValue(testSalt, ref, "p", `"y"`),
++		"другой путь":     hashValue(testSalt, ref, "q", `"x"`),
++		"другой ресурс":   hashValue(testSalt, baseline.Ref{Group: "apps", Kind: "Deployment", Namespace: "prod", Name: "api"}, "p", `"x"`),
++		// граница полей: «ab»+«c» и «a»+«bc» не должны совпасть
++		"сдвиг границы": hashValue(testSalt, ref, "pa", `x"`),
++	} {
++		if bytes.Equal(base, h) {
++			t.Errorf("%s: hash не изменился", name)
++		}
++	}
++	if len(base) != 32 {
++		t.Errorf("длина HMAC-SHA256 = %d", len(base))
++	}
++}
++
++func TestNewSalt(t *testing.T) {
++	a, b := NewSalt(), NewSalt()
++	if len(a) != SaltSize || len(b) != SaltSize || bytes.Equal(a, b) {
++		t.Fatalf("соль должна быть случайной и размером %d", SaltSize)
++	}
++}
++
++// Secret не поддерживается и не обрабатывается: ни значения, ни имена ключей в результат не попадают.
++func TestSecretIsNotSupported(t *testing.T) {
++	u := &unstructured.Unstructured{Object: map[string]any{
++		"apiVersion": "v1", "kind": "Secret",
++		"metadata": map[string]any{"name": "db", "namespace": "prod"},
++		"data":     map[string]any{"password": "Y2FuYXJ5LXNlY3JldA=="},
++	}}
++	obj, _, err := normalizeObject(u, testSalt, normOptions{})
++	if !errors.Is(err, ErrSecretUnsupported) {
++		t.Fatalf("err = %v, want ErrSecretUnsupported", err)
++	}
++	if len(obj.Fields) != 0 {
++		t.Fatalf("Secret дал поля: %v", obj.Fields)
++	}
++	for _, k := range []string{"Secret", "secret", "SECRET"} {
++		if _, err := specFor("", k); !errors.Is(err, ErrSecretUnsupported) {
++			t.Errorf("specFor(%q) = %v", k, err)
++		}
++	}
++	if _, err := specFor("", "Pod"); !errors.Is(err, ErrUnsupportedKind) {
++		t.Errorf("Pod: %v", err)
++	}
++	for _, k := range SupportedKinds() {
++		if strings.EqualFold(k, "Secret") {
++			t.Fatal("Secret не может входить в список поддерживаемых типов")
++		}
++	}
++}
++
++// --- fuzz -------------------------------------------------------------------------------------------------------
++
++// FuzzNormalizeTree: на любом JSON-объекте нормализация не паникует, идемпотентна и не меняет вход.
++func FuzzNormalizeTree(f *testing.F) {
++	for _, name := range fixtureNames {
++		raw, err := os.ReadFile(filepath.Join("testdata", name+".json"))
++		if err != nil {
++			f.Fatal(err)
++		}
++		f.Add(raw)
++	}
++	f.Add([]byte(`{"spec":{"template":{"spec":{"containers":[{"name":"a","ports":[{"containerPort":1},{"containerPort":1}]}]}}}}`))
++	f.Add([]byte(`{"spec":{"x":[[],[[]],{}],"y":null,"z":{"a":{}}}}`))
++	f.Fuzz(func(t *testing.T, raw []byte) {
++		var obj map[string]any
++		if json.Unmarshal(raw, &obj) != nil || obj == nil {
++			t.Skip()
++		}
++		before := literal(obj)
++		for i := range supportedKinds {
++			ks := &supportedKinds[i]
++			for _, opt := range []normOptions{{}, {excludeReplicas: true}} {
++				once := normalizeTree(ks, obj, opt)
++				twice := normalizeTree(ks, once, opt)
++				if !reflect.DeepEqual(once, twice) {
++					t.Fatalf("%s: не идемпотентна\nonce:  %s\ntwice: %s", ks.GVK.Kind, literal(once), literal(twice))
++				}
++				// Вторая стадия не паникует и даёт одинаковый результат на одинаковом входе.
++				fl := &flattener{ref: baseline.Ref{Kind: ks.GVK.Kind}, salt: testSalt, rules: ks.rules, out: map[string]baseline.Field{}}
++				fl.value(once, "", "")
++				fl2 := &flattener{ref: baseline.Ref{Kind: ks.GVK.Kind}, salt: testSalt, rules: ks.rules, out: map[string]baseline.Field{}}
++				fl2.value(twice, "", "")
++				if !reflect.DeepEqual(fl.out, fl2.out) {
++					t.Fatalf("%s: плоское представление различается", ks.GVK.Kind)
++				}
++			}
++		}
++		if literal(obj) != before {
++			t.Fatal("нормализация изменила входной объект")
++		}
++	})
++}
++
++// FuzzPathRoundTrip: путь, построенный кодировщиком, разбирается обратно в те же имена, а исключение по его
++// префиксу покрывает путь и не покрывает соседей с общим началом имени.
++func FuzzPathRoundTrip(f *testing.F) {
++	f.Add("app.kubernetes.io/name", "web", "x")
++	f.Add(`we"ird]`, `a,b=c"`, "[0]")
++	f.Add("", "", "")
++	f.Fuzz(func(t *testing.T, key, val, field string) {
++		if key == "" || field == "" {
++			t.Skip()
++		}
++		p := fieldPath("metadata.labels", key)
++		segs := splitPath(p)
++		last := segs[len(segs)-1]
++		if last.Kind != segName || last.Name != key {
++			t.Fatalf("ключ %q не пережил кодирование: путь %q → %+v", key, p, segs)
++		}
++		kp := keyedPath("spec.items", [][2]string{{"name", val}})
++		ks := splitPath(kp)
++		if len(ks) != 3 || ks[2].Kind != segList {
++			t.Fatalf("элемент списка не разобран: %q → %+v", kp, ks)
++		}
++		if got := keyName(kp + ".value"); val != "" && got != val {
++			t.Fatalf("keyName(%q) = %q, want %q", kp+".value", got, val)
++		}
++		full := fieldPath(kp, field)
++		e := baseline.Exception{Path: kp}
++		if !e.CoversPath(full) || !e.CoversPath(kp) {
++			t.Fatalf("исключение %q не покрывает %q", kp, full)
++		}
++	})
++}
++
++// Случайные деревья: быстрая проверка идемпотентности без корпуса fuzz.
++func TestNormalizeTreeIdempotentRandom(t *testing.T) {
++	rng := rand.New(rand.NewPCG(1, 2))
++	for i := 0; i < 300; i++ {
++		obj := map[string]any{"spec": randomValue(rng, 0), "metadata": map[string]any{"labels": randomValue(rng, 2)}}
++		for k := range supportedKinds {
++			ks := &supportedKinds[k]
++			once := normalizeTree(ks, obj, normOptions{})
++			if twice := normalizeTree(ks, once, normOptions{}); !reflect.DeepEqual(once, twice) {
++				t.Fatalf("%s: не идемпотентна: %s", ks.GVK.Kind, literal(obj))
++			}
++		}
++	}
++}
++
++func randomValue(rng *rand.Rand, depth int) any {
++	names := []string{"containers", "ports", "env", "name", "value", "template", "spec", "volumes", "emptyDir", "podSelector",
++		"protocol", "containerPort", "image", "imagePullPolicy", "replicas", "policyTypes", "ingress", "from", "ports"}
++	switch n := rng.IntN(7); {
++	case depth > 4 || n == 0:
++		return []any{"x", int64(rng.IntN(3)), "TCP", true, nil, float64(30)}[rng.IntN(6)]
++	case n <= 3:
++		m := map[string]any{}
++		for i := rng.IntN(4); i > 0; i-- {
++			m[names[rng.IntN(len(names))]] = randomValue(rng, depth+1)
++		}
++		return m
++	default:
++		s := make([]any, rng.IntN(4))
++		for i := range s {
++			s[i] = randomValue(rng, depth+1)
++		}
++		return s
++	}
++}
+diff --git a/internal/drift/paths.go b/internal/drift/paths.go
+new file mode 100644
+index 00000000..acbd0462
+--- /dev/null
++++ b/internal/drift/paths.go
+@@ -0,0 +1,214 @@
++// Copyright 2026 The Kubron Authors
++// SPDX-License-Identifier: Apache-2.0
++
++package drift
++
++import (
++	"strconv"
++	"strings"
++)
++
++// Формат пути поля нормализованного объекта (ключи плоской карты baseline.Object.Fields):
++//
++//	spec.replicas                                           — поля и ключи карт, разделитель «.»
++//	metadata.labels["app.kubernetes.io/name"]               — ключ с «особыми» символами в скобках и кавычках
++//	spec.template.spec.containers[name=web].image           — элемент списка, найденный по ключу (merge key)
++//	spec.ports[port=53,protocol=UDP].targetPort             — составной ключ, имена ключей по алфавиту
++//	spec.policyTypes[0]                                     — элемент без ключа: порядковый номер
++//
++// Путь строится одним кодировщиком и сравнивается как строка: исключения применяются по границе сегмента, а путь
++// managedFields приводится к тому же виду.
++
++// simpleName — имя, которое пишется после точки без кавычек.
++func simpleName(s string) bool {
++	if s == "" {
++		return false
++	}
++	for _, r := range s {
++		switch {
++		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9', r == '_', r == '-':
++		default:
++			return false
++		}
++	}
++	return true
++}
++
++// simpleKeyValue — значение ключа списка, которое пишется без кавычек.
++func simpleKeyValue(s string) bool {
++	if s == "" {
++		return false
++	}
++	for _, r := range s {
++		switch {
++		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9', r == '_', r == '-', r == '.', r == '/', r == ':':
++		default:
++			return false
++		}
++	}
++	return true
++}
++
++// fieldPath добавляет к пути поле или ключ карты.
++func fieldPath(parent, name string) string {
++	if simpleName(name) {
++		if parent == "" {
++			return name
++		}
++		return parent + "." + name
++	}
++	return parent + "[" + strconv.Quote(name) + "]"
++}
++
++// keyedPath добавляет к пути элемент списка с ключом: пары «имя=значение» по алфавиту имён.
++func keyedPath(parent string, pairs [][2]string) string {
++	var b strings.Builder
++	b.WriteString(parent)
++	b.WriteByte('[')
++	for i, p := range pairs {
++		if i > 0 {
++			b.WriteByte(',')
++		}
++		b.WriteString(p[0])
++		b.WriteByte('=')
++		if simpleKeyValue(p[1]) {
++			b.WriteString(p[1])
++		} else {
++			b.WriteString(strconv.Quote(p[1]))
++		}
++	}
++	b.WriteByte(']')
++	return b.String()
++}
++
++// indexPath добавляет к пути элемент списка по номеру.
++func indexPath(parent string, i int) string { return parent + "[" + strconv.Itoa(i) + "]" }
++
++// segment — разобранный сегмент пути.
++type segment struct {
++	// Name — имя поля или ключ карты (Kind == segName).
++	Name string
++	Kind segKind
++	// Text — исходный текст сегмента списка: «name=web» или «0» (Kind == segList).
++	Text string
++}
++
++type segKind uint8
++
++const (
++	segName segKind = iota // поле или ключ карты
++	segList                // элемент списка
++)
++
++// splitPath разбирает путь на сегменты. Путь, построенный кодировщиком этого пакета, разбирается без потерь;
++// на чужом тексте возвращает то, что смог разобрать (ошибок нет: результат нужен для показа и сопоставления).
++func splitPath(p string) []segment {
++	var out []segment
++	i := 0
++	for i < len(p) {
++		switch p[i] {
++		case '.':
++			i++
++		case '[':
++			if i+1 < len(p) && p[i+1] == '"' {
++				name, n := unquoteAt(p, i+1)
++				out = append(out, segment{Name: name, Kind: segName})
++				i = i + 1 + n
++				if i < len(p) && p[i] == ']' {
++					i++
++				}
++				continue
++			}
++			j := i + 1
++			inQuote := false
++			for j < len(p) {
++				c := p[j]
++				if c == '"' {
++					inQuote = !inQuote
++				} else if c == '\\' && inQuote {
++					j++
++				} else if c == ']' && !inQuote {
++					break
++				}
++				j++
++			}
++			if j > len(p) {
++				j = len(p)
++			}
++			out = append(out, segment{Text: p[i+1 : min(j, len(p))], Kind: segList})
++			i = j + 1
++		default:
++			j := i
++			for j < len(p) && p[j] != '.' && p[j] != '[' {
++				j++
++			}
++			out = append(out, segment{Name: p[i:j], Kind: segName})
++			i = j
++		}
++	}
++	return out
++}
++
++// unquoteAt читает строку в кавычках, начинающуюся с p[at] == '"', и возвращает значение и число прочитанных байт.
++func unquoteAt(p string, at int) (string, int) {
++	j := at + 1
++	for j < len(p) {
++		if p[j] == '\\' {
++			j += 2
++			continue
++		}
++		if p[j] == '"' {
++			break
++		}
++		j++
++	}
++	if j >= len(p) {
++		return p[at+1:], len(p) - at
++	}
++	s, err := strconv.Unquote(p[at : j+1])
++	if err != nil {
++		s = p[at+1 : j]
++	}
++	return s, j + 1 - at
++}
++
++// schemaOf превращает путь поля в «схемный» путь без ключей списков: elements → «[]». Ключи карт остаются как есть.
++// По нему ищутся правила приоритета и чувствительности.
++func schemaOf(p string) string {
++	var b strings.Builder
++	for _, s := range splitPath(p) {
++		if s.Kind == segList {
++			b.WriteString("[]")
++			continue
++		}
++		if b.Len() > 0 {
++			b.WriteByte('.')
++		}
++		b.WriteString(s.Name)
++	}
++	return b.String()
++}
++
++// keyName возвращает «имя ключа» для показа изменения чувствительного значения: имя env-переменной, ключ ConfigMap,
++// аннотации. Это последний ключ карты или значение ключа элемента списка, но не имя листового поля («value»).
++func keyName(p string) string {
++	segs := splitPath(p)
++	for i := len(segs) - 1; i >= 0; i-- {
++		s := segs[i]
++		if s.Kind == segList {
++			if _, v, ok := strings.Cut(s.Text, "="); ok {
++				v = strings.TrimSpace(v)
++				if u, err := strconv.Unquote(v); err == nil {
++					return u
++				}
++				return v
++			}
++			continue
++		}
++		if i == len(segs)-1 && s.Name == "value" && i > 0 {
++			continue // …env[name=X].value — ключом считается X
++		}
++		return s.Name
++	}
++	return p
++}
+diff --git a/internal/drift/rules.go b/internal/drift/rules.go
+new file mode 100644
+index 00000000..12c11130
+--- /dev/null
++++ b/internal/drift/rules.go
+@@ -0,0 +1,396 @@
++// Copyright 2026 The Kubron Authors
++// SPDX-License-Identifier: Apache-2.0
++
++package drift
++
++import (
++	"strings"
++
++	"k8s.io/apimachinery/pkg/runtime/schema"
++
++	"github.com/24DSO-lab/kubron/internal/baseline"
++)
++
++// RulesVersion — поколение правил нормализации. Пишется в каждую версию baseline и в каждый результат проверки.
++// Сравнение версии baseline с её поколением правил, отличным от текущего, молча не выполняется (ADR-0027 §3):
++// ресурсы получают «не проверено» с причиной baseline.ReasonRulesMismatch. Любое изменение таблиц ниже, способное
++// изменить нормализованное представление объекта, обязано увеличить эту константу.
++const RulesVersion = 1
++
++// kindSpec — поддерживаемый тип ресурса и его правила.
++type kindSpec struct {
++	GVK        schema.GroupVersionKind
++	Namespaced bool
++	rules      *kindRules
++	// top — поля верхнего уровня, участвующие в сравнении, кроме metadata.labels и metadata.annotations.
++	top []string
++}
++
++// Типы MVP (ADR-0027 §3). Secret сюда не входит и не будет прочитан.
++var supportedKinds = []kindSpec{
++	{GVK: gvk("apps", "v1", "Deployment"), Namespaced: true, rules: deploymentRules, top: []string{"spec"}},
++	{GVK: gvk("apps", "v1", "StatefulSet"), Namespaced: true, rules: statefulSetRules, top: []string{"spec"}},
++	{GVK: gvk("apps", "v1", "DaemonSet"), Namespaced: true, rules: daemonSetRules, top: []string{"spec"}},
++	{GVK: gvk("", "v1", "Service"), Namespaced: true, rules: serviceRules, top: []string{"spec"}},
++	{GVK: gvk("networking.k8s.io", "v1", "Ingress"), Namespaced: true, rules: ingressRules, top: []string{"spec"}},
++	{GVK: gvk("networking.k8s.io", "v1", "NetworkPolicy"), Namespaced: true, rules: networkPolicyRules, top: []string{"spec"}},
++	{GVK: gvk("", "v1", "ConfigMap"), Namespaced: true, rules: configMapRules, top: []string{"data", "binaryData", "immutable"}},
++}
++
++func gvk(g, v, k string) schema.GroupVersionKind {
++	return schema.GroupVersionKind{Group: g, Version: v, Kind: k}
++}
++
++// kindFor возвращает описание типа по группе и виду (версия API не важна: правила одинаковы для всех версий типа).
++func kindFor(group, kind string) (*kindSpec, bool) {
++	for i := range supportedKinds {
++		if supportedKinds[i].GVK.Group == group && supportedKinds[i].GVK.Kind == kind {
++			return &supportedKinds[i], true
++		}
++	}
++	return nil, false
++}
++
++// SupportedKinds возвращает названия типов, которые можно включить в baseline.
++func SupportedKinds() []string {
++	out := make([]string, len(supportedKinds))
++	for i, k := range supportedKinds {
++		out[i] = k.GVK.Kind
++	}
++	return out
++}
++
++// kindRules — правила нормализации одного типа. Ключи — «схемные» пути: поля через «.», элементы списков как «[]».
++type kindRules struct {
++	// exclude — пути, которые не сравниваются (назначаются кластером или контроллерами).
++	exclude set
++	// annotations — аннотации контроллеров, которые не сравниваются: точное имя или префикс с «*» на конце.
++	annotations []string
++	// keyed — списки объектов с ключом (merge key): элементы упорядочиваются по ключу и адресуются в пути по ключу.
++	// Ключ может быть вложенным путём («metadata.name»).
++	keyed map[string][]string
++	// ordered — списки, в которых порядок значим (команды, init-контейнеры): порядок сохраняется. У init-контейнеров
++	// и ключ есть, и порядок значим: изменение порядка видно как отличие «@order».
++	ordered set
++	// sets — списки без ключа, где порядок не значим: упорядочиваются по каноническому JSON.
++	sets set
++	// defaults — значения по умолчанию, назначаемые сервером: поле с таким значением не сравнивается, чтобы обновление
++	// кластера, добавляющее новое defaulted-поле, не превращалось в «дрейф» всей нагрузки.
++	defaults map[string]string
++}
++
++type set map[string]struct{}
++
++func newSet(items ...string) set {
++	s := make(set, len(items))
++	for _, i := range items {
++		s[i] = struct{}{}
++	}
++	return s
++}
++
++func (s set) has(k string) bool { _, ok := s[k]; return ok }
++
++func mergeSets(parts ...set) set {
++	out := set{}
++	for _, p := range parts {
++		for k := range p {
++			out[k] = struct{}{}
++		}
++	}
++	return out
++}
++
++func mergeMaps[V any](parts ...map[string]V) map[string]V {
++	out := map[string]V{}
++	for _, p := range parts {
++		for k, v := range p {
++			out[k] = v
++		}
++	}
++	return out
++}
++
++// controllerAnnotations — аннотации, которые ставят контроллеры и сам сервер: они меняются без участия человека.
++var controllerAnnotations = []string{
++	"kubectl.kubernetes.io/last-applied-configuration",
++	"deployment.kubernetes.io/revision",
++	"deployment.kubernetes.io/desired-replicas",
++	"deployment.kubernetes.io/max-replicas",
++	"deprecated.daemonset.template.generation",
++	"autoscaling.alpha.kubernetes.io/*",
++}
++
++// podTemplate возвращает правила шаблона пода под префиксом prefix («spec.template.spec»).
++func podTemplate(prefix string) (keyed map[string][]string, ordered, sets set, defaults map[string]string, exclude set) {
++	keyed = map[string][]string{}
++	defaults = map[string]string{}
++	ordered = newSet()
++	sets = newSet()
++	exclude = newSet(prefix + ".serviceAccount") // устаревший двойник serviceAccountName
++
++	keyed[prefix+".volumes[]"] = []string{"name"}
++	keyed[prefix+".imagePullSecrets[]"] = []string{"name"}
++	keyed[prefix+".hostAliases[]"] = []string{"ip"}
++	keyed[prefix+".securityContext.sysctls[]"] = []string{"name"}
++	keyed[prefix+".volumes[].configMap.items[]"] = []string{"key"}
++	keyed[prefix+".volumes[].secret.items[]"] = []string{"key"}
++	sets[prefix+".tolerations[]"] = struct{}{}
++	sets[prefix+".topologySpreadConstraints[]"] = struct{}{}
++	sets[prefix+".securityContext.supplementalGroups[]"] = struct{}{}
++	for _, aff := range []string{"nodeAffinity", "podAffinity", "podAntiAffinity"} {
++		sets[prefix+".affinity."+aff+".requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[]"] = struct{}{}
++		sets[prefix+".affinity."+aff+".requiredDuringSchedulingIgnoredDuringExecution[]"] = struct{}{}
++		sets[prefix+".affinity."+aff+".preferredDuringSchedulingIgnoredDuringExecution[]"] = struct{}{}
++	}
++	sets[prefix+".affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[].matchExpressions[]"] = struct{}{}
++
++	defaults[prefix+".dnsPolicy"] = `"ClusterFirst"`
++	defaults[prefix+".restartPolicy"] = `"Always"`
++	defaults[prefix+".schedulerName"] = `"default-scheduler"`
++	defaults[prefix+".terminationGracePeriodSeconds"] = `30`
++	defaults[prefix+".enableServiceLinks"] = `true`
++	for _, src := range []string{"configMap", "secret", "downwardAPI", "projected"} {
++		defaults[prefix+".volumes[]."+src+".defaultMode"] = `420`
++	}
++
++	for _, c := range []string{"containers", "initContainers"} {
++		cp := prefix + "." + c + "[]"
++		keyed[prefix+"."+c+"[]"] = []string{"name"}
++		keyed[cp+".env[]"] = []string{"name"}
++		keyed[cp+".ports[]"] = []string{"containerPort", "protocol"}
++		keyed[cp+".volumeMounts[]"] = []string{"mountPath"}
++		keyed[cp+".volumeDevices[]"] = []string{"devicePath"}
++		sets[cp+".envFrom[]"] = struct{}{}
++		ordered[cp+".command[]"] = struct{}{}
++		ordered[cp+".args[]"] = struct{}{}
++		defaults[cp+".terminationMessagePath"] = `"/dev/termination-log"`
++		defaults[cp+".terminationMessagePolicy"] = `"File"`
++		defaults[cp+".ports[].protocol"] = `"TCP"`
++		defaults[cp+".env[].valueFrom.fieldRef.apiVersion"] = `"v1"`
++		for _, probe := range []string{"livenessProbe", "readinessProbe", "startupProbe"} {
++			defaults[cp+"."+probe+".timeoutSeconds"] = `1`
++			defaults[cp+"."+probe+".periodSeconds"] = `10`
++			defaults[cp+"."+probe+".successThreshold"] = `1`
++			defaults[cp+"."+probe+".failureThreshold"] = `3`
++			defaults[cp+"."+probe+".httpGet.scheme"] = `"HTTP"`
++		}
++	}
++	// init-контейнеры выполняются по порядку: порядок значим даже при адресации по имени.
++	ordered[prefix+".initContainers[]"] = struct{}{}
++	return keyed, ordered, sets, defaults, exclude
++}
++
++// workload собирает правила типа с шаблоном пода; extra дополняет их правилами самого типа.
++func workload(extra func(r *kindRules)) *kindRules {
++	const pod = "spec.template.spec"
++	keyed, ordered, sets, defaults, exclude := podTemplate(pod)
++	r := &kindRules{
++		exclude:     exclude,
++		annotations: controllerAnnotations,
++		keyed:       keyed,
++		ordered:     ordered,
++		sets:        sets,
++		defaults:    defaults,
++	}
++	// Метки и аннотации шаблона пода не исключаются: их изменение запускает перекатку, это значимое изменение.
++	extra(r)
++	return r
++}
++
++var deploymentRules = workload(func(r *kindRules) {
++	r.defaults = mergeMaps(r.defaults, map[string]string{
++		"spec.progressDeadlineSeconds":               `600`,
++		"spec.revisionHistoryLimit":                  `10`,
++		"spec.strategy.rollingUpdate.maxSurge":       `"25%"`,
++		"spec.strategy.rollingUpdate.maxUnavailable": `"25%"`,
++	})
++})
++
++var statefulSetRules = workload(func(r *kindRules) {
++	r.defaults = mergeMaps(r.defaults, map[string]string{
++		"spec.podManagementPolicy":                              `"OrderedReady"`,
++		"spec.revisionHistoryLimit":                             `10`,
++		"spec.updateStrategy.type":                              `"RollingUpdate"`,
++		"spec.updateStrategy.rollingUpdate.partition":           `0`,
++		"spec.persistentVolumeClaimRetentionPolicy.whenDeleted": `"Retain"`,
++		"spec.persistentVolumeClaimRetentionPolicy.whenScaled":  `"Retain"`,
++	})
++	r.keyed["spec.volumeClaimTemplates[]"] = []string{"metadata.name"}
++	r.exclude = mergeSets(r.exclude, newSet("spec.volumeClaimTemplates[].status"))
++	r.defaults["spec.volumeClaimTemplates[].spec.volumeMode"] = `"Filesystem"`
++})
++
++var daemonSetRules = workload(func(r *kindRules) {
++	r.defaults = mergeMaps(r.defaults, map[string]string{
++		"spec.revisionHistoryLimit":                        `10`,
++		"spec.updateStrategy.type":                         `"RollingUpdate"`,
++		"spec.updateStrategy.rollingUpdate.maxUnavailable": `1`,
++		"spec.updateStrategy.rollingUpdate.maxSurge":       `0`,
++	})
++})
++
++var serviceRules = &kindRules{
++	// Адреса и порты назначает кластер: их смена без правки Service — не дрейф конфигурации.
++	exclude: newSet("spec.clusterIP", "spec.clusterIPs", "spec.ipFamilies", "spec.healthCheckNodePort",
++		"spec.ports[].nodePort"),
++	annotations: append([]string{"cloud.google.com/neg-status"}, controllerAnnotations...),
++	keyed:       map[string][]string{"spec.ports[]": {"port", "protocol"}},
++	sets:        newSet("spec.externalIPs[]", "spec.loadBalancerSourceRanges[]"),
++	defaults: map[string]string{
++		"spec.type":                  `"ClusterIP"`,
++		"spec.sessionAffinity":       `"None"`,
++		"spec.internalTrafficPolicy": `"Cluster"`,
++		"spec.ipFamilyPolicy":        `"SingleStack"`,
++		"spec.ports[].protocol":      `"TCP"`,
++	},
++}
++
++var ingressRules = &kindRules{
++	annotations: append([]string{
++		"ingress.kubernetes.io/backends", "ingress.kubernetes.io/forwarding-rule",
++		"ingress.kubernetes.io/https-forwarding-rule", "ingress.kubernetes.io/https-target-proxy",
++		"ingress.kubernetes.io/target-proxy", "ingress.kubernetes.io/url-map", "ingress.kubernetes.io/ssl-cert",
++		"ingress.kubernetes.io/static-ip", "ingress.kubernetes.io/redirect-url-map",
++		"ingress.kubernetes.io/redirect-forwarding-rule", "ingress.kubernetes.io/redirect-target-proxy",
++	}, controllerAnnotations...),
++	keyed: map[string][]string{
++		"spec.rules[]":              {"host"},
++		"spec.rules[].http.paths[]": {"path", "pathType"},
++	},
++	sets: newSet("spec.tls[]", "spec.tls[].hosts[]"),
++}
++
++var networkPolicyRules = &kindRules{
++	annotations: controllerAnnotations,
++	sets: newSet(
++		"spec.policyTypes[]", "spec.ingress[]", "spec.egress[]",
++		"spec.ingress[].from[]", "spec.ingress[].ports[]", "spec.egress[].to[]", "spec.egress[].ports[]",
++		"spec.podSelector.matchExpressions[]", "spec.podSelector.matchExpressions[].values[]",
++		"spec.ingress[].from[].podSelector.matchExpressions[]", "spec.ingress[].from[].podSelector.matchExpressions[].values[]",
++		"spec.ingress[].from[].namespaceSelector.matchExpressions[]", "spec.ingress[].from[].namespaceSelector.matchExpressions[].values[]",
++		"spec.egress[].to[].podSelector.matchExpressions[]", "spec.egress[].to[].podSelector.matchExpressions[].values[]",
++		"spec.egress[].to[].namespaceSelector.matchExpressions[]", "spec.egress[].to[].namespaceSelector.matchExpressions[].values[]",
++		"spec.ingress[].from[].ipBlock.except[]", "spec.egress[].to[].ipBlock.except[]",
++	),
++	defaults: map[string]string{
++		"spec.ingress[].ports[].protocol": `"TCP"`,
++		"spec.egress[].ports[].protocol":  `"TCP"`,
++	},
++}
++
++var configMapRules = &kindRules{annotations: controllerAnnotations}
++
++// annotationExcluded сообщает, что аннотация ставится контроллером и не сравнивается.
++func (r *kindRules) annotationExcluded(key string) bool {
++	for _, a := range r.annotations {
++		if p, ok := strings.CutSuffix(a, "*"); ok {
++			if strings.HasPrefix(key, p) {
++				return true
++			}
++		} else if key == a {
++			return true
++		}
++	}
++	return false
++}
++
++// keepEmpty — имена полей, у которых пустой объект значим (emptyDir: {} выбирает тип тома, podSelector: {} — все поды).
++var keepEmpty = newSet("emptyDir", "podSelector", "namespaceSelector", "ipBlock", "selector", "downwardAPI")
++
++// --- приоритеты ------------------------------------------------------------------------------------------------
++
++type prio struct {
++	prefix string
++	p      baseline.Priority
++}
++
++// containerFields — поля контейнеров, у которых приоритет выше обычного.
++const (
++	podPath = "spec.template.spec"
++)
++
++// priorityRules — приоритет изменения по правилам типа (ADR-0027 §5). Побеждает самый длинный совпавший префикс.
++// Не совпавшее под metadata — низкий приоритет, остальное — средний. AI не используется.
++var priorityRules = map[string][]prio{
++	"workload": {
++		{podPath + ".containers[].image", baseline.PriorityHigh},
++		{podPath + ".initContainers[].image", baseline.PriorityHigh},
++		{podPath + ".containers[].resources", baseline.PriorityHigh},
++		{podPath + ".initContainers[].resources", baseline.PriorityHigh},
++		{podPath + ".containers[].securityContext", baseline.PriorityHigh},
++		{podPath + ".initContainers[].securityContext", baseline.PriorityHigh},
++		{podPath + ".securityContext", baseline.PriorityHigh},
++		{podPath + ".hostNetwork", baseline.PriorityHigh},
++		{podPath + ".hostPID", baseline.PriorityHigh},
++		{podPath + ".hostIPC", baseline.PriorityHigh},
++		{podPath + ".serviceAccountName", baseline.PriorityHigh},
++		{podPath + ".containers[].command", baseline.PriorityHigh},
++		{podPath + ".containers[].args", baseline.PriorityHigh},
++		{"spec.template.metadata", baseline.PriorityLow},
++		{"spec.selector", baseline.PriorityHigh},
++	},
++	"Service": {
++		{"spec.type", baseline.PriorityHigh},
++		{"spec.ports", baseline.PriorityHigh},
++		{"spec.selector", baseline.PriorityHigh},
++		{"spec.externalIPs", baseline.PriorityHigh},
++		{"spec.loadBalancerSourceRanges", baseline.PriorityHigh},
++		{"spec.externalTrafficPolicy", baseline.PriorityMedium},
++	},
++	"Ingress":       {{"spec.rules", baseline.PriorityHigh}, {"spec.tls", baseline.PriorityHigh}, {"spec.defaultBackend", baseline.PriorityHigh}},
++	"NetworkPolicy": {{"spec", baseline.PriorityHigh}},
++	"ConfigMap":     {{"data", baseline.PriorityMedium}, {"binaryData", baseline.PriorityMedium}},
++}
++
++// priorityFor возвращает приоритет изменения пути path у ресурса типа kind.
++func priorityFor(kind, path string) baseline.Priority {
++	group := kind
++	switch kind {
++	case "Deployment", "StatefulSet", "DaemonSet":
++		group = "workload"
++	}
++	sp := schemaOf(path)
++	best, bestLen := baseline.Priority(""), -1
++	for _, r := range priorityRules[group] {
++		if matchesPrefix(sp, r.prefix) && len(r.prefix) > bestLen {
++			best, bestLen = r.p, len(r.prefix)
++		}
++	}
++	switch {
++	case bestLen >= 0:
++		return best
++	case sp == "metadata" || strings.HasPrefix(sp, "metadata."):
++		return baseline.PriorityLow
++	default:
++		return baseline.PriorityMedium
++	}
++}
++
++// matchesPrefix проверяет префикс схемного пути по границе сегмента.
++func matchesPrefix(path, prefix string) bool {
++	if path == prefix {
++		return true
++	}
++	if !strings.HasPrefix(path, prefix) {
++		return false
++	}
++	switch path[len(prefix)] {
++	case '.', '[':
++		return true
++	}
++	return false
++}
++
++// isSensitiveSchema сообщает, что значение листа по схемному пути хранится только как keyed hash (ADR-0027 §4):
++// литеральное значение переменной окружения и данные ConfigMap.
++func isSensitiveSchema(kind, sp string) bool {
++	switch kind {
++	case "ConfigMap":
++		return strings.HasPrefix(sp, "data.") || strings.HasPrefix(sp, "binaryData.")
++	case "Deployment", "StatefulSet", "DaemonSet":
++		return strings.HasSuffix(sp, ".env[].value") &&
++			(strings.HasPrefix(sp, podPath+".containers[]") || strings.HasPrefix(sp, podPath+".initContainers[]"))
++	}
++	return false
++}
+diff --git a/internal/drift/testdata/configmap.golden b/internal/drift/testdata/configmap.golden
+new file mode 100644
+index 00000000..29c6ad29
+--- /dev/null
++++ b/internal/drift/testdata/configmap.golden
+@@ -0,0 +1,9 @@
++# v1 ConfigMap prod/web-config
++binaryData["logo.png"] = HASH:07f15813
++data.empty = HASH:8fa850fe
++data["app.yaml"] = HASH:bd7414ec
++data["feature.flags"] = HASH:d16afd1e
++immutable = false
++metadata.annotations["example.com/contact"] = "ops@example.com"
++metadata.annotations["example.com/note"] = HASH:390db1d4
++metadata.labels.app = "web"
+diff --git a/internal/drift/testdata/configmap.json b/internal/drift/testdata/configmap.json
+new file mode 100644
+index 00000000..9edaa051
+--- /dev/null
++++ b/internal/drift/testdata/configmap.json
+@@ -0,0 +1,22 @@
++{
++  "apiVersion": "v1",
++  "kind": "ConfigMap",
++  "metadata": {
++    "name": "web-config", "namespace": "prod", "uid": "f5f5f5f5-0000-4000-8000-000000000005", "resourceVersion": "45000000",
++    "creationTimestamp": "2026-03-02T09:10:00Z",
++    "labels": {"app": "web"},
++    "annotations": {
++      "example.com/contact": "ops@example.com",
++      "example.com/note": "rotate when password=canary-annotation-pw-31337 changes"
++    },
++    "managedFields": [{"manager": "argocd-controller", "operation": "Apply", "apiVersion": "v1", "time": "2026-11-10T07:00:00Z",
++      "fieldsType": "FieldsV1", "fieldsV1": {"f:data": {"f:app.yaml": {}}}}]
++  },
++  "data": {
++    "app.yaml": "listen: :8080\ndb_dsn: canary-dsn-value-424242\n",
++    "feature.flags": "new-checkout=true",
++    "empty": ""
++  },
++  "binaryData": {"logo.png": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGD4DwABBAEAHnOcQAAAAABJRU5ErkJggg=="},
++  "immutable": false
++}
+diff --git a/internal/drift/testdata/daemonset.golden b/internal/drift/testdata/daemonset.golden
+new file mode 100644
+index 00000000..644d4302
+--- /dev/null
++++ b/internal/drift/testdata/daemonset.golden
+@@ -0,0 +1,24 @@
++# apps/v1 DaemonSet monitoring/node-exporter
++metadata.labels["app.kubernetes.io/name"] = "node-exporter"
++spec.selector.matchLabels["app.kubernetes.io/name"] = "node-exporter"
++spec.template.metadata.labels["app.kubernetes.io/name"] = "node-exporter"
++spec.template.spec.containers[name=node-exporter].args[0] = "--path.rootfs=/host"
++spec.template.spec.containers[name=node-exporter].args[1] = "--web.listen-address=:9100"
++spec.template.spec.containers[name=node-exporter].image = "quay.io/prometheus/node-exporter:v1.8.2"
++spec.template.spec.containers[name=node-exporter].name = "node-exporter"
++spec.template.spec.containers[name=node-exporter].ports[containerPort=9100].containerPort = 9100
++spec.template.spec.containers[name=node-exporter].ports[containerPort=9100].hostPort = 9100
++spec.template.spec.containers[name=node-exporter].ports[containerPort=9100].name = "metrics"
++spec.template.spec.containers[name=node-exporter].resources.limits.cpu = "200m"
++spec.template.spec.containers[name=node-exporter].resources.limits.memory = "100Mi"
++spec.template.spec.containers[name=node-exporter].volumeMounts[mountPath=/host].mountPath = "/host"
++spec.template.spec.containers[name=node-exporter].volumeMounts[mountPath=/host].name = "root"
++spec.template.spec.containers[name=node-exporter].volumeMounts[mountPath=/host].readOnly = true
++spec.template.spec.hostNetwork = true
++spec.template.spec.hostPID = true
++spec.template.spec.securityContext.runAsNonRoot = true
++spec.template.spec.securityContext.runAsUser = 65534
++spec.template.spec.tolerations[0].operator = "Exists"
++spec.template.spec.volumes[name=root].hostPath.path = "/"
++spec.template.spec.volumes[name=root].hostPath.type = ""
++spec.template.spec.volumes[name=root].name = "root"
+diff --git a/internal/drift/testdata/daemonset.json b/internal/drift/testdata/daemonset.json
+new file mode 100644
+index 00000000..bf1b40ab
+--- /dev/null
++++ b/internal/drift/testdata/daemonset.json
+@@ -0,0 +1,34 @@
++{
++  "apiVersion": "apps/v1",
++  "kind": "DaemonSet",
++  "metadata": {
++    "name": "node-exporter", "namespace": "monitoring", "uid": "b1b1b1b1-0000-4000-8000-000000000001",
++    "resourceVersion": "48100777", "generation": 2, "creationTimestamp": "2026-01-20T10:00:00Z",
++    "labels": {"app.kubernetes.io/name": "node-exporter"},
++    "annotations": {"deprecated.daemonset.template.generation": "2"}
++  },
++  "spec": {
++    "revisionHistoryLimit": 10,
++    "selector": {"matchLabels": {"app.kubernetes.io/name": "node-exporter"}},
++    "updateStrategy": {"type": "RollingUpdate", "rollingUpdate": {"maxSurge": 0, "maxUnavailable": 1}},
++    "template": {
++      "metadata": {"creationTimestamp": null, "labels": {"app.kubernetes.io/name": "node-exporter"}},
++      "spec": {
++        "hostNetwork": true, "hostPID": true,
++        "dnsPolicy": "ClusterFirst", "restartPolicy": "Always", "schedulerName": "default-scheduler",
++        "securityContext": {"runAsNonRoot": true, "runAsUser": 65534}, "terminationGracePeriodSeconds": 30,
++        "containers": [{
++          "name": "node-exporter", "image": "quay.io/prometheus/node-exporter:v1.8.2", "imagePullPolicy": "IfNotPresent",
++          "args": ["--path.rootfs=/host", "--web.listen-address=:9100"],
++          "ports": [{"containerPort": 9100, "hostPort": 9100, "name": "metrics", "protocol": "TCP"}],
++          "resources": {"limits": {"cpu": "200m", "memory": "100Mi"}},
++          "volumeMounts": [{"name": "root", "mountPath": "/host", "readOnly": true}],
++          "terminationMessagePath": "/dev/termination-log", "terminationMessagePolicy": "File"
++        }],
++        "volumes": [{"name": "root", "hostPath": {"path": "/", "type": ""}}],
++        "tolerations": [{"operator": "Exists"}]
++      }
++    }
++  },
++  "status": {"currentNumberScheduled": 5, "numberReady": 5, "desiredNumberScheduled": 5, "observedGeneration": 2}
++}
+diff --git a/internal/drift/testdata/deployment.golden b/internal/drift/testdata/deployment.golden
+new file mode 100644
+index 00000000..532636c6
+--- /dev/null
++++ b/internal/drift/testdata/deployment.golden
+@@ -0,0 +1,68 @@
++# apps/v1 Deployment prod/web
++metadata.annotations["example.com/owner"] = "team-web"
++metadata.annotations["meta.helm.sh/release-name"] = "web"
++metadata.labels.app = "web"
++metadata.labels.tier = "frontend"
++metadata.labels["app.kubernetes.io/managed-by"] = "Helm"
++spec.replicas = 3
++spec.selector.matchLabels.app = "web"
++spec.strategy.type = "RollingUpdate"
++spec.template.metadata.labels.app = "web"
++spec.template.metadata.labels.tier = "frontend"
++spec.template.spec.containers[name=sidecar].image = "registry.example.com/web/log-shipper:latest"
++spec.template.spec.containers[name=sidecar].name = "sidecar"
++spec.template.spec.containers[name=web].env[name=API_KEY].name = "API_KEY"
++spec.template.spec.containers[name=web].env[name=API_KEY].valueFrom.secretKeyRef.key = "key"
++spec.template.spec.containers[name=web].env[name=API_KEY].valueFrom.secretKeyRef.name = "web-api"
++spec.template.spec.containers[name=web].env[name=DB_PASSWORD].name = "DB_PASSWORD"
++spec.template.spec.containers[name=web].env[name=DB_PASSWORD].value = HASH:30186cc5
++spec.template.spec.containers[name=web].env[name=LOG_LEVEL].name = "LOG_LEVEL"
++spec.template.spec.containers[name=web].env[name=LOG_LEVEL].value = HASH:41fd874c
++spec.template.spec.containers[name=web].env[name=POD_NAME].name = "POD_NAME"
++spec.template.spec.containers[name=web].env[name=POD_NAME].valueFrom.fieldRef.fieldPath = "metadata.name"
++spec.template.spec.containers[name=web].image = "registry.example.com/web/app:3.8.2"
++spec.template.spec.containers[name=web].livenessProbe.httpGet.path = "/healthz"
++spec.template.spec.containers[name=web].livenessProbe.httpGet.port = 8080
++spec.template.spec.containers[name=web].livenessProbe.initialDelaySeconds = 10
++spec.template.spec.containers[name=web].name = "web"
++spec.template.spec.containers[name=web].ports[containerPort=8080].containerPort = 8080
++spec.template.spec.containers[name=web].ports[containerPort=8080].name = "http"
++spec.template.spec.containers[name=web].ports[containerPort=9090].containerPort = 9090
++spec.template.spec.containers[name=web].ports[containerPort=9090].name = "metrics"
++spec.template.spec.containers[name=web].readinessProbe.httpGet.path = "/ready"
++spec.template.spec.containers[name=web].readinessProbe.httpGet.port = "http"
++spec.template.spec.containers[name=web].readinessProbe.periodSeconds = 5
++spec.template.spec.containers[name=web].readinessProbe.timeoutSeconds = 2
++spec.template.spec.containers[name=web].resources.limits.cpu = "500m"
++spec.template.spec.containers[name=web].resources.limits.memory = "512Mi"
++spec.template.spec.containers[name=web].resources.requests.cpu = "250m"
++spec.template.spec.containers[name=web].resources.requests.memory = "256Mi"
++spec.template.spec.containers[name=web].securityContext.allowPrivilegeEscalation = false
++spec.template.spec.containers[name=web].securityContext.runAsNonRoot = true
++spec.template.spec.containers[name=web].volumeMounts[mountPath=/etc/web].mountPath = "/etc/web"
++spec.template.spec.containers[name=web].volumeMounts[mountPath=/etc/web].name = "config"
++spec.template.spec.containers[name=web].volumeMounts[mountPath=/etc/web].readOnly = true
++spec.template.spec.containers[name=web].volumeMounts[mountPath=/tmp].mountPath = "/tmp"
++spec.template.spec.containers[name=web].volumeMounts[mountPath=/tmp].name = "tmp"
++spec.template.spec.initContainers.@order = ["[name=wait-db]","[name=migrate]"]
++spec.template.spec.initContainers[name=migrate].args[0] = "--up"
++spec.template.spec.initContainers[name=migrate].image = "registry.example.com/web/migrate:2.4.1"
++spec.template.spec.initContainers[name=migrate].name = "migrate"
++spec.template.spec.initContainers[name=wait-db].command[0] = "sh"
++spec.template.spec.initContainers[name=wait-db].command[1] = "-c"
++spec.template.spec.initContainers[name=wait-db].command[2] = "until nc -z db 5432; do sleep 1; done"
++spec.template.spec.initContainers[name=wait-db].image = "busybox:1.36"
++spec.template.spec.initContainers[name=wait-db].name = "wait-db"
++spec.template.spec.serviceAccountName = "web"
++spec.template.spec.tolerations[0].effect = "NoExecute"
++spec.template.spec.tolerations[0].key = "node.kubernetes.io/not-ready"
++spec.template.spec.tolerations[0].operator = "Exists"
++spec.template.spec.tolerations[0].tolerationSeconds = 300
++spec.template.spec.tolerations[1].effect = "NoExecute"
++spec.template.spec.tolerations[1].key = "node.kubernetes.io/unreachable"
++spec.template.spec.tolerations[1].operator = "Exists"
++spec.template.spec.tolerations[1].tolerationSeconds = 300
++spec.template.spec.volumes[name=config].configMap.name = "web-config"
++spec.template.spec.volumes[name=config].name = "config"
++spec.template.spec.volumes[name=tmp].emptyDir = {}
++spec.template.spec.volumes[name=tmp].name = "tmp"
+diff --git a/internal/drift/testdata/deployment.json b/internal/drift/testdata/deployment.json
+new file mode 100644
+index 00000000..019b59f6
+--- /dev/null
++++ b/internal/drift/testdata/deployment.json
+@@ -0,0 +1,97 @@
++{
++  "apiVersion": "apps/v1",
++  "kind": "Deployment",
++  "metadata": {
++    "name": "web",
++    "namespace": "prod",
++    "uid": "6f1c1a5e-0b0d-4c5e-9a53-1d7d3f0a1a11",
++    "resourceVersion": "48211733",
++    "generation": 14,
++    "creationTimestamp": "2026-03-02T09:14:07Z",
++    "selfLink": "/apis/apps/v1/namespaces/prod/deployments/web",
++    "labels": {"app": "web", "app.kubernetes.io/managed-by": "Helm", "tier": "frontend"},
++    "annotations": {
++      "deployment.kubernetes.io/revision": "9",
++      "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\"}",
++      "meta.helm.sh/release-name": "web",
++      "example.com/owner": "team-web"
++    },
++    "managedFields": [
++      {"manager": "helm", "operation": "Update", "apiVersion": "apps/v1", "time": "2026-10-20T08:00:00Z",
++       "fieldsType": "FieldsV1",
++       "fieldsV1": {"f:spec": {"f:replicas": {}, "f:template": {"f:spec": {"f:containers": {"k:{\"name\":\"web\"}": {".": {}, "f:image": {}, "f:name": {}}}}}}}},
++      {"manager": "kube-controller-manager", "operation": "Update", "apiVersion": "apps/v1", "time": "2026-11-01T10:00:00Z",
++       "fieldsType": "FieldsV1", "subresource": "status",
++       "fieldsV1": {"f:status": {"f:readyReplicas": {}}}}
++    ]
++  },
++  "spec": {
++    "replicas": 3,
++    "revisionHistoryLimit": 10,
++    "progressDeadlineSeconds": 600,
++    "selector": {"matchLabels": {"app": "web"}},
++    "strategy": {"type": "RollingUpdate", "rollingUpdate": {"maxSurge": "25%", "maxUnavailable": "25%"}},
++    "template": {
++      "metadata": {"creationTimestamp": null, "labels": {"app": "web", "tier": "frontend"}},
++      "spec": {
++        "serviceAccount": "web",
++        "serviceAccountName": "web",
++        "dnsPolicy": "ClusterFirst",
++        "restartPolicy": "Always",
++        "schedulerName": "default-scheduler",
++        "securityContext": {},
++        "terminationGracePeriodSeconds": 30,
++        "initContainers": [
++          {"name": "wait-db", "image": "busybox:1.36", "imagePullPolicy": "IfNotPresent",
++           "command": ["sh", "-c", "until nc -z db 5432; do sleep 1; done"],
++           "resources": {}, "terminationMessagePath": "/dev/termination-log", "terminationMessagePolicy": "File"},
++          {"name": "migrate", "image": "registry.example.com/web/migrate:2.4.1", "imagePullPolicy": "IfNotPresent",
++           "args": ["--up"], "resources": {}, "terminationMessagePath": "/dev/termination-log", "terminationMessagePolicy": "File"}
++        ],
++        "containers": [
++          {
++            "name": "sidecar", "image": "registry.example.com/web/log-shipper:latest", "imagePullPolicy": "Always",
++            "resources": {}, "terminationMessagePath": "/dev/termination-log", "terminationMessagePolicy": "File"
++          },
++          {
++            "name": "web",
++            "image": "registry.example.com/web/app:3.8.2",
++            "imagePullPolicy": "IfNotPresent",
++            "ports": [
++              {"containerPort": 9090, "name": "metrics", "protocol": "TCP"},
++              {"containerPort": 8080, "name": "http", "protocol": "TCP"}
++            ],
++            "env": [
++              {"name": "LOG_LEVEL", "value": "info"},
++              {"name": "DB_PASSWORD", "value": "canary-db-password-7f3a9c"},
++              {"name": "API_KEY", "valueFrom": {"secretKeyRef": {"name": "web-api", "key": "key"}}},
++              {"name": "POD_NAME", "valueFrom": {"fieldRef": {"apiVersion": "v1", "fieldPath": "metadata.name"}}}
++            ],
++            "resources": {"limits": {"cpu": "500m", "memory": "512Mi"}, "requests": {"cpu": "250m", "memory": "256Mi"}},
++            "livenessProbe": {"httpGet": {"path": "/healthz", "port": 8080, "scheme": "HTTP"},
++              "initialDelaySeconds": 10, "timeoutSeconds": 1, "periodSeconds": 10, "successThreshold": 1, "failureThreshold": 3},
++            "readinessProbe": {"httpGet": {"path": "/ready", "port": "http", "scheme": "HTTP"},
++              "timeoutSeconds": 2, "periodSeconds": 5, "successThreshold": 1, "failureThreshold": 3},
++            "volumeMounts": [
++              {"name": "tmp", "mountPath": "/tmp"},
++              {"name": "config", "mountPath": "/etc/web", "readOnly": true}
++            ],
++            "terminationMessagePath": "/dev/termination-log",
++            "terminationMessagePolicy": "File",
++            "securityContext": {"runAsNonRoot": true, "allowPrivilegeEscalation": false}
++          }
++        ],
++        "volumes": [
++          {"name": "tmp", "emptyDir": {}},
++          {"name": "config", "configMap": {"name": "web-config", "defaultMode": 420}}
++        ],
++        "tolerations": [
++          {"key": "node.kubernetes.io/unreachable", "operator": "Exists", "effect": "NoExecute", "tolerationSeconds": 300},
++          {"key": "node.kubernetes.io/not-ready", "operator": "Exists", "effect": "NoExecute", "tolerationSeconds": 300}
++        ]
++      }
++    }
++  },
++  "status": {"observedGeneration": 14, "replicas": 3, "readyReplicas": 3, "availableReplicas": 3,
++    "conditions": [{"type": "Available", "status": "True", "lastUpdateTime": "2026-11-01T10:00:00Z"}]}
++}
+diff --git a/internal/drift/testdata/ingress.golden b/internal/drift/testdata/ingress.golden
+new file mode 100644
+index 00000000..bf10200a
+--- /dev/null
++++ b/internal/drift/testdata/ingress.golden
+@@ -0,0 +1,21 @@
++# networking.k8s.io/v1 Ingress prod/web
++metadata.annotations["nginx.ingress.kubernetes.io/proxy-body-size"] = "20m"
++metadata.labels.app = "web"
++spec.ingressClassName = "nginx"
++spec.rules[host=shop.example.com].host = "shop.example.com"
++spec.rules[host=shop.example.com].http.paths[path=/,pathType=Prefix].backend.service.name = "web"
++spec.rules[host=shop.example.com].http.paths[path=/,pathType=Prefix].backend.service.port.number = 80
++spec.rules[host=shop.example.com].http.paths[path=/,pathType=Prefix].path = "/"
++spec.rules[host=shop.example.com].http.paths[path=/,pathType=Prefix].pathType = "Prefix"
++spec.rules[host=shop.example.com].http.paths[path=/api,pathType=Prefix].backend.service.name = "api"
++spec.rules[host=shop.example.com].http.paths[path=/api,pathType=Prefix].backend.service.port.name = "http"
++spec.rules[host=shop.example.com].http.paths[path=/api,pathType=Prefix].path = "/api"
++spec.rules[host=shop.example.com].http.paths[path=/api,pathType=Prefix].pathType = "Prefix"
++spec.rules[host=www.example.com].host = "www.example.com"
++spec.rules[host=www.example.com].http.paths[path=/,pathType=Prefix].backend.service.name = "web"
++spec.rules[host=www.example.com].http.paths[path=/,pathType=Prefix].backend.service.port.number = 80
++spec.rules[host=www.example.com].http.paths[path=/,pathType=Prefix].path = "/"
++spec.rules[host=www.example.com].http.paths[path=/,pathType=Prefix].pathType = "Prefix"
++spec.tls[0].hosts[0] = "shop.example.com"
++spec.tls[0].hosts[1] = "www.example.com"
++spec.tls[0].secretName = "web-tls"
+diff --git a/internal/drift/testdata/ingress.json b/internal/drift/testdata/ingress.json
+new file mode 100644
+index 00000000..54e3716b
+--- /dev/null
++++ b/internal/drift/testdata/ingress.json
+@@ -0,0 +1,26 @@
++{
++  "apiVersion": "networking.k8s.io/v1",
++  "kind": "Ingress",
++  "metadata": {
++    "name": "web", "namespace": "prod", "uid": "d3d3d3d3-0000-4000-8000-000000000003", "resourceVersion": "47000500",
++    "generation": 1, "creationTimestamp": "2026-03-02T09:15:00Z",
++    "labels": {"app": "web"},
++    "annotations": {
++      "nginx.ingress.kubernetes.io/proxy-body-size": "20m",
++      "ingress.kubernetes.io/backends": "{\"k8s1-abc\":\"HEALTHY\"}",
++      "ingress.kubernetes.io/url-map": "k8s2-um-xyz"
++    }
++  },
++  "spec": {
++    "ingressClassName": "nginx",
++    "tls": [{"hosts": ["shop.example.com", "www.example.com"], "secretName": "web-tls"}],
++    "rules": [
++      {"host": "www.example.com", "http": {"paths": [
++        {"path": "/", "pathType": "Prefix", "backend": {"service": {"name": "web", "port": {"number": 80}}}}]}},
++      {"host": "shop.example.com", "http": {"paths": [
++        {"path": "/api", "pathType": "Prefix", "backend": {"service": {"name": "api", "port": {"name": "http"}}}},
++        {"path": "/", "pathType": "Prefix", "backend": {"service": {"name": "web", "port": {"number": 80}}}}]}}
++    ]
++  },
++  "status": {"loadBalancer": {"ingress": [{"ip": "203.0.113.10"}]}}
++}
+diff --git a/internal/drift/testdata/networkpolicy.golden b/internal/drift/testdata/networkpolicy.golden
+new file mode 100644
+index 00000000..02ea5417
+--- /dev/null
++++ b/internal/drift/testdata/networkpolicy.golden
+@@ -0,0 +1,17 @@
++# networking.k8s.io/v1 NetworkPolicy prod/web-allow
++metadata.labels.app = "web"
++spec.egress[0].ports[0].port = 5432
++spec.egress[0].to[0].ipBlock.cidr = "10.0.0.0/8"
++spec.egress[0].to[0].ipBlock.except[0] = "10.0.5.0/24"
++spec.egress[0].to[0].ipBlock.except[1] = "10.1.0.0/16"
++spec.egress[1] = {}
++spec.ingress[0].from[0].namespaceSelector.matchLabels["kubernetes.io/metadata.name"] = "ingress-nginx"
++spec.ingress[0].from[1].podSelector.matchExpressions[0].key = "role"
++spec.ingress[0].from[1].podSelector.matchExpressions[0].operator = "In"
++spec.ingress[0].from[1].podSelector.matchExpressions[0].values[0] = "admin"
++spec.ingress[0].from[1].podSelector.matchExpressions[0].values[1] = "frontend"
++spec.ingress[0].ports[0].port = 8080
++spec.ingress[0].ports[1].port = 9090
++spec.podSelector.matchLabels.app = "web"
++spec.policyTypes[0] = "Egress"
++spec.policyTypes[1] = "Ingress"
+diff --git a/internal/drift/testdata/networkpolicy.json b/internal/drift/testdata/networkpolicy.json
+new file mode 100644
+index 00000000..159cd404
+--- /dev/null
++++ b/internal/drift/testdata/networkpolicy.json
+@@ -0,0 +1,23 @@
++{
++  "apiVersion": "networking.k8s.io/v1",
++  "kind": "NetworkPolicy",
++  "metadata": {
++    "name": "web-allow", "namespace": "prod", "uid": "e4e4e4e4-0000-4000-8000-000000000004", "resourceVersion": "46000000",
++    "generation": 1, "creationTimestamp": "2026-03-02T09:16:00Z",
++    "labels": {"app": "web"}
++  },
++  "spec": {
++    "podSelector": {"matchLabels": {"app": "web"}},
++    "policyTypes": ["Egress", "Ingress"],
++    "ingress": [
++      {"from": [
++        {"namespaceSelector": {"matchLabels": {"kubernetes.io/metadata.name": "ingress-nginx"}}},
++        {"podSelector": {"matchExpressions": [{"key": "role", "operator": "In", "values": ["frontend", "admin"]}]}}],
++       "ports": [{"port": 8080, "protocol": "TCP"}, {"port": 9090}]}
++    ],
++    "egress": [
++      {"to": [{"ipBlock": {"cidr": "10.0.0.0/8", "except": ["10.1.0.0/16", "10.0.5.0/24"]}}], "ports": [{"port": 5432, "protocol": "TCP"}]},
++      {}
++    ]
++  }
++}
+diff --git a/internal/drift/testdata/service.golden b/internal/drift/testdata/service.golden
+new file mode 100644
+index 00000000..0192e2fc
+--- /dev/null
++++ b/internal/drift/testdata/service.golden
+@@ -0,0 +1,16 @@
++# v1 Service prod/web
++metadata.annotations["example.com/scrape"] = "true"
++metadata.labels.app = "web"
++spec.externalTrafficPolicy = "Cluster"
++spec.ports[port=443].name = "https"
++spec.ports[port=443].port = 443
++spec.ports[port=443].targetPort = 8443
++spec.ports[port=53,protocol=UDP].name = "dns"
++spec.ports[port=53,protocol=UDP].port = 53
++spec.ports[port=53,protocol=UDP].protocol = "UDP"
++spec.ports[port=53,protocol=UDP].targetPort = 5353
++spec.ports[port=80].name = "http"
++spec.ports[port=80].port = 80
++spec.ports[port=80].targetPort = "http"
++spec.selector.app = "web"
++spec.type = "NodePort"
+diff --git a/internal/drift/testdata/service.json b/internal/drift/testdata/service.json
+new file mode 100644
+index 00000000..de12e275
+--- /dev/null
++++ b/internal/drift/testdata/service.json
+@@ -0,0 +1,24 @@
++{
++  "apiVersion": "v1",
++  "kind": "Service",
++  "metadata": {
++    "name": "web", "namespace": "prod", "uid": "c2c2c2c2-0000-4000-8000-000000000002", "resourceVersion": "47000010",
++    "creationTimestamp": "2026-03-02T09:14:08Z",
++    "labels": {"app": "web"},
++    "annotations": {"cloud.google.com/neg-status": "{\"network_endpoint_groups\":{\"80\":\"k8s1-abc\"}}", "example.com/scrape": "true"},
++    "managedFields": [{"manager": "kubectl-edit", "operation": "Update", "apiVersion": "v1", "time": "2026-10-05T09:30:00Z",
++      "fieldsType": "FieldsV1", "fieldsV1": {"f:spec": {"f:ports": {"k:{\"port\":80,\"protocol\":\"TCP\"}": {".": {}, "f:targetPort": {}}}}}}]
++  },
++  "spec": {
++    "type": "NodePort", "clusterIP": "10.96.14.211", "clusterIPs": ["10.96.14.211"],
++    "ipFamilies": ["IPv4"], "ipFamilyPolicy": "SingleStack", "sessionAffinity": "None",
++    "internalTrafficPolicy": "Cluster", "externalTrafficPolicy": "Cluster",
++    "selector": {"app": "web"},
++    "ports": [
++      {"name": "https", "port": 443, "protocol": "TCP", "targetPort": 8443, "nodePort": 31443},
++      {"name": "http", "port": 80, "protocol": "TCP", "targetPort": "http", "nodePort": 30080},
++      {"name": "dns", "port": 53, "protocol": "UDP", "targetPort": 5353, "nodePort": 30053}
++    ]
++  },
++  "status": {"loadBalancer": {}}
++}
+diff --git a/internal/drift/testdata/statefulset.golden b/internal/drift/testdata/statefulset.golden
+new file mode 100644
+index 00000000..8118075c
+--- /dev/null
++++ b/internal/drift/testdata/statefulset.golden
+@@ -0,0 +1,23 @@
++# apps/v1 StatefulSet prod/db
++metadata.labels.app = "db"
++spec.replicas = 2
++spec.selector.matchLabels.app = "db"
++spec.serviceName = "db"
++spec.template.metadata.labels.app = "db"
++spec.template.spec.containers[name=postgres].env[name=PGDATA].name = "PGDATA"
++spec.template.spec.containers[name=postgres].env[name=PGDATA].value = HASH:e5c800fc
++spec.template.spec.containers[name=postgres].image = "postgres:16.4"
++spec.template.spec.containers[name=postgres].name = "postgres"
++spec.template.spec.containers[name=postgres].ports[containerPort=5432].containerPort = 5432
++spec.template.spec.containers[name=postgres].ports[containerPort=5432].name = "pg"
++spec.template.spec.containers[name=postgres].resources.requests.cpu = "1"
++spec.template.spec.containers[name=postgres].resources.requests.memory = "2Gi"
++spec.template.spec.containers[name=postgres].volumeMounts[mountPath=/var/lib/postgresql/data].mountPath = "/var/lib/postgresql/data"
++spec.template.spec.containers[name=postgres].volumeMounts[mountPath=/var/lib/postgresql/data].name = "data"
++spec.template.spec.securityContext.fsGroup = 999
++spec.volumeClaimTemplates[metadata.name=data].apiVersion = "v1"
++spec.volumeClaimTemplates[metadata.name=data].kind = "PersistentVolumeClaim"
++spec.volumeClaimTemplates[metadata.name=data].metadata.name = "data"
++spec.volumeClaimTemplates[metadata.name=data].spec.accessModes[0] = "ReadWriteOnce"
++spec.volumeClaimTemplates[metadata.name=data].spec.resources.requests.storage = "50Gi"
++spec.volumeClaimTemplates[metadata.name=data].spec.storageClassName = "fast-ssd"
+diff --git a/internal/drift/testdata/statefulset.json b/internal/drift/testdata/statefulset.json
+new file mode 100644
+index 00000000..195f5dce
+--- /dev/null
++++ b/internal/drift/testdata/statefulset.json
+@@ -0,0 +1,43 @@
++{
++  "apiVersion": "apps/v1",
++  "kind": "StatefulSet",
++  "metadata": {
++    "name": "db", "namespace": "prod", "uid": "0e5a9e0e-2d1f-4f55-8f0b-2f5f5f0d9c10", "resourceVersion": "48200001",
++    "generation": 3, "creationTimestamp": "2026-02-11T07:00:00Z",
++    "labels": {"app": "db"},
++    "annotations": {"kubectl.kubernetes.io/last-applied-configuration": "{}"},
++    "managedFields": [
++      {"manager": "kubectl-client-side-apply", "operation": "Update", "apiVersion": "apps/v1", "time": "2026-09-01T12:00:00Z",
++       "fieldsType": "FieldsV1", "fieldsV1": {"f:spec": {"f:replicas": {}}}}
++    ]
++  },
++  "spec": {
++    "replicas": 2, "serviceName": "db", "podManagementPolicy": "OrderedReady", "revisionHistoryLimit": 10,
++    "updateStrategy": {"type": "RollingUpdate", "rollingUpdate": {"partition": 0}},
++    "persistentVolumeClaimRetentionPolicy": {"whenDeleted": "Retain", "whenScaled": "Retain"},
++    "selector": {"matchLabels": {"app": "db"}},
++    "template": {
++      "metadata": {"creationTimestamp": null, "labels": {"app": "db"}},
++      "spec": {
++        "dnsPolicy": "ClusterFirst", "restartPolicy": "Always", "schedulerName": "default-scheduler",
++        "securityContext": {"fsGroup": 999}, "terminationGracePeriodSeconds": 30,
++        "containers": [{
++          "name": "postgres", "image": "postgres:16.4", "imagePullPolicy": "IfNotPresent",
++          "ports": [{"containerPort": 5432, "name": "pg", "protocol": "TCP"}],
++          "env": [{"name": "PGDATA", "value": "/var/lib/postgresql/data/pgdata"}],
++          "resources": {"requests": {"cpu": "1", "memory": "2Gi"}},
++          "volumeMounts": [{"name": "data", "mountPath": "/var/lib/postgresql/data"}],
++          "terminationMessagePath": "/dev/termination-log", "terminationMessagePolicy": "File"
++        }]
++      }
++    },
++    "volumeClaimTemplates": [{
++      "apiVersion": "v1", "kind": "PersistentVolumeClaim",
++      "metadata": {"name": "data", "creationTimestamp": null},
++      "spec": {"accessModes": ["ReadWriteOnce"], "resources": {"requests": {"storage": "50Gi"}},
++        "storageClassName": "fast-ssd", "volumeMode": "Filesystem"},
++      "status": {"phase": "Pending"}
++    }]
++  },
++  "status": {"replicas": 2, "readyReplicas": 2, "currentRevision": "db-6d7c9f5b8", "updateRevision": "db-6d7c9f5b8"}
++}
+-- 
+2.43.0
+

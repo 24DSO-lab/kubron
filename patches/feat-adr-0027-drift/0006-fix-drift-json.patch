@@ -1,0 +1,71 @@
+From 13dbfa5c584d03cadcb6de5f3f46617846108c87 Mon Sep 17 00:00:00 2001
+From: Vadim <vmilyash@mts.ru>
+Date: Thu, 12 Nov 2026 18:46:25 +0700
+Subject: [PATCH 6/9] =?UTF-8?q?fix(drift):=20json-=D1=82=D0=B5=D0=B3=D0=B8?=
+ =?UTF-8?q?=20=D0=BF=D1=80=D0=B5=D0=B4=D0=BF=D1=80=D0=BE=D1=81=D0=BC=D0=BE?=
+ =?UTF-8?q?=D1=82=D1=80=D0=B0=20=D0=B8=20=D0=BE=D0=B1=D0=BB=D0=B0=D1=81?=
+ =?UTF-8?q?=D1=82=D1=8C=20=D0=B8=D1=81=D0=BA=D0=BB=D1=8E=D1=87=D0=B5=D0=BD?=
+ =?UTF-8?q?=D0=B8=D1=8F=20=D0=BF=D0=BE=20=D1=82=D0=B8=D0=BF=D1=83?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Preview отдаётся фронтенду как есть, поэтому поля получили json-теги.
+Исключение по типу сохраняет группу и пространство имён (см. Exception.Matches).
+
+Signed-off-by: Vadim <vmilyash@mts.ru>
+---
+ internal/drift/engine.go  | 22 +++++++++++-----------
+ internal/drift/service.go |  2 +-
+ 2 files changed, 12 insertions(+), 12 deletions(-)
+
+diff --git a/internal/drift/engine.go b/internal/drift/engine.go
+index 9168fdc8..20767ec2 100644
+--- a/internal/drift/engine.go
++++ b/internal/drift/engine.go
+@@ -318,18 +318,18 @@ func (e *Engine) snapshotOf(c *collected) Snapshot {
+ 
+ // Preview — предпросмотр новой версии: что будет зафиксировано и чем это отличается от предыдущей версии.
+ type Preview struct {
+-	Token       string
+-	ExpiresAt   time.Time
+-	Objects     int
+-	Hashed      int
+-	Skipped     []Skip
+-	HasPrevious bool
++	Token       string    `json:"token"`
++	ExpiresAt   time.Time `json:"expiresAt"`
++	Objects     int       `json:"objects"`
++	Hashed      int       `json:"hashed"`
++	Skipped     []Skip    `json:"skipped,omitempty"`
++	HasPrevious bool      `json:"hasPrevious"`
+ 	// RulesChanged — предыдущая версия снята по другим правилам: сравнение с ней невозможно.
+-	RulesChanged bool
+-	Added        []baseline.Ref
+-	Removed      []baseline.Ref
+-	Changed      []baseline.ItemResult
+-	Unchanged    int
++	RulesChanged bool                  `json:"rulesChanged"`
++	Added        []baseline.Ref        `json:"added,omitempty"`
++	Removed      []baseline.Ref        `json:"removed,omitempty"`
++	Changed      []baseline.ItemResult `json:"changed,omitempty"`
++	Unchanged    int                   `json:"unchanged"`
+ }
+ 
+ func (e *Engine) tokenMAC(fp, bind string, exp int64) string {
+diff --git a/internal/drift/service.go b/internal/drift/service.go
+index 67640717..e4ce641c 100644
+--- a/internal/drift/service.go
++++ b/internal/drift/service.go
+@@ -310,7 +310,7 @@ func (s *Service) AddException(ctx context.Context, sess Session, baselineID str
+ 		Comment: strings.TrimSpace(in.Comment), ExpiresAt: in.ExpiresAt, CreatedBy: sess.Actor, CreatedAt: baseline.Normalize(s.now()),
+ 	}
+ 	if ex.Scope == baseline.ExceptionKind {
+-		ex.Ref = baseline.Ref{Kind: in.Ref.Kind} // исключение по типу не привязано к ресурсу
++		ex.Ref = baseline.Ref{Group: in.Ref.Group, Kind: in.Ref.Kind, Namespace: in.Ref.Namespace} // по типу: без версии API и имени
+ 	}
+ 	if err := ex.Validate(); err != nil {
+ 		return baseline.Exception{}, err
+-- 
+2.43.0
+
