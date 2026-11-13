@@ -345,7 +345,7 @@ func managedDeployment(name, image string, mgr string, at time.Time) *unstructur
 	u := deployment(name, image, "x", 1)
 	u.SetManagedFields([]metav1.ManagedFieldsEntry{{
 		Manager: mgr, Operation: metav1.ManagedFieldsOperationUpdate, Time: &metav1.Time{Time: at},
-		FieldsV1: &metav1.FieldsV1{Raw: []byte(`{"f:spec":{"f:template":{"f:spec":{"f:containers":{"k:{\"name\":\"app\"}":{"f:image":{}}}}}}}`)},
+		FieldsV1: metav1.NewFieldsV1(`{"f:spec":{"f:template":{"f:spec":{"f:containers":{"k:{\"name\":\"app\"}":{"f:image":{}}}}}}}`),
 	}})
 	return u
 }
