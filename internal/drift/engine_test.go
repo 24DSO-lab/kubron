@@ -434,6 +434,27 @@ func TestPreviewToken(t *testing.T) {
 	}
 }
 
+// Предпросмотр, выданный одной репликой, подтверждает другая, если у них один ключ (ADR-0016); чужой ключ — отказ.
+func TestPreviewTokenAcrossReplicas(t *testing.T) {
+	t.Parallel()
+	c := newCluster()
+	c.put(deployment("web", "nginx:1", canaryPW, 1))
+	key := NewPreviewKey()
+	replicaA := NewEngine(c, Options{PreviewKey: key})
+	replicaB := NewEngine(c, Options{PreviewKey: key})
+	pv, err := replicaA.Preview(t.Context(), nsSpec(), nil, "b1", t0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := replicaB.SnapshotConfirmed(t.Context(), nsSpec(), pv.Token, "b1", t0.Add(time.Minute)); err != nil {
+		t.Fatalf("the other replica with the same key must confirm: %v", err)
+	}
+	stranger := NewEngine(c, Options{PreviewKey: NewPreviewKey()})
+	if _, err := stranger.SnapshotConfirmed(t.Context(), nsSpec(), pv.Token, "b1", t0); !errors.Is(err, ErrStalePreview) {
+		t.Errorf("a replica with another key: %v", err)
+	}
+}
+
 func TestPreviewAgainstPrevious(t *testing.T) {
 	t.Parallel()
 	c := newCluster()

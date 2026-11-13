@@ -21,6 +21,8 @@ You need the `baseline.manage` permission.
 
 If the cluster changes after the preview, nothing is recorded. Preview again and confirm what you see. Nothing is ever created silently.
 
+On a multi-replica server any replica can confirm a preview issued by another one. After the master key (`KUBRON_SECRET_KEY`) is rotated, previews issued before the change are rejected as stale: preview again.
+
 ## Run a check
 
 Anyone who can read the cluster can run a check. Each resource gets one status:

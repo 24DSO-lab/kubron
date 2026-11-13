@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
-	"sync"
 	"time"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -50,9 +49,7 @@ const (
 	maxSelectorLen    = 1000
 )
 
-// baselinePreviewKey — ключ токенов предпросмотра, общий для процесса: предпросмотр и подтверждение могут прийти
-// в разные виды одной сессии.
-var baselinePreviewKey = sync.OnceValue(drift.NewPreviewKey)
+// Ключ токенов предпросмотра (baselinePreviewKey) общий для процесса и, в server, для всех реплик: см. baseline_key.go.
 
 // BaselineSpecInput — что снимать: пространства имён, селектор, типы либо явный список ресурсов.
 type BaselineSpecInput struct {

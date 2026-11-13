@@ -131,6 +131,11 @@ func main() {
 		notifier = pg.NewNotifier(listenURL, logf)
 		st := store.FromPostgres(pg)
 		app.SetStore(core, st)
+		// Ключ токенов предпросмотра baseline выводится из общего мастер-ключа: предпросмотр и подтверждение
+		// могут прийти на разные реплики (ADR-0016).
+		if err := app.SetBaselinePreviewKey(cfg.SecretKey); err != nil {
+			fatal("configuration", err)
+		}
 		if p, ok := st.(websession.Provider); ok {
 			sessionBackend = p.Sessions()
 		}

@@ -987,5 +987,6 @@
   "baselineTooManyExceptions": "{p0}: too many exceptions",
   "baselineTooManyResourcesSelected": "{p0}: too many resources selected",
   "baselineUnknownExceptionScope": "{p0}: unknown exception scope",
-  "baselineUnsupportedVersionSource": "{p0}: unsupported version source"
+  "baselineUnsupportedVersionSource": "{p0}: unsupported version source",
+  "baselinePreviewKey": "baseline preview key: {p0}"
 }

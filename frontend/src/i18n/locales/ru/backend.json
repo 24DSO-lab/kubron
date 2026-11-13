@@ -987,5 +987,6 @@
   "baselineTooManyExceptions": "{p0}: слишком много исключений",
   "baselineTooManyResourcesSelected": "{p0}: выбрано слишком много ресурсов",
   "baselineUnknownExceptionScope": "{p0}: неизвестная область исключения",
-  "baselineUnsupportedVersionSource": "{p0}: неподдерживаемый источник версии"
+  "baselineUnsupportedVersionSource": "{p0}: неподдерживаемый источник версии",
+  "baselinePreviewKey": "ключ предпросмотра baseline: {p0}"
 }

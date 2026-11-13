@@ -987,5 +987,6 @@
   "baselineTooManyExceptions": "{p0}：例外过多",
   "baselineTooManyResourcesSelected": "{p0}：选择的资源过多",
   "baselineUnknownExceptionScope": "{p0}：未知的例外范围",
-  "baselineUnsupportedVersionSource": "{p0}：不支持的版本来源"
+  "baselineUnsupportedVersionSource": "{p0}：不支持的版本来源",
+  "baselinePreviewKey": "基线预览密钥：{p0}"
 }
