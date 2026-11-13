@@ -121,6 +121,7 @@
   "failedToCreateDiscoveryClient": "ошибка создания discovery клиента: {p0}",
   "kubeconfigNotFoundForCluster": "kubeconfig не найден для кластера {p0}",
   "clusterMetadataNotFound": "метаданные кластера не найдены: {p0}",
+  "clusterUnknown": "метаданные кластера не найдены",
   "configurationError": "ошибка конфигурации: {p0}",
   "kubeconfigIsLargerThanMb": "kubeconfig больше {p0} МБ",
   "clusterNameCannotBeEmpty": "название кластера не может быть пустым",

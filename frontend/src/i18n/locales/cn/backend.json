@@ -121,6 +121,7 @@
   "failedToCreateDiscoveryClient": "创建发现客户端失败：{p0}",
   "kubeconfigNotFoundForCluster": "未找到集群 {p0} 的 kubeconfig",
   "clusterMetadataNotFound": "未找到集群元数据：{p0}",
+  "clusterUnknown": "未找到集群元数据",
   "configurationError": "配置错误：{p0}",
   "kubeconfigIsLargerThanMb": "kubeconfig 大于 {p0} MB",
   "clusterNameCannotBeEmpty": "集群名称不能为空",

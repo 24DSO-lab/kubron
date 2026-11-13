@@ -121,6 +121,7 @@
   "failedToCreateDiscoveryClient": "failed to create discovery client: {p0}",
   "kubeconfigNotFoundForCluster": "kubeconfig not found for cluster {p0}",
   "clusterMetadataNotFound": "cluster metadata not found: {p0}",
+  "clusterUnknown": "cluster metadata not found",
   "configurationError": "configuration error: {p0}",
   "kubeconfigIsLargerThanMb": "kubeconfig is larger than {p0} MB",
   "clusterNameCannotBeEmpty": "cluster name cannot be empty",
