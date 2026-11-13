@@ -43,7 +43,7 @@ for (const [index, tx] of (data.transactions ?? []).entries()) {
   for (const field of ['id', 'asset', 'network', 'amount', 'txHash', 'receivedAt', 'explorerTxUrl']) {
     if (typeof tx[field] !== 'string' || !tx[field].trim()) errors.push(`${label}.${field} is required`)
   }
-  if (!/^\\d+(\\.\\d+)?$/.test(tx.amount ?? '')) errors.push(`${label}.amount must be a decimal string`)
+  if (!/^[0-9]+([.][0-9]+)?$/.test(tx.amount ?? '')) errors.push(`${label}.amount must be a decimal string`)
   if (!Number.isFinite(Date.parse(tx.receivedAt))) errors.push(`${label}.receivedAt must be a valid date`)
   if (!isHttpsUrl(tx.explorerTxUrl)) errors.push(`${label}.explorerTxUrl must use HTTPS`)
   if (tx.status !== 'confirmed') errors.push(`${label}.status must be confirmed`)
