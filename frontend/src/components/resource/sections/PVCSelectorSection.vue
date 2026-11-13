@@ -40,7 +40,7 @@ function format(e: { key: string; operator: string; values?: string[] }): string
 .sel-title { font-weight: 700; font-size: 1rem; color: #fff; padding: 8px 0; text-align: left; }
 .sel-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .sel-chip {
-  padding: 3px 8px; background: #1a1b2e; border-radius: 3px;
-  font-family: 'Courier New', monospace; font-size: 0.8rem; color: #d4d4d4;
+  padding: 3px 8px; background: var(--panel); border-radius: 3px;
+  font-family: 'Courier New', monospace; font-size: 0.8rem; color: var(--text-code);
 }
 </style>

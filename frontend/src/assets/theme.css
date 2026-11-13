@@ -31,6 +31,32 @@
   --overlay-scrim: rgba(8, 8, 14, 0.66);
   --accent-rgb: 137, 180, 250;  /* для rgba(var(--accent-rgb), a) */
   --danger-rgb: 243, 139, 168;
+
+  /* Второй уровень: панели и диалоги (индиго-палитра), серые и статусные цвета */
+  --panel: #1a1b2e;
+  --panel-raised: #1e1f35;
+  --panel-alt: #1a1b26;
+  --panel-deep: #0f1017;
+  --line: #2a2b40;
+  --line-strong: #3b3d5c;
+  --text-dim: #6b6d8a;
+  --text-soft: #9ca0b8;
+  --text-code: #d4d4d4;
+  --text-gray: #868d8a;
+  --gray-300: #d1d5db;
+  --gray-400: #9ca3af;
+  --gray-500: #6b7280;
+  --gray-600: #4b5563;
+  --gray-700: #374151;
+  --gray-800: #1f2937;
+  --blue: #60a5fa;
+  --blue-strong: #3b82f6;
+  --blue-deep: #2563eb;
+  --red: #ef4444;
+  --red-soft: #f87171;
+  --green: #4ade80;
+  --yellow: #facc15;
+  --amber: #fbbf24;
 }
 
 :root[data-theme='light'] {
@@ -57,4 +83,29 @@
   --overlay-scrim: rgba(76, 79, 105, 0.45);
   --accent-rgb: 30, 102, 245;
   --danger-rgb: 210, 15, 57;
+
+  --panel: #e6e9ef;
+  --panel-raised: #f5f6fa;
+  --panel-alt: #e6e9ef;
+  --panel-deep: #dce0e8;
+  --line: #ccd0da;
+  --line-strong: #bcc0cc;
+  --text-dim: #7c7f93;
+  --text-soft: #5c5f77;
+  --text-code: #4c4f69;
+  --text-gray: #6c6f85;
+  --gray-300: #4c4f69;
+  --gray-400: #6c6f85;
+  --gray-500: #7c7f93;
+  --gray-600: #9ca0b0;
+  --gray-700: #ccd0da;
+  --gray-800: #e6e9ef;
+  --blue: #1e66f5;
+  --blue-strong: #1e66f5;
+  --blue-deep: #1d4ed8;
+  --red: #d20f39;
+  --red-soft: #d20f39;
+  --green: #40a02b;
+  --yellow: #df8e1d;
+  --amber: #df8e1d;
 }

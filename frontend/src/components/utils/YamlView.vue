@@ -212,7 +212,7 @@ async function reloadYaml() {
 /* YAML View */
 .editor-readonly {
   font-size: 12px;
-  color: #f9e2af;
+  color: var(--warn);
   background: rgba(249, 226, 175, 0.12);
   border-radius: 999px;
   padding: 3px 10px;
@@ -229,7 +229,7 @@ async function reloadYaml() {
   justify-content: space-between;
   align-items: center;
   padding: 10px 16px;
-  border-bottom: 1px solid #3b3d5c;
+  border-bottom: 1px solid var(--line-strong);
   background: #252526;
 }
 
@@ -248,21 +248,21 @@ async function reloadYaml() {
 
 .editor-mode {
   font-size: 12px;
-  color: #89b4fa;
-  background: rgba(137, 180, 250, 0.12);
+  color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.12);
   border-radius: 999px;
   padding: 2px 10px;
 }
 
-.editor-hint { font-size: 12px; color: #6b6d8a; }
+.editor-hint { font-size: 12px; color: var(--text-dim); }
 
 .editor-namespace {
-  color: #6b6d8a;
+  color: var(--text-dim);
   font-size: 12px;
 }
 
 .ns-link {
-  color: #60a5fa;
+  color: var(--blue);
   text-decoration: none;
 }
 
@@ -299,17 +299,17 @@ async function reloadYaml() {
 
 
 :deep(.monaco-editor) {
-  background-color: #1a1b26 !important;
+  background-color: var(--panel-alt) !important;
 }
 
 :deep(.monaco-editor .margin) {
-  background-color: #1a1b26 !important;
+  background-color: var(--panel-alt) !important;
 }
 
 :deep(.monaco-editor .minimap) {
-  border-left: 1px solid #3b3d5c;
+  border-left: 1px solid var(--line-strong);
 }
 
-.editor-dirty { color: #facc15; font-size: 14px; }
+.editor-dirty { color: var(--yellow); font-size: 14px; }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 </style>

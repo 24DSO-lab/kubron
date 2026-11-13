@@ -107,5 +107,5 @@ function openService(w: any) {
 .wh-name { font-family: 'Courier New', monospace; font-size: 0.85rem; color: #e5e7eb; flex: 1; word-break: break-all; }
 .rd-block-head { display: flex; align-items: center; gap: 8px; cursor: pointer; }
 .wh-body { display: flex; flex-direction: column; }
-.wh-sub { font-weight: 600; color: #d4d4d4; padding: 12px 0 8px; }
+.wh-sub { font-weight: 600; color: var(--text-code); padding: 12px 0 8px; }
 </style>

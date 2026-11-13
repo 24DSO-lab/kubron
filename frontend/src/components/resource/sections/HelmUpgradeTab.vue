@@ -142,8 +142,8 @@ async function apply() {
 
 <style scoped>
 .hu-hint { font-size: 0.85rem; margin: 0 0 8px; }
-.hu-stale { padding: 8px 10px; border: 1px solid #f9e2af; border-radius: 6px; color: #f9e2af; font-size: 0.85rem; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
+.hu-stale { padding: 8px 10px; border: 1px solid var(--warn); border-radius: 6px; color: var(--warn); font-size: 0.85rem; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
 .hu-actions { display: flex; gap: 8px; margin-top: 10px; }
 .hu-actions .rd-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.hu-error { color: #f87171; font-size: 0.85rem; margin: 8px 0 0; white-space: pre-wrap; }
+.hu-error { color: var(--red-soft); font-size: 0.85rem; margin: 8px 0 0; white-space: pre-wrap; }
 </style>

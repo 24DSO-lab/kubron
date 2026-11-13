@@ -52,16 +52,16 @@ async function submit() {
 
 <style scoped>
 .dd-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6); display: flex; align-items: center; justify-content: center; z-index: 2000; }
-.dd { width: 90%; max-width: 480px; background: #1e1f35; border: 1px solid #3b3d5c; border-radius: 8px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5); text-align: left; }
-.dd-head { padding: 16px; background: #0f1017; border-bottom: 1px solid #3b3d5c; border-radius: 8px 8px 0 0; }
+.dd { width: 90%; max-width: 480px; background: var(--panel-raised); border: 1px solid var(--line-strong); border-radius: 8px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5); text-align: left; }
+.dd-head { padding: 16px; background: var(--panel-deep); border-bottom: 1px solid var(--line-strong); border-radius: 8px 8px 0 0; }
 .dd-head h3 { margin: 0; font-size: 1rem; color: #fff; }
-.dd-name { color: #60a5fa; font-family: 'JetBrains Mono', 'Fira Code', monospace; }
+.dd-name { color: var(--blue); font-family: 'JetBrains Mono', 'Fira Code', monospace; }
 .dd-body { padding: 16px 20px; display: flex; flex-direction: column; gap: 12px; }
-.dd-check { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: #d4d4d4; cursor: pointer; }
-.dd-risk { padding: 10px 12px; border-radius: 4px; font-size: 0.8rem; color: #9ca0b8; background: rgba(255, 255, 255, 0.03); border: 1px solid #2a2b40; }
+.dd-check { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--text-code); cursor: pointer; }
+.dd-risk { padding: 10px 12px; border-radius: 4px; font-size: 0.8rem; color: var(--text-soft); background: rgba(255, 255, 255, 0.03); border: 1px solid var(--line); }
 .dd-risk.danger { color: #fca5a5; background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.4); }
-.dd-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 12px 16px; background: #0f1017; border-top: 1px solid #3b3d5c; border-radius: 0 0 8px 8px; }
-.dd-btn { padding: 8px 16px; border-radius: 4px; border: 1px solid #3b3d5c; background: transparent; color: #d4d4d4; font-size: 0.9rem; font-weight: 600; cursor: pointer; }
+.dd-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 12px 16px; background: var(--panel-deep); border-top: 1px solid var(--line-strong); border-radius: 0 0 8px 8px; }
+.dd-btn { padding: 8px 16px; border-radius: 4px; border: 1px solid var(--line-strong); background: transparent; color: var(--text-code); font-size: 0.9rem; font-weight: 600; cursor: pointer; }
 .dd-btn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.06); }
 .dd-btn.danger { background: #dc2626; border-color: #dc2626; color: #fff; }
 .dd-btn.danger:hover:not(:disabled) { background: #b91c1c; }

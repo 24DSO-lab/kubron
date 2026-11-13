@@ -257,10 +257,10 @@ const currentMetricConfig = computed(() => {
 
 .metric-btn {
   padding: 6px 12px;
-  background: #1e1f35;
-  border: 1px solid #3b3d5c;
+  background: var(--panel-raised);
+  border: 1px solid var(--line-strong);
   border-radius: 4px;
-  color: #9ca0b8;
+  color: var(--text-soft);
   font-size: 0.85rem;
   font-weight: 500;
   cursor: pointer;
@@ -275,14 +275,14 @@ const currentMetricConfig = computed(() => {
 }
 
 .metric-btn.active {
-  background: #3b82f6;
-  border-color: #3b82f6;
+  background: var(--blue-strong);
+  border-color: var(--blue-strong);
   color: white;
 }
 
 .metrics-chart-container {
-  background: #1a1b2e;
-  border: 1px solid #2a2b40;
+  background: var(--panel);
+  border: 1px solid var(--line);
   border-radius: 6px;
   padding: 12px;
   width: 100%;

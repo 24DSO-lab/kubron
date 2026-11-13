@@ -147,8 +147,8 @@ async function submit() {
 }
 
 .debug-dialog {
-  background: #1e1f35;
-  border: 1px solid #3b3d5c;
+  background: var(--panel-raised);
+  border: 1px solid var(--line-strong);
   border-radius: 8px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
   width: 90%;
@@ -160,8 +160,8 @@ async function submit() {
 
 .dialog-header {
   padding: 16px;
-  border-bottom: 1px solid #3b3d5c;
-  background: #0f1017;
+  border-bottom: 1px solid var(--line-strong);
+  background: var(--panel-deep);
 }
 
 .dialog-header h3 {
@@ -178,26 +178,26 @@ async function submit() {
   gap: 16px;
 }
 
-.muted { color: #9ca0b8; }
+.muted { color: var(--text-soft); }
 
 .field { display: flex; flex-direction: column; gap: 6px; }
-.field-label { color: #9ca0b8; font-size: 0.85rem; font-weight: 500; }
+.field-label { color: var(--text-soft); font-size: 0.85rem; font-weight: 500; }
 
 .control {
-  background: #1a1b2e;
-  border: 1px solid #3b3d5c;
+  background: var(--panel);
+  border: 1px solid var(--line-strong);
   border-radius: 4px;
-  color: #d4d4d4;
+  color: var(--text-code);
   padding: 8px 10px;
   font-size: 0.9rem;
   outline: none;
 }
-.control:focus { border-color: #3b82f6; }
+.control:focus { border-color: var(--blue-strong); }
 .mono { font-family: 'JetBrains Mono', 'Fira Code', monospace; }
 
-.hint { color: #9ca0b8; font-size: 0.8rem; }
+.hint { color: var(--text-soft); font-size: 0.8rem; }
 .note { margin: 0; }
-.error { margin: 0; color: #f87171; font-size: 0.85rem; white-space: pre-wrap; word-break: break-word; }
+.error { margin: 0; color: var(--red-soft); font-size: 0.85rem; white-space: pre-wrap; word-break: break-word; }
 
 .dialog-footer {
   display: flex;
@@ -205,8 +205,8 @@ async function submit() {
   justify-content: space-between;
   gap: 12px;
   padding: 12px 16px;
-  border-top: 1px solid #3b3d5c;
-  background: #0f1017;
+  border-top: 1px solid var(--line-strong);
+  background: var(--panel-deep);
 }
 
 .btn {
@@ -222,17 +222,17 @@ async function submit() {
 
 .btn-cancel {
   background: transparent;
-  border: 1px solid #3b3d5c;
-  color: #9ca0b8;
+  border: 1px solid var(--line-strong);
+  color: var(--text-soft);
 }
 .btn-cancel:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.05);
   border-color: #5a5c7a;
-  color: #d4d4d4;
+  color: var(--text-code);
 }
 
-.btn-start { background: #3b82f6; color: white; margin-left: auto; }
-.btn-start:hover:not(:disabled) { background: #2563eb; }
+.btn-start { background: var(--blue-strong); color: white; margin-left: auto; }
+.btn-start:hover:not(:disabled) { background: var(--blue-deep); }
 
 .btn:disabled { opacity: 0.6; cursor: not-allowed; }
 </style>

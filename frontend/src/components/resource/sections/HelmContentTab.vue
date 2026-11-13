@@ -93,10 +93,10 @@ async function copy() {
 
 <style scoped>
 .hc-bar { display: flex; align-items: center; gap: 12px; padding: 8px 0; flex-wrap: wrap; font-size: 0.85rem; }
-.hc-field { display: flex; align-items: center; gap: 6px; color: #9ca3af; }
-.hc-select { padding: 5px 8px; background: #1a1b2e; color: #d4d4d4; border: 1px solid #3b3d5c; border-radius: 4px; font: inherit; }
-.hc-seg { display: inline-flex; border: 1px solid #3b3d5c; border-radius: 4px; overflow: hidden; }
-.hc-seg button { padding: 4px 10px; background: transparent; color: #9ca3af; border: 0; font: inherit; cursor: pointer; }
-.hc-seg button.on { background: #3b82f6; color: #fff; }
+.hc-field { display: flex; align-items: center; gap: 6px; color: var(--gray-400); }
+.hc-select { padding: 5px 8px; background: var(--panel); color: var(--text-code); border: 1px solid var(--line-strong); border-radius: 4px; font: inherit; }
+.hc-seg { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 4px; overflow: hidden; }
+.hc-seg button { padding: 4px 10px; background: transparent; color: var(--gray-400); border: 0; font: inherit; cursor: pointer; }
+.hc-seg button.on { background: var(--blue-strong); color: #fff; }
 .hc-copy { margin-left: auto; }
 </style>

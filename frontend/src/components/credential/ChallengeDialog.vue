@@ -253,34 +253,34 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .ch-overlay { position: fixed; inset: 0; z-index: 1100; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.55); }
-.ch-dialog { width: 100%; max-width: 460px; max-height: 90vh; overflow: auto; padding: 24px; background: #181825; color: #cdd6f4; border: 1px solid #313244; border-radius: 14px; box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5); outline: none; }
-.ch-title { margin: 0 0 8px; color: #89b4fa; font-size: 17px; }
-.ch-desc, .ch-hint { margin: 0 0 14px; font-size: 13px; color: #a6adc8; line-height: 1.45; }
-.ch-error { margin: 0 0 12px; padding: 8px 10px; font-size: 13px; color: #f38ba8; background: rgba(243, 139, 168, 0.1); border-radius: 8px; }
-.ch-message, .ch-pre { margin: 0 0 12px; padding: 8px 10px; max-height: 140px; overflow: auto; white-space: pre-wrap; word-break: break-all; font-size: 12px; background: #11111b; border-radius: 8px; }
+.ch-dialog { width: 100%; max-width: 460px; max-height: 90vh; overflow: auto; padding: 24px; background: var(--bg-sunken); color: var(--text); border: 1px solid var(--surface-0); border-radius: 14px; box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5); outline: none; }
+.ch-title { margin: 0 0 8px; color: var(--accent); font-size: 17px; }
+.ch-desc, .ch-hint { margin: 0 0 14px; font-size: 13px; color: var(--text-muted); line-height: 1.45; }
+.ch-error { margin: 0 0 12px; padding: 8px 10px; font-size: 13px; color: var(--danger); background: rgba(var(--danger-rgb), 0.1); border-radius: 8px; }
+.ch-message, .ch-pre { margin: 0 0 12px; padding: 8px 10px; max-height: 140px; overflow: auto; white-space: pre-wrap; word-break: break-all; font-size: 12px; background: var(--bg-crust); border-radius: 8px; }
 .ch-code-row, .ch-cmd, .ch-input-row { display: flex; gap: 8px; align-items: flex-start; }
 .ch-cmd .ch-pre { flex: 1; }
-.ch-code { flex: 1; padding: 12px; text-align: center; font-size: 26px; letter-spacing: 4px; font-weight: 700; background: #11111b; border-radius: 10px; user-select: all; }
-.ch-link { display: inline-block; margin: 12px 0; color: #89b4fa; }
+.ch-code { flex: 1; padding: 12px; text-align: center; font-size: 26px; letter-spacing: 4px; font-weight: 700; background: var(--bg-crust); border-radius: 10px; user-select: all; }
+.ch-link { display: inline-block; margin: 12px 0; color: var(--accent); }
 .ch-form { display: flex; flex-direction: column; gap: 12px; }
-.ch-label { display: block; margin-bottom: 4px; font-size: 12px; color: #a6adc8; }
-.ch-input { flex: 1; width: 100%; box-sizing: border-box; padding: 8px 10px; color: #cdd6f4; background: #11111b; border: 1px solid #45475a; border-radius: 8px; font: inherit; }
-.ch-input:focus-visible, .ch-btn:focus-visible, .ch-link:focus-visible, .ch-pre:focus-visible { outline: 2px solid #89b4fa; outline-offset: 2px; }
+.ch-label { display: block; margin-bottom: 4px; font-size: 12px; color: var(--text-muted); }
+.ch-input { flex: 1; width: 100%; box-sizing: border-box; padding: 8px 10px; color: var(--text); background: var(--bg-crust); border: 1px solid var(--surface-1); border-radius: 8px; font: inherit; }
+.ch-input:focus-visible, .ch-btn:focus-visible, .ch-link:focus-visible, .ch-pre:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .ch-area { resize: vertical; font-family: monospace; font-size: 12px; }
 .ch-masked { -webkit-text-security: disc; }
 .ch-exec { margin: 0 0 14px; font-size: 13px; }
-.ch-exec dt { margin-top: 8px; color: #a6adc8; font-size: 12px; }
+.ch-exec dt { margin-top: 8px; color: var(--text-muted); font-size: 12px; }
 .ch-exec dd { margin: 2px 0 0; word-break: break-all; }
 .ch-args { margin: 0; padding-left: 20px; }
-.ch-env { margin-right: 6px; padding: 1px 6px; background: #11111b; border-radius: 6px; }
+.ch-env { margin-right: 6px; padding: 1px 6px; background: var(--bg-crust); border-radius: 6px; }
 .ch-actions { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0 0; }
-.ch-btn { padding: 8px 14px; color: #cdd6f4; background: #313244; border: 1px solid #45475a; border-radius: 8px; cursor: pointer; font: inherit; }
+.ch-btn { padding: 8px 14px; color: var(--text); background: var(--surface-0); border: 1px solid var(--surface-1); border-radius: 8px; cursor: pointer; font: inherit; }
 .ch-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.ch-primary { color: #11111b; background: #89b4fa; border-color: #89b4fa; }
+.ch-primary { color: var(--bg-crust); background: var(--accent); border-color: var(--accent); }
 .ch-toggle { padding: 8px 10px; }
 .ch-status { display: flex; align-items: center; gap: 8px; margin: 12px 0 4px; font-size: 13px; }
-.ch-timer { margin: 0; font-size: 12px; color: #a6adc8; }
-.ch-spinner { width: 14px; height: 14px; border: 2px solid #45475a; border-top-color: #89b4fa; border-radius: 50%; animation: ch-spin 0.9s linear infinite; }
+.ch-timer { margin: 0; font-size: 12px; color: var(--text-muted); }
+.ch-spinner { width: 14px; height: 14px; border: 2px solid var(--surface-1); border-top-color: var(--accent); border-radius: 50%; animation: ch-spin 0.9s linear infinite; }
 @keyframes ch-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .ch-spinner { animation: none; } }
 </style>

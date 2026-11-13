@@ -71,8 +71,8 @@ function go(c: CRDInfo) {
 <style scoped>
 .cr-filter {
   width: calc(100% - 24px); margin: 4px 12px 6px; padding: 4px 8px; font-size: 12px;
-  background: #313244; color: #cdd6f4; border: 1px solid #45475a; border-radius: 4px;
+  background: var(--surface-0); color: var(--text); border: 1px solid var(--surface-1); border-radius: 4px;
 }
-.cr-filter:focus { outline: none; border-color: #89b4fa; }
+.cr-filter:focus { outline: none; border-color: var(--accent); }
 .nav-group-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 </style>

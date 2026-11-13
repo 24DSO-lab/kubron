@@ -47,9 +47,9 @@ function openSubject(s: any) {
 <style scoped>
 .binding { display: flex; flex-direction: column; gap: 12px; }
 .meta-row { display: grid; grid-template-columns: auto 1fr; align-items: baseline; gap: 12px; font-size: 0.875rem; }
-.meta-label { font-weight: bold; color: #d4d4d4; white-space: nowrap; }
+.meta-label { font-weight: bold; color: var(--text-code); white-space: nowrap; }
 .subjects { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
 .link { color: #6aa8ff; cursor: pointer; text-decoration: none; }
 .link:hover { text-decoration: underline; }
-.ns { color: #868d8a; }
+.ns { color: var(--text-gray); }
 </style>

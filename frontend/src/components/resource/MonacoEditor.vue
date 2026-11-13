@@ -57,7 +57,7 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.me { width: 100%; height: 100%; min-height: 200px; border: 1px solid #2a2b40; border-radius: 4px; overflow: hidden; text-align: left; }
+.me { width: 100%; height: 100%; min-height: 200px; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; text-align: left; }
 .me :deep(.monaco-editor),
-.me :deep(.monaco-editor .margin) { background-color: #1a1b26 !important; }
+.me :deep(.monaco-editor .margin) { background-color: var(--panel-alt) !important; }
 </style>

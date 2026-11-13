@@ -55,7 +55,7 @@ const kindClass = (k: string) => KIND_CLASS[k] ?? 'k-argo'
 .row:disabled { cursor: default; }
 .row:not(:disabled):hover, .row:not(:disabled):focus-visible { background: var(--ov-card-hover); outline: none; }
 .kind { grid-area: kind; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
-.k-roll { color: #60a5fa; background: rgba(96, 165, 250, 0.12); }
+.k-roll { color: var(--blue); background: rgba(96, 165, 250, 0.12); }
 .k-helm { color: #a78bfa; background: rgba(167, 139, 250, 0.12); }
 .k-argo { color: #f59e0b; background: rgba(245, 158, 11, 0.12); }
 .k-flux { color: #5b8def; background: rgba(91, 141, 239, 0.14); }

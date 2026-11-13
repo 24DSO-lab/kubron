@@ -51,7 +51,7 @@ onBeforeUnmount(() => { editor?.dispose(); editor = null })
 </script>
 
 <style scoped>
-.mr { height: 55vh; min-height: 280px; border: 1px solid #2a2b40; border-radius: 4px; overflow: hidden; text-align: left; }
+.mr { height: 55vh; min-height: 280px; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; text-align: left; }
 .mr :deep(.monaco-editor),
-.mr :deep(.monaco-editor .margin) { background-color: #1a1b26 !important; }
+.mr :deep(.monaco-editor .margin) { background-color: var(--panel-alt) !important; }
 </style>

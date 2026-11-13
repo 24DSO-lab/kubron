@@ -24,6 +24,6 @@ defineProps<{ title: string; fields: { name: string; value: string }[] }>()
 <style scoped>
 .nr { padding: 8px 0; text-align: left; }
 .nr-title { font-weight: 700; font-size: 1rem; color: #fff; padding: 4px 0 10px; }
-.nr .rd-table th { text-transform: none; letter-spacing: 0; font-size: 0.85rem; color: #d4d4d4; }
-.nr .rd-table td { color: #9ca0b8; }
+.nr .rd-table th { text-transform: none; letter-spacing: 0; font-size: 0.85rem; color: var(--text-code); }
+.nr .rd-table td { color: var(--text-soft); }
 </style>

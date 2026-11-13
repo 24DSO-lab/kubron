@@ -299,7 +299,7 @@ onBeforeUnmount(() => { offReconnected(); stopStreams() })
   display: flex;
   gap: 12px;
   padding: 12px 16px;
-  border-bottom: 1px solid #3b3d5c;
+  border-bottom: 1px solid var(--line-strong);
   background: #232430;
   flex-wrap: wrap;
   align-items: center;
@@ -322,9 +322,9 @@ onBeforeUnmount(() => { offReconnected(); stopStreams() })
 .select-container,
 .input-lines,
 .input-search {
-  background: #1a1b26;
-  border: 1px solid #3b3d5c;
-  color: #d4d4d4;
+  background: var(--panel-alt);
+  border: 1px solid var(--line-strong);
+  color: var(--text-code);
   padding: 6px 8px;
   border-radius: 3px;
   font-size: 12px;
@@ -351,7 +351,7 @@ onBeforeUnmount(() => { offReconnected(); stopStreams() })
 
 .btn-action {
   background: none;
-  border: 1px solid #3b3d5c;
+  border: 1px solid var(--line-strong);
   color: #999;
   cursor: pointer;
   padding: 6px 10px;
@@ -388,15 +388,15 @@ onBeforeUnmount(() => { offReconnected(); stopStreams() })
 .logs-info {
   padding: 8px 16px;
   background: #232430;
-  border-bottom: 1px solid #3b3d5c;
+  border-bottom: 1px solid var(--line-strong);
   font-size: 12px;
-  color: #d4d4d4;
+  color: var(--text-code);
 }
 
 .logs-content {
   flex: 1;
   overflow: auto;
-  background: #1a1b26;
+  background: var(--panel-alt);
 }
 
 .logs-text {
@@ -405,7 +405,7 @@ onBeforeUnmount(() => { offReconnected(); stopStreams() })
   font-family: 'Monaco', 'Menlo', monospace;
   font-size: 12px;
   line-height: 1.5;
-  color: #d4d4d4;
+  color: var(--text-code);
   white-space: pre-wrap;
   word-wrap: break-word;
   text-align: left;
@@ -433,5 +433,5 @@ onBeforeUnmount(() => { offReconnected(); stopStreams() })
   color: #ffd700;
   font-weight: bold;
 }
-.live-dot { margin-left: 12px; color: #a6e3a1; }
+.live-dot { margin-left: 12px; color: var(--ok); }
 </style>

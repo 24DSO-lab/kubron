@@ -160,12 +160,12 @@
   transition: border-color 0.12s, box-shadow 0.12s;
   box-sizing: border-box;
 }
-.cl-input::placeholder, .cl-textarea::placeholder { color: #585b70; }
+.cl-input::placeholder, .cl-textarea::placeholder { color: var(--surface-2); }
 .cl-input:hover, .cl-select:hover, .cl-textarea:hover { border-color: var(--cl-border-strong); }
 .cl-input:focus, .cl-select:focus, .cl-textarea:focus {
   outline: none;
   border-color: var(--cl-accent);
-  box-shadow: 0 0 0 3px rgba(137, 180, 250, 0.16);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.16);
 }
 .cl-input.is-invalid { border-color: var(--cl-danger); }
 .cl-select { cursor: pointer; }
@@ -333,16 +333,16 @@
 .cl-btn:hover:not(:disabled) { background: var(--cl-border); }
 .cl-btn:disabled { opacity: 0.45; cursor: default; }
 .cl-btn-sm { height: 28px; padding: 0 10px; font-size: 12px; }
-.cl-btn-primary { color: #11111b; font-weight: 600; background: var(--cl-accent); border-color: var(--cl-accent); }
+.cl-btn-primary { color: var(--bg-crust); font-weight: 600; background: var(--cl-accent); border-color: var(--cl-accent); }
 .cl-btn-primary:hover:not(:disabled) { background: #a6c4fb; border-color: #a6c4fb; }
 .cl-btn-quiet { border-color: transparent; color: var(--cl-muted); }
 .cl-btn-quiet:hover:not(:disabled) { color: var(--cl-text); }
 .cl-btn-danger { border-color: transparent; color: var(--cl-danger); }
-.cl-btn-danger:hover:not(:disabled) { background: rgba(243, 139, 168, 0.12); }
+.cl-btn-danger:hover:not(:disabled) { background: rgba(var(--danger-rgb), 0.12); }
 
 .cl-close:focus-visible, .cl-btn:focus-visible, .cl-segment-item:focus-visible,
 .cl-glyph:focus-visible, .cl-swatch:focus-visible, .cl-swatch-custom:focus-within {
-  outline: 2px solid rgba(137, 180, 250, 0.7);
+  outline: 2px solid rgba(var(--accent-rgb), 0.7);
   outline-offset: 2px;
 }
 
@@ -364,8 +364,8 @@
   font-size: 12px;
   line-height: 1.45;
   color: var(--cl-danger);
-  background: rgba(243, 139, 168, 0.08);
-  border: 1px solid rgba(243, 139, 168, 0.28);
+  background: rgba(var(--danger-rgb), 0.08);
+  border: 1px solid rgba(var(--danger-rgb), 0.28);
   border-radius: 6px;
   word-break: break-word;
 }

@@ -53,8 +53,8 @@ const level = (p: number) => (p >= 100 ? 'err' : p >= 80 ? 'warn' : 'ok')
 .qu-title { font-weight: 700; color: #fff; padding: 12px 0 8px; text-align: left; }
 .qu-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .qu-chip {
-  padding: 3px 8px; background: #1a1b2e; border-radius: 3px;
-  font-family: 'Courier New', monospace; font-size: 0.8rem; color: #d4d4d4;
+  padding: 3px 8px; background: var(--panel); border-radius: 3px;
+  font-family: 'Courier New', monospace; font-size: 0.8rem; color: var(--text-code);
 }
 .qu-bar-col { width: 40%; }
 .qu-bar {

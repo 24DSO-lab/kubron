@@ -463,8 +463,8 @@ function choose(action: string, arg?: string) {
 }
 
 .cluster-context-menu {
-  background: #1e1f35;
-  border: 1px solid #3b3d5c;
+  background: var(--panel-raised);
+  border: 1px solid var(--line-strong);
   border-radius: 4px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   z-index: 9999;
@@ -476,7 +476,7 @@ function choose(action: string, arg?: string) {
 
 .ctx-menu-item {
   padding: 6px 12px 6px 34px;
-  color: #d4d4d4;
+  color: var(--text-code);
   cursor: pointer;
   font-size: 0.875rem;
   transition: background 0.15s;
@@ -495,7 +495,7 @@ function choose(action: string, arg?: string) {
 .ctx-menu-arrow {
   position: absolute;
   left: 19px;
-  color: #868d8a;
+  color: var(--text-gray);
   font-size: 0.9rem;
 }
 
@@ -504,8 +504,8 @@ function choose(action: string, arg?: string) {
   top: 0;
   right: 100%;
   margin-right: 4px;
-  background: #1e1f35;
-  border: 1px solid #3b3d5c;
+  background: var(--panel-raised);
+  border: 1px solid var(--line-strong);
   border-radius: 4px;
   min-width: 160px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
@@ -515,7 +515,7 @@ function choose(action: string, arg?: string) {
 
 .ctx-menu-sub-item {
   padding: 8px 12px;
-  color: #d4d4d4;
+  color: var(--text-code);
   cursor: pointer;
   font-size: 0.875rem;
   transition: background 0.15s;
@@ -530,14 +530,14 @@ function choose(action: string, arg?: string) {
 .ctx-menu-sub-item:first-child { border-radius: 3px 3px 0 0; }
 .ctx-menu-sub-item:last-child { border-radius: 0 0 3px 3px; }
 
-.ctx-menu-danger { color: #ef4444; }
+.ctx-menu-danger { color: var(--red); }
 .ctx-menu-danger:hover { background: rgba(239, 68, 68, 0.2); }
 
 .col-actions { text-align: center; padding-left: 0; padding-right: 0; }
 .col-select { width: 40px; text-align: center; padding-left: 0; padding-right: 0; }
-.row-check { accent-color: #89b4fa; cursor: pointer; margin: 0; vertical-align: middle; }
-.row-selected { background: rgba(137, 180, 250, 0.08); }
-.row-selected:hover { background: rgba(137, 180, 250, 0.12) !important; }
+.row-check { accent-color: var(--accent); cursor: pointer; margin: 0; vertical-align: middle; }
+.row-selected { background: rgba(var(--accent-rgb), 0.08); }
+.row-selected:hover { background: rgba(var(--accent-rgb), 0.12) !important; }
 
 /* Плавающие кнопки: выше TabbedPanel (z-index 100), ниже диалогов (10000) */
 .fab-group {
@@ -562,9 +562,9 @@ function choose(action: string, arg?: string) {
   transition: background 0.15s, opacity 0.15s, transform 0.1s;
 }
 .fab:active:not(:disabled) { transform: scale(0.95); }
-.fab-plus { background: #3b82f6; }
-.fab-plus:hover { background: #2563eb; }
-.fab-minus { background: #3b3d5c; }
+.fab-plus { background: var(--blue-strong); }
+.fab-plus:hover { background: var(--blue-deep); }
+.fab-minus { background: var(--line-strong); }
 .fab-minus:disabled { opacity: 0.55; cursor: not-allowed; }
 .fab-minus.fab-danger { background: #dc2626; }
 .fab-minus.fab-danger:hover { background: #b91c1c; }
@@ -576,7 +576,7 @@ function choose(action: string, arg?: string) {
   height: 18px;
   padding: 0 5px;
   border-radius: 9px;
-  background: #1e1f35;
+  background: var(--panel-raised);
   border: 1px solid #dc2626;
   font-size: 11px;
   line-height: 16px;
@@ -589,7 +589,7 @@ function choose(action: string, arg?: string) {
 .btn-icon {
   background: transparent;
   border: none;
-  color: #d4d4d4;
+  color: var(--text-code);
   cursor: pointer;
   padding: 4px 8px;
   border-radius: 4px;
@@ -604,7 +604,7 @@ function choose(action: string, arg?: string) {
 .empty {
   padding: 20px;
   text-align: center;
-  color: #868d8a;
+  color: var(--text-gray);
 }
 
 td { text-align: left; }
@@ -625,7 +625,7 @@ td { text-align: left; }
   letter-spacing: inherit;
   cursor: pointer;
 }
-.th-sort:hover { color: #89b4fa; }
+.th-sort:hover { color: var(--accent); }
 .sort-ind { margin-left: 4px; font-size: 0.7em; }
 .col-resizer {
   position: absolute; top: 0; bottom: 0; right: 0; width: 8px;
@@ -633,8 +633,8 @@ td { text-align: left; }
 }
 .col-resizer::after {
   content: ''; position: absolute; top: 25%; bottom: 25%; right: 3px; width: 1px;
-  background: #45475a;
+  background: var(--surface-1);
 }
-.col-resizer:hover, .col-resizer.active { background: rgba(137, 180, 250, 0.35); }
-.col-resizer:hover::after, .col-resizer.active::after { background: #89b4fa; }
+.col-resizer:hover, .col-resizer.active { background: rgba(var(--accent-rgb), 0.35); }
+.col-resizer:hover::after, .col-resizer.active::after { background: var(--accent); }
 </style>

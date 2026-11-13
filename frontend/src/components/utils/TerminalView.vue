@@ -251,7 +251,7 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   align-items: center;
   padding: 10px 16px;
-  border-bottom: 1px solid #3b3d5c;
+  border-bottom: 1px solid var(--line-strong);
   background: #252526;
 }
 
@@ -260,7 +260,7 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 8px;
   font-size: 14px;
-  color: #d4d4d4;
+  color: var(--text-code);
 }
 
 .terminal-controls {
@@ -270,9 +270,9 @@ onBeforeUnmount(() => {
 }
 
 .container-select {
-  background: #1a1b26;
-  border: 1px solid #3b3d5c;
-  color: #d4d4d4;
+  background: var(--panel-alt);
+  border: 1px solid var(--line-strong);
+  color: var(--text-code);
   padding: 4px 8px;
   border-radius: 3px;
   font-size: 12px;

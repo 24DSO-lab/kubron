@@ -163,8 +163,8 @@ function handleResize(e: PointerEvent) {
 <style scoped>
 .tabbed-panel {
   position: fixed;
-  background: #1a1b26;
-  border: 1px solid #3b3d5c;
+  background: var(--panel-alt);
+  border: 1px solid var(--line-strong);
   border-radius: 4px;
   display: flex;
   flex-direction: column;
@@ -177,7 +177,7 @@ function handleResize(e: PointerEvent) {
   display: flex;
   align-items: center;
   padding: 0;
-  border-bottom: 1px solid #3b3d5c;
+  border-bottom: 1px solid var(--line-strong);
   background: #2a2b3a;
   min-height: 44px;
   user-select: none;
@@ -206,7 +206,7 @@ function handleResize(e: PointerEvent) {
   gap: 6px;
   padding: 8px 12px;
   background: #1e1f2e;
-  border: 1px solid #3b3d5c;
+  border: 1px solid var(--line-strong);
   border-radius: 3px 3px 0 0;
   color: #999;
   cursor: pointer;
@@ -326,7 +326,7 @@ function handleResize(e: PointerEvent) {
   width: 20px;
   height: 20px;
   cursor: nwse-resize;
-  background: linear-gradient(135deg, transparent 50%, #3b3d5c 50%);
+  background: linear-gradient(135deg, transparent 50%, var(--line-strong) 50%);
   opacity: 0.5;
 }
 

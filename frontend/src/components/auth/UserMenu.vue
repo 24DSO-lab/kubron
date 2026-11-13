@@ -54,30 +54,30 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
 .user-menu { position: relative; margin-left: auto; }
 .user-chip {
   display: flex; align-items: center; gap: 8px;
-  background: #1e1e2e; border: 1px solid #313244; border-radius: 999px;
-  padding: 4px 12px 4px 4px; color: #cdd6f4; cursor: pointer; font-size: 13px;
+  background: var(--bg); border: 1px solid var(--surface-0); border-radius: 999px;
+  padding: 4px 12px 4px 4px; color: var(--text); cursor: pointer; font-size: 13px;
 }
-.user-chip:hover { border-color: #45475a; }
+.user-chip:hover { border-color: var(--surface-1); }
 .user-avatar {
   width: 24px; height: 24px; border-radius: 50%;
   display: inline-flex; align-items: center; justify-content: center;
-  background: #89b4fa; color: #1e1e2e; font-weight: 700; font-size: 12px;
+  background: var(--accent); color: var(--bg); font-weight: 700; font-size: 12px;
 }
 .user-name { font-weight: 600; }
-.user-role { color: #a6adc8; font-size: 12px; }
-.user-caret { color: #6c7086; transform: rotate(90deg); transition: transform 0.15s; }
+.user-role { color: var(--text-muted); font-size: 12px; }
+.user-caret { color: var(--text-subtle); transform: rotate(90deg); transition: transform 0.15s; }
 .user-caret.open { transform: rotate(-90deg); }
 
 .user-dropdown {
   position: absolute; right: 0; top: calc(100% + 6px); min-width: 180px; z-index: 300;
-  background: #1e1e2e; border: 1px solid #313244; border-radius: 8px; padding: 4px;
+  background: var(--bg); border: 1px solid var(--surface-0); border-radius: 8px; padding: 4px;
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45); text-align: left;
 }
 .user-item {
   display: block; width: 100%; text-align: left; background: none; border: none;
-  padding: 8px 10px; border-radius: 6px; color: #cdd6f4; font-size: 13px; cursor: pointer;
+  padding: 8px 10px; border-radius: 6px; color: var(--text); font-size: 13px; cursor: pointer;
 }
-.user-item:hover { background: #313244; }
-.user-item-danger { color: #f38ba8; }
-.user-item-danger:hover { background: rgba(243, 139, 168, 0.15); }
+.user-item:hover { background: var(--surface-0); }
+.user-item-danger { color: var(--danger); }
+.user-item-danger:hover { background: rgba(var(--danger-rgb), 0.15); }
 </style>
