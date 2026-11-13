@@ -154,7 +154,11 @@
     "BaselineExceptionAdd": "Baseline: добавлено исключение",
     "BaselineExceptionRemove": "Baseline: удалено исключение",
     "BaselineDelete": "Baseline: удалён",
-    "DriftCheck": "Baseline: запущена проверка дрейфа"
+    "DriftCheck": "Baseline: запущена проверка дрейфа",
+    "BaselinePreview": "Baseline: предпросмотр новой версии",
+    "BaselineCheck": "Baseline: запущена проверка дрейфа",
+    "ReadinessRun": "Запущена проверка готовности к обновлению",
+    "ReadinessExport": "Выгружен отчёт о готовности к обновлению"
   },
   "export": {
     "csv": "Выгрузить CSV",

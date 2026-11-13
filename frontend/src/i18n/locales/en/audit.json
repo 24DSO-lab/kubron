@@ -154,7 +154,11 @@
     "BaselineExceptionAdd": "Baseline: exception added",
     "BaselineExceptionRemove": "Baseline: exception removed",
     "BaselineDelete": "Baseline: deleted",
-    "DriftCheck": "Baseline: drift check run"
+    "DriftCheck": "Baseline: drift check run",
+    "BaselinePreview": "Baseline: preview of a new version",
+    "BaselineCheck": "Baseline: drift check run",
+    "ReadinessRun": "Upgrade readiness check run",
+    "ReadinessExport": "Upgrade readiness report exported"
   },
   "export": {
     "csv": "Export CSV",

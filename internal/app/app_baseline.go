@@ -30,15 +30,33 @@ import (
 
 const baselineModule = "baseline"
 
-// Имена действий аудита. Значения ресурсов и конфигурации в запись не попадают: только идентификаторы и счётчики.
+// Операции модуля. Имя действия аудита — opsplatform.ActionName(baselineModule, операция): BaselineExceptionAdd и т. п.
+// Значения ресурсов и конфигурации в запись не попадают: только идентификаторы и счётчики.
 const (
-	auditBaselineCreate          = "BaselineCreate"
-	auditBaselineVersionAdd      = "BaselineVersionAdd"
-	auditBaselineActivate        = "BaselineActivate"
-	auditBaselineExceptionAdd    = "BaselineExceptionAdd"
-	auditBaselineExceptionRemove = "BaselineExceptionRemove"
-	auditBaselineDelete          = "BaselineDelete"
-	auditDriftCheck              = "DriftCheck"
+	bsOpList            = "list"
+	bsOpPreview         = "preview"
+	bsOpCreate          = "create"
+	bsOpVersions        = "versions"
+	bsOpVersionAdd      = "version_add"
+	bsOpActivate        = "activate"
+	bsOpExceptions      = "exceptions"
+	bsOpExceptionAdd    = "exception_add"
+	bsOpExceptionRemove = "exception_remove"
+	bsOpDelete          = "delete"
+	bsOpCheck           = "check"
+	bsOpResults         = "results"
+	bsOpResult          = "result"
+)
+
+// Имена действий аудита записываются в журнал и у отказа по праву одинаковыми (Provider).
+var (
+	auditBaselineCreate          = opsplatform.ActionName(baselineModule, bsOpCreate)
+	auditBaselineVersionAdd      = opsplatform.ActionName(baselineModule, bsOpVersionAdd)
+	auditBaselineActivate        = opsplatform.ActionName(baselineModule, bsOpActivate)
+	auditBaselineExceptionAdd    = opsplatform.ActionName(baselineModule, bsOpExceptionAdd)
+	auditBaselineExceptionRemove = opsplatform.ActionName(baselineModule, bsOpExceptionRemove)
+	auditBaselineDelete          = opsplatform.ActionName(baselineModule, bsOpDelete)
+	auditBaselineCheck           = opsplatform.ActionName(baselineModule, bsOpCheck)
 )
 
 // Пределы входных данных: клиент не может заставить сервер читать или хранить без меры.
@@ -216,7 +234,7 @@ func (a *App) BaselineList() ([]baseline.Baseline, error) {
 	if err := a.authz(auth.PermRead); err != nil {
 		return nil, err
 	}
-	return runBaseline(a, "list", auth.PermRead, func(ctx context.Context, svc *drift.Service, sess drift.Session, _ *opsplatform.Op) ([]baseline.Baseline, error) {
+	return runBaseline(a, bsOpList, auth.PermRead, func(ctx context.Context, svc *drift.Service, sess drift.Session, _ *opsplatform.Op) ([]baseline.Baseline, error) {
 		return svc.Baselines(ctx, sess)
 	})
 }
@@ -230,7 +248,7 @@ func (a *App) BaselinePreviewNew(spec BaselineSpecInput) (drift.Preview, error) 
 	if err != nil {
 		return drift.Preview{}, err
 	}
-	return runBaseline(a, "preview", auth.PermBaselineManage, func(ctx context.Context, svc *drift.Service, sess drift.Session, _ *opsplatform.Op) (drift.Preview, error) {
+	return runBaseline(a, bsOpPreview, auth.PermBaselineManage, func(ctx context.Context, svc *drift.Service, sess drift.Session, _ *opsplatform.Op) (drift.Preview, error) {
 		return svc.PreviewNew(ctx, sess, ds)
 	})
 }
@@ -244,7 +262,7 @@ func (a *App) BaselineCreate(in BaselineCreateInput) (baseline.Baseline, error) 
 	if err != nil {
 		return baseline.Baseline{}, err
 	}
-	return runBaseline(a, "create", auth.PermBaselineManage, func(ctx context.Context, svc *drift.Service, sess drift.Session, op *opsplatform.Op) (b baseline.Baseline, err error) {
+	return runBaseline(a, bsOpCreate, auth.PermBaselineManage, func(ctx context.Context, svc *drift.Service, sess drift.Session, op *opsplatform.Op) (b baseline.Baseline, err error) {
 		var v baseline.Version
 		defer func() {
 			op.Audit(auditBaselineCreate, b.ID, err, slog.Int("objects", len(v.Objects)), slog.Int("version", v.Seq))
@@ -259,7 +277,7 @@ func (a *App) BaselineVersions(id, cursor string, limit int) (baseline.VersionPa
 	if err := a.authz(auth.PermRead); err != nil {
 		return baseline.VersionPage{}, err
 	}
-	return runBaseline(a, "versions", auth.PermRead, func(ctx context.Context, svc *drift.Service, sess drift.Session, _ *opsplatform.Op) (baseline.VersionPage, error) {
+	return runBaseline(a, bsOpVersions, auth.PermRead, func(ctx context.Context, svc *drift.Service, sess drift.Session, _ *opsplatform.Op) (baseline.VersionPage, error) {
 		return svc.Versions(ctx, sess, id, baseline.Page{Cursor: cursor, Limit: limit})
 	})
 }
@@ -269,7 +287,7 @@ func (a *App) BaselinePreviewVersion(id string) (drift.Preview, error) {
 	if err := a.authz(auth.PermBaselineManage); err != nil {
 		return drift.Preview{}, err
 	}
-	return runBaseline(a, "preview", auth.PermBaselineManage, func(ctx context.Context, svc *drift.Service, sess drift.Session, _ *opsplatform.Op) (drift.Preview, error) {
+	return runBaseline(a, bsOpPreview, auth.PermBaselineManage, func(ctx context.Context, svc *drift.Service, sess drift.Session, _ *opsplatform.Op) (drift.Preview, error) {
 		return svc.PreviewVersion(ctx, sess, id)
 	})
 }
@@ -279,7 +297,7 @@ func (a *App) BaselineAddVersion(in BaselineVersionInput) (baseline.VersionSumma
 	if err := a.authz(auth.PermBaselineManage); err != nil {
 		return baseline.VersionSummary{}, err
 	}
-	return runBaseline(a, "version", auth.PermBaselineManage, func(ctx context.Context, svc *drift.Service, sess drift.Session, op *opsplatform.Op) (s baseline.VersionSummary, err error) {
+	return runBaseline(a, bsOpVersionAdd, auth.PermBaselineManage, func(ctx context.Context, svc *drift.Service, sess drift.Session, op *opsplatform.Op) (s baseline.VersionSummary, err error) {
 		defer func() {
 			op.Audit(auditBaselineVersionAdd, in.ID, err, slog.Int("version", s.Seq), slog.Int("objects", s.ObjectCount))
 		}()
@@ -296,7 +314,7 @@ func (a *App) BaselineSetActive(id, versionID string) (baseline.Baseline, error)
 	if err := a.authz(auth.PermBaselineManage); err != nil {
 		return baseline.Baseline{}, err
 	}
-	return runBaseline(a, "activate", auth.PermBaselineManage, func(ctx context.Context, svc *drift.Service, sess drift.Session, op *opsplatform.Op) (b baseline.Baseline, err error) {
+	return runBaseline(a, bsOpActivate, auth.PermBaselineManage, func(ctx context.Context, svc *drift.Service, sess drift.Session, op *opsplatform.Op) (b baseline.Baseline, err error) {
 		defer func() { op.Audit(auditBaselineActivate, id, err, slog.String("version_id", versionID)) }()
 		return svc.SetActive(ctx, sess, id, versionID)
 	})
@@ -307,7 +325,7 @@ func (a *App) BaselineExceptions(id string) ([]baseline.Exception, error) {
 	if err := a.authz(auth.PermRead); err != nil {
 		return nil, err
 	}
-	return runBaseline(a, "exceptions", auth.PermRead, func(ctx context.Context, svc *drift.Service, sess drift.Session, _ *opsplatform.Op) ([]baseline.Exception, error) {
+	return runBaseline(a, bsOpExceptions, auth.PermRead, func(ctx context.Context, svc *drift.Service, sess drift.Session, _ *opsplatform.Op) ([]baseline.Exception, error) {
 		list, err := svc.Exceptions(ctx, sess, id)
 		if list == nil {
 			list = []baseline.Exception{}
@@ -321,7 +339,7 @@ func (a *App) BaselineAddException(id string, in BaselineExceptionInput) (baseli
 	if err := a.authz(auth.PermBaselineManage); err != nil {
 		return baseline.Exception{}, err
 	}
-	return runBaseline(a, "exception", auth.PermBaselineManage, func(ctx context.Context, svc *drift.Service, sess drift.Session, op *opsplatform.Op) (e baseline.Exception, err error) {
+	return runBaseline(a, bsOpExceptionAdd, auth.PermBaselineManage, func(ctx context.Context, svc *drift.Service, sess drift.Session, op *opsplatform.Op) (e baseline.Exception, err error) {
 		defer func() {
 			op.Audit(auditBaselineExceptionAdd, id, err, slog.String("exception_id", e.ID), slog.String("scope", in.Scope))
 		}()
@@ -336,7 +354,7 @@ func (a *App) BaselineRemoveException(id, exceptionID string) error {
 	if err := a.authz(auth.PermBaselineManage); err != nil {
 		return err
 	}
-	_, err := runBaseline(a, "exception", auth.PermBaselineManage, func(ctx context.Context, svc *drift.Service, sess drift.Session, op *opsplatform.Op) (struct{}, error) {
+	_, err := runBaseline(a, bsOpExceptionRemove, auth.PermBaselineManage, func(ctx context.Context, svc *drift.Service, sess drift.Session, op *opsplatform.Op) (struct{}, error) {
 		err := svc.RemoveException(ctx, sess, id, exceptionID)
 		op.Audit(auditBaselineExceptionRemove, id, err, slog.String("exception_id", exceptionID))
 		return struct{}{}, err
@@ -349,7 +367,7 @@ func (a *App) BaselineDelete(id string) error {
 	if err := a.authz(auth.PermBaselineManage); err != nil {
 		return err
 	}
-	_, err := runBaseline(a, "delete", auth.PermBaselineManage, func(ctx context.Context, svc *drift.Service, sess drift.Session, op *opsplatform.Op) (struct{}, error) {
+	_, err := runBaseline(a, bsOpDelete, auth.PermBaselineManage, func(ctx context.Context, svc *drift.Service, sess drift.Session, op *opsplatform.Op) (struct{}, error) {
 		err := svc.Delete(ctx, sess, id)
 		op.Audit(auditBaselineDelete, id, err)
 		return struct{}{}, err
@@ -362,9 +380,9 @@ func (a *App) DriftCheck(id string) (baseline.CheckResult, error) {
 	if err := a.authz(auth.PermRead); err != nil {
 		return baseline.CheckResult{}, err
 	}
-	return runBaseline(a, "check", auth.PermRead, func(ctx context.Context, svc *drift.Service, sess drift.Session, op *opsplatform.Op) (res baseline.CheckResult, err error) {
+	return runBaseline(a, bsOpCheck, auth.PermRead, func(ctx context.Context, svc *drift.Service, sess drift.Session, op *opsplatform.Op) (res baseline.CheckResult, err error) {
 		defer func() {
-			op.Audit(auditDriftCheck, id, err, slog.Int("changed", res.Summary.Changed), slog.Int("missing", res.Summary.Missing), slog.Int("unchecked", res.Summary.Unchecked))
+			op.Audit(auditBaselineCheck, id, err, slog.Int("changed", res.Summary.Changed), slog.Int("missing", res.Summary.Missing), slog.Int("unchecked", res.Summary.Unchecked))
 		}()
 		return svc.Check(ctx, sess, id)
 	})
@@ -375,7 +393,7 @@ func (a *App) DriftResults(id, cursor string, limit int) (baseline.ResultPage, e
 	if err := a.authz(auth.PermRead); err != nil {
 		return baseline.ResultPage{}, err
 	}
-	return runBaseline(a, "results", auth.PermRead, func(ctx context.Context, svc *drift.Service, sess drift.Session, _ *opsplatform.Op) (baseline.ResultPage, error) {
+	return runBaseline(a, bsOpResults, auth.PermRead, func(ctx context.Context, svc *drift.Service, sess drift.Session, _ *opsplatform.Op) (baseline.ResultPage, error) {
 		return svc.Results(ctx, sess, id, baseline.Page{Cursor: cursor, Limit: limit})
 	})
 }
@@ -385,7 +403,7 @@ func (a *App) DriftResult(id, resultID string) (baseline.CheckResult, error) {
 	if err := a.authz(auth.PermRead); err != nil {
 		return baseline.CheckResult{}, err
 	}
-	return runBaseline(a, "result", auth.PermRead, func(ctx context.Context, svc *drift.Service, sess drift.Session, _ *opsplatform.Op) (baseline.CheckResult, error) {
+	return runBaseline(a, bsOpResult, auth.PermRead, func(ctx context.Context, svc *drift.Service, sess drift.Session, _ *opsplatform.Op) (baseline.CheckResult, error) {
 		return svc.Result(ctx, sess, id, resultID)
 	})
 }

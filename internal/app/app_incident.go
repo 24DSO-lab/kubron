@@ -25,6 +25,28 @@ const EventIncidentUpdated = "incident:updated"
 
 const moduleIncident = "incident"
 
+// Операции модуля. Имя действия аудита — opsplatform.ActionName(moduleIncident, операция): IncidentMarkOutcome и т. п.
+const (
+	incOpOpen           = "open"
+	incOpRefresh        = "refresh"
+	incOpGet            = "get"
+	incOpList           = "list"
+	incOpMarkOutcome    = "mark_outcome"
+	incOpSaveFragment   = "save_fragment"
+	incOpDeleteFragment = "delete_fragment"
+	incOpSetLogCapture  = "set_log_capture"
+	incOpReadFragment   = "read_fragment"
+	incOpExport         = "export"
+	incOpDelete         = "delete"
+	incOpSettingsGet    = "settings_get"
+	incOpSaveSettings   = "save_settings"
+)
+
+// incidentAction — имя действия аудита операции модуля.
+func incidentAction(operation string) string {
+	return opsplatform.ActionName(moduleIncident, operation)
+}
+
 var errIncidentsUnavailable = errors.New("incident storage is not available")
 
 // SetupIncidents подключает сервис расследований: хранилище берётся из общего Store (PostgreSQL) или из каталога
@@ -125,7 +147,7 @@ func (a *App) IncidentOpen(clusterID string, req IncidentOpenRequest) (d *incide
 	if err := a.authzCluster(auth.PermRead, clusterID); err != nil {
 		return nil, err
 	}
-	ctx, op, svc, err := a.incidentOp(clusterID, "open", auth.PermRead)
+	ctx, op, svc, err := a.incidentOp(clusterID, incOpOpen, auth.PermRead)
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +156,7 @@ func (a *App) IncidentOpen(clusterID string, req IncidentOpenRequest) (d *incide
 		Target:      diagnose.ResourceRef{Kind: req.Kind, Namespace: req.Namespace, Name: req.Name},
 		DisableLogs: req.DisableLogs,
 	})
-	op.Audit("IncidentOpen", idOrEmpty(in), err, slog.String("kind", req.Kind), slog.String("namespace", req.Namespace), slog.String("name", req.Name))
+	op.Audit(incidentAction(incOpOpen), idOrEmpty(in), err, slog.String("kind", req.Kind), slog.String("namespace", req.Namespace), slog.String("name", req.Name))
 	if err != nil {
 		return nil, err
 	}
@@ -153,7 +175,7 @@ func (a *App) IncidentRefresh(clusterID, id string) (d *incident.Detail, err err
 	if err := a.authzCluster(auth.PermRead, clusterID); err != nil {
 		return nil, err
 	}
-	ctx, op, svc, err := a.incidentOp(clusterID, "refresh", auth.PermRead)
+	ctx, op, svc, err := a.incidentOp(clusterID, incOpRefresh, auth.PermRead)
 	if err != nil {
 		return nil, err
 	}
@@ -170,7 +192,7 @@ func (a *App) IncidentGet(clusterID, id string) (d *incident.Detail, err error) 
 	if err := a.authzCluster(auth.PermRead, clusterID); err != nil {
 		return nil, err
 	}
-	ctx, op, svc, err := a.incidentOp(clusterID, "get", auth.PermRead)
+	ctx, op, svc, err := a.incidentOp(clusterID, incOpGet, auth.PermRead)
 	if err != nil {
 		return nil, err
 	}
@@ -183,7 +205,7 @@ func (a *App) IncidentList(clusterID string, q IncidentListQuery) (p incident.Pa
 	if err := a.authzCluster(auth.PermRead, clusterID); err != nil {
 		return incident.Page{}, err
 	}
-	ctx, op, svc, err := a.incidentOp(clusterID, "list", auth.PermRead)
+	ctx, op, svc, err := a.incidentOp(clusterID, incOpList, auth.PermRead)
 	if err != nil {
 		return incident.Page{}, err
 	}
@@ -196,14 +218,14 @@ func (a *App) IncidentMarkOutcome(clusterID, id string, req IncidentOutcomeReque
 	if err := a.authzCluster(auth.PermRead, clusterID); err != nil {
 		return nil, err
 	}
-	ctx, op, svc, err := a.incidentOp(clusterID, "outcome", auth.PermRead)
+	ctx, op, svc, err := a.incidentOp(clusterID, incOpMarkOutcome, auth.PermRead)
 	if err != nil {
 		return nil, err
 	}
 	defer func() { op.End(err) }()
 	_, err = svc.MarkOutcome(ctx, incidentCaller(op), id, incident.Outcome{Result: req.Result,
 		ConfirmedHypothesisID: req.ConfirmedHypothesisID, Note: req.Note})
-	op.Audit("IncidentMarkOutcome", id, err, slog.String("result", string(req.Result)))
+	op.Audit(incidentAction(incOpMarkOutcome), id, err, slog.String("result", string(req.Result)))
 	if err != nil {
 		return nil, err
 	}
@@ -215,14 +237,14 @@ func (a *App) IncidentSaveFragment(clusterID, id string, req IncidentFragmentReq
 	if err := a.authzCluster(auth.PermRead, clusterID); err != nil {
 		return incident.FragmentMeta{}, err
 	}
-	ctx, op, svc, err := a.incidentOp(clusterID, "fragment_save", auth.PermRead)
+	ctx, op, svc, err := a.incidentOp(clusterID, incOpSaveFragment, auth.PermRead)
 	if err != nil {
 		return incident.FragmentMeta{}, err
 	}
 	defer func() { op.End(err) }()
 	m, err = svc.SaveFragment(ctx, incidentCaller(op), id, incident.SaveFragmentRequest{Pod: req.Pod,
 		Container: req.Container, Previous: req.Previous, AnchorLine: req.AnchorLine})
-	op.Audit("IncidentSaveFragment", id, err, slog.String("container", req.Container), slog.Bool("previous", req.Previous))
+	op.Audit(incidentAction(incOpSaveFragment), id, err, slog.String("container", req.Container), slog.Bool("previous", req.Previous))
 	return m, err
 }
 
@@ -231,13 +253,13 @@ func (a *App) IncidentDeleteFragment(clusterID, id, fragmentID string) (err erro
 	if err := a.authzCluster(auth.PermDiagnosticsLogs, clusterID); err != nil {
 		return err
 	}
-	ctx, op, svc, err := a.incidentOp(clusterID, "fragment_delete", auth.PermDiagnosticsLogs)
+	ctx, op, svc, err := a.incidentOp(clusterID, incOpDeleteFragment, auth.PermDiagnosticsLogs)
 	if err != nil {
 		return err
 	}
 	defer func() { op.End(err) }()
 	err = svc.DeleteFragment(ctx, op.Scope, id, fragmentID)
-	op.Audit("IncidentDeleteFragment", id, err, slog.Int("fragments", 1))
+	op.Audit(incidentAction(incOpDeleteFragment), id, err, slog.Int("fragments", 1))
 	return err
 }
 
@@ -247,7 +269,7 @@ func (a *App) IncidentSetLogCapture(clusterID, id string, enabled, deleteExistin
 	if err := a.authzCluster(auth.PermRead, clusterID); err != nil {
 		return nil, err
 	}
-	ctx, op, svc, err := a.incidentOp(clusterID, "log_capture", auth.PermRead)
+	ctx, op, svc, err := a.incidentOp(clusterID, incOpSetLogCapture, auth.PermRead)
 	if err != nil {
 		return nil, err
 	}
@@ -260,7 +282,7 @@ func (a *App) IncidentSetLogCapture(clusterID, id string, enabled, deleteExistin
 	if _, err = svc.SetSaveLogs(ctx, op.Scope, id, enabled, deleteExisting); err != nil {
 		return nil, err
 	}
-	op.Audit("IncidentSetLogCapture", id, nil, slog.Bool("enabled", enabled), slog.Bool("deleted", deleteExisting))
+	op.Audit(incidentAction(incOpSetLogCapture), id, nil, slog.Bool("enabled", enabled), slog.Bool("deleted", deleteExisting))
 	return svc.Get(ctx, op.Scope, id, canRead)
 }
 
@@ -270,13 +292,13 @@ func (a *App) IncidentReadFragment(clusterID, id, fragmentID string) (f *inciden
 	if err := a.authzCluster(auth.PermRead, clusterID); err != nil {
 		return nil, err
 	}
-	ctx, op, svc, err := a.incidentOp(clusterID, "fragment_read", auth.PermRead)
+	ctx, op, svc, err := a.incidentOp(clusterID, incOpReadFragment, auth.PermRead)
 	if err != nil {
 		return nil, err
 	}
 	defer func() { op.End(err) }()
 	f, err = svc.ReadFragment(ctx, op.Scope, id, fragmentID, func() error { return op.Require(auth.PermDiagnosticsLogs) })
-	op.Audit("IncidentReadFragment", id, err, slog.Int("fragments", 1))
+	op.Audit(incidentAction(incOpReadFragment), id, err, slog.Int("fragments", 1))
 	if err != nil {
 		return nil, err
 	}
@@ -288,7 +310,7 @@ func (a *App) IncidentExport(clusterID, id string, includeFragments bool) (out s
 	if err := a.authzCluster(auth.PermRead, clusterID); err != nil {
 		return "", err
 	}
-	ctx, op, svc, err := a.incidentOp(clusterID, "export", auth.PermRead)
+	ctx, op, svc, err := a.incidentOp(clusterID, incOpExport, auth.PermRead)
 	if err != nil {
 		return "", err
 	}
@@ -298,7 +320,7 @@ func (a *App) IncidentExport(clusterID, id string, includeFragments bool) (out s
 	if ex != nil {
 		n = len(ex.Fragments)
 	}
-	op.Audit("IncidentExport", id, err, slog.Int("fragments", n), slog.Bool("include_fragments", includeFragments))
+	op.Audit(incidentAction(incOpExport), id, err, slog.Int("fragments", n), slog.Bool("include_fragments", includeFragments))
 	if err != nil {
 		return "", err
 	}
@@ -311,13 +333,13 @@ func (a *App) IncidentDelete(clusterID, id string) (err error) {
 	if err := a.authzCluster(auth.PermDiagnosticsLogs, clusterID); err != nil {
 		return err
 	}
-	ctx, op, svc, err := a.incidentOp(clusterID, "delete", auth.PermDiagnosticsLogs)
+	ctx, op, svc, err := a.incidentOp(clusterID, incOpDelete, auth.PermDiagnosticsLogs)
 	if err != nil {
 		return err
 	}
 	defer func() { op.End(err) }()
 	err = svc.Delete(ctx, op.Scope, id)
-	op.Audit("IncidentDelete", id, err)
+	op.Audit(incidentAction(incOpDelete), id, err)
 	return err
 }
 
@@ -326,7 +348,7 @@ func (a *App) IncidentGetSettings(clusterID string) (info IncidentSettingsInfo, 
 	if err := a.authzCluster(auth.PermRead, clusterID); err != nil {
 		return IncidentSettingsInfo{}, err
 	}
-	ctx, op, svc, err := a.incidentOp(clusterID, "settings_get", auth.PermRead)
+	ctx, op, svc, err := a.incidentOp(clusterID, incOpSettingsGet, auth.PermRead)
 	if err != nil {
 		return IncidentSettingsInfo{}, err
 	}
@@ -367,7 +389,7 @@ func (a *App) IncidentSaveSettings(settings incident.Settings) (saved incident.S
 		if err != nil {
 			res = audit.ResultFailed
 		}
-		a.audit.Record(audit.Event{User: actor.Username, Role: string(actor.Role), Action: "IncidentSaveSettings", Result: res,
+		a.audit.Record(audit.Event{User: actor.Username, Role: string(actor.Role), Action: incidentAction(incOpSaveSettings), Result: res,
 			Detail: fmt.Sprintf("log_evidence_disabled=%t excluded_namespaces=%d fragment_days=%d incident_days=%d",
 				settings.DisableLogEvidence, len(settings.ExcludedNamespaces), settings.FragmentRetentionDays, settings.IncidentRetentionDays),
 			Source: actor.Source})

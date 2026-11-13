@@ -154,7 +154,11 @@
     "BaselineExceptionAdd": "基线：已添加例外",
     "BaselineExceptionRemove": "基线：已移除例外",
     "BaselineDelete": "基线：已删除",
-    "DriftCheck": "基线：已运行漂移检查"
+    "DriftCheck": "基线：已运行漂移检查",
+    "BaselinePreview": "基线：新版本预览",
+    "BaselineCheck": "基线：已运行漂移检查",
+    "ReadinessRun": "已运行升级就绪检查",
+    "ReadinessExport": "已导出升级就绪报告"
   },
   "export": {
     "csv": "导出 CSV",

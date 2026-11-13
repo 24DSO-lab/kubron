@@ -271,14 +271,16 @@ func opStatus(err error, partial []string) string {
 func (p *provider) recordDenied(actor auth.Actor, module, operation string, perm auth.Permission) {
 	defer func() { _ = recover() }()
 	p.env.RecordAudit(audit.Event{
-		User: actor.Username, Role: string(actor.Role), Action: actionName(module, operation),
+		User: actor.Username, Role: string(actor.Role), Action: ActionName(module, operation),
 		Result: audit.ResultDenied, Detail: "need=" + string(perm), Source: actor.Source,
 		TeamID: actor.TeamID, ClusterID: actor.ClusterID,
 	})
 }
 
-// actionName строит имя действия аудита из модуля и операции: incident, open → IncidentOpen.
-func actionName(module, operation string) string {
+// ActionName строит имя действия аудита из модуля и операции: incident, open → IncidentOpen. По этому правилу названы и
+// записи отказа по праву (Provider), и записи об успехе и ошибке (Op.Audit в делегатах модулей): имя одно во всех
+// исходах, и один ключ перевода audit.actions.<имя> подписывает все записи.
+func ActionName(module, operation string) string {
 	var b strings.Builder
 	for _, w := range []string{module, operation} {
 		for part := range strings.SplitSeq(w, "_") {

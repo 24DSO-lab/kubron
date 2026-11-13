@@ -32,6 +32,15 @@ import (
 
 const readinessModule = "readiness"
 
+// Операции модуля. Имя действия аудита — opsplatform.ActionName(readinessModule, операция): ReadinessRun, ReadinessExport.
+const (
+	rdOpRun     = "run"
+	rdOpHistory = "history"
+	rdOpGet     = "get"
+	rdOpCompare = "compare"
+	rdOpExport  = "export"
+)
+
 // ReadinessInfo — сведения для экрана: окно целевых версий и данные, на которых строятся проверки.
 type ReadinessInfo struct {
 	Window    []kver.Minor   `json:"window"`
@@ -95,7 +104,7 @@ func (a *App) ReadinessRun(clusterID, target string) (rep *readiness.Report, err
 	if err := a.authzCluster(auth.PermRead, clusterID, "target", target); err != nil {
 		return nil, err
 	}
-	svc, ctx, op, err := a.readinessOp(clusterID, "run", false)
+	svc, ctx, op, err := a.readinessOp(clusterID, rdOpRun, false)
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +116,7 @@ func (a *App) ReadinessRun(clusterID, target string) (rep *readiness.Report, err
 			}
 		}
 		// Аудит: кто, какой кластер и целевая версия; содержимого объектов и находок в нём нет.
-		op.Audit("readiness.run", clusterID, err, slog.String("target", target))
+		op.Audit(opsplatform.ActionName(readinessModule, rdOpRun), clusterID, err, slog.String("target", target))
 		op.End(err, partial...)
 	}()
 	return svc.Run(ctx, readiness.Request{
@@ -121,7 +130,7 @@ func (a *App) ReadinessHistory(clusterID, cursor string, limit int) (page readin
 	if err := a.authzCluster(auth.PermRead, clusterID); err != nil {
 		return readiness.Page{}, err
 	}
-	svc, ctx, op, err := a.readinessOp(clusterID, "history", true)
+	svc, ctx, op, err := a.readinessOp(clusterID, rdOpHistory, true)
 	if err != nil {
 		return readiness.Page{}, err
 	}
@@ -134,7 +143,7 @@ func (a *App) ReadinessGet(clusterID, id string) (rep *readiness.Report, err err
 	if err := a.authzCluster(auth.PermRead, clusterID); err != nil {
 		return nil, err
 	}
-	svc, ctx, op, err := a.readinessOp(clusterID, "get", true)
+	svc, ctx, op, err := a.readinessOp(clusterID, rdOpGet, true)
 	if err != nil {
 		return nil, err
 	}
@@ -147,7 +156,7 @@ func (a *App) ReadinessCompare(clusterID, id, previousID string) (d readiness.Di
 	if err := a.authzCluster(auth.PermRead, clusterID); err != nil {
 		return readiness.Diff{}, err
 	}
-	svc, ctx, op, err := a.readinessOp(clusterID, "compare", true)
+	svc, ctx, op, err := a.readinessOp(clusterID, rdOpCompare, true)
 	if err != nil {
 		return readiness.Diff{}, err
 	}
@@ -160,12 +169,12 @@ func (a *App) ReadinessExport(clusterID, id, format string) (out readiness.Expor
 	if err := a.authzCluster(auth.PermRead, clusterID, "id", id, "format", format); err != nil {
 		return readiness.ExportedReport{}, err
 	}
-	svc, ctx, op, err := a.readinessOp(clusterID, "export", true)
+	svc, ctx, op, err := a.readinessOp(clusterID, rdOpExport, true)
 	if err != nil {
 		return readiness.ExportedReport{}, err
 	}
 	defer func() {
-		op.Audit("readiness.export", clusterID, err, slog.String("format", format))
+		op.Audit(opsplatform.ActionName(readinessModule, rdOpExport), clusterID, err, slog.String("format", format))
 		op.End(err)
 	}()
 	return svc.Export(ctx, op.Scope, id, format)

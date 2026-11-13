@@ -484,8 +484,8 @@ func TestActionName(t *testing.T) {
 		{"baseline", "accept"}:      "BaselineAccept",
 	}
 	for in, want := range tests {
-		if got := actionName(in[0], in[1]); got != want {
-			t.Errorf("actionName(%v) = %q, want %q", in, got, want)
+		if got := ActionName(in[0], in[1]); got != want {
+			t.Errorf("ActionName(%v) = %q, want %q", in, got, want)
 		}
 	}
 }
