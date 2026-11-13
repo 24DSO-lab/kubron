@@ -10,6 +10,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"hash"
 	"log/slog"
 	"maps"
 	"slices"
@@ -280,18 +281,24 @@ func (c *collected) normalizeAll(salt []byte) ([]baseline.Object, int, []Skip) {
 	return objs, total, skipped
 }
 
+// hashf записывает форматированную строку в хеш. hash.Hash.Write по контракту никогда не возвращает ошибку,
+// поэтому результат записи отбрасывается осознанно.
+func hashf(h hash.Hash, format string, args ...any) {
+	_, _ = fmt.Fprintf(h, format, args...)
+}
+
 // fingerprint — отпечаток состояния: не зависит от соли версии (хеши считаются ключом движка).
 func (e *Engine) fingerprint(c *collected) string {
 	objs, _, _ := c.normalizeAll(e.key)
 	h := sha256.New()
 	for _, o := range objs {
-		fmt.Fprintf(h, "%s\x00", o.Ref.Key())
+		hashf(h, "%s\x00", o.Ref.Key())
 		for _, p := range slices.Sorted(maps.Keys(o.Fields)) {
 			f := o.Fields[p]
 			if f.Hash != nil {
-				fmt.Fprintf(h, "%s=#%x\x00", p, f.Hash.HMAC)
+				hashf(h, "%s=#%x\x00", p, f.Hash.HMAC)
 			} else {
-				fmt.Fprintf(h, "%s=%s\x00", p, f.Plain)
+				hashf(h, "%s=%s\x00", p, f.Plain)
 			}
 		}
 	}
@@ -334,7 +341,7 @@ type Preview struct {
 
 func (e *Engine) tokenMAC(fp, bind string, exp int64) string {
 	m := hmac.New(sha256.New, e.key)
-	fmt.Fprintf(m, "kubron/baseline/preview/v1\x00%s\x00%s\x00%d", fp, bind, exp)
+	hashf(m, "kubron/baseline/preview/v1\x00%s\x00%s\x00%d", fp, bind, exp)
 	return hex.EncodeToString(m.Sum(nil))
 }
 
