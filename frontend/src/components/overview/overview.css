@@ -25,6 +25,22 @@
   text-align: left;
 }
 
+/* Светлая тема: те же токены, значения из палитры Latte (акцент — фиолетовый Mauve) */
+:root[data-theme='light'] .ov {
+  --ov-bg: #eff1f5;
+  --ov-card: #ffffff;
+  --ov-card-hover: #e6e9ef;
+  --ov-border: #ccd0da;
+  --ov-border-soft: #dce0e8;
+  --ov-text: #4c4f69;
+  --ov-muted: #6c6f85;
+  --ov-accent: #8839ef;
+  --ov-accent-hover: #7527d8;
+  --ov-ok: #40a02b;
+  --ov-warn: #df8e1d;
+  --ov-danger: #d20f39;
+}
+
 .ov-card {
   display: flex;
   flex-direction: column;

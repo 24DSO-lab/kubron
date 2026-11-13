@@ -1,0 +1,60 @@
+/*
+ * Семантические цветовые токены приложения.
+ * Тёмная тема (Catppuccin Mocha) — по умолчанию, светлая (Catppuccin Latte) включается
+ * атрибутом data-theme="light" на <html>. Компоненты должны использовать только токены,
+ * а не конкретные hex-значения.
+ */
+:root {
+  color-scheme: dark;
+
+  /* Поверхности */
+  --bg: #1e1e2e;            /* основной фон */
+  --bg-sunken: #181825;     /* шапка, сайдбар, утопленные блоки */
+  --bg-crust: #11111b;      /* самый глубокий уровень, обводки-кольца */
+  --surface-0: #313244;     /* карточки, границы, hover-фоны */
+  --surface-1: #45475a;     /* сильные границы, hover на surface-0 */
+  --surface-2: #585b70;     /* бейджи, неактивные элементы */
+
+  /* Текст */
+  --text: #cdd6f4;
+  --text-muted: #a6adc8;
+  --text-faint: #7f849c;
+  --text-subtle: #6c7086;
+
+  /* Акценты и статусы */
+  --accent: #89b4fa;
+  --danger: #f38ba8;
+  --ok: #a6e3a1;
+  --warn: #f9e2af;
+
+  /* Служебные */
+  --overlay-scrim: rgba(8, 8, 14, 0.66);
+  --accent-rgb: 137, 180, 250;  /* для rgba(var(--accent-rgb), a) */
+  --danger-rgb: 243, 139, 168;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --bg: #eff1f5;
+  --bg-sunken: #e6e9ef;
+  --bg-crust: #dce0e8;
+  --surface-0: #ccd0da;
+  --surface-1: #bcc0cc;
+  --surface-2: #acb0be;
+
+  --text: #4c4f69;
+  --text-muted: #5c5f77;
+  --text-faint: #7c7f93;
+  --text-subtle: #8c8fa1;
+
+  /* Статусные цвета темнее, чем в Mocha: пастельные оттенки нечитаемы на светлом фоне */
+  --accent: #1e66f5;
+  --danger: #d20f39;
+  --ok: #40a02b;
+  --warn: #df8e1d;
+
+  --overlay-scrim: rgba(76, 79, 105, 0.45);
+  --accent-rgb: 30, 102, 245;
+  --danger-rgb: 210, 15, 57;
+}

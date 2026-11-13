@@ -22,22 +22,22 @@
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  box-shadow: 0 0 0 2px var(--cl-ring, #11111b);
+  box-shadow: 0 0 0 2px var(--cl-ring, var(--bg-crust));
 }
 
 /* ───────── Диалог ───────── */
 .cl-overlay {
-  --cl-surface: #1e1e2e;
-  --cl-sunken: #181825;
-  --cl-border: #313244;
-  --cl-border-strong: #45475a;
-  --cl-text: #cdd6f4;
-  --cl-muted: #a6adc8;
-  --cl-faint: #7f849c;
-  --cl-accent: #89b4fa;
-  --cl-danger: #f38ba8;
-  --cl-ok: #a6e3a1;
-  --cl-warn: #f9e2af;
+  --cl-surface: var(--bg);
+  --cl-sunken: var(--bg-sunken);
+  --cl-border: var(--surface-0);
+  --cl-border-strong: var(--surface-1);
+  --cl-text: var(--text);
+  --cl-muted: var(--text-muted);
+  --cl-faint: var(--text-faint);
+  --cl-accent: var(--accent);
+  --cl-danger: var(--danger);
+  --cl-ok: var(--ok);
+  --cl-warn: var(--warn);
 
   position: fixed;
   inset: 0;

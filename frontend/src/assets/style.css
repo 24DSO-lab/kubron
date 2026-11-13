@@ -541,13 +541,13 @@ body {
 .cluster-bar-bottom { display: flex; flex-direction: column; align-items: center; padding-top: 8px; border-top: 1px solid #313244; margin-top: 8px; }
 
 .cluster-icon-wrap {
-  --cl-ring: #11111b;
+  --cl-ring: var(--bg-crust);
   position: relative; cursor: pointer; padding: 5px 8px;
   border-radius: 10px; transition: background 0.15s;
 }
-.cluster-icon-wrap:hover { background: #1e1e2e; }
+.cluster-icon-wrap:hover { background: var(--bg); }
 .cluster-icon-wrap:focus-visible { outline: 2px solid rgba(137, 180, 250, 0.7); outline-offset: -2px; }
-.cluster-icon-wrap.active { --cl-ring: #1e1e2e; background: #1e1e2e; }
+.cluster-icon-wrap.active { --cl-ring: var(--bg); background: var(--bg); }
 
 /* Индикатор активного кластера: плашка у левого края */
 .cluster-pill {

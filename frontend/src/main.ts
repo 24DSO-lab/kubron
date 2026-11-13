@@ -4,6 +4,7 @@
 import {createApp} from 'vue'
 import App from './App.vue'
 import {i18n, initI18n} from './i18n'
+import './assets/theme.css'
 import './assets/migrated.css'
 import './assets/style.css'
 import './components/auth/auth.css'
