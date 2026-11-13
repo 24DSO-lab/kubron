@@ -1,0 +1,9 @@
+# v1 ConfigMap prod/web-config
+binaryData["logo.png"] = HASH:07f15813
+data.empty = HASH:8fa850fe
+data["app.yaml"] = HASH:bd7414ec
+data["feature.flags"] = HASH:d16afd1e
+immutable = false
+metadata.annotations["example.com/contact"] = "ops@example.com"
+metadata.annotations["example.com/note"] = HASH:390db1d4
+metadata.labels.app = "web"

@@ -14,6 +14,7 @@ package store
 import (
 	"github.com/24DSO-lab/kubron/internal/audit"
 	"github.com/24DSO-lab/kubron/internal/auth"
+	"github.com/24DSO-lab/kubron/internal/baseline"
 	"github.com/24DSO-lab/kubron/internal/incident"
 	"github.com/24DSO-lab/kubron/internal/k8s"
 	"github.com/24DSO-lab/kubron/internal/readiness"
@@ -27,6 +28,8 @@ type Store interface {
 	Audit() audit.Backend
 	// Readiness — история отчётов Upgrade Readiness (ADR-0025).
 	Readiness() readiness.Backend
+	// Baselines — baseline конфигурации, версии, исключения и результаты проверок (ADR-0027).
+	Baselines() baseline.Backend
 	// ArgoTokens — токены Argo CD API по кластерам.
 	ArgoTokens() k8s.TokenStore
 	// Clusters — кластеры: метаданные и kubeconfig (владение командой добавит этап 3).

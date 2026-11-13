@@ -34,6 +34,22 @@ var publicMethods = map[string]bool{
 
 // Точные требования для особых методов.
 var exactPermission = map[string]Permission{
+	// Baseline конфигурации (ADR-0027): просмотр и запуск проверки — read, изменение — baseline.manage.
+	"BaselineKinds":           PermRead,
+	"BaselineList":            PermRead,
+	"BaselinePreviewNew":      PermBaselineManage,
+	"BaselineCreate":          PermBaselineManage,
+	"BaselineVersions":        PermRead,
+	"BaselinePreviewVersion":  PermBaselineManage,
+	"BaselineAddVersion":      PermBaselineManage,
+	"BaselineSetActive":       PermBaselineManage,
+	"BaselineExceptions":      PermRead,
+	"BaselineAddException":    PermBaselineManage,
+	"BaselineRemoveException": PermBaselineManage,
+	"BaselineDelete":          PermBaselineManage,
+	"DriftCheck":              PermRead,
+	"DriftResults":            PermRead,
+	"DriftResult":             PermRead,
 	"AddHelmRepo":             PermClusterManage,
 	"RemoveHelmRepo":          PermClusterManage,
 	"UpdateHelmRepos":         PermClusterManage,

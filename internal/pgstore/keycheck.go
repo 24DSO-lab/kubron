@@ -32,7 +32,10 @@ func (s *Store) CheckKey(ctx context.Context) error {
 			return err
 		}
 	}
-	return s.CheckIncidentKeys(ctx)
+	if err := s.CheckIncidentKeys(ctx); err != nil {
+		return err
+	}
+	return s.checkBaselinesKey(ctx)
 }
 
 func (s *Store) checkColumn(ctx context.Context, what, query string, aad func(string) []byte) error {

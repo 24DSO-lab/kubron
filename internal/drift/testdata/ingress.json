@@ -1,0 +1,26 @@
+{
+  "apiVersion": "networking.k8s.io/v1",
+  "kind": "Ingress",
+  "metadata": {
+    "name": "web", "namespace": "prod", "uid": "d3d3d3d3-0000-4000-8000-000000000003", "resourceVersion": "47000500",
+    "generation": 1, "creationTimestamp": "2026-03-02T09:15:00Z",
+    "labels": {"app": "web"},
+    "annotations": {
+      "nginx.ingress.kubernetes.io/proxy-body-size": "20m",
+      "ingress.kubernetes.io/backends": "{\"k8s1-abc\":\"HEALTHY\"}",
+      "ingress.kubernetes.io/url-map": "k8s2-um-xyz"
+    }
+  },
+  "spec": {
+    "ingressClassName": "nginx",
+    "tls": [{"hosts": ["shop.example.com", "www.example.com"], "secretName": "web-tls"}],
+    "rules": [
+      {"host": "www.example.com", "http": {"paths": [
+        {"path": "/", "pathType": "Prefix", "backend": {"service": {"name": "web", "port": {"number": 80}}}}]}},
+      {"host": "shop.example.com", "http": {"paths": [
+        {"path": "/api", "pathType": "Prefix", "backend": {"service": {"name": "api", "port": {"name": "http"}}}},
+        {"path": "/", "pathType": "Prefix", "backend": {"service": {"name": "web", "port": {"number": 80}}}}]}}
+    ]
+  },
+  "status": {"loadBalancer": {"ingress": [{"ip": "203.0.113.10"}]}}
+}

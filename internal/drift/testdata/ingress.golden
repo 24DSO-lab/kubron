@@ -1,0 +1,21 @@
+# networking.k8s.io/v1 Ingress prod/web
+metadata.annotations["nginx.ingress.kubernetes.io/proxy-body-size"] = "20m"
+metadata.labels.app = "web"
+spec.ingressClassName = "nginx"
+spec.rules[host=shop.example.com].host = "shop.example.com"
+spec.rules[host=shop.example.com].http.paths[path=/,pathType=Prefix].backend.service.name = "web"
+spec.rules[host=shop.example.com].http.paths[path=/,pathType=Prefix].backend.service.port.number = 80
+spec.rules[host=shop.example.com].http.paths[path=/,pathType=Prefix].path = "/"
+spec.rules[host=shop.example.com].http.paths[path=/,pathType=Prefix].pathType = "Prefix"
+spec.rules[host=shop.example.com].http.paths[path=/api,pathType=Prefix].backend.service.name = "api"
+spec.rules[host=shop.example.com].http.paths[path=/api,pathType=Prefix].backend.service.port.name = "http"
+spec.rules[host=shop.example.com].http.paths[path=/api,pathType=Prefix].path = "/api"
+spec.rules[host=shop.example.com].http.paths[path=/api,pathType=Prefix].pathType = "Prefix"
+spec.rules[host=www.example.com].host = "www.example.com"
+spec.rules[host=www.example.com].http.paths[path=/,pathType=Prefix].backend.service.name = "web"
+spec.rules[host=www.example.com].http.paths[path=/,pathType=Prefix].backend.service.port.number = 80
+spec.rules[host=www.example.com].http.paths[path=/,pathType=Prefix].path = "/"
+spec.rules[host=www.example.com].http.paths[path=/,pathType=Prefix].pathType = "Prefix"
+spec.tls[0].hosts[0] = "shop.example.com"
+spec.tls[0].hosts[1] = "www.example.com"
+spec.tls[0].secretName = "web-tls"

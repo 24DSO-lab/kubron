@@ -29,7 +29,8 @@
     "helmCatalog": "目录",
     "helmOps": "操作",
     "fluxDashboard": "Dashboard",
-    "readiness": "升级就绪检查"
+    "readiness": "升级就绪检查",
+    "baseline": "配置基线"
   },
   "teams": "团队",
   "incidents": "事件"

@@ -147,7 +147,14 @@
     "IncidentReadFragment": "Log fragment read",
     "IncidentExport": "Investigation exported",
     "IncidentDelete": "Investigation deleted",
-    "IncidentSaveSettings": "Incident storage settings changed"
+    "IncidentSaveSettings": "Incident storage settings changed",
+    "BaselineCreate": "Baseline: created",
+    "BaselineVersionAdd": "Baseline: new version recorded",
+    "BaselineActivate": "Baseline: active version changed",
+    "BaselineExceptionAdd": "Baseline: exception added",
+    "BaselineExceptionRemove": "Baseline: exception removed",
+    "BaselineDelete": "Baseline: deleted",
+    "DriftCheck": "Baseline: drift check run"
   },
   "export": {
     "csv": "Export CSV",

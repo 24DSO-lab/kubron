@@ -9,6 +9,7 @@ import (
 
 	"github.com/24DSO-lab/kubron/internal/audit"
 	"github.com/24DSO-lab/kubron/internal/auth"
+	"github.com/24DSO-lab/kubron/internal/baseline"
 	"github.com/24DSO-lab/kubron/internal/incident"
 	"github.com/24DSO-lab/kubron/internal/k8s"
 	"github.com/24DSO-lab/kubron/internal/readiness"
@@ -27,6 +28,12 @@ func (e extStore) Audit() audit.Backend { return e.s.Audit() }
 // Readiness: публичное хранилище (pkg/ext) отчётов не знает, они лежат в каталоге данных (файловая реализация).
 func (e extStore) Readiness() readiness.Backend {
 	return fileStore{dir: k8s.GetKubronDir()}.Readiness()
+}
+
+// Baselines: публичный интерфейс хранилища (pkg/ext) их не знает, поэтому baseline лежат в каталоге данных,
+// как и прочие локальные настройки внешнего хранилища.
+func (e extStore) Baselines() baseline.Backend {
+	return baseline.NewFileBackend(filepath.Join(k8s.GetKubronDir(), "baselines"))
 }
 func (e extStore) ArgoTokens() k8s.TokenStore { return e.s.ArgoTokens() }
 

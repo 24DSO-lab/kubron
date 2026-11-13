@@ -147,7 +147,14 @@
     "IncidentReadFragment": "读取日志片段",
     "IncidentExport": "导出调查",
     "IncidentDelete": "删除调查",
-    "IncidentSaveSettings": "更改调查存储设置"
+    "IncidentSaveSettings": "更改调查存储设置",
+    "BaselineCreate": "基线：已创建",
+    "BaselineVersionAdd": "基线：已记录新版本",
+    "BaselineActivate": "基线：已更改活动版本",
+    "BaselineExceptionAdd": "基线：已添加例外",
+    "BaselineExceptionRemove": "基线：已移除例外",
+    "BaselineDelete": "基线：已删除",
+    "DriftCheck": "基线：已运行漂移检查"
   },
   "export": {
     "csv": "导出 CSV",

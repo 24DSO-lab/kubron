@@ -65,6 +65,7 @@ Kubron — Kubernetes Operations Workspace в двух версиях: desktop-�
 - [Работа с ресурсами](/ru/features/working-with-resources)
 - [Повседневные операции](/ru/features/operations)
 - [Debug-контейнеры](/ru/features/debug-containers)
+- [Baseline конфигурации](/ru/features/baseline)
 - [Стек метрик и графики](/ru/features/metrics)
 - [Helm](/ru/features/helm)
 - [GitOps с Argo CD и Flux CD](/ru/features/gitops)

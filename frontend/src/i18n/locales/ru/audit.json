@@ -147,7 +147,14 @@
     "IncidentReadFragment": "Прочитан фрагмент лога",
     "IncidentExport": "Расследование выгружено",
     "IncidentDelete": "Расследование удалено",
-    "IncidentSaveSettings": "Изменены настройки хранения расследований"
+    "IncidentSaveSettings": "Изменены настройки хранения расследований",
+    "BaselineCreate": "Baseline: создан",
+    "BaselineVersionAdd": "Baseline: зафиксирована новая версия",
+    "BaselineActivate": "Baseline: изменена активная версия",
+    "BaselineExceptionAdd": "Baseline: добавлено исключение",
+    "BaselineExceptionRemove": "Baseline: удалено исключение",
+    "BaselineDelete": "Baseline: удалён",
+    "DriftCheck": "Baseline: запущена проверка дрейфа"
   },
   "export": {
     "csv": "Выгрузить CSV",

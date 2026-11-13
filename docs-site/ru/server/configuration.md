@@ -99,6 +99,8 @@ Web-версия (`kubron-server`) настраивается переменны
 | `KUBRON_DRAIN_DELAY` | — | Пауза между SIGTERM и закрытием WebSocket-соединений, чтобы балансировщик успел снять реплику. Не более `60s`. |
 | `KUBRON_METRICS_LISTEN` | пусто (выкл.) | Адрес отдельного listener Prometheus `/metrics`. Не публикуйте его через ingress. |
 | `KUBRON_AUDIT_RETENTION` | `0` (бессрочно) | Как долго записи аудита хранятся в PostgreSQL. Ненулевое значение — не меньше `24h`. |
+| `KUBRON_BASELINE_RESULTS_RETENTION_DAYS` | `90` | Сколько дней хранятся результаты проверок baseline конфигурации (от 1 до 3650). |
+| `KUBRON_BASELINE_MIN_VERSIONS` | `20` | Сколько последних версий каждого baseline хранится (не меньше 20). Активная версия не удаляется никогда. |
 | `KUBRON_AUDIT_STDOUT` | выкл. | Дополнительно писать каждую запись аудита JSON-строкой в stdout для внешнего сборщика логов. Журнал в базе остаётся основным. |
 | `KUBRON_CLUSTER_CHECK_INTERVAL` | `30s` | Как часто в фоне проверяется доступность кластеров. `0` отключает проверку. |
 | `KUBRON_LOG_LEVEL` | `info` | `debug`, `info`, `warn` или `error`. |

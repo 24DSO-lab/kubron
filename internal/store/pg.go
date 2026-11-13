@@ -11,6 +11,7 @@ import (
 
 	"github.com/24DSO-lab/kubron/internal/audit"
 	"github.com/24DSO-lab/kubron/internal/auth"
+	"github.com/24DSO-lab/kubron/internal/baseline"
 	"github.com/24DSO-lab/kubron/internal/clusterhealth"
 	"github.com/24DSO-lab/kubron/internal/incident"
 	"github.com/24DSO-lab/kubron/internal/k8s"
@@ -31,6 +32,7 @@ func (p pgBackend) Users() auth.Backend {
 func (p pgBackend) Audit() audit.Backend         { return p.s.Audit() }
 func (p pgBackend) Readiness() readiness.Backend { return p.s.Readiness() }
 func (p pgBackend) Incidents() incident.Backend  { return p.s.Incidents() }
+func (p pgBackend) Baselines() baseline.Backend  { return p.s.Baselines() }
 func (p pgBackend) ArgoTokens() k8s.TokenStore   { return p.s.ArgoTokens() }
 
 func (p pgBackend) WebOIDC() (WebOIDC, error) {

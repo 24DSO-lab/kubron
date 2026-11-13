@@ -21,7 +21,10 @@ export const NAV_GROUPS: Record<NavGroupId, NavGroupMeta> = {
   config: {
     title: 'nav.groups.config',
     expanded: false,
-    views: [{ view: 'readiness', label: 'nav.views.readiness' }],
+    views: [
+      { view: 'readiness', label: 'nav.views.readiness' },
+      { view: 'baseline', label: 'nav.views.baseline' },
+    ],
   },
   network: { title: 'nav.groups.network', expanded: true },
   storage: { title: 'nav.groups.storage', expanded: false },

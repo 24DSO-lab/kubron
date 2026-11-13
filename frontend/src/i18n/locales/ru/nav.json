@@ -29,7 +29,8 @@
     "helmCatalog": "Каталог",
     "helmOps": "Операции",
     "fluxDashboard": "Dashboard",
-    "readiness": "Готовность к обновлению"
+    "readiness": "Готовность к обновлению",
+    "baseline": "Baseline конфигурации"
   },
   "teams": "Команды",
   "incidents": "Инциденты"

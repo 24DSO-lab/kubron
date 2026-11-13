@@ -5,9 +5,13 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
+	"os"
+	"strconv"
 	"time"
 
+	"github.com/24DSO-lab/kubron/internal/baseline"
 	"github.com/24DSO-lab/kubron/internal/jobs"
 	"github.com/24DSO-lab/kubron/internal/pgstore"
 	"github.com/24DSO-lab/kubron/internal/websession"
@@ -23,7 +27,7 @@ const (
 
 // maintenanceJobs — фоновые задачи сервиса с PostgreSQL. Каждую такт выполняет одна реплика: исполнитель выбирается
 // блокировкой pg_try_advisory_lock (ADR-0016, раздел 6), поэтому реплик может быть сколько угодно.
-func maintenanceJobs(pg *pgstore.Store, sessions websession.Backend, auditRetention time.Duration, extra ...*jobs.Job) []*jobs.Job {
+func maintenanceJobs(pg *pgstore.Store, sessions websession.Backend, auditRetention time.Duration, bl baselineRetention, extra ...*jobs.Job) []*jobs.Job {
 	lock := pg.Leader(pgstore.JobsKey) // одно соединение с БД на всю группу
 	list := []*jobs.Job{{
 		Name: "expired web sessions", Every: maintenanceEvery, Lock: lock, Logf: log.Printf,
@@ -49,6 +53,7 @@ func maintenanceJobs(pg *pgstore.Store, sessions websession.Backend, auditRetent
 			},
 		})
 	}
+	list = append(list, baselineJobs(pg.Baselines(), lock, bl)...)
 	// Задачи доменов (retention отчётов Readiness, retention расследований и др.) делят исполнителя с остальными.
 	for _, j := range extra {
 		if j != nil {
@@ -57,4 +62,48 @@ func maintenanceJobs(pg *pgstore.Store, sessions websession.Backend, auditRetent
 		}
 	}
 	return list
+}
+
+// baselineRetention — хранение данных baseline конфигурации (ADR-0027).
+type baselineRetention struct {
+	Results     time.Duration // срок хранения результатов проверок
+	MinVersions int           // сколько последних версий каждого baseline сохраняется (активная — всегда)
+}
+
+const baselinePurgeEvery = time.Hour
+
+// baselineRetentionFromEnv читает KUBRON_BASELINE_RESULTS_RETENTION_DAYS (по умолчанию 90) и KUBRON_BASELINE_MIN_VERSIONS
+// (по умолчанию и минимум 20). Неверное значение — ошибка запуска, а не молчаливая подстановка: опечатка не должна
+// сократить хранение.
+func baselineRetentionFromEnv(getenv func(string) string) (baselineRetention, error) {
+	r := baselineRetention{Results: baseline.DefaultResultsRetention, MinVersions: baseline.MinVersionsKept}
+	if v := getenv("KUBRON_BASELINE_RESULTS_RETENTION_DAYS"); v != "" {
+		days, err := strconv.Atoi(v)
+		if err != nil || days < 1 || days > 3650 {
+			return r, fmt.Errorf("KUBRON_BASELINE_RESULTS_RETENTION_DAYS must be a number of days from 1 to 3650, got %q", v)
+		}
+		r.Results = time.Duration(days) * 24 * time.Hour
+	}
+	if v := getenv("KUBRON_BASELINE_MIN_VERSIONS"); v != "" {
+		n, err := strconv.Atoi(v)
+		if err != nil || n < baseline.MinVersionsKept || n > 10000 {
+			return r, fmt.Errorf("KUBRON_BASELINE_MIN_VERSIONS must be a number from %d to 10000, got %q", baseline.MinVersionsKept, v)
+		}
+		r.MinVersions = n
+	}
+	return r, nil
+}
+
+// loadBaselineRetention читает настройки из окружения процесса.
+func loadBaselineRetention() (baselineRetention, error) { return baselineRetentionFromEnv(os.Getenv) }
+
+// baselineJobs — задачи хранения baseline: старые результаты проверок и лишние версии. Активная версия не удаляется никогда.
+func baselineJobs(b baseline.Backend, lock jobs.Locker, r baselineRetention) []*jobs.Job {
+	return []*jobs.Job{{
+		Name: "baseline results retention", Every: baselinePurgeEvery, Lock: lock, Logf: log.Printf,
+		Run: func(ctx context.Context) (int, error) { return b.DeleteResultsBefore(ctx, time.Now().Add(-r.Results)) },
+	}, {
+		Name: "baseline versions retention", Every: baselinePurgeEvery, Lock: lock, Logf: log.Printf,
+		Run: func(ctx context.Context) (int, error) { return b.PruneVersions(ctx, r.MinVersions) },
+	}}
 }

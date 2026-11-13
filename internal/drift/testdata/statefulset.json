@@ -1,0 +1,43 @@
+{
+  "apiVersion": "apps/v1",
+  "kind": "StatefulSet",
+  "metadata": {
+    "name": "db", "namespace": "prod", "uid": "0e5a9e0e-2d1f-4f55-8f0b-2f5f5f0d9c10", "resourceVersion": "48200001",
+    "generation": 3, "creationTimestamp": "2026-02-11T07:00:00Z",
+    "labels": {"app": "db"},
+    "annotations": {"kubectl.kubernetes.io/last-applied-configuration": "{}"},
+    "managedFields": [
+      {"manager": "kubectl-client-side-apply", "operation": "Update", "apiVersion": "apps/v1", "time": "2026-09-01T12:00:00Z",
+       "fieldsType": "FieldsV1", "fieldsV1": {"f:spec": {"f:replicas": {}}}}
+    ]
+  },
+  "spec": {
+    "replicas": 2, "serviceName": "db", "podManagementPolicy": "OrderedReady", "revisionHistoryLimit": 10,
+    "updateStrategy": {"type": "RollingUpdate", "rollingUpdate": {"partition": 0}},
+    "persistentVolumeClaimRetentionPolicy": {"whenDeleted": "Retain", "whenScaled": "Retain"},
+    "selector": {"matchLabels": {"app": "db"}},
+    "template": {
+      "metadata": {"creationTimestamp": null, "labels": {"app": "db"}},
+      "spec": {
+        "dnsPolicy": "ClusterFirst", "restartPolicy": "Always", "schedulerName": "default-scheduler",
+        "securityContext": {"fsGroup": 999}, "terminationGracePeriodSeconds": 30,
+        "containers": [{
+          "name": "postgres", "image": "postgres:16.4", "imagePullPolicy": "IfNotPresent",
+          "ports": [{"containerPort": 5432, "name": "pg", "protocol": "TCP"}],
+          "env": [{"name": "PGDATA", "value": "/var/lib/postgresql/data/pgdata"}],
+          "resources": {"requests": {"cpu": "1", "memory": "2Gi"}},
+          "volumeMounts": [{"name": "data", "mountPath": "/var/lib/postgresql/data"}],
+          "terminationMessagePath": "/dev/termination-log", "terminationMessagePolicy": "File"
+        }]
+      }
+    },
+    "volumeClaimTemplates": [{
+      "apiVersion": "v1", "kind": "PersistentVolumeClaim",
+      "metadata": {"name": "data", "creationTimestamp": null},
+      "spec": {"accessModes": ["ReadWriteOnce"], "resources": {"requests": {"storage": "50Gi"}},
+        "storageClassName": "fast-ssd", "volumeMode": "Filesystem"},
+      "status": {"phase": "Pending"}
+    }]
+  },
+  "status": {"replicas": 2, "readyReplicas": 2, "currentRevision": "db-6d7c9f5b8", "updateRevision": "db-6d7c9f5b8"}
+}

@@ -17,6 +17,7 @@ const lazy = (path: string) => defineAsyncComponent(() => import(`../components/
  *  - flux-dashboard — сводка по объектам Flux CD
  *  - readiness — готовность к обновлению Kubernetes
  *  - settings — форма настроек кластера
+ *  - baseline — baseline конфигурации и проверка дрейфа
  *  - teams — команды, участники и кластеры по командам (только сервисный режим)
  *  - users — управление пользователями и ролями (только для users.manage)
  *  - audit — журнал аудита (только для audit.read)
@@ -41,6 +42,8 @@ export const viewRegistry: Record<string, ViewConfig> = {
   'helm-ops': {
     component: lazy('HelmOperationsView'),
   },
+  // Baseline конфигурации и дрейф (ADR-0027); бэкенд проверяет права read и baseline.manage
+  baseline: { component: lazy('BaselineView') },
   settings: {
     component: lazy('ClusterSettings'),
   },

@@ -204,7 +204,11 @@ func main() {
 	}
 	if pgStore != nil {
 		// Очистка просроченных строк и хранение аудита: исполняет одна реплика (pg_try_advisory_lock).
-		go jobs.Run(ctx, maintenanceJobs(pgStore, sessionBackend, cfg.AuditRetention, readinessJob, incidentJob)...)
+		blRetention, err := loadBaselineRetention()
+		if err != nil {
+			fatal("configuration", err)
+		}
+		go jobs.Run(ctx, maintenanceJobs(pgStore, sessionBackend, cfg.AuditRetention, blRetention, readinessJob, incidentJob)...)
 	} else {
 		for _, j := range []*jobs.Job{readinessJob, incidentJob} {
 			if j != nil {

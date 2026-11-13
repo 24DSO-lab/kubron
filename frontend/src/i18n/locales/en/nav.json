@@ -29,7 +29,8 @@
     "helmCatalog": "Catalog",
     "helmOps": "Operations",
     "fluxDashboard": "Dashboard",
-    "readiness": "Upgrade readiness"
+    "readiness": "Upgrade readiness",
+    "baseline": "Configuration baseline"
   },
   "teams": "Teams",
   "incidents": "Incidents"
