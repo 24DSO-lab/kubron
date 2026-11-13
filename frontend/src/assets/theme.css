@@ -60,6 +60,15 @@
   --green: #4ade80;
   --yellow: #facc15;
   --amber: #fbbf24;
+
+  /* Текст «поярче основного» (заголовки, активные вкладки) и подсветки поверх поверхностей */
+  --text-strong: #ffffff;
+  --tint-rgb: 255, 255, 255;  /* для hover/разделителей: rgba(var(--tint-rgb), 0.1) */
+  --input-bg: #111827;
+  --bar-ok: #356546;
+  --bar-warn: #a8860f;
+  --bar-err: #b23b3b;
+  --avatar-accent-pct: 100%;
 }
 
 :root[data-theme='light'] {
@@ -113,4 +122,12 @@
   --green: #40a02b;
   --yellow: #df8e1d;
   --amber: #df8e1d;
+
+  --text-strong: #3b3e57;
+  --tint-rgb: 76, 79, 105;
+  --input-bg: #ffffff;
+  --bar-ok: #94d98a;
+  --bar-warn: #f2d48a;
+  --bar-err: #f0a0b0;
+  --avatar-accent-pct: 58%;
 }

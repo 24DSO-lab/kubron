@@ -31,7 +31,7 @@ const ports = computed(() => props.resource?.ports ?? [])
 </script>
 
 <style scoped>
-.svc-port { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.svc-port { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid rgba(var(--tint-rgb), 0.05); }
 .svc-port:last-child { border-bottom: none; }
 .svc-port-label { color: var(--blue); font-weight: 500; font-size: 0.875rem; }
 .svc-port-name { color: var(--text-gray); font-size: 0.8rem; }

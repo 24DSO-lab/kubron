@@ -37,7 +37,7 @@ function format(e: { key: string; operator: string; values?: string[] }): string
 
 <style scoped>
 .sel { margin-top: 16px; }
-.sel-title { font-weight: 700; font-size: 1rem; color: #fff; padding: 8px 0; text-align: left; }
+.sel-title { font-weight: 700; font-size: 1rem; color: var(--text-strong); padding: 8px 0; text-align: left; }
 .sel-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .sel-chip {
   padding: 3px 8px; background: var(--panel); border-radius: 3px;

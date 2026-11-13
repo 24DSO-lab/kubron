@@ -144,7 +144,7 @@ async function remove(item: any) {
 }
 
 .es-row:hover td {
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(var(--tint-rgb), 0.02);
 }
 
 .es-name-cell {
@@ -162,8 +162,8 @@ async function remove(item: any) {
   transition: background 0.15s;
 }
 .btn-icon:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
+  background: rgba(var(--tint-rgb), 0.1);
+  color: var(--text-strong);
 }
 
 .menu-overlay {

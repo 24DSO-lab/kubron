@@ -47,7 +47,8 @@ const boxStyle = computed(() => {
     height: `${props.size}px`,
     borderRadius: `${Math.max(6, Math.round(props.size * 0.26))}px`,
     fontSize: `${Math.round(props.size * 0.36)}px`,
-    color: accent,
+    // В светлой теме пастельный цвет подписи затемняется токеном (в тёмной — 100%, цвет без изменений)
+    color: `color-mix(in srgb, ${accent} var(--avatar-accent-pct), black)`,
     background: withAlpha(accent, 0.14),
     borderColor: withAlpha(accent, 0.4),
   }

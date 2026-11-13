@@ -135,7 +135,7 @@ async function refreshSelected() {
 .sd-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6); display: flex; align-items: center; justify-content: center; z-index: 2000; }
 .sd { width: 90%; max-width: 560px; max-height: 90vh; display: flex; flex-direction: column; background: var(--panel-raised); border: 1px solid var(--line-strong); border-radius: 8px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5); text-align: left; }
 .sd-head { padding: 16px; background: var(--panel-deep); border-bottom: 1px solid var(--line-strong); border-radius: 8px 8px 0 0; }
-.sd-head h3 { margin: 0; font-size: 1rem; color: #fff; }
+.sd-head h3 { margin: 0; font-size: 1rem; color: var(--text-strong); }
 .sd-name { color: var(--blue); font-family: 'JetBrains Mono', 'Fira Code', monospace; }
 .sd-muted { color: var(--text-gray); font-size: 0.8rem; font-weight: 400; }
 .sd-body { padding: 16px 20px; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; }
@@ -143,20 +143,20 @@ async function refreshSelected() {
 .sd-input:focus { outline: none; border-color: var(--blue-strong); }
 .sd-field { display: flex; flex-direction: column; gap: 6px; font-size: 0.85rem; color: var(--text-soft); }
 .sd-list { max-height: 240px; overflow-y: auto; border: 1px solid var(--line); border-radius: 4px; }
-.sd-app { display: grid; grid-template-columns: auto 1fr auto auto; gap: 10px; align-items: center; padding: 6px 10px; font-size: 0.85rem; color: var(--text-code); cursor: pointer; border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
-.sd-app:hover { background: rgba(255, 255, 255, 0.03); }
+.sd-app { display: grid; grid-template-columns: auto 1fr auto auto; gap: 10px; align-items: center; padding: 6px 10px; font-size: 0.85rem; color: var(--text-code); cursor: pointer; border-bottom: 1px solid rgba(var(--tint-rgb), 0.05); }
+.sd-app:hover { background: rgba(var(--tint-rgb), 0.03); }
 .sd-app.off { opacity: 0.5; cursor: not-allowed; }
 .sd-app-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sd-tag { padding: 1px 8px; border-radius: 999px; font-size: 0.7rem; font-weight: 600; }
 .sd-tag.ok { color: var(--green); background: rgba(74, 222, 128, 0.12); }
 .sd-tag.warn { color: var(--yellow); background: rgba(250, 204, 21, 0.12); }
 .sd-check { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--text-code); cursor: pointer; }
-.sd-risk { padding: 10px 12px; border-radius: 4px; font-size: 0.8rem; color: var(--text-soft); background: rgba(255, 255, 255, 0.03); border: 1px solid var(--line); }
+.sd-risk { padding: 10px 12px; border-radius: 4px; font-size: 0.8rem; color: var(--text-soft); background: rgba(var(--tint-rgb), 0.03); border: 1px solid var(--line); }
 .sd-risk.danger { color: #fca5a5; background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.4); }
 .sd-risk ul { margin: 6px 0; padding-left: 18px; font-family: 'Courier New', monospace; }
 .sd-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 12px 16px; background: var(--panel-deep); border-top: 1px solid var(--line-strong); border-radius: 0 0 8px 8px; }
 .sd-btn { padding: 8px 16px; border-radius: 4px; border: 1px solid var(--line-strong); background: transparent; color: var(--text-code); font-size: 0.9rem; font-weight: 600; cursor: pointer; }
-.sd-btn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.06); }
+.sd-btn:hover:not(:disabled) { background: rgba(var(--tint-rgb), 0.06); }
 .sd-btn.primary { background: var(--blue-strong); border-color: var(--blue-strong); color: #fff; }
 .sd-btn.primary:hover:not(:disabled) { background: var(--blue-deep); }
 .sd-btn:disabled { opacity: 0.5; cursor: not-allowed; }

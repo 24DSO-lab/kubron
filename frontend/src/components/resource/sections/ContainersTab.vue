@@ -326,12 +326,12 @@ function fmtRes(c: any, kind: 'requests' | 'limits'): string {
 .ct-env-empty { padding: 10px 12px; }
 
 .ct-env:last-child { border-bottom: none; }
-.ct-env:hover { background: rgba(255,255,255,0.02); }
+.ct-env:hover { background: rgba(var(--tint-rgb), 0.02); }
 
 .ct-env-plain { color: #e5e7eb; font-family: 'Courier New', monospace; overflow-wrap: anywhere; }
 .ct-env {
   display: grid; grid-template-columns: minmax(130px, 38%) minmax(0, 1fr) 26px; gap: 10px;
-  padding: 7px 12px; border-bottom: 1px solid rgba(255,255,255,0.05);
+  padding: 7px 12px; border-bottom: 1px solid rgba(var(--tint-rgb), 0.05);
   font-size: 0.82rem; align-items: start;
 }
 .ct-env-name {
@@ -360,7 +360,7 @@ function fmtRes(c: any, kind: 'requests' | 'limits'): string {
   background: transparent; border: none; border-radius: 3px;
   cursor: pointer; color: var(--text-gray); transition: all 0.15s;
 }
-.ct-env-eye:hover { background: rgba(255,255,255,0.08); color: var(--text-code); }
+.ct-env-eye:hover { background: rgba(var(--tint-rgb), 0.08); color: var(--text-code); }
 .ct-env-eye:disabled { opacity: 0.5; cursor: wait; }
 
 .ct-mounts { display: flex; flex-direction: column; gap: 6px; }

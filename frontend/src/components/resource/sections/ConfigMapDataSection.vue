@@ -211,7 +211,7 @@ onBeforeUnmount(() => {
   border: 1px solid var(--line);
   border-radius: 4px;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(var(--tint-rgb), 0.02);
 }
 
 .cm-data-header {
@@ -289,12 +289,12 @@ onBeforeUnmount(() => {
 }
 
 .cm-editor-container :deep(.monaco-editor .scrollbar .slider) {
-  background: rgba(255, 255, 255, 0.15) !important;
+  background: rgba(var(--tint-rgb), 0.15) !important;
   border-radius: 4px;
 }
 
 .cm-editor-container :deep(.monaco-editor .scrollbar .slider:hover) {
-  background: rgba(255, 255, 255, 0.25) !important;
+  background: rgba(var(--tint-rgb), 0.25) !important;
 }
 
 .cm-editor-container :deep(.monaco-editor .view-lines) {

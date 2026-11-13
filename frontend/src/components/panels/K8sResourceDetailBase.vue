@@ -269,7 +269,7 @@ function formatAgeAbsolute(created: string): string {
 .detail-header h3 {
   margin: 0;
   flex: 1;
-  color: white;
+  color: var(--text-strong);
   font-size: 1.1rem;
   white-space: nowrap;
   overflow: hidden;
@@ -305,7 +305,7 @@ function formatAgeAbsolute(created: string): string {
 .detail-meta {
   padding: 12px 16px;
   border-bottom: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(var(--tint-rgb), 0.02);
   flex-shrink: 0;
 }
 
@@ -352,7 +352,7 @@ function formatAgeAbsolute(created: string): string {
 
 .tab.active {
   border-bottom-color: var(--blue-strong);
-  color: white;
+  color: var(--text-strong);
 }
 
 .detail-content {
@@ -370,7 +370,7 @@ function formatAgeAbsolute(created: string): string {
   background: transparent;
   border: none;
   border-radius: 4px;
-  color: white;
+  color: var(--text-strong);
   cursor: pointer;
   font-size: 1rem;
   transition: all 0.15s;
@@ -383,7 +383,7 @@ function formatAgeAbsolute(created: string): string {
 }
 
 .btn-close:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(var(--tint-rgb), 0.05);
 }
 
 .icon-close {
@@ -402,7 +402,7 @@ function formatAgeAbsolute(created: string): string {
   background: transparent;
   border: none;
   border-radius: 4px;
-  color: white;
+  color: var(--text-strong);
   cursor: pointer;
   font-size: 1rem;
   transition: all 0.15s;
@@ -415,7 +415,7 @@ function formatAgeAbsolute(created: string): string {
 }
 
 .btn-action:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(var(--tint-rgb), 0.1);
 }
 
 .btn-action.btn-danger {

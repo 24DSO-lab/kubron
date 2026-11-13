@@ -103,7 +103,7 @@ function openService(w: any) {
 </script>
 
 <style scoped>
-.wh-title { font-weight: 700; color: #fff; padding: 12px 0 8px; text-align: left; }
+.wh-title { font-weight: 700; color: var(--text-strong); padding: 12px 0 8px; text-align: left; }
 .wh-name { font-family: 'Courier New', monospace; font-size: 0.85rem; color: #e5e7eb; flex: 1; word-break: break-all; }
 .rd-block-head { display: flex; align-items: center; gap: 8px; cursor: pointer; }
 .wh-body { display: flex; flex-direction: column; }

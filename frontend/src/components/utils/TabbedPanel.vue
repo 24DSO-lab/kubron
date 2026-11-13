@@ -260,7 +260,7 @@ function handleResize(e: PointerEvent) {
 }
 
 .btn-close:hover {
-  color: #fff;
+  color: var(--text-strong);
 }
 
 .panel-content {

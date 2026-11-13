@@ -361,8 +361,8 @@ onBeforeUnmount(() => { offReconnected(); stopStreams() })
 }
 
 .btn-action:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
+  background: rgba(var(--tint-rgb), 0.1);
+  color: var(--text-strong);
 }
 
 .btn-action.active {

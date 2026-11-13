@@ -121,7 +121,7 @@ async function handleScale() {
 
 .dialog-header h3 {
   margin: 0;
-  color: white;
+  color: var(--text-strong);
   font-size: 1rem;
   font-weight: 600;
 }
@@ -284,7 +284,7 @@ async function handleScale() {
 }
 
 .btn-cancel:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(var(--tint-rgb), 0.05);
   border-color: #5a5c7a;
   color: var(--text-code);
 }

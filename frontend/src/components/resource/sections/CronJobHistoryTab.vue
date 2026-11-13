@@ -188,8 +188,8 @@ onBeforeUnmount(() => {
   transition: background 0.15s;
 }
 .btn-icon:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
+  background: rgba(var(--tint-rgb), 0.1);
+  color: var(--text-strong);
 }
 
 .menu-overlay {
@@ -225,8 +225,8 @@ onBeforeUnmount(() => {
   gap: 8px;
 }
 .ctx-menu-item:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
+  background: rgba(var(--tint-rgb), 0.1);
+  color: var(--text-strong);
 }
 .ctx-menu-item:first-child { border-radius: 3px 3px 0 0; }
 .ctx-menu-item:last-child { border-radius: 0 0 3px 3px; }

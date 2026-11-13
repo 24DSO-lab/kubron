@@ -5,7 +5,7 @@
 
 /* ── GaugeCard styles ── */
 .gauge-card {
-  background: linear-gradient(135deg, var(--gray-800), #111827);
+  background: linear-gradient(135deg, var(--gray-800), var(--input-bg));
   border-radius: 12px;
   border: 1px solid rgba(104, 117, 136, 0.5);
   padding: 20px;
@@ -52,7 +52,7 @@
 .gauge-card-value-main {
   font-size: 24px;
   font-weight: 700;
-  color: #ffffff;
+  color: var(--text-strong);
 }
 .gauge-card-value-sub {
   font-size: 12px;
@@ -164,7 +164,7 @@
 .chart-current-value {
   font-size: 20px;
   font-weight: 700;
-  color: #ffffff;
+  color: var(--text-strong);
 }
 .chart-current-unit {
   font-size: 12px;
@@ -274,7 +274,7 @@
 .settings-title {
   font-size: 20px;
   font-weight: 600;
-  color: #ffffff;
+  color: var(--text-strong);
   margin-bottom: 24px;
 }
 .settings-card {
@@ -312,7 +312,7 @@
 .settings-card-heading {
   font-size: 16px;
   font-weight: 500;
-  color: #ffffff;
+  color: var(--text-strong);
 }
 .settings-card-description {
   font-size: 14px;
@@ -335,10 +335,10 @@
 .settings-input {
   width: 96px;
   padding: 8px 12px;
-  background: #111827;
+  background: var(--input-bg);
   border: 1px solid var(--gray-600);
   border-radius: 8px;
-  color: #ffffff;
+  color: var(--text-strong);
   font-size: 14px;
 }
 .settings-input:focus {
@@ -464,7 +464,7 @@
 }
 .settings-cancel-btn:hover {
   background: var(--gray-600);
-  color: #ffffff;
+  color: var(--text-strong);
 }
 .settings-confirm-btn {
   padding: 6px 12px;
@@ -576,7 +576,7 @@
 }
 .settings-refresh-btn:hover {
   background: var(--gray-600);
-  color: #ffffff;
+  color: var(--text-strong);
 }
 .settings-degraded-components {
   background: rgba(17, 24, 29, 0.5);

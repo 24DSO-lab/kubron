@@ -16,14 +16,16 @@ body {
   align-items: center;
   gap: 12px;
 }
+/* viewBox логотипа обрезан по содержимому; размер и отступы подобраны так, чтобы в тёмной теме он остался на прежнем месте */
 .logo {
-  height: 48px;
+  height: 31px;
   width: auto;
-  box-sizing: border-box;
+  margin: 8px 0 9px 14px;
+  box-sizing: content-box; /* глобально border-box: отступы плашки не должны уменьшать сам логотип */
   border-radius: 10px;
   background: var(--logo-plate);
 }
-:root[data-theme='light'] .logo { padding: 4px 10px; }
+:root[data-theme='light'] .logo { padding: 5px 10px; margin: 3px 0 4px 4px; }
 .header h1 { font-size: 20px; margin: 0; }
 .header.env-prod { box-shadow: inset 0 -2px 0 var(--danger); } /* рабочий кластер: красная линия под шапкой */
 .header-right { margin-left: auto; display: flex; align-items: center; }
@@ -767,7 +769,7 @@ body {
 .pod-metrics-container {
   margin-top: 12px;
   padding: 12px;
-  background: #111827;
+  background: var(--input-bg);
   border: 1px solid var(--gray-800);
   border-radius: 8px;
 }

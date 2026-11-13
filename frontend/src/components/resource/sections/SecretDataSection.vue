@@ -175,7 +175,7 @@ async function saveKey(key: string) {
   border: 1px solid var(--line);
   border-radius: 4px;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(var(--tint-rgb), 0.02);
 }
 .sec-header {
   display: flex;
@@ -209,8 +209,8 @@ async function saveKey(key: string) {
   transition: all 0.15s;
 }
 .sec-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
+  background: rgba(var(--tint-rgb), 0.1);
+  color: var(--text-strong);
 }
 .sec-body {
   padding: 12px;

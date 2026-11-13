@@ -142,7 +142,7 @@ onUnmounted(() => {
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
 }
-.cm-btn:hover, .cm-btn.active { background: rgba(255, 255, 255, 0.1); color: var(--accent); }
+.cm-btn:hover, .cm-btn.active { background: rgba(var(--tint-rgb), 0.1); color: var(--accent); }
 .cm-pop {
   position: fixed;
   z-index: 10000;
@@ -168,7 +168,7 @@ onUnmounted(() => {
   border-radius: 4px;
   cursor: grab;
 }
-.cm-row:hover { background: rgba(255, 255, 255, 0.06); }
+.cm-row:hover { background: rgba(var(--tint-rgb), 0.06); }
 .cm-row.over { outline: 1px dashed var(--accent); }
 .cm-label { display: flex; align-items: center; gap: 8px; flex: 1; font-size: 13px; color: var(--text-code); }
 .cm-label input { accent-color: var(--accent); margin: 0; }

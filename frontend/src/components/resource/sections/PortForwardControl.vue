@@ -172,7 +172,7 @@ async function stop() {
 .pf-row { display: flex; align-items: center; gap: 12px; }
 .pf-row-label { color: var(--text-soft); font-size: 0.85rem; font-weight: 500; white-space: nowrap; }
 .pf-port-input-wrap { flex: 1; }
-.pf-input { padding: 6px 10px; background: var(--panel); border: 1px solid var(--line-strong); border-radius: 4px; color: white; font-size: 0.9rem; width: 100%; }
+.pf-input { padding: 6px 10px; background: var(--panel); border: 1px solid var(--line-strong); border-radius: 4px; color: var(--text-strong); font-size: 0.9rem; width: 100%; }
 .pf-input:focus { outline: none; border-color: var(--blue-strong); }
 .pf-input::placeholder { color: var(--gray-500); font-style: italic; }
 .pf-check { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.85rem; color: var(--text-code); }

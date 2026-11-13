@@ -485,8 +485,8 @@ function choose(action: string, arg?: string) {
 }
 
 .ctx-menu-item:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
+  background: rgba(var(--tint-rgb), 0.1);
+  color: var(--text-strong);
 }
 
 .ctx-menu-item:first-child { border-radius: 3px 3px 0 0; }
@@ -523,8 +523,8 @@ function choose(action: string, arg?: string) {
 }
 
 .ctx-menu-sub-item:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
+  background: rgba(var(--tint-rgb), 0.1);
+  color: var(--text-strong);
 }
 
 .ctx-menu-sub-item:first-child { border-radius: 3px 3px 0 0; }
@@ -580,11 +580,11 @@ function choose(action: string, arg?: string) {
   border: 1px solid #dc2626;
   font-size: 11px;
   line-height: 16px;
-  color: #fff;
+  color: var(--text-strong);
 }
 
 .clickable-row { cursor: pointer; }
-.clickable-row:hover { background: rgba(255, 255, 255, 0.02); }
+.clickable-row:hover { background: rgba(var(--tint-rgb), 0.02); }
 
 .btn-icon {
   background: transparent;
@@ -597,8 +597,8 @@ function choose(action: string, arg?: string) {
 }
 
 .btn-icon:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
+  background: rgba(var(--tint-rgb), 0.1);
+  color: var(--text-strong);
 }
 
 .empty {
