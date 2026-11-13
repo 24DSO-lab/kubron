@@ -28,7 +28,8 @@
     "helmRepos": "Repositories",
     "helmCatalog": "Catalog",
     "helmOps": "Operations",
-    "fluxDashboard": "Dashboard"
+    "fluxDashboard": "Dashboard",
+    "baseline": "Configuration baseline"
   },
   "teams": "Teams"
 }

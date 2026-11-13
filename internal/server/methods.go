@@ -9,6 +9,22 @@ package server
 // или в deniedMethods (см. TestEveryAppMethodIsClassified). Каждый метод по-прежнему сам
 // проверяет права через authz.
 var allowedMethods = []string{
+	// Baseline конфигурации и дрейф (ADR-0027).
+	"BaselineKinds",
+	"BaselineList",
+	"BaselinePreviewNew",
+	"BaselineCreate",
+	"BaselineVersions",
+	"BaselinePreviewVersion",
+	"BaselineAddVersion",
+	"BaselineSetActive",
+	"BaselineExceptions",
+	"BaselineAddException",
+	"BaselineRemoveException",
+	"BaselineDelete",
+	"DriftCheck",
+	"DriftResults",
+	"DriftResult",
 	"GetBugReportStatus",
 	"SubmitBugReport",
 	"ExportAuditLog",

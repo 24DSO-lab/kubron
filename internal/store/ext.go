@@ -5,9 +5,11 @@ package store
 
 import (
 	"errors"
+	"path/filepath"
 
 	"github.com/24DSO-lab/kubron/internal/audit"
 	"github.com/24DSO-lab/kubron/internal/auth"
+	"github.com/24DSO-lab/kubron/internal/baseline"
 	"github.com/24DSO-lab/kubron/internal/k8s"
 	"github.com/24DSO-lab/kubron/pkg/ext"
 )
@@ -18,8 +20,14 @@ func FromExt(s ext.Store) Store { return extStore{s} }
 
 type extStore struct{ s ext.Store }
 
-func (e extStore) Users() auth.Backend        { return auth.FromExt(e.s.Users()) }
-func (e extStore) Audit() audit.Backend       { return e.s.Audit() }
+func (e extStore) Users() auth.Backend  { return auth.FromExt(e.s.Users()) }
+func (e extStore) Audit() audit.Backend { return e.s.Audit() }
+
+// Baselines: публичный интерфейс хранилища (pkg/ext) их не знает, поэтому baseline лежат в каталоге данных,
+// как и прочие локальные настройки внешнего хранилища.
+func (e extStore) Baselines() baseline.Backend {
+	return baseline.NewFileBackend(filepath.Join(k8s.GetKubronDir(), "baselines"))
+}
 func (e extStore) ArgoTokens() k8s.TokenStore { return e.s.ArgoTokens() }
 
 // webOIDCSettingsStore is an optional extension for public stores that persist application-wide web settings.

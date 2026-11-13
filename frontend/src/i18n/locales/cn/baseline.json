@@ -4,7 +4,7 @@
   "refresh": "刷新",
   "new": "新建基线",
   "empty": "还没有基线。创建一个以记录当前配置。",
-  "noManage": "创建基线需要“管理配置基线”权限。",
+  "noManage": "创建基线需要“创建并接受配置基线”权限。",
   "select": "基线",
   "activeVersion": "活动版本",
   "objects": "{count} 个资源",

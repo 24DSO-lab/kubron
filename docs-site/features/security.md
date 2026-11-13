@@ -26,6 +26,7 @@ The backend checks one of these permissions for every protected operation. Roles
 | `write` | Apply, create and delete YAML; edit ConfigMaps and Secrets; evict Pods; drain nodes; install, upgrade and uninstall Helm releases; install or remove the metrics stack; suspend or resume Argo CD auto-sync and delete applications; suspend, resume and delete Flux CD objects | `admin` |
 | `exec` | Pod terminals | `admin` |
 | `debug` | Add a debug (ephemeral) container to a running Pod; the terminal attached to it also needs `exec` | `admin` |
+| `baseline.manage` | Create configuration baselines and versions, change the active version, manage exceptions, delete baselines (viewing and running a check need `read`) | `admin` |
 | `nodeshell` | Node shell (privileged host access) | `admin` |
 | `portforward` | Port-forward | `admin` |
 | `clusters.manage` | Add, change and remove clusters; manage Helm repositories and OCI registries | `admin` |

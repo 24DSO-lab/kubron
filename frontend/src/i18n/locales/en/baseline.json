@@ -4,7 +4,7 @@
   "refresh": "Refresh",
   "new": "New baseline",
   "empty": "No baselines yet. Create one to record the current configuration.",
-  "noManage": "Creating baselines requires the “Manage configuration baselines” permission.",
+  "noManage": "Creating baselines requires the “Create and accept configuration baselines” permission.",
   "select": "Baseline",
   "activeVersion": "Active version",
   "objects": "{count} resources",

@@ -16,6 +16,7 @@
 |---|---|
 | [deploy.md](deploy.md) | Развёртывание `kubron-server`: образ, Helm-чарт, переменные, сетевая политика |
 | [ha.md](ha.md), [ha-sessions.md](ha-sessions.md) | Высокая доступность: несколько реплик, сессии в PostgreSQL |
+| [baseline.md](baseline.md) | Baseline конфигурации и дрейф: правила, хранение, retention, переменные |
 | [backup.md](backup.md) | Резервное копирование и восстановление, ключ шифрования |
 | [logging.md](logging.md), [metrics.md](metrics.md) | Журнал процесса, аудит в stdout, метрики Prometheus |
 | [http-security.md](http-security.md) | Заголовки безопасности, защита от перебора |

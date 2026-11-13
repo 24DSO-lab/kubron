@@ -138,7 +138,14 @@
     "StartDebugContainer": "Debug container",
     "bugreport": {
       "submit": "Bug report sent"
-    }
+    },
+    "BaselineCreate": "Baseline: created",
+    "BaselineVersionAdd": "Baseline: new version recorded",
+    "BaselineActivate": "Baseline: active version changed",
+    "BaselineExceptionAdd": "Baseline: exception added",
+    "BaselineExceptionRemove": "Baseline: exception removed",
+    "BaselineDelete": "Baseline: deleted",
+    "DriftCheck": "Baseline: drift check run"
   },
   "export": {
     "csv": "Export CSV",

@@ -28,7 +28,8 @@
     "helmRepos": "仓库",
     "helmCatalog": "目录",
     "helmOps": "操作",
-    "fluxDashboard": "Dashboard"
+    "fluxDashboard": "Dashboard",
+    "baseline": "配置基线"
   },
   "teams": "团队"
 }

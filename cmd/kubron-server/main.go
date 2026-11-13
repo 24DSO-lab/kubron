@@ -194,7 +194,11 @@ func main() {
 	startEvents() // слушатель стартует после монитора: первая сверка читает результаты проверок
 	if pgStore != nil {
 		// Очистка просроченных строк и хранение аудита: исполняет одна реплика (pg_try_advisory_lock).
-		go jobs.Run(ctx, maintenanceJobs(pgStore, sessionBackend, cfg.AuditRetention)...)
+		blRetention, err := loadBaselineRetention()
+		if err != nil {
+			fatal("configuration", err)
+		}
+		go jobs.Run(ctx, maintenanceJobs(pgStore, sessionBackend, cfg.AuditRetention, blRetention)...)
 	}
 	// Фоновая уборка веб-сессий: закрывает те, у которых ядро уже завершило пользовательскую сессию
 	// (простой, отключение пользователя) или истёк срок, и освобождает их ресурсы и ссылки пула.

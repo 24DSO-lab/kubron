@@ -18,7 +18,11 @@ export interface NavGroupMeta {
 
 export const NAV_GROUPS: Record<NavGroupId, NavGroupMeta> = {
   workloads: { title: 'nav.groups.workloads', expanded: true },
-  config: { title: 'nav.groups.config', expanded: false },
+  config: {
+    title: 'nav.groups.config',
+    expanded: false,
+    views: [{ view: 'baseline', label: 'nav.views.baseline' }],
+  },
   network: { title: 'nav.groups.network', expanded: true },
   storage: { title: 'nav.groups.storage', expanded: false },
   helm: {

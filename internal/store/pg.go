@@ -11,6 +11,7 @@ import (
 
 	"github.com/24DSO-lab/kubron/internal/audit"
 	"github.com/24DSO-lab/kubron/internal/auth"
+	"github.com/24DSO-lab/kubron/internal/baseline"
 	"github.com/24DSO-lab/kubron/internal/clusterhealth"
 	"github.com/24DSO-lab/kubron/internal/k8s"
 	"github.com/24DSO-lab/kubron/internal/pgstore"
@@ -26,8 +27,9 @@ type pgBackend struct{ s *pgstore.Store }
 func (p pgBackend) Users() auth.Backend {
 	return pgUsers{Backend: auth.FromExt(p.s.Users()), d: p.s.UserDelta(), f: p.s.LoginFailures()}
 }
-func (p pgBackend) Audit() audit.Backend       { return p.s.Audit() }
-func (p pgBackend) ArgoTokens() k8s.TokenStore { return p.s.ArgoTokens() }
+func (p pgBackend) Audit() audit.Backend        { return p.s.Audit() }
+func (p pgBackend) Baselines() baseline.Backend { return p.s.Baselines() }
+func (p pgBackend) ArgoTokens() k8s.TokenStore  { return p.s.ArgoTokens() }
 
 func (p pgBackend) WebOIDC() (WebOIDC, error) {
 	v, err := p.s.WebOIDC()
