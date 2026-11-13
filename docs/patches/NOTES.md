@@ -129,9 +129,36 @@ git log --format=full origin/refactor..HEAD
   namespace в метках).
 - Added: версионированный редактор логов (`internal/logredact`), скрывает токены, пароли, ключи и высокоэнтропийные строки.
 
-## Интеграция (шаг 3)
-Не выполнена: патчи Dev 2, 3, 4 ещё не получены. План: `git am` в порядке 2→3→4; механически слить wire-коммиты
-(`methods.go`, `policy_test.go`, `app.go`, `store.go`/`file.go`/`pg.go`, `maintenance.go`, `keycheck.go`, `jobs.go`, nav,
-locales, CHANGELOG); прогнать `TestEveryAppMethodIsClassified`, контрактные тесты доменов на обеих реализациях,
-`check-migrations.sh` (0011–0013 без дыр), Rekey/keycheck со всеми таблицами, `i18n:check`, `npm test`, e2e/e2e-pg, тест на
-отсутствие чтения Secret и утечек; затем свести отчёт и список расхождений сюда.
+## Интеграция (шаг 3) — отчёт
+
+Ветка `integrate/adr-0026` от `origin/refactor` (срезы Dev 2–4 уже влиты). Замечания Dev 2–4 из `docs/patches/` разобраны.
+
+### Проверено
+gofmt, `go vet`, лицензионные шапки, `i18n-check`; Go-тесты всех пакетов (в т.ч. PostgreSQL 16: `pgstore`), `check-migrations.sh`
+(0011–0013 без дыр), `TestEveryAppMethodIsClassified`, Rekey/keycheck с incident fragments и baselines, статические проверки
+«нет обхода платформы / нет чтения Secret». **Не запускалось** (нет сети, нет `node_modules`): `npm test`, `vue-tsc`, e2e,
+`wails generate module`; перед релизом выполнить на машине с сетью.
+
+### Закрыто по просьбам к Dev 1
+- **Dev 3, allowlist.** Добавлены виды матрицы readiness (`internal/opsplatform/allowlist.go`); страж
+  `internal/app/allowlist_matrix_test.go` падает, если вид матрицы не в allowlist и не в списке «виртуальных» (Review, Scale и т.п.).
+  Secret по-прежнему запрещён дважды.
+- **Dev 3, `beginOp` без подключения.** Аддитивное поле `OpRequest.StoredOnly`: без `Env.Clients`, `Op.Reader == nil`, права и
+  принадлежность кластера проверяются как обычно; существование кластера проверяет окружение (`ClusterKnown`, десктоп —
+  `LoadClusterMeta`). Переведены History/Get/Compare/Export readiness.
+
+### Решения по допущениям
+- **Dev 2, п. 1 (права).** Решение остаётся за ADR-0024/ревьюером; платформа ничего не добавляла и права не расширяла.
+  Рекомендация: фрагменты инцидента — `diagnostics.logs`, настройки — `users.manage`, как в срезе.
+- **Dev 4, п. 4 (ключ предпросмотра в HA).** Не менял конфигурацию. Рекомендация: вывести ключ из `KUBRON_SECRET_KEY`
+  (HKDF с меткой `baseline-preview`); до этого повтор предпросмотра при смене реплики — известное ограничение.
+- **Dev 4, п. 5 (формат `detail` у `ApplyYAML`).** Формат не менялся; платформа его не трогает. Зафиксировать тестом на стороне drift.
+
+### Расхождения между срезами (для ревью)
+1. Имена действий аудита: `IncidentOpen`/`BaselineCreate`/`DriftCheck` (CamelCase) против `readiness.run`/`readiness.export`.
+   Не унифицировано: переименование ломает уже записанный аудит и переводы `audit.json`.
+2. `maintenanceJobs` у Dev 2 принимает variadic `extra ...*jobs.Job`; Dev 3/4 добавляют задачи retention в `jobs.go` напрямую.
+3. NOTES: Dev 3 — отдельный файл `NOTES-dev3.md`, Dev 2 — `NOTES-dev2.md`, Dev 4 — внутри `patches/`.
+4. Меню: readiness и baseline — в группе «Конфигурация/Config»; инциденты — по решению Dev 2.
+5. Китайские тексты (`cn`) всех срезов написаны без носителя языка.
+6. Источники чтения: baseline (Dev 4) и readiness (Dev 3) идут через адаптер `Reader` платформы; домены платформу не импортируют.
