@@ -65,6 +65,7 @@ export default defineConfig({
           { text: 'Features', link: '/features/' },
           { text: 'Web version', link: '/server/' },
           { text: 'Development', link: '/development/' },
+          { text: 'Sponsors', link: '/sponsors' },
           { text: 'Download', link: releases }
         ],
         sidebar: {
@@ -132,6 +133,7 @@ export default defineConfig({
           { text: 'Возможности', link: '/ru/features/' },
           { text: 'Web-версия', link: '/ru/server/' },
           { text: 'Разработка', link: '/ru/development/' },
+          { text: 'Поддержать', link: '/ru/sponsors' },
           { text: 'Скачать', link: releases }
         ],
         sidebar: {

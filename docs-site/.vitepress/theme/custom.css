@@ -189,3 +189,47 @@
   font-size: 22px;
   cursor: pointer;
 }
+
+
+/* Kubron sponsor and crypto contribution pages */
+.sponsors-page { max-width: 1040px; margin: 0 auto; }
+.sponsors-hero { margin: 28px 0 34px; padding: clamp(28px, 6vw, 64px); border: 1px solid rgba(56,189,248,.22); border-radius: 22px; background: radial-gradient(ellipse at 85% 8%, rgba(14,165,233,.16), transparent 42%), linear-gradient(135deg, #101b2c, #0d1422 66%); }
+.sponsors-eyebrow { color: #38bdf8; font-size: 11px; font-weight: 800; letter-spacing: .16em; }
+.sponsors-hero h1 { max-width: 760px; margin: 18px 0 16px; color: #f8fafc; font-size: clamp(34px, 5.4vw, 58px); line-height: 1.08; letter-spacing: -.045em; }
+.sponsors-lead { max-width: 700px; margin: 0; color: #cbd5e1; font-size: clamp(16px, 2vw, 19px); line-height: 1.7; }
+.sponsors-principles { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; margin: 0 0 42px; }
+.sponsors-principles div { display: flex; flex-direction: column; gap: 6px; padding: 18px; border: 1px solid var(--vp-c-divider); border-radius: 12px; background: var(--vp-c-bg-soft); }
+.sponsors-principles strong { color: var(--vp-c-text-1); font-size: 14px; }
+.sponsors-principles span { color: var(--vp-c-text-2); font-size: 12px; line-height: 1.6; }
+.contribution-amounts { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 10px; margin: 22px 0 36px; }
+.contribution-amount { padding: 16px 10px; border: 1px solid var(--vp-c-divider); border-radius: 12px; background: var(--vp-c-bg-soft); text-align: center; }
+.contribution-amount strong { display: block; color: var(--vp-c-text-1); font-size: 22px; }
+.contribution-amount span { color: var(--vp-c-text-3); font-size: 11px; }
+.donations-panel { display: grid; gap: 22px; margin: 24px 0 48px; }
+.donations-section { min-width: 0; padding: 22px; border: 1px solid var(--vp-c-divider); border-radius: 14px; background: var(--vp-c-bg-soft); }
+.donations-section h3 { margin: 0 0 8px; color: var(--vp-c-text-1); font-size: 18px; }
+.donations-muted { color: var(--vp-c-text-2); font-size: 13px; line-height: 1.65; }
+.donations-empty { padding: 22px; border: 1px dashed var(--vp-c-divider); border-radius: 10px; color: var(--vp-c-text-2); text-align: center; font-size: 13px; }
+.donations-wallets { display: grid; gap: 12px; margin-top: 18px; }
+.donations-wallet { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 12px; align-items: center; padding: 14px; border: 1px solid var(--vp-c-divider); border-radius: 10px; }
+.donations-wallet strong { color: var(--vp-c-text-1); }
+.donations-wallet code { display: block; overflow-wrap: anywhere; margin-top: 5px; color: var(--vp-c-text-2); font-size: 12px; }
+.donations-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.donations-actions button, .donations-actions a { display: inline-flex; align-items: center; justify-content: center; min-height: 36px; padding: 0 12px; border: 1px solid var(--vp-c-divider); border-radius: 8px; color: var(--vp-c-text-1); background: var(--vp-c-bg); font: inherit; font-size: 12px; text-decoration: none; cursor: pointer; }
+.donations-actions button:hover, .donations-actions a:hover { border-color: var(--vp-c-brand-1); }
+.donations-filter { min-height: 36px; padding: 0 10px; border: 1px solid var(--vp-c-divider); border-radius: 8px; color: var(--vp-c-text-1); background: var(--vp-c-bg); }
+.donations-ledger-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px; }
+.donations-table-wrap { overflow-x: auto; }
+.donations-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.donations-table th, .donations-table td { padding: 11px 10px; border-bottom: 1px solid var(--vp-c-divider); text-align: left; white-space: nowrap; }
+.donations-table th { color: var(--vp-c-text-3); font-weight: 650; }
+.donations-table td { color: var(--vp-c-text-2); }
+.donations-table a { color: var(--vp-c-brand-1); text-decoration: none; }
+.donations-table a:hover { text-decoration: underline; }
+.donations-status { color: var(--vp-c-text-3); font-size: 12px; }
+@media (max-width: 720px) {
+  .sponsors-principles { grid-template-columns: 1fr; }
+  .contribution-amounts { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .donations-wallet { grid-template-columns: 1fr; }
+  .donations-section { padding: 16px; }
+}
