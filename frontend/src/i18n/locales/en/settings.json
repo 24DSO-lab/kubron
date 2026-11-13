@@ -11,6 +11,13 @@
     "title": "Language",
     "description": "Interface language. The choice is remembered on this device."
   },
+  "theme": {
+    "title": "Theme",
+    "description": "Interface color scheme. The choice is remembered on this device.",
+    "dark": "Dark",
+    "light": "Light",
+    "system": "System"
+  },
   "metrics": {
     "title": "Metrics stack",
     "installHint": "Install the Kubron metrics stack to enable cluster monitoring with CPU, memory and network charts. It creates the {namespace} namespace.",
