@@ -283,7 +283,7 @@ func TestRedactAdversarialInputIsFast(t *testing.T) {
 			t.Parallel()
 			start := time.Now()
 			_, err := Redact(in)
-			if d := time.Since(start); d > 10*time.Second {
+			if d := time.Since(start); d > adversarialBudget {
 				t.Fatalf("took %v", d)
 			}
 			if err != nil && !errors.Is(err, ErrRedaction) {

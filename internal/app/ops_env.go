@@ -9,6 +9,7 @@ import (
 
 	"github.com/24DSO-lab/kubron/internal/audit"
 	"github.com/24DSO-lab/kubron/internal/auth"
+	"github.com/24DSO-lab/kubron/internal/k8s"
 	"github.com/24DSO-lab/kubron/internal/opsplatform"
 )
 
@@ -61,6 +62,10 @@ func (e opsEnv) Clients(_ context.Context, clusterID string) (opsplatform.Client
 	e.a.bindAuthSession()
 	conn, err := e.a.k8sMgr.ConnectionFor(clusterID)
 	if err != nil {
+		if errors.Is(err, k8s.ErrClusterUnknown) {
+			// Несуществующий кластер — тот же ответ, что и для чужого (404), а не «недоступен» (500).
+			return opsplatform.Clients{}, auth.ErrClusterNotFound
+		}
 		return opsplatform.Clients{}, err
 	}
 	// Интерфейсы заполняются только при наличии клиента: nil-указатель в интерфейсе не должен выглядеть живым.

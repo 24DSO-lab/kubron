@@ -89,7 +89,7 @@ func TestRelevantSkipsWhatIsAlreadyGone(t *testing.T) {
 	// Кластер 1.30 → цель 1.37: CronJob v1beta1 удалён в 1.25 и обновлению уже не мешает.
 	var kinds []string
 	for e := range m.Relevant(v(1, 30), v(1, 37)) {
-		kinds = append(kinds, e.GVK.String())
+		kinds = append(kinds, e.String())
 		if !e.Removed.IsZero() && e.Removed.Compare(v(1, 30)) <= 0 {
 			t.Errorf("%s was removed at %v, before the current version", e.GVK, e.Removed)
 		}
@@ -107,7 +107,7 @@ func TestRelevantSkipsWhatIsAlreadyGone(t *testing.T) {
 	// Для кластера 1.20 CronJob v1beta1 ещё обслуживается, и миграция ему нужна.
 	found := false
 	for e := range m.Relevant(v(1, 20), v(1, 25)) {
-		if e.GVK.Kind == "CronJob" && e.GVK.Version == "v1beta1" {
+		if e.Kind == "CronJob" && e.Version == "v1beta1" {
 			found = true
 		}
 	}

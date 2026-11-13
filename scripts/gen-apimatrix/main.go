@@ -130,7 +130,9 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(out, "target window: %v\n", window)
+	if _, err := fmt.Fprintf(out, "target window: %v\n", window); err != nil {
+		return err
+	}
 
 	var tags []string
 	for m := sinceV; !latestV.Less(m); m.Minor++ {
@@ -180,8 +182,8 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		if curM.Version != version {
 			return fmt.Errorf("the committed matrix %s differs from upstream %s: run go run ./scripts/gen-apimatrix", curM.Version, version)
 		}
-		fmt.Fprintf(out, "matrix %s is up to date\n", version)
-		return nil
+		_, err = fmt.Fprintf(out, "matrix %s is up to date\n", version)
+		return err
 	}
 	if err := os.MkdirAll(filepath.Dir(*outPath), 0o755); err != nil {
 		return err
@@ -189,8 +191,8 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 	if err := os.WriteFile(*outPath, data, 0o644); err != nil {
 		return err
 	}
-	fmt.Fprintf(out, "wrote %s: %d entries, version %s\n", *outPath, len(entries), version)
-	return nil
+	_, err = fmt.Fprintf(out, "wrote %s: %d entries, version %s\n", *outPath, len(entries), version)
+	return err
 }
 
 // fetcher скачивает файлы из raw.githubusercontent.com с повторами и необязательным кэшем на диске.
