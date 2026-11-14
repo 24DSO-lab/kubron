@@ -102,8 +102,8 @@ async function handleScale() {
 }
 
 .scale-dialog {
-  background: #1e1f35;
-  border: 1px solid #3b3d5c;
+  background: var(--panel-raised);
+  border: 1px solid var(--line-strong);
   border-radius: 8px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
   width: 90%;
@@ -115,19 +115,19 @@ async function handleScale() {
 
 .dialog-header {
   padding: 16px;
-  border-bottom: 1px solid #3b3d5c;
-  background: #0f1017;
+  border-bottom: 1px solid var(--line-strong);
+  background: var(--panel-deep);
 }
 
 .dialog-header h3 {
   margin: 0;
-  color: white;
+  color: var(--text-strong);
   font-size: 1rem;
   font-weight: 600;
 }
 
 .resource-name {
-  color: #60a5fa;
+  color: var(--blue);
   font-family: 'JetBrains Mono', 'Fira Code', monospace;
 }
 
@@ -152,13 +152,13 @@ async function handleScale() {
 }
 
 .info-label {
-  color: #9ca0b8;
+  color: var(--text-soft);
   font-size: 0.9rem;
   font-weight: 500;
 }
 
 .info-value {
-  color: #60a5fa;
+  color: var(--blue);
   font-size: 1rem;
   font-weight: 600;
   font-family: 'JetBrains Mono', 'Fira Code', monospace;
@@ -176,10 +176,10 @@ async function handleScale() {
   border-radius: 3px;
   background: linear-gradient(
     to right,
-    #3b82f6 0%,
-    #3b82f6 calc(var(--value, 0) * 100%),
-    #3b3d5c calc(var(--value, 0) * 100%),
-    #3b3d5c 100%
+    var(--blue-strong) 0%,
+    var(--blue-strong) calc(var(--value, 0) * 100%),
+    var(--line-strong) calc(var(--value, 0) * 100%),
+    var(--line-strong) 100%
   );
   outline: none;
   -webkit-appearance: none;
@@ -193,7 +193,7 @@ async function handleScale() {
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: #3b82f6;
+  background: var(--blue-strong);
   cursor: pointer;
   box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
   transition: all 0.15s;
@@ -208,7 +208,7 @@ async function handleScale() {
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: #3b82f6;
+  background: var(--blue-strong);
   border: none;
   cursor: pointer;
   box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
@@ -230,9 +230,9 @@ async function handleScale() {
   width: 32px;
   height: 32px;
   border-radius: 4px;
-  border: 1px solid #3b3d5c;
-  background: #1a1b2e;
-  color: #9ca0b8;
+  border: 1px solid var(--line-strong);
+  background: var(--panel);
+  color: var(--text-soft);
   font-size: 1rem;
   cursor: pointer;
   transition: all 0.15s;
@@ -244,8 +244,8 @@ async function handleScale() {
 
 .slider-btn:hover {
   background: rgba(59, 130, 246, 0.1);
-  border-color: #3b82f6;
-  color: #3b82f6;
+  border-color: var(--blue-strong);
+  color: var(--blue-strong);
 }
 
 .minus-btn {
@@ -262,8 +262,8 @@ async function handleScale() {
   justify-content: space-between;
   gap: 12px;
   padding: 12px 16px;
-  border-top: 1px solid #3b3d5c;
-  background: #0f1017;
+  border-top: 1px solid var(--line-strong);
+  background: var(--panel-deep);
 }
 
 .btn {
@@ -279,24 +279,24 @@ async function handleScale() {
 
 .btn-cancel {
   background: transparent;
-  border: 1px solid #3b3d5c;
-  color: #9ca0b8;
+  border: 1px solid var(--line-strong);
+  color: var(--text-soft);
 }
 
 .btn-cancel:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(var(--tint-rgb), 0.05);
   border-color: #5a5c7a;
-  color: #d4d4d4;
+  color: var(--text-code);
 }
 
 .btn-scale {
-  background: #3b82f6;
+  background: var(--blue-strong);
   color: white;
   margin-left: auto;
 }
 
 .btn-scale:hover:not(:disabled) {
-  background: #2563eb;
+  background: var(--blue-deep);
 }
 
 .btn-scale:disabled {

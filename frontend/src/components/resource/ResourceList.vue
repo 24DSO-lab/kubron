@@ -142,7 +142,7 @@ function onAction(action: string, item: any, container?: string) {
 </script>
 
 <style scoped>
-.loading { padding: 24px; color: #868d8a; }
+.loading { padding: 24px; color: var(--text-gray); }
 :deep(.resource-name) { font-weight: 500; }
-:deep(.ns-label) { color: #868d8a; }
+:deep(.ns-label) { color: var(--text-gray); }
 </style>

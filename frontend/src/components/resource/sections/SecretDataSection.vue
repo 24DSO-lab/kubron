@@ -172,22 +172,22 @@ async function saveKey(key: string) {
   gap: 12px;
 }
 .sec-item {
-  border: 1px solid #2a2b40;
+  border: 1px solid var(--line);
   border-radius: 4px;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(var(--tint-rgb), 0.02);
 }
 .sec-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 8px 12px;
-  background: #1a1b2e;
-  border-bottom: 1px solid #2a2b40;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
 }
 .sec-key {
   font-weight: 600;
-  color: #60a5fa;
+  color: var(--blue);
   font-size: 0.85rem;
 }
 .sec-actions {
@@ -202,15 +202,15 @@ async function saveKey(key: string) {
   height: 28px;
   padding: 0;
   background: transparent;
-  border: 1px solid #3b3d5c;
+  border: 1px solid var(--line-strong);
   border-radius: 4px;
-  color: #9ca0b8;
+  color: var(--text-soft);
   cursor: pointer;
   transition: all 0.15s;
 }
 .sec-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
+  background: rgba(var(--tint-rgb), 0.1);
+  color: var(--text-strong);
 }
 .sec-body {
   padding: 12px;
@@ -219,20 +219,20 @@ async function saveKey(key: string) {
   width: 100%;
   min-height: 80px;
   padding: 8px;
-  background: #1a1b26;
-  border: 1px solid #2a2b40;
+  background: var(--panel-alt);
+  border: 1px solid var(--line);
   border-radius: 4px;
-  color: #d4d4d4;
+  color: var(--text-code);
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
   font-size: 0.8rem;
   resize: vertical;
   outline: none;
 }
 .sec-editor:focus {
-  border-color: #3b82f6;
+  border-color: var(--blue-strong);
 }
 .sec-mask {
-  color: #6b6d8a;
+  color: var(--text-dim);
   font-size: 0.8rem;
 }
 .sec-footer {
@@ -240,11 +240,11 @@ async function saveKey(key: string) {
   align-items: center;
   justify-content: space-between;
   padding: 8px 12px;
-  background: #1a1b2e;
-  border-top: 1px solid #2a2b40;
+  background: var(--panel);
+  border-top: 1px solid var(--line);
 }
 .sec-mode {
-  color: #9ca0b8;
+  color: var(--text-soft);
   font-size: 0.75rem;
   font-style: italic;
 }
@@ -253,14 +253,14 @@ async function saveKey(key: string) {
   font-size: 0.8rem;
   font-weight: 500;
   color: #fff;
-  background: #3b82f6;
+  background: var(--blue-strong);
   border: none;
   border-radius: 4px;
   cursor: pointer;
   transition: background 0.15s;
 }
 .sec-save:hover:not(:disabled) {
-  background: #2563eb;
+  background: var(--blue-deep);
 }
 .sec-save:disabled {
   opacity: 0.5;
@@ -269,6 +269,6 @@ async function saveKey(key: string) {
 .sec-empty {
   padding: 20px;
   text-align: center;
-  color: #6b6d8a;
+  color: var(--text-dim);
 }
 </style>

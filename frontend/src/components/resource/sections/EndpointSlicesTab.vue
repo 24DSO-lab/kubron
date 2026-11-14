@@ -117,7 +117,7 @@ async function remove(item: any) {
 
 <style scoped>
 .es-tab { padding: 12px 16px; }
-.es-empty { color: #868d8a; font-size: 0.875rem; padding: 16px 0; }
+.es-empty { color: var(--text-gray); font-size: 0.875rem; padding: 16px 0; }
 
 .es-table {
   width: 100%;
@@ -128,12 +128,12 @@ async function remove(item: any) {
 .es-table th {
   text-align: left;
   padding: 8px 12px;
-  color: #9ca0b8;
+  color: var(--text-soft);
   font-weight: 500;
   font-size: 0.8rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  border-bottom: 1px solid #2a2b40;
+  border-bottom: 1px solid var(--line);
 }
 
 .es-table td {
@@ -144,26 +144,26 @@ async function remove(item: any) {
 }
 
 .es-row:hover td {
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(var(--tint-rgb), 0.02);
 }
 
 .es-name-cell {
   font-weight: 500;
-  color: #d4d4d4;
+  color: var(--text-code);
 }
 
 .btn-icon {
   background: transparent;
   border: none;
-  color: #d4d4d4;
+  color: var(--text-code);
   cursor: pointer;
   padding: 4px 8px;
   border-radius: 4px;
   transition: background 0.15s;
 }
 .btn-icon:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
+  background: rgba(var(--tint-rgb), 0.1);
+  color: var(--text-strong);
 }
 
 .menu-overlay {

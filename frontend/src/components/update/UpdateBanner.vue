@@ -21,13 +21,13 @@ const { info, bannerVisible, openDialog, dismissBanner } = useUpdates()
 .update-banner {
   display: flex; align-items: center; gap: 12px; padding: 6px 16px;
   background: rgba(166, 227, 161, 0.12); border-bottom: 1px solid rgba(166, 227, 161, 0.35);
-  color: #cdd6f4; font-size: 13px;
+  color: var(--text); font-size: 13px;
 }
 .update-banner-text { flex: 1; text-align: left; }
 .update-banner-btn {
-  background: #a6e3a1; color: #1e1e2e; border: none; border-radius: 6px;
+  background: var(--ok); color: var(--bg); border: none; border-radius: 6px;
   padding: 4px 12px; font-size: 12px; font-weight: 600; cursor: pointer;
 }
-.update-banner-close { background: none; border: none; color: #a6adc8; cursor: pointer; font-size: 14px; }
-.update-banner-close:hover { color: #cdd6f4; }
+.update-banner-close { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 14px; }
+.update-banner-close:hover { color: var(--text); }
 </style>

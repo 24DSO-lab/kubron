@@ -29,9 +29,12 @@ import type { TerminalTab } from '../../composables/useTabbedPanel'
 import { callApp } from '../../platform/api'
 import { openTerminal, type TerminalHandle } from '../../platform/terminal'
 import { ReopenPolicy } from '../../platform/reopen'
+import { useTheme } from '../../composables/useTheme'
+import { terminalPalette } from '../../composables/themePalettes'
 
 const props = defineProps<{ tab: TerminalTab; active: boolean }>()
 const { t } = useI18n()
+const { resolved: appTheme } = useTheme()
 
 const DEFAULT_COLS = 80
 const DEFAULT_ROWS = 24
@@ -113,6 +116,9 @@ function disposeSession() {
   try { s.terminal.dispose() } catch { /* уже освобождён */ }
 }
 
+// Смена темы приложения перекрашивает уже открытый терминал
+watch(appTheme, t => { if (session) session.terminal.options.theme = terminalPalette(t) })
+
 async function initTerminal() {
   const container = termEl.value
   if (!container) return
@@ -128,7 +134,7 @@ async function initTerminal() {
       fontFamily: 'Monaco, Menlo, "Courier New", monospace',
       fontSize: 13,
       lineHeight: 1.2,
-      theme: { background: '#1e1e1e', foreground: '#d4d4d4', cursor: '#00ff00', cursorAccent: '#00ff00' },
+      theme: terminalPalette(appTheme.value),
       cursorBlink: true,
       disableStdin: false,
       cols: DEFAULT_COLS,
@@ -251,8 +257,8 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   align-items: center;
   padding: 10px 16px;
-  border-bottom: 1px solid #3b3d5c;
-  background: #252526;
+  border-bottom: 1px solid var(--line-strong);
+  background: var(--term-chrome);
 }
 
 .terminal-title {
@@ -260,7 +266,7 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 8px;
   font-size: 14px;
-  color: #d4d4d4;
+  color: var(--text-code);
 }
 
 .terminal-controls {
@@ -270,9 +276,9 @@ onBeforeUnmount(() => {
 }
 
 .container-select {
-  background: #1a1b26;
-  border: 1px solid #3b3d5c;
-  color: #d4d4d4;
+  background: var(--panel-alt);
+  border: 1px solid var(--line-strong);
+  color: var(--text-code);
   padding: 4px 8px;
   border-radius: 3px;
   font-size: 12px;
@@ -290,7 +296,7 @@ onBeforeUnmount(() => {
   padding: 0;
   margin: 0;
   position: relative;
-  background: #1e1e1e;
+  background: var(--term-bg);
   padding-left: 8px !important;
 }
 
@@ -353,16 +359,16 @@ onBeforeUnmount(() => {
 }
 
 :deep(.xterm-viewport::-webkit-scrollbar-track) {
-  background: #1e1e1e !important;
+  background: var(--term-bg) !important;
 }
 
 :deep(.xterm-viewport::-webkit-scrollbar-thumb) {
-  background: #444 !important;
+  background: var(--term-scroll) !important;
   border-radius: 5px !important;
 }
 
 :deep(.xterm-viewport::-webkit-scrollbar-thumb:hover) {
-  background: #555 !important;
+  background: var(--term-scroll-hover) !important;
 }
 
 .btn {

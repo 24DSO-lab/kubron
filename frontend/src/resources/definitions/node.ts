@@ -19,8 +19,8 @@ import { hasCapability } from '../../composables/useCapabilities'
 
 /** Цвет Conditions: зелёный — Ready без проблем, жёлтый — Ready с pressure, красный — NotReady */
 const conditionsColor = (n: any): string => {
-  if (n.status !== 'Ready') return '#ef4444'
-  return n.conditions === 'Ready' ? '#4ade80' : '#facc15'
+  if (n.status !== 'Ready') return 'var(--red)'
+  return n.conditions === 'Ready' ? 'var(--green)' : 'var(--yellow)'
 }
 
 export const node = defineResource<k8s.NodeInfo, k8s.NodeDetail>({

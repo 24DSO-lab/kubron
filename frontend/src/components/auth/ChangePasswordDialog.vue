@@ -34,9 +34,9 @@ function onDone() {
   background: rgba(0, 0, 0, 0.55);
 }
 .cp-dialog {
-  width: 100%; max-width: 380px; padding: 24px; background: #181825;
-  border: 1px solid #313244; border-radius: 14px; box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+  width: 100%; max-width: 380px; padding: 24px; background: var(--bg-sunken);
+  border: 1px solid var(--surface-0); border-radius: 14px; box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
 }
-h3 { margin: 0 0 16px; color: #89b4fa; font-size: 17px; text-align: left; }
+h3 { margin: 0 0 16px; color: var(--accent); font-size: 17px; text-align: left; }
 </style>
 

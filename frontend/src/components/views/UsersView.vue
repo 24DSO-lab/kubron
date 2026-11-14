@@ -367,40 +367,40 @@ onMounted(load)
 <style scoped>
 .users-view { padding: 24px; text-align: left; max-width: 1100px; }
 .users-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
-.users-head h2 { margin: 0; font-size: 22px; color: #89b4fa; }
-.users-sub { margin: 4px 0 0; color: #a6adc8; font-size: 13px; }
+.users-head h2 { margin: 0; font-size: 22px; color: var(--accent); }
+.users-sub { margin: 4px 0 0; color: var(--text-muted); font-size: 13px; }
 
 .roles-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin-bottom: 24px; }
-.role-card { background: #181825; border: 1px solid #313244; border-radius: 10px; padding: 12px 16px; }
-.role-card h4 { margin: 0 0 8px; color: #cdd6f4; font-size: 14px; }
-.role-card ul { margin: 0; padding-left: 18px; color: #a6adc8; font-size: 12px; line-height: 1.7; }
+.role-card { background: var(--bg-sunken); border: 1px solid var(--surface-0); border-radius: 10px; padding: 12px 16px; }
+.role-card h4 { margin: 0 0 8px; color: var(--text); font-size: 14px; }
+.role-card ul { margin: 0; padding-left: 18px; color: var(--text-muted); font-size: 12px; line-height: 1.7; }
 
 .sec-card {
   display: flex; align-items: center; justify-content: space-between; gap: 24px; margin-bottom: 24px;
-  background: #181825; border: 1px solid #313244; border-radius: 10px; padding: 14px 16px;
+  background: var(--bg-sunken); border: 1px solid var(--surface-0); border-radius: 10px; padding: 14px 16px;
 }
-.sec-card h4 { margin: 0 0 4px; color: #cdd6f4; font-size: 14px; }
-.sec-card p { margin: 0; color: #a6adc8; font-size: 12px; line-height: 1.5; max-width: 620px; }
+.sec-card h4 { margin: 0 0 4px; color: var(--text); font-size: 14px; }
+.sec-card p { margin: 0; color: var(--text-muted); font-size: 12px; line-height: 1.5; max-width: 620px; }
 .idle-select { width: auto; min-width: 150px; padding: 6px 8px; flex-shrink: 0; }
 .web-oidc-form { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; flex-shrink: 0; max-width: 560px; }
 .web-oidc-form .form-input { width: min(260px, 100%); }
 .web-oidc-hint { flex-basis: 100%; margin: 0; text-align: right; }
 
 .users-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-.users-table th { text-align: left; padding: 8px 12px; color: #a6adc8; font-weight: 600; border-bottom: 1px solid #313244; }
+.users-table th { text-align: left; padding: 8px 12px; color: var(--text-muted); font-weight: 600; border-bottom: 1px solid var(--surface-0); }
 .users-table td { padding: 10px 12px; border-bottom: 1px solid #232334; vertical-align: middle; }
 .users-table tr.disabled td { opacity: 0.55; }
 .col-actions { text-align: right; white-space: nowrap; }
 .col-actions .btn { margin-left: 6px; }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
-.muted { color: #6c7086; }
+.muted { color: var(--text-subtle); }
 .role-select { width: auto; min-width: 150px; padding: 6px 8px; }
 
 .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
-.badge-you { margin-left: 8px; background: rgba(137, 180, 250, 0.15); color: #89b4fa; }
-.badge-ok { background: rgba(166, 227, 161, 0.15); color: #a6e3a1; }
-.badge-off { background: rgba(243, 139, 168, 0.15); color: #f38ba8; }
-.badge-warn { background: rgba(249, 226, 175, 0.15); color: #f9e2af; }
+.badge-you { margin-left: 8px; background: rgba(var(--accent-rgb), 0.15); color: var(--accent); }
+.badge-ok { background: rgba(166, 227, 161, 0.15); color: var(--ok); }
+.badge-off { background: rgba(var(--danger-rgb), 0.15); color: var(--danger); }
+.badge-warn { background: rgba(249, 226, 175, 0.15); color: var(--warn); }
 
 .dlg-overlay {
   position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center;
@@ -408,7 +408,7 @@ onMounted(load)
 }
 .dlg {
   width: 100%; max-width: 400px; padding: 24px; display: flex; flex-direction: column; gap: 14px;
-  background: #181825; border: 1px solid #313244; border-radius: 14px; box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+  background: var(--bg-sunken); border: 1px solid var(--surface-0); border-radius: 14px; box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
 }
-.dlg h3 { margin: 0; color: #89b4fa; font-size: 17px; }
+.dlg h3 { margin: 0; color: var(--accent); font-size: 17px; }
 </style>

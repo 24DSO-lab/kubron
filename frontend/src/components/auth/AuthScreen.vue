@@ -165,25 +165,30 @@ async function run(fn: () => Promise<void>) {
   justify-content: center;
   padding: 24px;
   background:
-    radial-gradient(900px 500px at 15% -10%, rgba(137, 180, 250, 0.14), transparent 60%),
+    radial-gradient(900px 500px at 15% -10%, rgba(var(--accent-rgb), 0.14), transparent 60%),
     radial-gradient(700px 420px at 100% 110%, rgba(203, 166, 247, 0.10), transparent 60%),
-    #11111b;
+    var(--bg-crust);
   overflow: auto;
 }
 .auth-card {
   width: 100%;
   max-width: 400px;
   padding: 32px 32px 28px;
-  background: #181825;
-  border: 1px solid #313244;
+  background: var(--bg-sunken);
+  border: 1px solid var(--surface-0);
   border-radius: 16px;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
   text-align: center;
 }
 .auth-lang { position: absolute; top: 16px; right: 16px; }
-.auth-logo { height: 36px; margin-bottom: 18px; }
-h1 { margin: 0 0 8px; font-size: 20px; font-weight: 700; color: #cdd6f4; }
-.auth-hint { margin: 0 0 18px; font-size: 13px; line-height: 1.5; color: #a6adc8; }
-.auth-hint code { background: #11111b; padding: 1px 5px; border-radius: 4px; color: #cdd6f4; }
+.auth-logo {
+  height: 23px; margin: 5px 0 25px;
+  box-sizing: content-box;
+  border-radius: 9px; background: var(--logo-plate);
+}
+:root[data-theme='light'] .auth-logo { padding: 4px 8px; margin: 1px 0 21px; }
+h1 { margin: 0 0 8px; font-size: 20px; font-weight: 700; color: var(--text); }
+.auth-hint { margin: 0 0 18px; font-size: 13px; line-height: 1.5; color: var(--text-muted); }
+.auth-hint code { background: var(--bg-crust); padding: 1px 5px; border-radius: 4px; color: var(--text); }
 .auth-card > .auth-error { text-align: left; margin-bottom: 14px; }
 </style>

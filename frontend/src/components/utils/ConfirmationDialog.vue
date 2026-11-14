@@ -83,8 +83,8 @@ function handleOverlayClick() {
 }
 
 .dialog {
-  background: #1e1f35;
-  border: 1px solid #3b3d5c;
+  background: var(--panel-raised);
+  border: 1px solid var(--line-strong);
   border-radius: 4px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
   min-width: 400px;
@@ -104,7 +104,7 @@ function handleOverlayClick() {
 .resource-name {
   font-family: 'Monaco', 'Menlo', monospace;
   font-size: 12px;
-  color: #60a5fa;
+  color: var(--blue);
   word-break: break-all;
   margin: 0;
 }
@@ -117,7 +117,7 @@ function handleOverlayClick() {
   overflow-y: auto;
   font-family: 'Monaco', 'Menlo', monospace;
   font-size: 12px;
-  color: #60a5fa;
+  color: var(--blue);
 }
 
 .item-list li {
@@ -141,8 +141,8 @@ function handleOverlayClick() {
 }
 
 .btn-cancel {
-  background: #3b3d5c;
-  color: #d4d4d4;
+  background: var(--line-strong);
+  color: var(--text-code);
 }
 
 .btn-cancel:hover {
@@ -166,7 +166,7 @@ function handleOverlayClick() {
 .spinner {
   width: 12px;
   height: 12px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
+  border: 2px solid rgba(var(--tint-rgb), 0.3);
   border-top-color: white;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;

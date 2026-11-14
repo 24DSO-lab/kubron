@@ -7,6 +7,7 @@
 <script lang="ts" setup>
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import 'monaco-editor'
+import { useMonacoTheme } from '../../composables/useMonacoTheme'
 import * as monaco from 'monaco-editor/editor/editor.api'
 import editorWorker from 'monaco-editor/editor/editor.worker?worker'
 
@@ -16,6 +17,7 @@ if (typeof window !== 'undefined' && !(window as any).MonacoEnvironment) {
 
 const CODICON_STYLE_ID = 'kubron-codicon-font'
 
+const monacoTheme = useMonacoTheme(n => monaco.editor.setTheme(n))
 const props = defineProps<{ modelValue: string; language?: string; readonly?: boolean }>()
 const emit = defineEmits<{ (e: 'update:modelValue', v: string): void }>()
 
@@ -33,7 +35,7 @@ onMounted(() => {
   editor = monaco.editor.create(el.value!, {
     value: props.modelValue,
     language: props.language ?? 'yaml',
-    theme: 'vs-dark',
+    theme: monacoTheme(),
     readOnly: !!props.readonly,
     automaticLayout: true,
     minimap: { enabled: false },
@@ -57,7 +59,7 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.me { width: 100%; height: 100%; min-height: 200px; border: 1px solid #2a2b40; border-radius: 4px; overflow: hidden; text-align: left; }
+.me { width: 100%; height: 100%; min-height: 200px; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; text-align: left; }
 .me :deep(.monaco-editor),
-.me :deep(.monaco-editor .margin) { background-color: #1a1b26 !important; }
+.me :deep(.monaco-editor .margin) { background-color: var(--panel-alt) !important; }
 </style>

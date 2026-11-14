@@ -11,6 +11,13 @@
     "title": "语言",
     "description": "界面语言。此选择将在本设备上记住。"
   },
+  "theme": {
+    "title": "主题",
+    "description": "界面配色方案。所选项会记在此设备上。",
+    "dark": "深色",
+    "light": "浅色",
+    "system": "跟随系统"
+  },
   "metrics": {
     "title": "指标组件",
     "installHint": "安装 Kubron 指标组件以启用集群监控（CPU、内存和网络图表）。将创建 {namespace} 命名空间。",

@@ -126,12 +126,12 @@ onBeforeUnmount(() => {
   background: rgba(0, 0, 0, 0.65);
 }
 .idle-dialog {
-  width: 100%; max-width: 400px; padding: 24px; background: #181825;
-  border: 1px solid #313244; border-radius: 14px; box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5); text-align: left;
+  width: 100%; max-width: 400px; padding: 24px; background: var(--bg-sunken);
+  border: 1px solid var(--surface-0); border-radius: 14px; box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5); text-align: left;
 }
-.idle-dialog h3 { margin: 0 0 10px; color: #f9e2af; font-size: 17px; }
-.idle-dialog p { margin: 0 0 18px; color: #a6adc8; font-size: 13px; line-height: 1.5; }
-.idle-dialog strong { color: #cdd6f4; }
+.idle-dialog h3 { margin: 0 0 10px; color: var(--warn); font-size: 17px; }
+.idle-dialog p { margin: 0 0 18px; color: var(--text-muted); font-size: 13px; line-height: 1.5; }
+.idle-dialog strong { color: var(--text); }
 .idle-actions { display: flex; justify-content: flex-end; align-items: center; gap: 10px; }
 </style>
 

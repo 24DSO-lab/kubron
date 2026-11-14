@@ -79,7 +79,7 @@ function formatPort(p: any): string {
 }
 
 .conn-port-main {
-  color: #60a5fa;
+  color: var(--blue);
   font-weight: 500;
   font-size: 0.875rem;
 }

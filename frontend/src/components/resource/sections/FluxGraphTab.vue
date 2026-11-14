@@ -166,30 +166,30 @@ function onNodeClick(n: PlacedFluxNode) {
 .fg-legend { margin-left: auto; display: flex; gap: 10px; font-size: 0.75rem; flex-wrap: wrap; }
 .fg-leg::before { content: ''; display: inline-block; width: 18px; height: 0; margin-right: 5px; vertical-align: middle; border-top: 2px solid; }
 .fg-sourceRef::before { border-color: #8b5cf6; }
-.fg-dependsOn::before { border-color: #fbbf24; border-top-style: dashed; }
-.fg-inventory::before { border-color: #6b6d8a; }
-.fg-owns::before { border-color: #6b6d8a; border-top-style: dotted; }
-.fg-note { padding: 6px 0; font-size: 0.8rem; color: #9ca3af; }
-.fg-note-warn { color: #facc15; }
+.fg-dependsOn::before { border-color: var(--amber); border-top-style: dashed; }
+.fg-inventory::before { border-color: var(--text-dim); }
+.fg-owns::before { border-color: var(--text-dim); border-top-style: dotted; }
+.fg-note { padding: 6px 0; font-size: 0.8rem; color: var(--gray-400); }
+.fg-note-warn { color: var(--yellow); }
 .fg-expand { margin-left: 6px; }
 .fg-scroll { overflow: auto; max-height: calc(100vh - 340px); min-height: 200px; border: 1px solid #2a2f47; border-radius: 6px; padding: 10px; background: #12141f; }
 .fg-svg { display: block; }
 
-.fg-edge { fill: none; stroke: #6b6d8a; stroke-width: 1.4; }
+.fg-edge { fill: none; stroke: var(--text-dim); stroke-width: 1.4; }
 .fg-edge-sourceRef { stroke: #8b5cf6; }
-.fg-edge-dependsOn { stroke: #fbbf24; stroke-dasharray: 5 4; }
+.fg-edge-dependsOn { stroke: var(--amber); stroke-dasharray: 5 4; }
 .fg-edge-owns, .fg-edge-selects, .fg-edge-routes { stroke-dasharray: 2 3; }
 
-.fg-node rect { fill: #1a1d2e; stroke: #3b3d5c; stroke-width: 1.4; }
-.fg-ok rect { stroke: #4ade80; }
-.fg-warn rect { stroke: #fbbf24; }
-.fg-err rect { stroke: #f87171; fill: rgba(248, 113, 113, 0.08); }
-.fg-unk rect { stroke: #6b6d8a; }
+.fg-node rect { fill: #1a1d2e; stroke: var(--line-strong); stroke-width: 1.4; }
+.fg-ok rect { stroke: var(--green); }
+.fg-warn rect { stroke: var(--amber); }
+.fg-err rect { stroke: var(--red-soft); fill: rgba(248, 113, 113, 0.08); }
+.fg-unk rect { stroke: var(--text-dim); }
 .fg-current rect { stroke-width: 2.6; }
 .fg-click { cursor: pointer; }
 .fg-click:hover rect { fill: #20243a; }
 .fg-node:focus-visible { outline: none; }
-.fg-node:focus-visible rect { stroke: #60a5fa; stroke-width: 2.6; }
+.fg-node:focus-visible rect { stroke: var(--blue); stroke-width: 2.6; }
 .fg-kind { fill: #8b91ad; font-size: 10px; text-transform: uppercase; letter-spacing: 0.03em; }
 .fg-name { fill: #e6e8f5; font-size: 12px; font-family: 'Courier New', monospace; }
 .fg-state { fill: #c4c7dc; font-size: 9px; font-weight: 600; }

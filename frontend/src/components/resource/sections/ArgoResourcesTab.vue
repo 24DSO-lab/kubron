@@ -96,9 +96,9 @@ function openRef(r: ArgoResourceRef) {
 <style scoped>
 .argo-toolbar { display: flex; align-items: center; gap: 12px; padding: 8px 0; flex-wrap: wrap; font-size: 0.85rem; }
 .argo-search {
-  flex: 1; min-width: 180px; padding: 6px 10px; background: #1a1b2e; color: #d4d4d4;
-  border: 1px solid #3b3d5c; border-radius: 4px; font: inherit;
+  flex: 1; min-width: 180px; padding: 6px 10px; background: var(--panel); color: var(--text-code);
+  border: 1px solid var(--line-strong); border-radius: 4px; font: inherit;
 }
-.argo-check { display: flex; align-items: center; gap: 6px; color: #d4d4d4; cursor: pointer; }
+.argo-check { display: flex; align-items: center; gap: 6px; color: var(--text-code); cursor: pointer; }
 .argo-more { padding: 10px 0; text-align: center; }
 </style>

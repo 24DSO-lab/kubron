@@ -59,6 +59,8 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { Line } from 'vue-chartjs'
 import { errorText } from '../../composables/errorText'
+import { useTheme } from '../../composables/useTheme'
+import { chartPalette } from '../../composables/themePalettes'
 import { formatClock, formatMonthDay } from '../../i18n/format'
 import {
   Chart as ChartJS,
@@ -148,6 +150,9 @@ const chartData = computed(() => {
   return { labels, datasets }
 })
 
+const { resolved: appTheme } = useTheme()
+const themeColors = computed(() => chartPalette(appTheme.value))
+
 const chartOptions = computed(() => ({
   responsive: true,
   maintainAspectRatio: false,
@@ -159,10 +164,10 @@ const chartOptions = computed(() => ({
   plugins: {
     legend: { display: false },
     tooltip: {
-      backgroundColor: '#1F2937',
-      titleColor: '#F9FAFB',
-      bodyColor: '#D1D5DB',
-      borderColor: '#374151',
+      backgroundColor: themeColors.value.tooltipBackground,
+      titleColor: themeColors.value.tooltipTitle,
+      bodyColor: themeColors.value.tooltipBody,
+      borderColor: themeColors.value.tooltipBorder,
       borderWidth: 1,
       padding: 8,
       callbacks: {
@@ -177,15 +182,15 @@ const chartOptions = computed(() => ({
   },
   scales: {
     x: {
-      grid: { color: '#1F2937', drawBorder: false },
-      ticks: { color: '#6B7280', maxTicksLimit: 8, font: { size: 10 }, maxRotation: 0 },
+      grid: { color: themeColors.value.grid, drawBorder: false },
+      ticks: { color: themeColors.value.tick, maxTicksLimit: 8, font: { size: 10 }, maxRotation: 0 },
     },
     y: {
       min: 0,
       max: props.maxY || undefined,
-      grid: { color: '#1F2937', drawBorder: false },
+      grid: { color: themeColors.value.grid, drawBorder: false },
       ticks: {
-        color: '#6B7280',
+        color: themeColors.value.tick,
         font: { size: 10 },
         maxTicksLimit: 5,
         callback: (value: number | string) => {

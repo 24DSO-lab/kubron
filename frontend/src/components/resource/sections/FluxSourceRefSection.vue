@@ -103,7 +103,7 @@ async function openRef(ref: FluxRef) {
 <style scoped>
 .flux-deps { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
 .flux-linkbtn {
-  background: none; border: 0; padding: 0; font: inherit; color: #60a5fa; cursor: pointer; text-decoration: underline;
+  background: none; border: 0; padding: 0; font: inherit; color: var(--blue); cursor: pointer; text-decoration: underline;
 }
-.flux-linkbtn:focus-visible { outline: 2px solid #60a5fa; outline-offset: 2px; border-radius: 2px; }
+.flux-linkbtn:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; border-radius: 2px; }
 </style>

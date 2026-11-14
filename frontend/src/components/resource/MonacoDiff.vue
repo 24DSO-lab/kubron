@@ -7,6 +7,7 @@
 <script lang="ts" setup>
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import 'monaco-editor'
+import { useMonacoTheme } from '../../composables/useMonacoTheme'
 import * as monaco from 'monaco-editor/editor/editor.api'
 import editorWorker from 'monaco-editor/editor/editor.worker?worker'
 
@@ -18,6 +19,7 @@ const CODICON_STYLE_ID = 'kubron-codicon-font'
 
 // original — левая сторона (всегда только чтение); modified — правая.
 // editable=true: правую сторону можно править, изменения уходят в update:modified.
+const monacoTheme = useMonacoTheme(n => monaco.editor.setTheme(n))
 const props = defineProps<{ original: string; modified: string; language?: string; editable?: boolean }>()
 const emit = defineEmits<{ (e: 'update:modified', v: string): void }>()
 
@@ -38,7 +40,7 @@ onMounted(() => {
   origModel = monaco.editor.createModel(props.original, lang)
   modModel = monaco.editor.createModel(props.modified, lang)
   editor = monaco.editor.createDiffEditor(el.value!, {
-    theme: 'vs-dark',
+    theme: monacoTheme(),
     automaticLayout: true,
     renderSideBySide: true,
     originalEditable: false,
@@ -66,7 +68,7 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.md { height: 55vh; min-height: 280px; border: 1px solid #2a2b40; border-radius: 4px; overflow: hidden; text-align: left; }
+.md { height: 55vh; min-height: 280px; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; text-align: left; }
 .md :deep(.monaco-editor),
-.md :deep(.monaco-editor .margin) { background-color: #1a1b26 !important; }
+.md :deep(.monaco-editor .margin) { background-color: var(--panel-alt) !important; }
 </style>

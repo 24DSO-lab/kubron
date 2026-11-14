@@ -50,23 +50,23 @@ const level = (p: number) => (p >= 100 ? 'err' : p >= 80 ? 'warn' : 'ok')
 </script>
 
 <style scoped>
-.qu-title { font-weight: 700; color: #fff; padding: 12px 0 8px; text-align: left; }
+.qu-title { font-weight: 700; color: var(--text-strong); padding: 12px 0 8px; text-align: left; }
 .qu-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .qu-chip {
-  padding: 3px 8px; background: #1a1b2e; border-radius: 3px;
-  font-family: 'Courier New', monospace; font-size: 0.8rem; color: #d4d4d4;
+  padding: 3px 8px; background: var(--panel); border-radius: 3px;
+  font-family: 'Courier New', monospace; font-size: 0.8rem; color: var(--text-code);
 }
 .qu-bar-col { width: 40%; }
 .qu-bar {
   position: relative; height: 18px; min-width: 80px; border-radius: 3px;
-  background: rgba(255, 255, 255, 0.06); overflow: hidden;
+  background: rgba(var(--tint-rgb), 0.06); overflow: hidden;
 }
 .qu-fill { position: absolute; inset: 0 auto 0 0; transition: width 0.3s ease; }
-.qu-fill.ok { background: #356546; }
-.qu-fill.warn { background: #a8860f; }
-.qu-fill.err { background: #b23b3b; }
+.qu-fill.ok { background: var(--bar-ok); }
+.qu-fill.warn { background: var(--bar-warn); }
+.qu-fill.err { background: var(--bar-err); }
 .qu-pct {
   position: relative; display: block; text-align: center; line-height: 18px;
-  font-size: 0.75rem; color: #fff; font-variant-numeric: tabular-nums;
+  font-size: 0.75rem; color: var(--text-strong); font-variant-numeric: tabular-nums;
 }
 </style>

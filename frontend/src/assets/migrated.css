@@ -5,7 +5,7 @@
 
 /* ── GaugeCard styles ── */
 .gauge-card {
-  background: linear-gradient(135deg, #1f2937, #111827);
+  background: linear-gradient(135deg, var(--gray-800), var(--input-bg));
   border-radius: 12px;
   border: 1px solid rgba(104, 117, 136, 0.5);
   padding: 20px;
@@ -20,7 +20,7 @@
 .gauge-card-title {
   font-size: 14px;
   font-weight: 600;
-  color: #d1d5db;
+  color: var(--gray-300);
 }
 .gauge-card-percent-badge {
   font-size: 12px;
@@ -28,20 +28,20 @@
   padding: 2px 8px;
   border-radius: 4px;
   background: rgba(75, 85, 99, 0.5);
-  color: #d1d5db;
+  color: var(--gray-300);
 }
 .gauge-card-bar-container {
   margin-bottom: 12px;
 }
 .gauge-card-bar-track {
   height: 8px;
-  background: #4b5563;
+  background: var(--gray-600);
   border-radius: 9999px;
   overflow: hidden;
 }
 .gauge-card-bar-fill {
   height: 100%;
-  background: linear-gradient(90deg, #3b82f6, #06b6d4);
+  background: linear-gradient(90deg, var(--blue-strong), #06b6d4);
   transition: all 0.3s;
 }
 .gauge-card-values {
@@ -52,18 +52,18 @@
 .gauge-card-value-main {
   font-size: 24px;
   font-weight: 700;
-  color: #ffffff;
+  color: var(--text-strong);
 }
 .gauge-card-value-sub {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--gray-500);
   margin-top: 2px;
 }
 /* ── MetricsChart / MultiLineChart styles ── */
 .chart-card {
-  background: #1f2937;
+  background: var(--gray-800);
   border-radius: 8px;
-  border: 1px solid #374151;
+  border: 1px solid var(--gray-700);
   padding: 16px;
 }
 .chart-card-header {
@@ -75,7 +75,7 @@
 .chart-card-title {
   font-size: 14px;
   font-weight: 500;
-  color: #d1d5db;
+  color: var(--gray-300);
 }
 .chart-range-buttons {
   display: flex;
@@ -88,10 +88,10 @@
   border-radius: 4px;
   transition: color 0.15s, background 0.15s;
 }
-.chart-range-btn:hover { background: #4b5563; }
-.chart-range-btn.active { background: #2563eb; color: #ffffff; }
-.chart-range-btn.inactive { background: #374151; color: #9ca3af; }
-.chart-range-btn.inactive:hover { background: #4b5563; }
+.chart-range-btn:hover { background: var(--gray-600); }
+.chart-range-btn.active { background: var(--blue-deep); color: #ffffff; }
+.chart-range-btn.inactive { background: var(--gray-700); color: var(--gray-400); }
+.chart-range-btn.inactive:hover { background: var(--gray-600); }
 .chart-loading,
 .chart-error,
 .chart-no-data {
@@ -102,7 +102,7 @@
 }
 .chart-spinner {
   border: 2px solid transparent;
-  border-bottom-color: #3b82f6;
+  border-bottom-color: var(--blue-strong);
   border-radius: 50%;
   width: 24px;
   height: 24px;
@@ -112,7 +112,7 @@
   width: 12px;
   height: 12px;
   border-width: 2px;
-  border-bottom-color: #3b82f6;
+  border-bottom-color: var(--blue-strong);
 }
 @keyframes chart-spin {
   to { transform: rotate(360deg); }
@@ -121,24 +121,24 @@
 .chart-error-icon {
   width: 32px;
   height: 32px;
-  color: #f87171;
+  color: var(--red-soft);
   margin: 0 auto 8px;
 }
 .chart-error-text {
-  color: #f87171;
+  color: var(--red-soft);
   font-size: 14px;
 }
 .chart-retry-btn {
   margin-top: 8px;
   font-size: 12px;
-  color: #60a5fa;
+  color: var(--blue);
   background: none;
   border: none;
   cursor: pointer;
 }
 .chart-retry-btn:hover { color: #93c5fd; }
 .chart-no-data-text {
-  color: #6b7280;
+  color: var(--gray-500);
   font-size: 14px;
 }
 .chart-canvas-wrapper {
@@ -159,16 +159,16 @@
 }
 .chart-current-label {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--gray-500);
 }
 .chart-current-value {
   font-size: 20px;
   font-weight: 700;
-  color: #ffffff;
+  color: var(--text-strong);
 }
 .chart-current-unit {
   font-size: 12px;
-  color: #9ca3af;
+  color: var(--gray-400);
   margin-left: 4px;
 }
 .chart-legend {
@@ -182,7 +182,7 @@
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  color: #9ca3af;
+  color: var(--gray-400);
 }
 .chart-legend-dot {
   width: 10px;
@@ -210,16 +210,16 @@
   border: 1px solid rgba(34, 197, 94, 0.5);
 }
 .status-badge.installed .status-badge-dot {
-  background: #4ade80;
+  background: var(--green);
   animation: status-pulse 2s ease-in-out infinite;
 }
 .status-badge.not_installed {
   background: rgba(75, 85, 99, 0.5);
-  color: #9ca3af;
+  color: var(--gray-400);
   border: 1px solid rgba(107, 114, 128, 0.5);
 }
 .status-badge.not_installed .status-badge-dot {
-  background: #6b7280;
+  background: var(--gray-500);
 }
 .status-badge.degraded {
   background: rgba(234, 179, 8, 0.15);
@@ -227,7 +227,7 @@
   border: 1px solid rgba(234, 179, 8, 0.5);
 }
 .status-badge.degraded .status-badge-dot {
-  background: #facc15;
+  background: var(--yellow);
   animation: status-pulse 2s ease-in-out infinite;
 }
 .status-badge.installing {
@@ -236,7 +236,7 @@
   border: 1px solid rgba(59, 130, 246, 0.5);
 }
 .status-badge.installing .status-badge-dot {
-  background: #60a5fa;
+  background: var(--blue);
   animation: status-spin 1s linear infinite;
 }
 @keyframes status-pulse {
@@ -274,17 +274,17 @@
 .settings-title {
   font-size: 20px;
   font-weight: 600;
-  color: #ffffff;
+  color: var(--text-strong);
   margin-bottom: 24px;
 }
 .settings-card {
-  background: #1f2937;
+  background: var(--gray-800);
   border-radius: 8px;
-  border: 1px solid #374151;
+  border: 1px solid var(--gray-700);
 }
 .settings-card-header {
   padding: 20px;
-  border-bottom: 1px solid #374151;
+  border-bottom: 1px solid var(--gray-700);
 }
 .settings-card-header-row {
   display: flex;
@@ -307,16 +307,16 @@
 .settings-card-icon-wrap.blue { background: rgba(59, 130, 246, 0.3); }
 .settings-card-icon-wrap.purple { background: rgba(168, 85, 247, 0.3); }
 .settings-card-icon { width: 20px; height: 20px; }
-.settings-card-icon.blue { color: #60a5fa; }
+.settings-card-icon.blue { color: var(--blue); }
 .settings-card-icon.purple { color: #c084fc; }
 .settings-card-heading {
   font-size: 16px;
   font-weight: 500;
-  color: #ffffff;
+  color: var(--text-strong);
 }
 .settings-card-description {
   font-size: 14px;
-  color: #9ca3af;
+  color: var(--gray-400);
 }
 .settings-card-body { padding: 20px; }
 .settings-setting-row {
@@ -329,31 +329,31 @@
   display: block;
   font-size: 14px;
   font-weight: 500;
-  color: #d1d5db;
+  color: var(--gray-300);
   margin-bottom: 8px;
 }
 .settings-input {
   width: 96px;
   padding: 8px 12px;
-  background: #111827;
-  border: 1px solid #4b5563;
+  background: var(--input-bg);
+  border: 1px solid var(--gray-600);
   border-radius: 8px;
-  color: #ffffff;
+  color: var(--text-strong);
   font-size: 14px;
 }
 .settings-input:focus {
   outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 1px #3b82f6;
+  border-color: var(--blue-strong);
+  box-shadow: 0 0 0 1px var(--blue-strong);
 }
 .settings-hint {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--gray-500);
   margin-top: 8px;
 }
 .settings-save-btn {
   padding: 8px 16px;
-  background: linear-gradient(90deg, #2563eb, #1d4ed8);
+  background: linear-gradient(90deg, var(--blue-deep), #1d4ed8);
   color: #ffffff;
   font-size: 14px;
   font-weight: 600;
@@ -381,7 +381,7 @@
   align-items: center;
   gap: 10px;
   font-size: 14px;
-  color: #d1d5db;
+  color: var(--gray-300);
 }
 .settings-component-dot {
   width: 8px;
@@ -390,8 +390,8 @@
   flex-shrink: 0;
 }
 .settings-component-dot.orange { background: #fb923c; }
-.settings-component-dot.green { background: #4ade80; }
-.settings-component-dot.blue { background: #60a5fa; }
+.settings-component-dot.green { background: var(--green); }
+.settings-component-dot.blue { background: var(--blue); }
 .settings-actions {
   display: flex;
   gap: 12px;
@@ -400,7 +400,7 @@
 .settings-install-btn,
 .settings-reinstall-btn {
   padding: 8px 16px;
-  background: linear-gradient(90deg, #2563eb, #1d4ed8);
+  background: linear-gradient(90deg, var(--blue-deep), #1d4ed8);
   color: #ffffff;
   font-size: 14px;
   font-weight: 600;
@@ -422,7 +422,7 @@
 .settings-delete-btn {
   padding: 8px 16px;
   background: rgba(239, 68, 68, 0.2);
-  color: #f87171;
+  color: var(--red-soft);
   font-size: 14px;
   font-weight: 500;
   border-radius: 8px;
@@ -433,7 +433,7 @@
 .settings-delete-btn:hover:not(:disabled) {
   background: rgba(239, 68, 68, 0.3);
   color: #fca5a5;
-  border-color: #ef4444;
+  border-color: var(--red);
 }
 .settings-confirm-bar {
   margin-top: 16px;
@@ -448,13 +448,13 @@
 .settings-confirm-text {
   font-size: 14px;
   font-weight: 500;
-  color: #d1d5db;
+  color: var(--gray-300);
 }
 .settings-cancel-btn {
   margin-left: auto;
   padding: 6px 12px;
-  background: #374151;
-  color: #d1d5db;
+  background: var(--gray-700);
+  color: var(--gray-300);
   font-size: 14px;
   font-weight: 500;
   border-radius: 8px;
@@ -463,8 +463,8 @@
   cursor: pointer;
 }
 .settings-cancel-btn:hover {
-  background: #4b5563;
-  color: #ffffff;
+  background: var(--gray-600);
+  color: var(--text-strong);
 }
 .settings-confirm-btn {
   padding: 6px 12px;
@@ -491,16 +491,16 @@
 }
 .settings-error-text {
   font-size: 14px;
-  color: #f87171;
+  color: var(--red-soft);
 }
 .settings-not-installed-text {
   font-size: 14px;
-  color: #9ca3af;
+  color: var(--gray-400);
   margin-bottom: 16px;
 }
 .settings-code-inline {
-  color: #d1d5db;
-  background: #374151;
+  color: var(--gray-300);
+  background: var(--gray-700);
   padding: 2px 6px;
   border-radius: 4px;
   font-size: 12px;
@@ -517,8 +517,8 @@
   gap: 8px;
   font-size: 14px;
 }
-.settings-installed-label { color: #9ca3af; }
-.settings-installed-value { color: #d1d5db; }
+.settings-installed-label { color: var(--gray-400); }
+.settings-installed-value { color: var(--gray-300); }
 
 /* Additional ClusterSettings classes */
 .settings-setting-row-input {
@@ -535,7 +535,7 @@
 .settings-components-title {
   font-size: 12px;
   font-weight: 500;
-  color: #6b7280;
+  color: var(--gray-500);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin-bottom: 12px;
@@ -565,8 +565,8 @@
 }
 .settings-refresh-btn {
   padding: 8px 16px;
-  background: #374151;
-  color: #d1d5db;
+  background: var(--gray-700);
+  color: var(--gray-300);
   font-size: 14px;
   font-weight: 500;
   border-radius: 8px;
@@ -575,8 +575,8 @@
   cursor: pointer;
 }
 .settings-refresh-btn:hover {
-  background: #4b5563;
-  color: #ffffff;
+  background: var(--gray-600);
+  color: var(--text-strong);
 }
 .settings-degraded-components {
   background: rgba(17, 24, 29, 0.5);
@@ -605,7 +605,7 @@
   border-radius: 9999px;
   height: 20px;
   width: 20px;
-  border-bottom: 2px solid #3b82f6;
+  border-bottom: 2px solid var(--blue-strong);
 }
 @keyframes spin {
   from { transform: rotate(0deg); }
@@ -613,11 +613,11 @@
 }
 .settings-installing-text {
   font-size: 14px;
-  color: #d1d5db;
+  color: var(--gray-300);
 }
 .settings-installed-status-text {
   font-size: 14px;
-  color: #9ca3af;
+  color: var(--gray-400);
   margin-bottom: 16px;
 }
 .settings-installed-components {
@@ -629,7 +629,7 @@
 .settings-installed-components-title {
   font-size: 12px;
   font-weight: 500;
-  color: #6b7280;
+  color: var(--gray-500);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin-bottom: 12px;
@@ -647,7 +647,7 @@
 }
 .settings-uninstall-section {
   padding-top: 16px;
-  border-top: 1px solid #374151;
+  border-top: 1px solid var(--gray-700);
 }
 .settings-uninstall-row {
   display: flex;

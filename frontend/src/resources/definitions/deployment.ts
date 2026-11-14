@@ -51,7 +51,7 @@ export const deployment = defineResource<k8s.DeploymentInfo>({
       key: 'pods',
       label: 'defs.columns.pods',
       formatter: d => `${d.readyReplicas}/${d.replicas}`,
-      colorFn: d => (d.readyReplicas === d.replicas ? '#4ade80' : '#facc15'),
+      colorFn: d => (d.readyReplicas === d.replicas ? 'var(--green)' : 'var(--yellow)'),
     },
     { key: 'updatedReplicas', label: 'defs.columns.replicas' },
     ageCol,
