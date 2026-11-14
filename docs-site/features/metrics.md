@@ -2,6 +2,12 @@
 
 Kubron can draw CPU, memory, network and disk charts for pods, nodes, volumes, ingresses and workloads, and it uses the same data for the dashboard hotspots. The data comes from a small Prometheus stack that Kubron installs into the cluster **when you ask for it**. Everything else in Kubron works without it.
 
+::: warning Before you rely on it
+- **It is Kubron's own stack.** Kubron reads only the Prometheus it installs into `kubron-metrics`. It does not connect to a Prometheus you already run, and it is not a replacement for real monitoring.
+- **It keeps 2 days of history** (or 5 GiB) on an `emptyDir`, so the history is lost when the Prometheus Pod restarts. The **7 days** option in the charts cannot show more than 2 days of data.
+- **Ingress charts work for ingress-nginx controllers only.** Other ingress controllers are not scraped.
+:::
+
 [[toc]]
 
 ## What you get
@@ -11,7 +17,7 @@ Kubron can draw CPU, memory, network and disk charts for pods, nodes, volumes, i
 | Pod, in the containers tab | CPU, memory, network, disk and disk I/O |
 | Node | CPU, memory, network and disk, with capacity and allocatable lines |
 | PersistentVolumeClaim | Volume usage and capacity |
-| Ingress | Request and response traffic, including bytes sent with 2xx and 5xx status |
+| Ingress | Request and response traffic, including bytes sent with 2xx and 5xx status (ingress-nginx controllers only) |
 | Deployment, ReplicaSet, StatefulSet, DaemonSet, Job | Usage of all their Pods together |
 | Namespace and Argo CD application | Usage of all Pods in the namespace or of the application |
 | Cluster dashboard | The three Pods closest to their CPU and memory limits and the three fullest volumes ([details](/features/dashboard#metrics-and-hotspots)) |

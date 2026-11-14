@@ -12,9 +12,13 @@ Kubron is a Kubernetes Operations Workspace available as a native Desktop applic
 | Local users and roles | Yes | Yes |
 | Organization, teams and team-scoped clusters | — | PostgreSQL service mode |
 | Helm, Argo CD and Flux CD workflows | Yes | Yes |
-| Optional Prometheus metrics stack | Yes | Yes |
+| Optional Prometheus metrics stack | Yes, if you may create ClusterRoles in the cluster | Yes, if the cluster account may create ClusterRoles |
 | Multiple server replicas (HA) | — | PostgreSQL service mode |
-| Port-forward | Local port | Local single-user mode or configured proxy mode |
+| Pod terminals, debug containers, node shell | Yes, by permission | Yes, by permission; the administrator can switch them off |
+| Sign-in with local `exec` plugins | Yes, after you confirm the command | No: run the plugin on your computer and paste the token |
+| Port-forward | Local port | Local single-user mode, or proxy mode with a wildcard domain set by the administrator |
+| Audit log | A file in the data folder | PostgreSQL, with configurable retention and an optional copy to standard output |
+| Update check and problem reports | Yes; the update check can be turned off | The update check can be turned off; reports are sent only if the administrator configures a mail server or receiver |
 
 ## Clusters and dashboard
 
@@ -54,7 +58,7 @@ Kubron is a Kubernetes Operations Workspace available as a native Desktop applic
 - Local user accounts, password hashing, login lockout and automatic logout.
 - Audit history for privileged and administrative actions.
 - Web team mode scopes users and clusters by organization and team; kubeconfig and Helm secrets stored in PostgreSQL are encrypted at rest.
-- No telemetry. Desktop keeps kubeconfig on the local machine; Kubron does not require a Kubron-hosted SaaS account.
+- No telemetry. Desktop keeps the kubeconfig on the local machine, and no Kubron-hosted account is required. Kubron contacts GitHub once a day to check for updates (this can be turned off, see [Version and updates](/features/updates)), and sends a problem report only when you press **Send** ([Report a problem](/features/bug-reports)).
 
 ## Learn more
 

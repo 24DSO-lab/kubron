@@ -14,9 +14,28 @@ Kubron has local user accounts and three built-in roles:
 
 Permissions are granular: resource read, `secrets.read`, `operate`, `write`, `exec`, `nodeshell`, `portforward`, cluster management, user management and audit access. For example, reading Secret values is separate from listing Secret objects.
 
+## Two levels of authorization {#two-levels}
+
+Every action passes two independent checks, and it runs only when **both** allow it:
+
+```
+You ──▶ Kubron permission (your role: user, operator, admin; in Web, your team role)
+        │  allowed?
+        ▼
+      Kubron connects with the cluster's credentials
+        │
+        ▼
+      Kubernetes RBAC for those credentials: allowed?
+```
+
+- Your role allows **Scale** (`operate`), but the cluster credentials may not change scale. Kubernetes refuses, and the action fails with a `forbidden` error.
+- The cluster credentials could do anything, but your role is `user`. Kubron refuses before it calls Kubernetes, and records the refusal as **Denied**.
+
+So the rights you effectively have are the **intersection** of the two. Having Kubernetes permissions does not give you the matching permission in Kubron, and a Kubron permission never adds rights in the cluster. On Desktop the credentials are yours; on Web they are the cluster's personal or [shared team account](/features/settings#cluster-settings).
+
 ## Permission reference
 
-The backend checks one of these permissions for every protected operation. Roles are bundles of permissions: `user` has `read`; `operator` adds `secrets.read` and `operate`; `admin` has all of them.
+The backend checks one of these permissions for every protected operation. Roles are bundles of permissions: `user` has `read`; `operator` adds `secrets.read`, `operate` and `diagnostics.logs`; `admin` has all of them.
 
 | Permission | What it allows | Roles |
 |---|---|---|
@@ -26,6 +45,7 @@ The backend checks one of these permissions for every protected operation. Roles
 | `write` | Apply, create and delete YAML; edit ConfigMaps and Secrets; evict Pods; drain nodes; install, upgrade and uninstall Helm releases; install or remove the metrics stack; suspend or resume Argo CD auto-sync and delete applications; suspend, resume and delete Flux CD objects | `admin` |
 | `exec` | Pod terminals | `admin` |
 | `debug` | Add a debug (ephemeral) container to a running Pod; the terminal attached to it also needs `exec` | `admin` |
+| `diagnostics.logs` | Read, export and delete the saved log fragments that incident investigations keep (live log viewing needs only `read`) | `operator`, `admin` |
 | `baseline.manage` | Create configuration baselines and versions, change the active version, manage exceptions, delete baselines (viewing and running a check need `read`) | `admin` |
 | `nodeshell` | Node shell (privileged host access) | `admin` |
 | `portforward` | Port-forward | `admin` |
@@ -54,7 +74,7 @@ Desktop stores kubeconfig data locally in the Kubron data directory with restric
 
 ## Audit history
 
-The audit log records selected privileged and administrative actions, outcomes and actor context. Interactive session start/stop events (such as Pod terminals, node shell and port-forward) are also recorded. Ordinary read-only browsing is not intended to generate an audit record for every request.
+The audit log records selected privileged and administrative actions, outcomes and actor context. Interactive session start/stop events (such as Pod terminals, node shell and port-forward) are also recorded. Allowed read-only browsing (the `read` permission: lists, details, events, YAML, logs) is **not** recorded, so the audit log is not a copy of every request to Kubernetes. Every refusal is recorded, whatever the permission.
 
 ## Server-side controls
 

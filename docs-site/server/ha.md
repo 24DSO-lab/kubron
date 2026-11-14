@@ -85,6 +85,17 @@ Jobs that exactly one replica must run are held under a PostgreSQL advisory lock
 
 - **The audit log is kept forever by default.** `KUBRON_AUDIT_RETENTION` takes a Go duration (`720h`; days are not supported). `0` or empty keeps everything; values under `24h` are rejected so a typo cannot wipe the log.
 
+## What high availability does not cover
+
+Several replicas remove the Kubron server as a single point of failure. They do not make the whole system fault-tolerant. You also need:
+
+- **A highly available PostgreSQL.** The replicas keep no state of their own. If the database is down, nobody can sign in, and existing sessions are served from a cache for at most 30 seconds.
+- **The same encryption key on every replica**, kept in a secret manager and backed up separately from the database.
+- **A correctly configured reverse proxy or ingress:** TLS, WebSocket timeouts, trusted-proxy settings and allowed hosts.
+- **Backups** of the database and the key, and a restore you have actually tried. See [Backup, restore and key rotation](/server/backup).
+
+Open terminals, log streams and port-forwards end when the replica that holds them stops. They reopen on another replica, but the shell and the stream start again.
+
 ## Operating checklist
 
 - [ ] `replicaCount` of 2 or more, with a `podDisruptionBudget` (the chart creates it only when there is more than one replica).

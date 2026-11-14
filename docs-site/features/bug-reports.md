@@ -1,6 +1,6 @@
 # Report a problem
 
-The **Report a problem** button in the header sends a bug report to the Kubron developers, with a screenshot of the window and a few technical facts. No account is needed.
+The **Report a problem** button in the header sends a bug report to the Kubron developers, with a screenshot of the window and a few technical facts. No account is needed. A report is **never sent automatically**, for example when an error occurs: it leaves your computer only when you press **Send**.
 
 [[toc]]
 

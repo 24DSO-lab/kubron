@@ -29,6 +29,10 @@ The match uses the `HelmRelease` objects Kubron reads from the cluster, with `sp
 
 ## Install and upgrade safely
 
+::: warning Values are replaced, not merged
+On upgrade, the values you submit **replace** the previous user-supplied values as a whole. A key that you delete in the editor returns to the chart's default. Review the values and the manifest diff before you confirm.
+:::
+
 - Preview an installation or upgrade with a dry-run.
 - Review the rendered manifest diff before applying it.
 - Start from the release's current user-supplied values, edit them, or change only the chart version. Values you submit replace the previous ones as a whole, so a key you remove in the editor returns to the chart default.

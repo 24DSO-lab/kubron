@@ -55,6 +55,15 @@ The shell reports **capabilities** (file dialog, port-forward mode, terminals, n
 - **Sessions.** A cookie plus CSRF and Origin checks. With PostgreSQL, sessions are shared between replicas. See [HTTP security](/server/http-security) and [High availability](/server/ha).
 - **Events are addressed** to a session, and the identifiers the browser sees are server-generated.
 
+### The life of a request
+
+1. The browser sends `POST /api/rpc/{method}` with the session cookie and a CSRF token. The server checks that the `Origin` matches the `Host` and that the host is allowed.
+2. It finds the session (shared through PostgreSQL when there are several replicas) and the user's role.
+3. The dispatcher calls the core method, but only if the method is on the allowlist.
+4. The core's first step is `authz(permission)`: your Kubron role, and in Web your team role, must allow the action. A refusal is recorded in the audit log as **Denied**.
+5. The core uses the session's view of the cluster manager to connect with the cluster's credentials. Kubernetes RBAC checks the call again.
+6. The result goes back to the browser, an allowed privileged action is written to the audit log, and later changes reach the browser through the WebSocket.
+
 ## Clusters and Kubernetes access
 
 - A shared **connection pool** keeps informers per cluster, with reference counting and a time-to-live, so lists and the dashboard are live without constant polling.

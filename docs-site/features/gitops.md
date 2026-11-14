@@ -1,6 +1,21 @@
-# GitOps with Argo CD
+# GitOps: Argo CD and Flux CD
 
 Kubron includes an Argo CD integration in its Kubernetes workspace. It discovers Argo CD resources through the Kubernetes API; you do not need to install a separate Kubron UI component in the cluster. Argo CD itself must already be installed and its CRDs available. Flux CD is supported too: see [Flux CD](#flux-cd) below.
+
+The two integrations sit side by side in one interface, but they do not offer the same operations. What you can do depends on what each system supports:
+
+| | Argo CD | Flux CD |
+|---|---|---|
+| Objects | Applications, ApplicationSets, Projects | Kustomizations and HelmReleases; sources, notifications and image automation (read-only) |
+| Apply changes now | Sync, refresh | Reconcile |
+| Pause | Suspend and resume auto-sync | Suspend and resume |
+| Diff of live state against desired state | Yes | **No** |
+| Rollback | Yes | **No**: roll back through Git |
+| Resource view | Resource graph | A chain from the source to the resources it applies |
+| Delete | Applications (with or without cascade) | Kustomization and HelmRelease, after a confirmation that shows the consequences |
+| Requirement | Argo CD installed | Flux 2.3 or newer |
+
+Changes made in Kubron do not replace Git: both tools reconcile the cluster back to what Git says. See [Who manages an object](/features/resources#managed-by).
 
 ## What you can inspect
 

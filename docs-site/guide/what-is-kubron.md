@@ -30,10 +30,10 @@ Most people should start with Desktop. Web is for teams that want one shared, ac
 ## Why Kubron
 
 ### Lightweight and native
-A single Go binary with the system webview, not a bundled browser engine. It starts quickly and stays out of the way of the tools it is managing.
+The Desktop edition is a single Go binary that uses the system webview, not a bundled browser engine; the Web edition is a separate server binary, `kubron-server`. Both start quickly and stay out of the way of the tools they manage.
 
 ### Private by default
-No telemetry and no mandatory account. In desktop mode your kubeconfig never leaves your machine. The only things Kubron sends on its own are a daily check for a newer version (it contacts GitHub and can be turned off), and a problem report when you press **Report a problem**. Kubron's data directory is private to your user account.
+Kubron does not collect product telemetry and does not send information about your clusters to third-party analytics services. There is no mandatory account, and in desktop mode your kubeconfig never leaves your machine. The update check goes to GitHub once a day and can be turned off ([details](/features/updates)); a problem report is sent only when you ask for it ([details](/features/bug-reports)). Kubron's data directory is private to your user account.
 
 ### Built to avoid mistakes
 Name, colour and tag every cluster (`dev`, `test`, `stage`, `prod`) so production never looks like staging. Edit YAML with a diff you must review before saving. Run bulk actions where one failure does not stop the rest, and see partial permission errors instead of an empty list.

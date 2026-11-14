@@ -52,6 +52,12 @@ features:
 Kubron brings everyday Kubernetes operations into one workspace across desktop and web: inspect cluster health, understand what changed, troubleshoot issues and take action without switching between a dozen tools.
 
 
+Kubron is built around three jobs:
+
+1. **Understand the state of a cluster and find the problem.** The [dashboard](/features/dashboard) shows health, problem Pods, capacity, blockers and expiring certificates.
+2. **See what changed before it broke.** Recent rollouts, Helm updates, Argo CD syncs and Flux reconciles, plus events, in one timeline.
+3. **Act without switching tools.** Logs, terminals, debug containers, scale, restart and rollback, Helm and GitOps actions, with a review step before changes. See the [typical scenarios](/guide/scenarios).
+
 <div class="screenshot-grid">
   <figure>
     <img src="https://raw.githubusercontent.com/24DSO-lab/kubron/master/docs/images/screenshots/overview.png" alt="Kubron overview with cluster health, workload counts and resource signals" loading="lazy">
@@ -93,13 +99,13 @@ Deploy Kubron in your own infrastructure and access it through a browser. Web ad
 - **Practical operations** — logs, exec, port-forward, workload scaling and restarts, node cordon and drain.
 - **Helm lifecycle** — repositories (including OCI), chart discovery, dry-run install, upgrades, revision diffs and rollback.
 - **Argo CD integration** — applications, ApplicationSets, projects, sync controls, live-vs-desired diff and resource graph.
-- **Flux CD integration** — Kustomizations, HelmReleases, sources, notifications and image automation, with reconcile, suspend, resume and a source-to-resources chain.
-- **Optional metrics** — charts for pods, workloads, nodes, PVCs and ingresses when the metrics stack is installed.
+- **Flux CD integration** — Kustomizations, HelmReleases, sources, notifications and image automation, with reconcile, suspend, resume and a chain from a source to the resources it applies. Flux has no diff or rollback in Kubron: see the [limits](/features/gitops#flux-cd).
+- **Optional metrics** — charts for pods, workloads, nodes and volumes, plus network metrics of ingress-nginx controllers, from a small Prometheus stack that Kubron installs on request. It keeps two days of history and does not connect to an existing Prometheus. [Details](/features/metrics)
 
 ## Why teams choose Kubron
 
 - **Light and native.** Go plus the system webview: no bundled browser engine, quick to start, easy on memory.
-- **Private by design.** No telemetry, no mandatory account, and on Desktop your kubeconfig stays on your machine.
+- **Private by design.** No telemetry, no mandatory account, and on Desktop your kubeconfig stays on your machine. The daily update check can be turned off, and problem reports are sent only on request.
 - **Safe to operate.** Environment tags, a mandatory diff before saving YAML, and bulk actions that report failures instead of stopping.
 - **Works with restricted access.** Restricted RBAC is a first-class case: no cluster-wide `list` required.
 - **Signs in to your clusters.** OIDC, Azure AKS, AWS EKS and Google GKE are handled natively, and the Web server never runs commands from an uploaded kubeconfig.
@@ -118,7 +124,7 @@ The desktop application is built with Go, Wails and Vue. Server mode serves the 
 
 ## Privacy and access control
 
-Desktop does not require an account, sends no telemetry and keeps your kubeconfig on your machine. Web adds local user accounts, fine-grained roles and permissions, session management and an audit log for shared environments.
+Desktop does not require an account, sends no telemetry and keeps your kubeconfig on your machine. Kubron contacts GitHub once a day to check for a newer version (this can be turned off), and sends a problem report only when you press **Send** ([details](/features/updates)). Web adds local user accounts, fine-grained roles and permissions, session management and an audit log for shared environments.
 
 [Read about security →](/features/security)
 

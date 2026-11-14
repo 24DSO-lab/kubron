@@ -10,6 +10,20 @@ The dashboard is a starting point for understanding the active cluster: its heal
 - **Workloads table.** Deployments, StatefulSets and DaemonSets with ready and desired replicas, how many are up to date, and a status of *Running*, *Degraded*, *Unavailable* or *Idle*.
 - **Reserved capacity.** CPU and memory requested by Pods compared with what the nodes can allocate.
 
+### How the health score is calculated {#health-score}
+
+The score (0 to 100) is the weighted share of three checks:
+
+| Check | Weight | What counts as healthy |
+|---|---|---|
+| Control plane components | 40% | Components in `kube-system` that report healthy. A component Kubron cannot see (typical on managed clusters) is left out, and the rest share its weight |
+| Nodes | 30% | Nodes that report **Ready** |
+| Pods | 30% | Pods whose phase is `Running` or `Succeeded` |
+
+A score of 90 or more is **Healthy**, 70 to 89 is **Degraded**, and below 70 is **Critical**.
+
+The score is a quick signal, not a Kubernetes health score. It does **not** include container readiness, restarts and out-of-memory kills, Warning events, quotas, PodDisruptionBudgets, certificates or the state of workloads. A Pod whose container keeps crashing usually still has the phase `Running`, so the score can stay high while the problem-Pods list shows trouble. Read the sections below for the details.
+
 ## Problem Pods and warnings
 
 - **Problem Pods** with the reason, node, restart count and how long the problem has lasted. The list shows up to 10 Pods. To avoid noise, a Pod is not reported while it is still starting (pending for under 5 minutes, or not ready for under 2 minutes), and old failed or evicted Pods (older than 24 hours) are ignored.
@@ -29,6 +43,10 @@ Each of these lists shows up to 10 rows, with a total count.
 The recent-changes timeline combines Deployment rollouts, Helm release updates, Argo CD syncs and Flux reconciles (the time a Kustomization or HelmRelease last changed its Ready condition), newest first (up to 15 entries). Switch the period between 1 hour, 6 hours and 24 hours. A source that is unavailable, for example because Flux is not installed or you lack permission to read it, simply adds no entries. It answers "what changed before this broke". It is built from what Kubron can observe through the Kubernetes API and installed integrations; it is not a complete audit trail of every cluster change.
 
 ## Certificates
+
+::: warning Needs access to Secrets
+This card works only if you have the Kubron `secrets.read` permission and Kubernetes lets you read Secrets. Without them it cannot show certificates, which does not mean that none is about to expire.
+:::
 
 Kubron reads TLS Secrets (`kubernetes.io/tls`) and reports certificates that are expired or expire within 30 days. For certificates issued by cert-manager, which renews them ahead of time, it warns only when 14 days or fewer remain, because that suggests that automatic renewal did not work. Only the name, subject and expiry date are returned, never key material.
 

@@ -43,6 +43,10 @@ Open the cluster menu in the top bar and choose **Edit**, or choose **Add** for 
 | **Shared team account** | On: everyone in the team connects with one account, and a cluster administrator signs in once. Off: each user signs in with their own account |
 | **Forget the shared sign-in** | Drops the saved shared sign-in. The next connection asks a cluster administrator to sign in again. Changing the account setting does the same for everyone |
 
+::: warning The shared team account is a security decision
+With a shared account, every team member's operations reach Kubernetes with the **rights of that one account**. Kubron roles still limit what each member may ask for, but Kubernetes RBAC and the cluster's own audit log see a single identity. Use it only when you understand what that means for access control at the Kubernetes level. Without it, each person signs in with their own account and keeps their own rights.
+:::
+
 If your access to a cluster is removed, Kubron tells you and closes its terminals, log streams and port-forwards.
 
 ### Test connection

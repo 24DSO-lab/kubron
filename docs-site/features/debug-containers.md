@@ -1,8 +1,20 @@
 # Debug containers
 
-Many production images have no shell and no debugging tools. A **debug container** lets you attach a temporary container with tools to a running Pod, without rebuilding the image or restarting anything. It is the Kubernetes feature called [ephemeral containers](https://kubernetes.io/docs/concepts/workloads/pods/ephemeral-containers/), and the same thing `kubectl debug -it` does.
+Many production images have no shell and no debugging tools. A **debug container** adds an extra container with diagnostic tools to a running Pod, without rebuilding the image or restarting the application. The debug session can end at any time, but Kubernetes keeps the container's record in the Pod's configuration until the Pod itself is deleted (see [What stays behind](#what-stays-behind)). It is the Kubernetes feature called [ephemeral containers](https://kubernetes.io/docs/concepts/workloads/pods/ephemeral-containers/), and the same thing `kubectl debug -it` does.
 
 [[toc]]
+
+## Debug container or Pod terminal?
+
+| | Pod terminal | Debug container |
+|---|---|---|
+| Runs inside the application's own container | Yes | No: it is a separate container (it can share the target's processes) |
+| Needs a shell in the application's image | Yes | No: it uses its own image |
+| Adds a container to the Pod | No | Yes, and the record stays until the Pod is deleted |
+| Can use an image of your choice | No | Yes (unless the administrator restricts images) |
+| Kubron permissions | `exec` | `debug` **and** `exec` |
+
+Use a terminal when the image already has what you need. Use a debug container when it does not (a minimal or distroless image), or when you must not touch the application's container.
 
 ## Start one
 

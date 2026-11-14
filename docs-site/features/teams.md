@@ -2,6 +2,19 @@
 
 Team management is available in the Web edition when Kubron is configured with PostgreSQL. It is not part of the Desktop edition or the Web single-user file-storage mode.
 
+For example:
+
+```
+Organization
+├── Team "DevOps"        Alice (admin), Bob (operator)
+│   ├── cluster Production
+│   └── cluster Staging
+└── Team "Development"   Carol (operator), Dan (user)
+    └── cluster Dev
+```
+
+Members see and act only on the clusters of their own teams, with the role they hold in each team. Alice can work on Production and Staging, but not on Dev unless she is also a member of "Development".
+
 ## Organization → team → cluster
 
 Kubron uses a simple ownership model:

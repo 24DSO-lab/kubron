@@ -25,7 +25,9 @@ Inspect node details and perform common maintenance actions:
 - drain a node to evict eligible workloads (`write`);
 - open a node shell when explicitly permitted.
 
-The node shell is a privileged operation: it uses a privileged helper Pod with access to the host. It has a separate Kubron permission (`nodeshell`); by default, only administrators receive it.
+::: danger Node shell is privileged access to the host
+The node shell starts a privileged helper Pod with access to the node's operating system. Treat it like root on the node. It has a separate Kubron permission (`nodeshell`) that only administrators receive by default. Give it only to people who really need host-level diagnostics, or turn it off for everyone with `KUBRON_DISABLE_NODE_SHELL`.
+:::
 
 ## Logs, terminals and port-forward
 

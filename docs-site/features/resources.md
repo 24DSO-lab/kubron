@@ -2,6 +2,8 @@
 
 Kubron provides a resource browser for common Kubernetes objects and dynamically discovered custom resources. It combines list views, contextual details and controlled editing in one workflow.
 
+**Worth knowing first:** the **Managed by** column shows which tool manages an object (Helm, Argo CD or Flux), so you can change it where the change will last instead of being reverted at the next sync. See [Who manages an object](#managed-by).
+
 ## Built-in resource coverage
 
 Resource views cover the main Kubernetes areas:

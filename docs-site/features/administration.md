@@ -71,8 +71,12 @@ Export the filtered records as **CSV** or **JSON**, up to 10,000 records. If mor
 | Resources | Apply YAML, delete, scale, restart, rollback, retry, evict |
 | Interactive access | Terminal, node shell and port-forward opened and closed; debug containers created |
 | Sensitive reads | Secret values viewed, Helm release values and manifest viewed |
-| GitOps | Argo CD sync, refresh, terminate, rollback, auto-sync changes, token changes, application deletion; Flux reconcile, suspend, resume and deletion, and views of Flux data |
+| GitOps | Argo CD sync, refresh, terminate, rollback, auto-sync changes, token changes, application deletion; Flux reconcile, suspend, resume and deletion |
 | Platform | Metrics stack installed or removed, audit log viewed and exported, problem report sent (**bugreport.submit**, without its text) |
+
+### What is not recorded
+
+The audit log is not a copy of every request that Kubron makes to Kubernetes. Allowed browsing under the `read` permission (lists, details, events, YAML, logs, dashboards) is not recorded. Recorded are the allowed uses of `operate`, `write`, `exec`, `debug`, `portforward`, `clusters.manage` and `secrets.read`, user and team administration, sign-in events, and **every refusal**, whatever the permission (as **Denied**). For a complete trail of API calls, use the Kubernetes API server audit log of the cluster.
 
 ### When the log cannot be written
 
