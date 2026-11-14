@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **Baseline consistency:** creating a baseline, adding a version, switching the active version and editing exceptions are now atomic (one transaction on the server, one locked write on the desktop). Previously a failure between steps could leave an orphaned version, two simultaneous exception edits could lose one, an exception added during a re-snapshot could miss the new version, and the retention job could delete a version that was just made active.
+- **Operations platform:** building a cluster connection for Incidents, Readiness and Baseline no longer waits past the operation timeout (60 s): the operation now fails with "unavailable" instead of hanging, and a panic while building the connection becomes an error. A failure in event delivery or in the metrics observer no longer breaks an operation or keeps its context open. The metric `kubron_ops_operations_total` gets a separate `status="deadline"` for operations that ran out of time (they were counted as `failed` before).
 - **Incidents and Baseline screens:** switching the active cluster now clears the data of the previous cluster and reloads the lists, and a slow response from the previous cluster or an older request can no longer overwrite newer data.
 
 ## [1.2.1] - 2026-11-10

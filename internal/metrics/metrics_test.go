@@ -113,12 +113,14 @@ func TestObserveOpLabelsAreBounded(t *testing.T) {
 	m := New("dev", func() Snapshot { return Snapshot{} })
 	m.ObserveOp("incident", "open", "ok", time.Millisecond)
 	m.ObserveOp("incident", "open", "failed", time.Millisecond)
+	m.ObserveOp("incident", "open", "deadline", time.Millisecond)
 	// значения, не похожие на идентификаторы из кода, сворачиваются
 	m.ObserveOp("alice@example.com", "prod-cluster-of-alice/ns", "weird status", time.Millisecond)
 	body := scrape(t, m)
 	for _, want := range []string{
 		`kubron_ops_operations_total{module="incident",operation="open",status="ok"} 1`,
 		`kubron_ops_operations_total{module="incident",operation="open",status="failed"} 1`,
+		`kubron_ops_operations_total{module="incident",operation="open",status="deadline"} 1`,
 		`kubron_ops_operations_total{module="other",operation="other",status="other"} 1`,
 	} {
 		if !strings.Contains(body, want) {

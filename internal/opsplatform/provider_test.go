@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"strings"
 	"sync"
@@ -37,6 +38,9 @@ type fakeEnv struct {
 	clientErr   error
 	checkErr    error
 	panicAudit  bool
+	panicNotify bool
+	// clientsGate: пока канал не закрыт, Clients не возвращается (медленное построение подключения).
+	clientsGate chan struct{}
 }
 
 func newFakeEnv() *fakeEnv {
@@ -72,6 +76,9 @@ func (e *fakeEnv) OrgID() string       { return "org1" }
 func (e *fakeEnv) DefaultTeam() string { return "default" }
 func (e *fakeEnv) SessionID() string   { return "sess1" }
 func (e *fakeEnv) Clients(context.Context, string) (Clients, error) {
+	if e.clientsGate != nil {
+		<-e.clientsGate // намеренно не смотрит на контекст: именно так ведёт себя медленное построение подключения
+	}
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	e.clientCalls++
@@ -93,6 +100,9 @@ func (e *fakeEnv) RecordAudit(ev audit.Event) {
 	e.audits = append(e.audits, ev)
 }
 func (e *fakeEnv) Notify(event string, data ...any) {
+	if e.panicNotify {
+		panic("event hub is broken")
+	}
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	e.notified = append(e.notified, append([]any{event}, data...))
@@ -453,6 +463,9 @@ func TestOpStatus(t *testing.T) {
 		{nil, []string{"x"}, "partial"},
 		{errors.New("x"), nil, "failed"},
 		{context.Canceled, nil, "canceled"},
+		{context.DeadlineExceeded, nil, "deadline"},
+		{fmt.Errorf("%w: %w", ErrUnavailable, context.DeadlineExceeded), nil, "deadline"},
+		{fmt.Errorf("%w: %w", ErrUnavailable, context.Canceled), nil, "canceled"},
 		{ErrUnavailable, []string{"x"}, "failed"},
 	}
 	for _, tc := range tests {
@@ -554,3 +567,122 @@ func TestBeginStoredOnlyChecksClusterKnown(t *testing.T) {
 		t.Fatalf("unknown cluster: %v", err)
 	}
 }
+
+// Построение подключения, не уважающее контекст, не удерживает операцию дольше OpTimeout: Begin возвращает
+// ErrUnavailable с причиной «срок вышел», а фоновый вызов дорабатывает сам и не оставляет зависшей горутины.
+func TestBeginDoesNotWaitForSlowConnectionPastTimeout(t *testing.T) {
+	t.Parallel()
+	env := newFakeEnv()
+	env.clientsGate = make(chan struct{})
+	lg := slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil))
+	p := NewProvider(env, Config{Logger: lg, Limiter: NewClusterLimiter(2), OpTimeout: 50 * time.Millisecond})
+
+	start := time.Now()
+	_, op, err := p.Begin(t.Context(), req("c1", auth.PermRead))
+	if err == nil {
+		op.End(nil)
+		t.Fatal("Begin succeeded although the connection was never built")
+	}
+	if op != nil {
+		t.Fatal("a failed Begin must not return an operation")
+	}
+	if !errors.Is(err, ErrUnavailable) || !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("error = %v, want ErrUnavailable caused by the deadline", err)
+	}
+	if time.Since(start) > 3*time.Second {
+		t.Fatalf("Begin waited %v for a connection that exceeded the %v operation timeout", time.Since(start), 50*time.Millisecond)
+	}
+	close(env.clientsGate) // фоновый вызов завершается; буферизованный канал не даёт горутине повиснуть
+}
+
+// Отмена контекста вызывающего тоже прерывает ожидание подключения.
+func TestBeginStopsWaitingForConnectionOnCancel(t *testing.T) {
+	t.Parallel()
+	env := newFakeEnv()
+	env.clientsGate = make(chan struct{})
+	defer close(env.clientsGate)
+	p, _ := newProvider(t, env)
+	ctx, cancel := context.WithCancel(t.Context())
+	time.AfterFunc(20*time.Millisecond, cancel)
+	_, _, err := p.Begin(ctx, req("c1", auth.PermRead))
+	if !errors.Is(err, ErrUnavailable) || !errors.Is(err, context.Canceled) {
+		t.Fatalf("error = %v, want ErrUnavailable caused by cancellation", err)
+	}
+}
+
+// Паника при построении подключения становится ошибкой, а не падением RPC.
+func TestBeginTurnsConnectionPanicIntoError(t *testing.T) {
+	t.Parallel()
+	env := newFakeEnv()
+	env.clientErr = errors.New("boom")
+	p := NewProvider(panickingClientsEnv{env}, Config{Logger: slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil)), Limiter: NewClusterLimiter(2), OpTimeout: 5 * time.Second})
+	_, _, err := p.Begin(t.Context(), req("c1", auth.PermRead))
+	if !errors.Is(err, ErrUnavailable) {
+		t.Fatalf("error = %v, want ErrUnavailable", err)
+	}
+}
+
+type panickingClientsEnv struct{ *fakeEnv }
+
+func (panickingClientsEnv) Clients(context.Context, string) (Clients, error) {
+	panic("provider crashed")
+}
+
+// Срабатывание OpTimeout на уровне провайдера: контекст операции истекает сам, а завершение с этой ошибкой получает
+// статус deadline и попадает в метрику отдельно от прочих сбоев.
+func TestOpTimeoutExpiresAndIsReportedAsDeadline(t *testing.T) {
+	obs := &recordingObserver{}
+	SetObserver(obs)
+	t.Cleanup(func() { SetObserver(nil) })
+	env := newFakeEnv()
+	lg := slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil))
+	p := NewProvider(env, Config{Logger: lg, Limiter: NewClusterLimiter(2), OpTimeout: 30 * time.Millisecond})
+	ctx, op, err := p.Begin(t.Context(), OpRequest{Module: "deadlinetest", Operation: "run", ClusterID: "c1", Permission: auth.PermRead})
+	if err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-ctx.Done():
+	case <-time.After(5 * time.Second):
+		t.Fatal("the operation context did not expire")
+	}
+	if !errors.Is(ctx.Err(), context.DeadlineExceeded) {
+		t.Fatalf("ctx.Err() = %v, want DeadlineExceeded", ctx.Err())
+	}
+	op.End(ctx.Err())
+	found := false
+	for _, g := range obs.snapshot() {
+		if g == "deadlinetest/run/deadline" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("observed %v, want deadlinetest/run/deadline", obs.snapshot())
+	}
+}
+
+// Паника доставки события или метрики не ломает операцию и не мешает освободить её контекст.
+func TestOpSurvivesNotifyAndObserverPanics(t *testing.T) {
+	env := newFakeEnv()
+	env.panicNotify = true
+	SetObserver(panicObserver{})
+	t.Cleanup(func() { SetObserver(nil) })
+	p, buf := newProvider(t, env)
+	ctx, op, err := p.Begin(t.Context(), req("c1", auth.PermRead))
+	if err != nil {
+		t.Fatal(err)
+	}
+	op.Notify("incident:updated", "inc-1") // не паникует
+	op.End(errors.New("failed"))           // не паникует
+	op.End(nil)                            // повторное завершение безвредно
+	if ctx.Err() == nil {
+		t.Fatal("End must release the operation context even if the metric observer panics")
+	}
+	if !strings.Contains(buf.String(), "ops operation finished") {
+		t.Fatalf("the technical log lost the record: %q", buf.String())
+	}
+}
+
+type panicObserver struct{}
+
+func (panicObserver) ObserveOp(string, string, string, time.Duration) { panic("metrics are broken") }

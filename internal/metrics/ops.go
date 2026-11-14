@@ -18,7 +18,7 @@ import (
 var opLabel = regexp.MustCompile(`^[a-z][a-z0-9_]{0,31}$`)
 
 // opStatuses — фиксированный набор статусов операции.
-var opStatuses = map[string]bool{"ok": true, "partial": true, "failed": true, "canceled": true}
+var opStatuses = map[string]bool{"ok": true, "partial": true, "failed": true, "canceled": true, "deadline": true}
 
 func newOpsCollectors() (*prometheus.CounterVec, *prometheus.HistogramVec) {
 	total := prometheus.NewCounterVec(prometheus.CounterOpts{
