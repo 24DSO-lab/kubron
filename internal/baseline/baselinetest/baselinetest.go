@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -44,6 +45,9 @@ func Run(t *testing.T, newEnv func(t *testing.T) Env) {
 		{"DeleteCascades", testDeleteCascades},
 		{"RetentionResults", testRetentionResults},
 		{"RetentionVersions", testRetentionVersions},
+		{"ConcurrentSameVersionNumber", testConcurrentSameSeq},
+		{"ConcurrentDistinctVersions", testConcurrentDistinctSeq},
+		{"ConcurrentResults", testConcurrentResults},
 		{"ContextCancelled", testContextCancelled},
 		{"MaliciousIdentifiers", testMaliciousIDs},
 	} {
@@ -647,5 +651,110 @@ func testMaliciousIDs(t *testing.T, e Env) {
 		if err := e.Backend.PutBaseline(ctx, bad); !errors.Is(err, baseline.ErrInvalid) {
 			t.Errorf("PutBaseline(id=%q) = %v, want ErrInvalid", id, err)
 		}
+	}
+}
+
+// --- конкурентность --------------------------------------------------------------------------------------------
+
+// concurrently запускает n вызовов одновременно (с общим стартом) и возвращает их ошибки по номерам.
+func concurrently(n int, fn func(i int) error) []error {
+	errs := make([]error, n)
+	start := make(chan struct{})
+	var wg sync.WaitGroup
+	for i := range n {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-start
+			errs[i] = fn(i)
+		}()
+	}
+	close(start)
+	wg.Wait()
+	return errs
+}
+
+// Два пользователя одновременно создают версию с одним номером: побеждает ровно один, остальные получают ErrExists,
+// история не повреждается. Так drift.Service узнаёт, что номер занят, и берёт следующий.
+func testConcurrentSameSeq(t *testing.T, e Env) {
+	const n = 16
+	ctx := context.Background()
+	s := e.NewScope(t)
+	b := newBaseline(s, "web", t0)
+	must(t, e.Backend.PutBaseline(ctx, b))
+
+	errs := concurrently(n, func(int) error {
+		return e.Backend.PutVersion(ctx, s, newVersion(b.ID, 1, t0))
+	})
+	var won int
+	for _, err := range errs {
+		switch {
+		case err == nil:
+			won++
+		case !errors.Is(err, baseline.ErrExists):
+			t.Fatalf("a losing writer got %v, want ErrExists", err)
+		}
+	}
+	if won != 1 {
+		t.Fatalf("%d writers won the same version number, want exactly 1", won)
+	}
+	page, err := e.Backend.ListVersions(ctx, s, b.ID, baseline.Page{})
+	must(t, err)
+	if len(page.Items) != 1 || page.Items[0].Seq != 1 {
+		t.Fatalf("history = %+v, want exactly version 1", page.Items)
+	}
+	// Победившая версия читается целиком: запись не «склеилась» из двух.
+	got, err := e.Backend.GetVersion(ctx, s, b.ID, page.Items[0].ID)
+	must(t, err)
+	if len(got.Objects) != 1 || len(got.Salt) == 0 {
+		t.Fatalf("the stored version is damaged: %d objects, %d salt bytes", len(got.Objects), len(got.Salt))
+	}
+}
+
+// Разные номера, записанные одновременно, сохраняются все и без пропусков.
+func testConcurrentDistinctSeq(t *testing.T, e Env) {
+	const n = 16
+	ctx := context.Background()
+	s := e.NewScope(t)
+	b := newBaseline(s, "web", t0)
+	must(t, e.Backend.PutBaseline(ctx, b))
+
+	for i, err := range concurrently(n, func(i int) error {
+		return e.Backend.PutVersion(ctx, s, newVersion(b.ID, i+1, t0.Add(time.Duration(i)*time.Second)))
+	}) {
+		if err != nil {
+			t.Fatalf("writer %d: %v", i, err)
+		}
+	}
+	page, err := e.Backend.ListVersions(ctx, s, b.ID, baseline.Page{Limit: baseline.MaxPageLimit})
+	must(t, err)
+	if len(page.Items) != n {
+		t.Fatalf("history has %d versions, want %d", len(page.Items), n)
+	}
+	for i, it := range page.Items { // от новых к старым
+		if want := n - i; it.Seq != want {
+			t.Fatalf("version %d of the page has seq %d, want %d", i, it.Seq, want)
+		}
+	}
+}
+
+// Одновременные проверки пишут свои результаты: ни один не теряется и не перезаписывает другой.
+func testConcurrentResults(t *testing.T, e Env) {
+	const n = 16
+	ctx := context.Background()
+	s := e.NewScope(t)
+	b, vs := seed(t, e, s, 1)
+
+	for i, err := range concurrently(n, func(i int) error {
+		return e.Backend.AppendResult(ctx, s, newResult(b.ID, vs[0].ID, t0.Add(time.Duration(i)*time.Second)))
+	}) {
+		if err != nil {
+			t.Fatalf("writer %d: %v", i, err)
+		}
+	}
+	page, err := e.Backend.ListResults(ctx, s, b.ID, baseline.Page{Limit: baseline.MaxPageLimit})
+	must(t, err)
+	if len(page.Items) != n {
+		t.Fatalf("history has %d results, want %d", len(page.Items), n)
 	}
 }
