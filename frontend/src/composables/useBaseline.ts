@@ -63,6 +63,9 @@ export function previewEmpty(p: BaselinePreview | null): boolean {
 /**
  * Состояние раздела baseline: список, выбранный baseline, история версий и проверок, исключения, последний результат.
  * Все обращения идут через callApp; ошибки бэкенда показываются через errorText.
+ *
+ * Ответы, пришедшие после смены кластера (`reset`) или после выбора другого baseline, отбрасываются:
+ * они не перезаписывают данные нового выбора, а их ошибки не показываются.
  */
 export function useBaseline() {
   const baselines = ref<Baseline[]>([])
@@ -78,17 +81,46 @@ export function useBaseline() {
   const checking = ref(false)
   const error = ref('')
 
+  // «Поколение» состояния: растёт при смене кластера, а счётчик списка — при каждом запросе списка.
+  let gen = 0
+  let listSeq = 0
+
   const selected = computed(() => baselines.value.find(b => b.id === selectedId.value) ?? null)
   const activeVersion = computed(() => versions.value.find(v => v.id === selected.value?.activeVersionId) ?? null)
 
-  async function guard<T>(fn: () => Promise<T>): Promise<T | undefined> {
+  /** Сброс при смене кластера: baseline прежнего кластера не должны остаться на экране */
+  function reset() {
+    gen++
+    listSeq++
+    baselines.value = []
+    selectedId.value = ''
+    versions.value = []
+    versionsNext.value = ''
+    results.value = []
+    resultsNext.value = ''
+    exceptions.value = []
+    result.value = null
+    loading.value = false
+    checking.value = false
     error.value = ''
-    try { return await fn() } catch (e) { error.value = errorText(e); return undefined }
+  }
+
+  /** Выполняет вызов; ошибку показывает, только если состояние не успело смениться (иначе ответ устарел) */
+  async function guard<T>(fn: () => Promise<T>): Promise<T | undefined> {
+    const g = gen
+    error.value = ''
+    try { return await fn() } catch (e) {
+      if (g === gen) error.value = errorText(e)
+      return undefined
+    }
   }
 
   async function loadList() {
+    const g = gen
+    const seq = ++listSeq
     loading.value = true
     const list = await guard(() => callApp('BaselineList'))
+    if (g !== gen || seq !== listSeq) return
     loading.value = false
     if (!list) return
     baselines.value = list as Baseline[]
@@ -102,13 +134,14 @@ export function useBaseline() {
 
   async function loadDetails(id = selectedId.value) {
     if (!id) return
+    const g = gen
     selectedId.value = id
     const [v, r, e] = await Promise.all([
       guard(() => callApp('BaselineVersions', id, '', PAGE_SIZE)),
       guard(() => callApp('DriftResults', id, '', PAGE_SIZE)),
       guard(() => callApp('BaselineExceptions', id)),
     ])
-    if (selectedId.value !== id) return // пользователь уже выбрал другой baseline
+    if (g !== gen || selectedId.value !== id) return // сменился кластер или пользователь выбрал другой baseline
     if (v) { versions.value = (v as any).items ?? []; versionsNext.value = (v as any).next ?? '' }
     if (r) { results.value = (r as any).items ?? []; resultsNext.value = (r as any).next ?? '' }
     if (e) exceptions.value = e as BaselineException[]
@@ -117,30 +150,43 @@ export function useBaseline() {
 
   async function moreVersions() {
     if (!versionsNext.value) return
-    const v = await guard(() => callApp('BaselineVersions', selectedId.value, versionsNext.value, PAGE_SIZE))
+    const g = gen
+    const id = selectedId.value
+    const v = await guard(() => callApp('BaselineVersions', id, versionsNext.value, PAGE_SIZE))
+    if (g !== gen || selectedId.value !== id) return
     if (v) { versions.value.push(...((v as any).items ?? [])); versionsNext.value = (v as any).next ?? '' }
   }
 
   async function moreResults() {
     if (!resultsNext.value) return
-    const r = await guard(() => callApp('DriftResults', selectedId.value, resultsNext.value, PAGE_SIZE))
+    const g = gen
+    const id = selectedId.value
+    const r = await guard(() => callApp('DriftResults', id, resultsNext.value, PAGE_SIZE))
+    if (g !== gen || selectedId.value !== id) return
     if (r) { results.value.push(...((r as any).items ?? [])); resultsNext.value = (r as any).next ?? '' }
   }
 
   async function check(): Promise<boolean> {
-    if (!selectedId.value || checking.value) return false
+    const id = selectedId.value
+    if (!id || checking.value) return false
+    const g = gen
     checking.value = true
-    const res = await guard(() => callApp('DriftCheck', selectedId.value))
+    const res = await guard(() => callApp('DriftCheck', id))
+    if (g !== gen) return false // кластер сменился: reset уже сбросил состояние проверки
     checking.value = false
-    if (!res) return false
+    if (!res || selectedId.value !== id) return false
     result.value = res as BaselineCheckResult
-    await loadDetails()
+    await loadDetails(id)
+    if (g !== gen || selectedId.value !== id) return false
     result.value = res as BaselineCheckResult
     return true
   }
 
-  async function openResult(id: string) {
-    const res = await guard(() => callApp('DriftResult', selectedId.value, id))
+  async function openResult(resultId: string) {
+    const g = gen
+    const id = selectedId.value
+    const res = await guard(() => callApp('DriftResult', id, resultId))
+    if (g !== gen || selectedId.value !== id) return
     if (res) result.value = res as BaselineCheckResult
   }
 
@@ -154,47 +200,62 @@ export function useBaseline() {
 
   /** Создание только с подтверждением и комментарием; без них бэкенд ничего не создаёт */
   async function create(name: string, spec: BaselineSpec, comment: string, token: string, confirmed: boolean): Promise<boolean> {
+    const g = gen
     const b = await guard(() => callApp('BaselineCreate', { name, spec, comment, token, confirmed } as never))
     if (!b) return false
+    if (g !== gen) return true // baseline создан, но экран уже показывает другой кластер
     await loadList()
     await loadDetails((b as Baseline).id)
     return true
   }
 
   async function addVersion(comment: string, token: string, confirmed: boolean): Promise<boolean> {
-    const v = await guard(() => callApp('BaselineAddVersion', { id: selectedId.value, comment, token, confirmed } as never))
+    const g = gen
+    const id = selectedId.value
+    const v = await guard(() => callApp('BaselineAddVersion', { id, comment, token, confirmed } as never))
     if (!v) return false
+    if (g !== gen) return true
     await loadList()
-    await loadDetails()
+    await loadDetails(id)
     return true
   }
 
   async function setActive(versionId: string): Promise<boolean> {
-    const b = await guard(() => callApp('BaselineSetActive', selectedId.value, versionId))
+    const g = gen
+    const id = selectedId.value
+    const b = await guard(() => callApp('BaselineSetActive', id, versionId))
     if (!b) return false
+    if (g !== gen) return true
     await loadList()
-    await loadDetails()
+    await loadDetails(id)
     return true
   }
 
   async function addException(input: { scope: 'resource' | 'kind'; ref: BaselineRef; path: string; comment: string; expiresAt?: string }): Promise<boolean> {
-    const e = await guard(() => callApp('BaselineAddException', selectedId.value, input as never))
+    const g = gen
+    const id = selectedId.value
+    const e = await guard(() => callApp('BaselineAddException', id, input as never))
     if (!e) return false
-    exceptions.value = await callApp('BaselineExceptions', selectedId.value) as BaselineException[]
+    const list = await guard(() => callApp('BaselineExceptions', id))
+    if (g === gen && selectedId.value === id && list) exceptions.value = list as BaselineException[]
     return true
   }
 
-  async function removeException(id: string): Promise<boolean> {
-    const ok = await guard(async () => { await callApp('BaselineRemoveException', selectedId.value, id); return true })
+  async function removeException(exceptionId: string): Promise<boolean> {
+    const g = gen
+    const id = selectedId.value
+    const ok = await guard(async () => { await callApp('BaselineRemoveException', id, exceptionId); return true })
     if (!ok) return false
-    exceptions.value = exceptions.value.filter(e => e.id !== id)
+    if (g === gen && selectedId.value === id) exceptions.value = exceptions.value.filter(e => e.id !== exceptionId)
     return true
   }
 
   async function remove(): Promise<boolean> {
+    const g = gen
     const id = selectedId.value
     const ok = await guard(async () => { await callApp('BaselineDelete', id); return true })
     if (!ok) return false
+    if (g !== gen) return true
     selectedId.value = ''
     result.value = null
     await loadList()
@@ -205,7 +266,7 @@ export function useBaseline() {
   return {
     baselines, selectedId, selected, activeVersion, versions, versionsNext, results, resultsNext, exceptions, result, kinds,
     loading, checking, error,
-    loadList, loadKinds, loadDetails, moreVersions, moreResults, check, openResult,
+    reset, loadList, loadKinds, loadDetails, moreVersions, moreResults, check, openResult,
     previewNew, previewVersion, create, addVersion, setActive, addException, removeException, remove,
   }
 }

@@ -103,11 +103,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { t } from '../../i18n'
 import { formatDateTime } from '../../i18n/format'
 import { askConfirm } from '../../resources/confirm'
 import { can } from '../../composables/useAuth'
+import { useClusters } from '../../composables/useClusters'
 import { useBaseline } from '../../composables/useBaseline'
 import { Perm } from '../../types/auth'
 import type { BaselineRef } from '../../types/baseline'
@@ -116,7 +117,9 @@ import BaselineCreateDialog from '../baseline/BaselineCreateDialog.vue'
 import BaselineExceptions from '../baseline/BaselineExceptions.vue'
 
 const store = useBaseline()
+const { activeClusterId } = useClusters()
 const loaded = ref(false)
+let loadToken = 0 // «последняя загрузка выигрывает»: устаревшая не помечает экран как загруженный
 const dialog = ref<'new' | 'version' | null>(null)
 const prefill = ref<{ ref: BaselineRef; path: string } | null>(null)
 
@@ -134,8 +137,23 @@ async function select(id: string) {
 }
 
 onMounted(async () => {
+  const token = ++loadToken
   await reload()
-  loaded.value = true
+  if (token === loadToken) loaded.value = true
+})
+
+// Смена активного кластера: baseline, версии, результаты и открытые диалоги прежнего кластера сбрасываются,
+// ответы на его запросы отбрасываются (в composable), список читается заново для нового кластера
+watch(activeClusterId, async (id, prev) => {
+  if (id === prev) return
+  const token = ++loadToken
+  store.reset()
+  loaded.value = false
+  dialog.value = null
+  prefill.value = null
+  if (!id) return
+  await reload()
+  if (token === loadToken) loaded.value = true
 })
 
 function onAddException(ref: BaselineRef, path: string) {
