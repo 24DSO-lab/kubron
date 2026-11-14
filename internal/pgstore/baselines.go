@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/24DSO-lab/kubron/internal/baseline"
 	"github.com/24DSO-lab/kubron/internal/tenant"
@@ -203,6 +204,16 @@ func (b *baselineBackend) PutVersion(ctx context.Context, sc tenant.Scope, v bas
 	if err := v.Validate(); err != nil {
 		return err
 	}
+	return mapWriteErr(b.insertVersion(ctx, b.s.pool, sc, v))
+}
+
+// execer — то, чем пишут и пул, и транзакция: так одна и та же запись работает и отдельно, и внутри транзакции.
+type execer interface {
+	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
+}
+
+// insertVersion шифрует и вставляет версию. Ошибку отдаёт как есть: перевод в ErrExists делает вызывающий.
+func (b *baselineBackend) insertVersion(ctx context.Context, q execer, sc tenant.Scope, v baseline.Version) error {
 	v = v.Normalized()
 	plain, err := json.Marshal(versionContent{Salt: v.Salt, Objects: v.Objects})
 	if err != nil {
@@ -212,12 +223,12 @@ func (b *baselineBackend) PutVersion(ctx context.Context, sc tenant.Scope, v bas
 	if err != nil {
 		return fmt.Errorf("failed to encrypt a baseline version: %w", err)
 	}
-	_, err = b.s.pool.Exec(ctx, `
+	_, err = q.Exec(ctx, `
 		INSERT INTO baseline_versions (org_id, team_id, cluster_id, baseline_id, id, seq, rules_version, source, author, comment, created_at, object_count, content_enc, key_id)
 		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
 		sc.OrgID, sc.TeamID, sc.ClusterID, v.BaselineID, v.ID, v.Seq, v.RulesVersion, v.Source, v.Author, v.Comment,
 		v.CreatedAt, len(v.Objects), enc, keyID)
-	return mapWriteErr(err)
+	return err
 }
 
 func (b *baselineBackend) GetVersion(ctx context.Context, sc tenant.Scope, baselineID, versionID string) (baseline.Version, error) {
@@ -392,6 +403,179 @@ func (b *baselineBackend) GetExceptions(ctx context.Context, sc tenant.Scope, ba
 	return list, nil
 }
 
+// --- атомарные операции --------------------------------------------------------------------------------------------
+//
+// Каждая выполняется в одной транзакции. Операции над существующим baseline сначала берут его строку FOR UPDATE:
+// параллельные фиксации версии, смена активной версии, правка исключений и очистка PruneVersions выстраиваются в
+// очередь, а не затирают друг друга (read-modify-write без блокировки терял бы данные).
+
+// lockBaseline блокирует строку baseline и возвращает указатель на активную версию. Нет строки — ErrNotFound.
+func lockBaseline(ctx context.Context, tx pgx.Tx, sc tenant.Scope, id string) (string, error) {
+	var active string
+	err := tx.QueryRow(ctx, `SELECT active_version_id FROM baselines WHERE org_id=$1 AND team_id=$2 AND cluster_id=$3 AND id=$4 FOR UPDATE`,
+		sc.OrgID, sc.TeamID, sc.ClusterID, id).Scan(&active)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", baseline.ErrNotFound
+	}
+	return active, err
+}
+
+func (b *baselineBackend) CreateWithVersion(ctx context.Context, bl baseline.Baseline, v baseline.Version) error {
+	ctx, cancel, err := begin(ctx, bl.Scope)
+	if err != nil {
+		return err
+	}
+	defer cancel()
+	bl.ActiveVersionID = v.ID
+	if err := bl.Validate(); err != nil {
+		return err
+	}
+	if err := v.Validate(); err != nil {
+		return err
+	}
+	if v.BaselineID != bl.ID {
+		return fmt.Errorf("%w: the version belongs to another baseline", baseline.ErrInvalid)
+	}
+	bl = bl.Normalized()
+	return mapWriteErr(pgx.BeginFunc(ctx, b.s.pool, func(tx pgx.Tx) error {
+		// Без ON CONFLICT: повтор ID — ErrExists, а не молчаливая замена чужого документа.
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO baselines (org_id, team_id, cluster_id, id, name, namespaces, selector, kinds, refs, active_version_id, created_by, created_at)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+			bl.Scope.OrgID, bl.Scope.TeamID, bl.Scope.ClusterID, bl.ID, bl.Name,
+			jsonOrEmpty(bl.Namespaces), bl.Selector, jsonOrEmpty(bl.Kinds), jsonOrEmpty(bl.Refs),
+			bl.ActiveVersionID, bl.CreatedBy, bl.CreatedAt); err != nil {
+			return err
+		}
+		return b.insertVersion(ctx, tx, bl.Scope, v)
+	}))
+}
+
+func (b *baselineBackend) CommitVersion(ctx context.Context, sc tenant.Scope, baselineID string, v baseline.Version) error {
+	ctx, cancel, err := begin(ctx, sc)
+	if err != nil {
+		return err
+	}
+	defer cancel()
+	if err := v.Validate(); err != nil {
+		return err
+	}
+	if v.BaselineID != baselineID {
+		return fmt.Errorf("%w: the version belongs to another baseline", baseline.ErrInvalid)
+	}
+	return mapWriteErr(pgx.BeginFunc(ctx, b.s.pool, func(tx pgx.Tx) error {
+		active, err := lockBaseline(ctx, tx, sc, baselineID)
+		if err != nil {
+			return err
+		}
+		if err := b.insertVersion(ctx, tx, sc, v); err != nil {
+			return err
+		}
+		if active != "" { // исключения прежней активной версии читаются уже под блокировкой: ничего не потеряется
+			if _, err := tx.Exec(ctx, `
+				INSERT INTO baseline_exceptions (org_id, team_id, cluster_id, baseline_id, version_id, items)
+				SELECT org_id, team_id, cluster_id, baseline_id, $6, items FROM baseline_exceptions
+				WHERE org_id=$1 AND team_id=$2 AND cluster_id=$3 AND baseline_id=$4 AND version_id=$5 AND items <> '[]'::jsonb`,
+				sc.OrgID, sc.TeamID, sc.ClusterID, baselineID, active, v.ID); err != nil {
+				return err
+			}
+		}
+		_, err = tx.Exec(ctx, `UPDATE baselines SET active_version_id=$5 WHERE org_id=$1 AND team_id=$2 AND cluster_id=$3 AND id=$4`,
+			sc.OrgID, sc.TeamID, sc.ClusterID, baselineID, v.ID)
+		return err
+	}))
+}
+
+func (b *baselineBackend) SetActiveVersion(ctx context.Context, sc tenant.Scope, baselineID, versionID string) (baseline.Baseline, error) {
+	ctx, cancel, err := begin(ctx, sc)
+	if err != nil {
+		return baseline.Baseline{}, err
+	}
+	defer cancel()
+	if baseline.ValidateID(baselineID) != nil || baseline.ValidateID(versionID) != nil {
+		return baseline.Baseline{}, baseline.ErrNotFound
+	}
+	var out baseline.Baseline
+	err = pgx.BeginFunc(ctx, b.s.pool, func(tx pgx.Tx) error {
+		if _, err := lockBaseline(ctx, tx, sc, baselineID); err != nil {
+			return err
+		}
+		// Проверка версии — отдельным запросом после блокировки: очистка, удалившая версию раньше, уже зафиксирована.
+		var one int
+		err := tx.QueryRow(ctx, `SELECT 1 FROM baseline_versions WHERE org_id=$1 AND team_id=$2 AND cluster_id=$3 AND baseline_id=$4 AND id=$5`,
+			sc.OrgID, sc.TeamID, sc.ClusterID, baselineID, versionID).Scan(&one)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return baseline.ErrNotFound
+		}
+		if err != nil {
+			return err
+		}
+		out, err = scanBaseline(sc, tx.QueryRow(ctx, `
+			UPDATE baselines SET active_version_id=$5 WHERE org_id=$1 AND team_id=$2 AND cluster_id=$3 AND id=$4
+			RETURNING `+baselineCols, sc.OrgID, sc.TeamID, sc.ClusterID, baselineID, versionID))
+		return err
+	})
+	if err != nil {
+		return baseline.Baseline{}, err
+	}
+	return out, nil
+}
+
+func (b *baselineBackend) UpdateActiveExceptions(ctx context.Context, sc tenant.Scope, baselineID string, fn func([]baseline.Exception) ([]baseline.Exception, error)) error {
+	ctx, cancel, err := begin(ctx, sc)
+	if err != nil {
+		return err
+	}
+	defer cancel()
+	if baseline.ValidateID(baselineID) != nil {
+		return baseline.ErrNotFound
+	}
+	return mapWriteErr(pgx.BeginFunc(ctx, b.s.pool, func(tx pgx.Tx) error {
+		active, err := lockBaseline(ctx, tx, sc, baselineID)
+		if err != nil {
+			return err
+		}
+		if active == "" {
+			return baseline.ErrNoActiveVersion
+		}
+		var raw []byte
+		err = tx.QueryRow(ctx, `SELECT items FROM baseline_exceptions WHERE org_id=$1 AND team_id=$2 AND cluster_id=$3 AND baseline_id=$4 AND version_id=$5`,
+			sc.OrgID, sc.TeamID, sc.ClusterID, baselineID, active).Scan(&raw)
+		cur := []baseline.Exception{}
+		switch {
+		case errors.Is(err, pgx.ErrNoRows):
+		case err != nil:
+			return err
+		default:
+			if err := json.Unmarshal(raw, &cur); err != nil {
+				return fmt.Errorf("failed to read baseline exceptions: %w", err)
+			}
+			if cur = baseline.NormalizedExceptions(cur); cur == nil {
+				cur = []baseline.Exception{}
+			}
+		}
+		next, err := fn(cur)
+		if err != nil {
+			return err
+		}
+		for _, e := range next {
+			if err := e.Validate(); err != nil {
+				return err
+			}
+		}
+		next = baseline.NormalizedExceptions(next)
+		if next == nil {
+			next = []baseline.Exception{}
+		}
+		_, err = tx.Exec(ctx, `
+			INSERT INTO baseline_exceptions (org_id, team_id, cluster_id, baseline_id, version_id, items)
+			VALUES ($1,$2,$3,$4,$5,$6)
+			ON CONFLICT (org_id, team_id, cluster_id, baseline_id, version_id) DO UPDATE SET items=EXCLUDED.items`,
+			sc.OrgID, sc.TeamID, sc.ClusterID, baselineID, active, jsonOrEmpty(next))
+		return err
+	}))
+}
+
 // --- results ------------------------------------------------------------------------------------------------------
 
 func (b *baselineBackend) AppendResult(ctx context.Context, sc tenant.Scope, r baseline.CheckResult) error {
@@ -519,14 +703,21 @@ func (b *baselineBackend) PruneVersions(ctx context.Context, keep int) (int, err
 	defer cancel()
 	keep = max(keep, baseline.MinVersionsKept)
 	// Остаются keep последних версий каждого baseline; активная версия не удаляется никогда. Исключения — каскадом.
+	// Строки baseline, версии которых удаляются, блокируются в этом же операторе (FOR UPDATE): смена активной версии
+	// ждёт очистку и после неё не найдёт удалённую версию, а очистка, пришедшая позже, видит уже новую активную.
 	tag, err := b.s.pool.Exec(ctx, `
 		WITH ranked AS (
 			SELECT org_id, team_id, cluster_id, baseline_id, id,
 			       row_number() OVER (PARTITION BY org_id, team_id, cluster_id, baseline_id ORDER BY seq DESC) AS rn
 			FROM baseline_versions
+		), locked AS (
+			SELECT b.org_id, b.team_id, b.cluster_id, b.id, b.active_version_id FROM baselines b
+			WHERE EXISTS (SELECT 1 FROM ranked r WHERE r.rn > $1
+			              AND r.org_id=b.org_id AND r.team_id=b.team_id AND r.cluster_id=b.cluster_id AND r.baseline_id=b.id)
+			FOR UPDATE
 		)
 		DELETE FROM baseline_versions v
-		USING ranked r, baselines b
+		USING ranked r, locked b
 		WHERE v.org_id=r.org_id AND v.team_id=r.team_id AND v.cluster_id=r.cluster_id AND v.baseline_id=r.baseline_id AND v.id=r.id
 		  AND b.org_id=v.org_id AND b.team_id=v.team_id AND b.cluster_id=v.cluster_id AND b.id=v.baseline_id
 		  AND r.rn > $1 AND v.id <> b.active_version_id`, keep)

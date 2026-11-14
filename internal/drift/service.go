@@ -29,7 +29,7 @@ var (
 	// ErrEmptySnapshot — в выборке нет ни одного ресурса: пустую версию создавать нельзя.
 	ErrEmptySnapshot = fmt.Errorf("%w: no resources were selected", baseline.ErrInvalid)
 	// ErrNoActiveVersion — у baseline нет активной версии, проверять нечего.
-	ErrNoActiveVersion = fmt.Errorf("%w: the baseline has no active version", baseline.ErrInvalid)
+	ErrNoActiveVersion = baseline.ErrNoActiveVersion
 )
 
 const (
@@ -166,31 +166,16 @@ func (s *Service) Create(ctx context.Context, sess Session, in CreateInput) (bas
 		Namespaces: in.Spec.Namespaces, Selector: in.Spec.Selector, Kinds: in.Spec.Kinds, Refs: in.Spec.Refs,
 		CreatedBy: sess.Actor, CreatedAt: now,
 	}
+	v := newVersion(b.ID, 1, snap, sess.Actor, comment, now)
+	b.ActiveVersionID = v.ID
 	if err := b.Validate(); err != nil {
 		return baseline.Baseline{}, baseline.Version{}, err
 	}
-	if err := s.store.PutBaseline(ctx, b); err != nil {
-		return baseline.Baseline{}, baseline.Version{}, err
-	}
-	v := newVersion(b.ID, 1, snap, sess.Actor, comment, now)
-	if err := s.store.PutVersion(ctx, sess.Scope, v); err != nil {
-		s.rollback(sess, b.ID)
-		return baseline.Baseline{}, baseline.Version{}, err
-	}
-	b.ActiveVersionID = v.ID
-	if err := s.store.PutBaseline(ctx, b); err != nil {
-		s.rollback(sess, b.ID)
+	// Baseline и первая версия записываются атомарно: сбой не оставляет baseline без версии и версию без baseline.
+	if err := s.store.CreateWithVersion(ctx, b, v); err != nil {
 		return baseline.Baseline{}, baseline.Version{}, err
 	}
 	return b, v, nil
-}
-
-// rollback убирает недосозданный baseline: без версии он не должен остаться в списке.
-func (s *Service) rollback(sess Session, id string) {
-	// Контекст вызова мог быть отменён — именно из-за этого и откатываем.
-	if err := s.store.DeleteBaseline(context.WithoutCancel(context.Background()), sess.Scope, id); err != nil && !errors.Is(err, baseline.ErrNotFound) {
-		s.log.Warn("baseline rollback failed", "baseline", id, "err", err)
-	}
 }
 
 func newVersion(baselineID string, seq int, snap Snapshot, actor, comment string, at time.Time) baseline.Version {
@@ -227,12 +212,6 @@ func (s *Service) AddVersion(ctx context.Context, sess Session, in VersionInput)
 	if len(snap.Objects) == 0 {
 		return baseline.Version{}, ErrEmptySnapshot
 	}
-	var carried []baseline.Exception
-	if b.ActiveVersionID != "" {
-		if carried, err = s.store.GetExceptions(ctx, sess.Scope, b.ID, b.ActiveVersionID); err != nil {
-			return baseline.Version{}, err
-		}
-	}
 	var v baseline.Version
 	for attempt := 0; ; attempt++ {
 		seq, err := s.nextSeq(ctx, sess.Scope, b.ID)
@@ -240,24 +219,15 @@ func (s *Service) AddVersion(ctx context.Context, sess Session, in VersionInput)
 			return baseline.Version{}, err
 		}
 		v = newVersion(b.ID, seq, snap, sess.Actor, comment, baseline.Normalize(s.now()))
-		err = s.store.PutVersion(ctx, sess.Scope, v)
+		// Версия, перенос исключений прежней активной версии и смена указателя — одна атомарная операция хранилища.
+		err = s.store.CommitVersion(ctx, sess.Scope, b.ID, v)
 		if err == nil {
-			break
+			return v, nil
 		}
 		if !errors.Is(err, baseline.ErrExists) || attempt >= maxPutRetries {
 			return baseline.Version{}, err
 		}
 	}
-	if len(carried) > 0 {
-		if err := s.store.PutExceptions(ctx, sess.Scope, b.ID, v.ID, carried); err != nil {
-			return baseline.Version{}, err
-		}
-	}
-	b.ActiveVersionID = v.ID
-	if err := s.store.PutBaseline(ctx, b); err != nil {
-		return baseline.Version{}, err
-	}
-	return v, nil
 }
 
 func (s *Service) nextSeq(ctx context.Context, scope tenant.Scope, id string) (int, error) {
@@ -273,18 +243,7 @@ func (s *Service) nextSeq(ctx context.Context, scope tenant.Scope, id string) (i
 
 // SetActive делает активной одну из существующих версий. Содержимое версий не меняется.
 func (s *Service) SetActive(ctx context.Context, sess Session, baselineID, versionID string) (baseline.Baseline, error) {
-	b, err := s.store.GetBaseline(ctx, sess.Scope, baselineID)
-	if err != nil {
-		return baseline.Baseline{}, err
-	}
-	if _, err := s.store.GetVersion(ctx, sess.Scope, baselineID, versionID); err != nil {
-		return baseline.Baseline{}, err
-	}
-	b.ActiveVersionID = versionID
-	if err := s.store.PutBaseline(ctx, b); err != nil {
-		return baseline.Baseline{}, err
-	}
-	return b, nil
+	return s.store.SetActiveVersion(ctx, sess.Scope, baselineID, versionID)
 }
 
 // ExceptionInput — новое исключение.
@@ -297,14 +256,9 @@ type ExceptionInput struct {
 }
 
 // AddException добавляет исключение к активной версии. Хранится отдельно от неизменяемого содержимого версии.
+// Чтение списка и запись нового выполняет хранилище под блокировкой baseline: параллельные добавления и смена
+// активной версии не теряют исключений.
 func (s *Service) AddException(ctx context.Context, sess Session, baselineID string, in ExceptionInput) (baseline.Exception, error) {
-	b, err := s.store.GetBaseline(ctx, sess.Scope, baselineID)
-	if err != nil {
-		return baseline.Exception{}, err
-	}
-	if b.ActiveVersionID == "" {
-		return baseline.Exception{}, ErrNoActiveVersion
-	}
 	ex := baseline.Exception{
 		ID: baseline.NewID(), Scope: in.Scope, Ref: in.Ref, Path: strings.TrimSpace(in.Path),
 		Comment: strings.TrimSpace(in.Comment), ExpiresAt: in.ExpiresAt, CreatedBy: sess.Actor, CreatedAt: baseline.Normalize(s.now()),
@@ -315,14 +269,13 @@ func (s *Service) AddException(ctx context.Context, sess Session, baselineID str
 	if err := ex.Validate(); err != nil {
 		return baseline.Exception{}, err
 	}
-	list, err := s.store.GetExceptions(ctx, sess.Scope, b.ID, b.ActiveVersionID)
+	err := s.store.UpdateActiveExceptions(ctx, sess.Scope, baselineID, func(list []baseline.Exception) ([]baseline.Exception, error) {
+		if len(list) >= MaxExceptions {
+			return nil, fmt.Errorf("%w: too many exceptions", baseline.ErrInvalid)
+		}
+		return append(list, ex), nil
+	})
 	if err != nil {
-		return baseline.Exception{}, err
-	}
-	if len(list) >= MaxExceptions {
-		return baseline.Exception{}, fmt.Errorf("%w: too many exceptions", baseline.ErrInvalid)
-	}
-	if err := s.store.PutExceptions(ctx, sess.Scope, b.ID, b.ActiveVersionID, append(list, ex)); err != nil {
 		return baseline.Exception{}, err
 	}
 	return ex, nil
@@ -330,27 +283,22 @@ func (s *Service) AddException(ctx context.Context, sess Session, baselineID str
 
 // RemoveException удаляет исключение активной версии.
 func (s *Service) RemoveException(ctx context.Context, sess Session, baselineID, exceptionID string) error {
-	b, err := s.store.GetBaseline(ctx, sess.Scope, baselineID)
-	if err != nil {
-		return err
-	}
-	if b.ActiveVersionID == "" {
-		return baseline.ErrNotFound
-	}
-	list, err := s.store.GetExceptions(ctx, sess.Scope, b.ID, b.ActiveVersionID)
-	if err != nil {
-		return err
-	}
-	kept := make([]baseline.Exception, 0, len(list))
-	for _, e := range list {
-		if e.ID != exceptionID {
-			kept = append(kept, e)
+	err := s.store.UpdateActiveExceptions(ctx, sess.Scope, baselineID, func(list []baseline.Exception) ([]baseline.Exception, error) {
+		kept := make([]baseline.Exception, 0, len(list))
+		for _, e := range list {
+			if e.ID != exceptionID {
+				kept = append(kept, e)
+			}
 		}
+		if len(kept) == len(list) {
+			return nil, baseline.ErrNotFound
+		}
+		return kept, nil
+	})
+	if errors.Is(err, baseline.ErrNoActiveVersion) {
+		return baseline.ErrNotFound // без активной версии удалять нечего
 	}
-	if len(kept) == len(list) {
-		return baseline.ErrNotFound
-	}
-	return s.store.PutExceptions(ctx, sess.Scope, b.ID, b.ActiveVersionID, kept)
+	return err
 }
 
 // Exceptions возвращает исключения активной версии.

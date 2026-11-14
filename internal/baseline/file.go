@@ -147,6 +147,149 @@ func (b *fileBackend) ListBaselines(ctx context.Context, s tenant.Scope) ([]Base
 	return out, nil
 }
 
+// CreateWithVersion: версия и exceptions пишутся раньше документа baseline, а документ — последним. Видимость
+// baseline определяет baseline.json (его читают и список, и retention), поэтому сбой посередине оставляет в худшем
+// случае каталог без baseline.json, который никто не видит.
+func (b *fileBackend) CreateWithVersion(ctx context.Context, bl Baseline, v Version) error {
+	if err := check(ctx, bl.Scope); err != nil {
+		return err
+	}
+	bl.ActiveVersionID = v.ID
+	if err := bl.Validate(); err != nil {
+		return err
+	}
+	if err := v.Validate(); err != nil {
+		return err
+	}
+	if v.BaselineID != bl.ID {
+		return fmt.Errorf("%w: the version belongs to another baseline", ErrInvalid)
+	}
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	switch _, err := b.getBaseline(bl.Scope, bl.ID); {
+	case err == nil:
+		return ErrExists
+	case !errors.Is(err, ErrNotFound):
+		return err
+	}
+	vpath := filepath.Join(b.baselineDir(bl.Scope, bl.ID), dirVersions, versionFileName(v.Seq, v.ID))
+	if err := writeJSON(vpath, v.Normalized()); err != nil {
+		return err
+	}
+	if err := writeJSON(filepath.Join(b.baselineDir(bl.Scope, bl.ID), fileBaselineName), bl.Normalized()); err != nil {
+		_ = os.RemoveAll(b.baselineDir(bl.Scope, bl.ID)) // каталог создан этим вызовом: baseline.json не было
+		return err
+	}
+	return nil
+}
+
+// CommitVersion: файл версии, затем исключения, затем документ baseline — он и есть точка фиксации. При сбое
+// на любом шаге уже записанное убирается, а активной остаётся прежняя версия.
+func (b *fileBackend) CommitVersion(ctx context.Context, s tenant.Scope, baselineID string, v Version) error {
+	if err := check(ctx, s); err != nil {
+		return err
+	}
+	if err := v.Validate(); err != nil {
+		return err
+	}
+	if v.BaselineID != baselineID {
+		return fmt.Errorf("%w: the version belongs to another baseline", ErrInvalid)
+	}
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	bl, err := b.getBaseline(s, baselineID)
+	if err != nil {
+		return err
+	}
+	files, err := b.versionFiles(s, baselineID)
+	if err != nil {
+		return err
+	}
+	for _, f := range files {
+		if f.id == v.ID || f.seq == v.Seq {
+			return ErrExists
+		}
+	}
+	var carried []Exception
+	if bl.ActiveVersionID != "" {
+		if carried, err = b.readExceptionsLocked(s, baselineID, bl.ActiveVersionID); err != nil {
+			return err
+		}
+	}
+	vpath := filepath.Join(b.baselineDir(s, baselineID), dirVersions, versionFileName(v.Seq, v.ID))
+	if err := writeJSON(vpath, v.Normalized()); err != nil {
+		return err
+	}
+	undo := func() {
+		_ = os.Remove(vpath)
+		_ = os.Remove(b.exceptionsPath(s, baselineID, v.ID))
+	}
+	if len(carried) > 0 {
+		if err := b.writeExceptionsLocked(s, baselineID, v.ID, carried); err != nil {
+			undo()
+			return err
+		}
+	}
+	bl.ActiveVersionID = v.ID
+	if err := writeJSON(filepath.Join(b.baselineDir(s, baselineID), fileBaselineName), bl.Normalized()); err != nil {
+		undo()
+		return err
+	}
+	return nil
+}
+
+func (b *fileBackend) SetActiveVersion(ctx context.Context, s tenant.Scope, baselineID, versionID string) (Baseline, error) {
+	if err := check(ctx, s); err != nil {
+		return Baseline{}, err
+	}
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if _, err := b.findVersion(s, baselineID, versionID); err != nil { // заодно проверяет и сам baseline
+		return Baseline{}, err
+	}
+	bl, err := b.getBaseline(s, baselineID)
+	if err != nil {
+		return Baseline{}, err
+	}
+	bl.ActiveVersionID = versionID
+	if err := writeJSON(filepath.Join(b.baselineDir(s, baselineID), fileBaselineName), bl.Normalized()); err != nil {
+		return Baseline{}, err
+	}
+	return bl.Normalized(), nil
+}
+
+func (b *fileBackend) UpdateActiveExceptions(ctx context.Context, s tenant.Scope, baselineID string, fn func([]Exception) ([]Exception, error)) error {
+	if err := check(ctx, s); err != nil {
+		return err
+	}
+	if err := ValidateID(baselineID); err != nil {
+		return ErrNotFound
+	}
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	bl, err := b.getBaseline(s, baselineID)
+	if err != nil {
+		return err
+	}
+	if bl.ActiveVersionID == "" {
+		return ErrNoActiveVersion
+	}
+	cur, err := b.readExceptionsLocked(s, baselineID, bl.ActiveVersionID)
+	if err != nil {
+		return err
+	}
+	next, err := fn(slices.Clone(cur))
+	if err != nil {
+		return err
+	}
+	for _, e := range next {
+		if err := e.Validate(); err != nil {
+			return err
+		}
+	}
+	return b.writeExceptionsLocked(s, baselineID, bl.ActiveVersionID, next)
+}
+
 func (b *fileBackend) DeleteBaseline(ctx context.Context, s tenant.Scope, id string) error {
 	if err := check(ctx, s); err != nil {
 		return err
@@ -334,6 +477,11 @@ func (b *fileBackend) PutExceptions(ctx context.Context, s tenant.Scope, baselin
 	if _, err := b.findVersion(s, baselineID, versionID); err != nil {
 		return err
 	}
+	return b.writeExceptionsLocked(s, baselineID, versionID, list)
+}
+
+// writeExceptionsLocked заменяет список исключений версии (пустой — удаляет файл). Вызывать под b.mu, версия уже проверена.
+func (b *fileBackend) writeExceptionsLocked(s tenant.Scope, baselineID, versionID string, list []Exception) error {
 	path := b.exceptionsPath(s, baselineID, versionID)
 	if len(list) == 0 {
 		if err := os.Remove(path); err != nil && !errors.Is(err, fs.ErrNotExist) {
@@ -342,6 +490,19 @@ func (b *fileBackend) PutExceptions(ctx context.Context, s tenant.Scope, baselin
 		return nil
 	}
 	return writeJSON(path, NormalizedExceptions(list))
+}
+
+// readExceptionsLocked читает список исключений версии. Вызывать под b.mu, версия уже проверена.
+func (b *fileBackend) readExceptionsLocked(s tenant.Scope, baselineID, versionID string) ([]Exception, error) {
+	var list []Exception
+	err := readJSON(b.exceptionsPath(s, baselineID, versionID), &list)
+	if errors.Is(err, ErrNotFound) {
+		return []Exception{}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return NormalizedExceptions(list), nil
 }
 
 func (b *fileBackend) GetExceptions(ctx context.Context, s tenant.Scope, baselineID, versionID string) ([]Exception, error) {
@@ -353,15 +514,7 @@ func (b *fileBackend) GetExceptions(ctx context.Context, s tenant.Scope, baselin
 	if _, err := b.findVersion(s, baselineID, versionID); err != nil {
 		return nil, err
 	}
-	var list []Exception
-	err := readJSON(b.exceptionsPath(s, baselineID, versionID), &list)
-	if errors.Is(err, ErrNotFound) {
-		return []Exception{}, nil
-	}
-	if err != nil {
-		return nil, err
-	}
-	return NormalizedExceptions(list), nil
+	return b.readExceptionsLocked(s, baselineID, versionID)
 }
 
 func resultFileName(at time.Time, id string) string {
