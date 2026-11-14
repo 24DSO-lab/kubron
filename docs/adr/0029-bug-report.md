@@ -1,6 +1,6 @@
 # ADR-0029: «Сообщить об ошибке»: снимок экрана и письмо из десктопа и веба
 
-- Статус: предложено; п. 3 заменён ADR-0030
+- Статус: реализовано (2026-11-13); п. 3 заменён ADR-0030
 - Дата: 2026-11-09
 - Связано: ADR-0002, 0008, 0010, 0014; код — `internal/bugreport`, `internal/app/app_bugreport.go`,
   `frontend/src/components/bugreport/`, `docs/bug-report.md`
