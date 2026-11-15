@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **Incidents diagnostics tests and docs:** nine new scenarios (unbound PVC, node selector, no nodes, unrecognized scheduler reason, volume mount failure, registry auth with a pull secret, paused rollout, ReplicaSet quota, CrashLoopBackOff without events), a fuzz test over events, conditions and logs, and a description of how confidence levels are assigned in `docs/intelligence.md`.
+- **CI and docs:** the race job now also covers the root package and `pkg/ext`; a nightly workflow fuzzes the diagnostics and baseline cursor targets; `docs/README.md` no longer links to documents that do not exist, and `CONTRIBUTING.md` has a local development section.
 
 ### Fixed
 
