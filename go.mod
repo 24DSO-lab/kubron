@@ -5,7 +5,7 @@ go 1.27.3
 require (
 	github.com/24DSO-lab/kubron/pkg/ext v0.0.0
 	github.com/Masterminds/semver/v3 v3.5.0
-	github.com/aws/aws-sdk-go-v2 v1.47.5
+	github.com/aws/aws-sdk-go-v2 v1.48.0
 	github.com/coreos/go-oidc/v3 v3.21.0
 	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674
 	github.com/jackc/pgx/v5 v5.12.0
@@ -14,7 +14,7 @@ require (
 	github.com/wailsapp/wails/v2 v2.17.1
 	github.com/zalando/go-keyring v0.2.8
 	golang.org/x/crypto v0.58.1-0.20261009181718-2f1f834330b2
-	golang.org/x/oauth2 v0.37.0
+	golang.org/x/oauth2 v0.38.0
 	gopkg.in/yaml.v3 v3.0.1
 	helm.sh/helm/v4 v4.3.1
 	k8s.io/api v0.37.2
@@ -38,7 +38,7 @@ require (
 	github.com/Masterminds/squirrel v1.5.4 // indirect
 	github.com/ProtonMail/go-crypto v1.4.1 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
-	github.com/aws/smithy-go v1.28.7 // indirect
+	github.com/aws/smithy-go v1.28.9 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bep/debounce v1.2.1 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
