@@ -1,0 +1,25 @@
+# Под назначен на узел, но не готов, а том не смонтирован: гипотеза опирается только на событие, поэтому средняя.
+kind: Expect
+target: {kind: Pod, namespace: shop, name: db-0}
+symptoms: [pod.startup_failure]
+hypotheses: ["startup.volume_mount_failed:medium"]
+recommendations: [rec.fix_volume_claim]
+---
+apiVersion: v1
+kind: Pod
+metadata: {name: db-0, namespace: shop}
+spec: {nodeName: n1, containers: [{name: db, image: "postgres:16"}]}
+status:
+  phase: Pending
+  conditions:
+    - {type: PodScheduled, status: "True"}
+    - {type: Ready, status: "False"}
+---
+apiVersion: v1
+kind: Event
+metadata: {name: e1, namespace: shop}
+involvedObject: {kind: Pod, name: db-0, namespace: shop}
+type: Warning
+reason: FailedMount
+message: "Unable to attach or mount volumes: unmounted volumes=[data], unattached volumes=[data]: timed out waiting for the condition"
+lastTimestamp: "2026-11-11T09:59:00Z"

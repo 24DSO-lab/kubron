@@ -1,0 +1,18 @@
+# Причина названа только в условии пода (событий нет): один источник — средняя уверенность, не высокая.
+kind: Expect
+target: {kind: Pod, namespace: shop, name: web-1}
+symptoms: [pod.pending]
+hypotheses: ["pending.node_selector_mismatch:medium"]
+absent: [pending.insufficient_resources, pending.node_selector_mismatch:high]
+recommendations: [rec.fix_node_selector]
+---
+apiVersion: v1
+kind: Pod
+metadata: {name: web-1, namespace: shop}
+spec:
+  nodeSelector: {disktype: ssd}
+  containers: [{name: app, image: "app:1"}]
+status:
+  phase: Pending
+  conditions:
+    - {type: PodScheduled, status: "False", reason: Unschedulable, message: "0/3 nodes are available: 3 node(s) didn't match Pod's node affinity/selector."}
