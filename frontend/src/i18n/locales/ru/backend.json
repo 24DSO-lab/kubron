@@ -976,6 +976,7 @@
   "baselineConfirmationIsRequired": "{p0}: требуется подтверждение",
   "baselineMalformedCursor": "{p0}: некорректный курсор страницы",
   "baselineMalformedIdentifier": "{p0}: некорректный идентификатор",
+  "baselineVersionOfAnotherBaseline": "{p0}: версия принадлежит другому baseline",
   "baselineNoResourcesWereSelected": "{p0}: не выбран ни один ресурс",
   "baselineSelectNamespacesOrResources": "{p0}: выберите пространства имён или ресурсы",
   "baselineTheBaselineHasNoActiveVersion": "{p0}: у baseline нет активной версии",

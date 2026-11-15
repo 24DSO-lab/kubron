@@ -947,7 +947,7 @@ func testUpdateActiveExceptions(t *testing.T, e Env) {
 	}
 
 	// Ошибка fn и негодный результат ничего не пишут.
-	boom := errors.New("boom")
+	boom := errors.ErrUnsupported // маркер ошибки fn: своего текста нет, i18n-check не требует перевода
 	wantErr(t, e.Backend.UpdateActiveExceptions(ctx, s, b.ID, func([]baseline.Exception) ([]baseline.Exception, error) { return nil, boom }), boom)
 	noComment := newException("spec.x", t0)
 	noComment.Comment = ""
