@@ -1,0 +1,25 @@
+# Условие планировщика и событие называют непривязанный PVC: два независимых источника дают высокую уверенность.
+kind: Expect
+target: {kind: Pod, namespace: shop, name: db-0}
+symptoms: [pod.pending]
+hypotheses: ["pending.unbound_pvc:high"]
+absent: [pending.insufficient_resources, pending.untolerated_taint]
+recommendations: [rec.fix_volume_claim]
+---
+apiVersion: v1
+kind: Pod
+metadata: {name: db-0, namespace: shop}
+spec: {containers: [{name: db, image: "postgres:16"}]}
+status:
+  phase: Pending
+  conditions:
+    - {type: PodScheduled, status: "False", reason: Unschedulable, message: "0/3 nodes are available: pod has unbound immediate PersistentVolumeClaims."}
+---
+apiVersion: v1
+kind: Event
+metadata: {name: e1, namespace: shop}
+involvedObject: {kind: Pod, name: db-0, namespace: shop}
+type: Warning
+reason: FailedScheduling
+message: "0/3 nodes are available: pod has unbound immediate PersistentVolumeClaims."
+lastTimestamp: "2026-11-11T09:59:00Z"

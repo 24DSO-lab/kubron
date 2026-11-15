@@ -1,0 +1,30 @@
+# Цель — ReplicaSet (без Deployment в выборке): квота названа в событии создания подов.
+kind: Expect
+target: {kind: ReplicaSet, namespace: shop, name: web-2}
+symptoms: [workload.rollout]
+hypotheses: ["rollout.quota_exceeded:high"]
+recommendations: [rec.raise_quota_or_reduce_requests]
+---
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: web-2
+  namespace: shop
+  uid: rs2
+  labels: {app: web}
+  creationTimestamp: "2026-11-11T09:50:00Z"
+spec: {replicas: 3, selector: {matchLabels: {app: web}}}
+status:
+  replicas: 0
+  readyReplicas: 0
+  conditions:
+    - {type: ReplicaFailure, status: "True", reason: FailedCreate, message: "pods are forbidden: exceeded quota"}
+---
+apiVersion: v1
+kind: Event
+metadata: {name: e1, namespace: shop}
+involvedObject: {kind: ReplicaSet, name: web-2, namespace: shop}
+type: Warning
+reason: FailedCreate
+message: "Error creating: pods \"web-2-x\" is forbidden: exceeded quota: compute, requested: requests.cpu=2"
+lastTimestamp: "2026-11-11T09:55:00Z"

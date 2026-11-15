@@ -269,6 +269,13 @@ jobs:
       - name: go test -race
         run: go test -race -tags $GO_TAGS ./internal/...
 
+      # корневой пакет и pkg/ext — отдельные от ./internal/... цели; pkg/ext — отдельный модуль
+      - name: go test -race (root package)
+        run: go test -race -tags $GO_TAGS .
+      - name: go test -race (pkg/ext)
+        run: go test -race ./...
+        working-directory: pkg/ext
+
   # SQL-схема сервиса: применяется и откатывается на настоящем PostgreSQL (задача 3.1a).
   migrations:
     name: SQL migrations (PostgreSQL 16)

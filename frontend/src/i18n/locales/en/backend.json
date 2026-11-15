@@ -976,6 +976,7 @@
   "baselineConfirmationIsRequired": "{p0}: confirmation is required",
   "baselineMalformedCursor": "{p0}: malformed cursor",
   "baselineMalformedIdentifier": "{p0}: malformed identifier",
+  "baselineVersionOfAnotherBaseline": "{p0}: the version belongs to another baseline",
   "baselineNoResourcesWereSelected": "{p0}: no resources were selected",
   "baselineSelectNamespacesOrResources": "{p0}: select namespaces or resources",
   "baselineTheBaselineHasNoActiveVersion": "{p0}: the baseline has no active version",

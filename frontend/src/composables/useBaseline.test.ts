@@ -117,4 +117,78 @@ describe('useBaseline', () => {
     await p
     expect(s.versions.value).toEqual([])
   })
+
+  describe('смена кластера и устаревшие ответы', () => {
+    function deferred<T>() {
+      let resolve!: (v: T) => void
+      const promise = new Promise<T>((res) => { resolve = res })
+      return { promise, resolve }
+    }
+
+    it('reset очищает всё состояние кластера', async () => {
+      call.mockResolvedValueOnce([baseline('b1')])
+      const s = useBaseline()
+      await s.loadList()
+      s.versions.value = [{ id: 'v1' } as any]
+      s.result.value = { id: 'r1' } as any
+      s.error.value = 'old'
+      s.reset()
+      expect(s.baselines.value).toEqual([])
+      expect(s.selectedId.value).toBe('')
+      expect(s.versions.value).toEqual([])
+      expect(s.result.value).toBeNull()
+      expect(s.error.value).toBe('')
+    })
+
+    it('ответ списка прежнего кластера после reset не возвращает его baseline', async () => {
+      const d = deferred<unknown>()
+      call.mockReturnValueOnce(d.promise as never)
+      const s = useBaseline()
+      const p = s.loadList()
+      s.reset()
+      d.resolve([baseline('old-cluster')])
+      await p
+      expect(s.baselines.value).toEqual([])
+      expect(s.selectedId.value).toBe('')
+      expect(s.loading.value).toBe(false)
+    })
+
+    it('ошибка устаревшего запроса не показывается', async () => {
+      const s = useBaseline()
+      let fail!: (e: unknown) => void
+      call.mockReturnValueOnce(new Promise((_, rej) => { fail = rej }) as never)
+      const p = s.loadList()
+      s.reset()
+      fail('boom')
+      await p
+      expect(s.error.value).toBe('')
+    })
+
+    it('«ещё версий» для прежнего выбора не дописывается в новый', async () => {
+      const s = useBaseline()
+      s.selectedId.value = 'b1'
+      s.versionsNext.value = 'c1'
+      const d = deferred<unknown>()
+      call.mockReturnValueOnce(d.promise as never)
+      const p = s.moreVersions()
+      s.selectedId.value = 'b2'
+      s.versions.value = []
+      d.resolve({ items: [{ id: 'from-b1' }], next: '' })
+      await p
+      expect(s.versions.value).toEqual([])
+    })
+
+    it('проверка, завершившаяся после reset, не выставляет результат', async () => {
+      const s = useBaseline()
+      s.selectedId.value = 'b1'
+      const d = deferred<unknown>()
+      call.mockReturnValueOnce(d.promise as never)
+      const p = s.check()
+      s.reset()
+      d.resolve({ id: 'r1', summary: { total: 1 }, items: [] })
+      expect(await p).toBe(false)
+      expect(s.result.value).toBeNull()
+      expect(s.checking.value).toBe(false)
+    })
+  })
 })

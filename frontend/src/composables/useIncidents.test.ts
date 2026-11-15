@@ -89,4 +89,79 @@ describe('useIncidents', () => {
     expect(api.callApp).not.toHaveBeenCalled()
     await expect(inc.readFragment('x')).rejects.toThrow()
   })
+
+  describe('устаревшие ответы', () => {
+    /** Ответ, которым тест управляет вручную: завершается тогда, когда тест решит */
+    function deferred<T>() {
+      let resolve!: (v: T) => void
+      let reject!: (e: unknown) => void
+      const promise = new Promise<T>((res, rej) => { resolve = res; reject = rej })
+      return { promise, resolve, reject }
+    }
+
+    it('старый ответ списка не перезаписывает более новый', async () => {
+      const first = deferred<unknown>()
+      api.callApp.mockReturnValueOnce(first.promise).mockResolvedValueOnce({ items: [{ id: 'new' }] })
+      const inc = useIncidents(() => 'cl1')
+      const slow = inc.loadList()
+      await inc.loadList()
+      first.resolve({ items: [{ id: 'old' }] })
+      await slow
+      expect(inc.items.value.map((i) => i.id)).toEqual(['new'])
+      expect(inc.loading.value).toBe(false)
+    })
+
+    it('при быстром переключении расследований остаётся последнее выбранное', async () => {
+      const a = deferred<unknown>()
+      const b = deferred<unknown>()
+      api.callApp.mockReturnValueOnce(a.promise).mockReturnValueOnce(b.promise)
+      const inc = useIncidents(() => 'cl1')
+      const pa = inc.select('a')
+      const pb = inc.select('b')
+      b.resolve(detail('b'))
+      await pb
+      a.resolve(detail('a'))
+      await pa
+      expect(inc.detail.value?.incident.id).toBe('b')
+      expect(inc.detailLoading.value).toBe(false)
+    })
+
+    it('reset при смене кластера очищает экран и отбрасывает ответ прежнего кластера', async () => {
+      const d = deferred<unknown>()
+      api.callApp.mockReturnValueOnce(d.promise)
+      const inc = useIncidents(() => 'cl1')
+      inc.items.value = [{ id: 'x' } as never]
+      const p = inc.select('i1')
+      inc.reset()
+      expect(inc.items.value).toEqual([])
+      expect(inc.detail.value).toBeNull()
+      expect(inc.detailLoading.value).toBe(false)
+      d.resolve(detail('i1'))
+      await p
+      expect(inc.detail.value).toBeNull()
+    })
+
+    it('ошибка устаревшего запроса не показывается', async () => {
+      const d = deferred<unknown>()
+      api.callApp.mockReturnValueOnce(d.promise)
+      const inc = useIncidents(() => 'cl1')
+      const p = inc.loadList()
+      inc.reset()
+      d.reject(new Error('cluster is gone'))
+      await expect(p).resolves.toBeUndefined()
+    })
+
+    it('ответ действия не подменяет расследование, которое успели закрыть', async () => {
+      api.callApp.mockResolvedValueOnce(detail('i1'))
+      const inc = useIncidents(() => 'cl1')
+      await inc.open({ kind: 'Deployment', namespace: 'shop', name: 'web', disableLogs: false })
+      const d = deferred<unknown>()
+      api.callApp.mockReturnValueOnce(d.promise)
+      const p = inc.refreshEvents()
+      inc.close()
+      d.resolve(detail('i1', 'closed'))
+      await p
+      expect(inc.detail.value).toBeNull()
+    })
+  })
 })

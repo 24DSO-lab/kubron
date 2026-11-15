@@ -26,6 +26,8 @@ var (
 	// ErrInvalidScope — область доступа не заполнена целиком: хранилище отказывает (fail closed), а не трактует
 	// пустоту как «любая».
 	ErrInvalidScope = errors.New("tenant scope is incomplete")
+	// ErrNoActiveVersion — у baseline нет активной версии, проверять и менять исключения нечего.
+	ErrNoActiveVersion = fmt.Errorf("%w: the baseline has no active version", ErrInvalid)
 )
 
 // Пределы хранения и значения по умолчанию (ADR-0027 §7).
@@ -76,8 +78,11 @@ type ResultPage struct {
 // Контракт:
 //   - область tenant.Scope входит в ключ каждой записи и передаётся в каждый вызов; неполная область — ErrInvalidScope,
 //     запись чужой области — ErrNotFound;
-//   - операций, которым нужна атомарность между несколькими записями, нет: согласованно меняемое — один документ
-//     (исключения версии хранятся одним документом, список заменяется целиком);
+//   - то, что должно меняться согласованно, меняется одним вызовом и атомарно: CreateWithVersion, CommitVersion,
+//     SetActiveVersion и UpdateActiveExceptions. Они исполняются под блокировкой baseline (в PostgreSQL — в
+//     транзакции со строкой baseline FOR UPDATE, в файловом хранилище — под мьютексом корня), поэтому параллельные
+//     вызовы не теряют друг друга, а сбой посередине не оставляет полузаписанного состояния. Остальные Put-вызовы —
+//     отдельные записи одного документа (исключения версии хранятся одним документом, список заменяется целиком);
 //   - все вызовы принимают context первым аргументом; отменённый контекст прерывает операцию с ошибкой контекста.
 type Backend interface {
 	// PutBaseline создаёт или заменяет документ по (область, ID).
@@ -107,6 +112,25 @@ type Backend interface {
 
 	// DeleteResultsBefore удаляет результаты старше t по всем областям (retention) и возвращает их число.
 	DeleteResultsBefore(ctx context.Context, t time.Time) (int, error)
+	// CreateWithVersion атомарно создаёт baseline вместе с первой версией и делает эту версию активной: появляется и
+	// то и другое, либо ничего. ActiveVersionID в b игнорируется, хранилище ставит v.ID. Повтор ID baseline или
+	// версии — ErrExists; v.BaselineID должен совпадать с b.ID.
+	CreateWithVersion(ctx context.Context, b Baseline, v Version) error
+	// CommitVersion атомарно добавляет версию v к существующему baseline, переносит на неё исключения прежней
+	// активной версии и делает v активной. Исключения читаются под блокировкой baseline, поэтому добавленное
+	// параллельно не теряется. Занятый номер или ID версии — ErrExists, нет baseline — ErrNotFound; при ошибке
+	// ничего не меняется.
+	CommitVersion(ctx context.Context, scope tenant.Scope, baselineID string, v Version) error
+	// SetActiveVersion атомарно делает активной существующую версию и возвращает обновлённый документ. Нет baseline
+	// или версии — ErrNotFound.
+	SetActiveVersion(ctx context.Context, scope tenant.Scope, baselineID, versionID string) (Baseline, error)
+	// UpdateActiveExceptions передаёт fn текущий список исключений активной версии и записывает возвращённый
+	// список, всё под блокировкой baseline: параллельные правки не затирают друг друга, а исключение не попадает на
+	// версию, переставшую быть активной. Нет активной версии — ErrNoActiveVersion. Ошибка fn возвращается как есть,
+	// без записи. fn не должна обращаться к хранилищу (блокировка не рекурсивна) и не должна менять свой аргумент
+	// за пределами возвращаемого списка.
+	UpdateActiveExceptions(ctx context.Context, scope tenant.Scope, baselineID string, fn func(current []Exception) ([]Exception, error)) error
+
 	// PruneVersions по всем baseline оставляет не менее max(keep, MinVersionsKept) последних версий и всегда
 	// оставляет активную; остальные удаляет вместе с их исключениями. Возвращает число удалённых версий.
 	PruneVersions(ctx context.Context, keep int) (int, error)

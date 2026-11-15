@@ -976,6 +976,7 @@
   "baselineConfirmationIsRequired": "{p0}：需要确认",
   "baselineMalformedCursor": "{p0}：分页游标格式不正确",
   "baselineMalformedIdentifier": "{p0}：标识符格式不正确",
+  "baselineVersionOfAnotherBaseline": "{p0}：该版本属于另一个基线",
   "baselineNoResourcesWereSelected": "{p0}：没有选择任何资源",
   "baselineSelectNamespacesOrResources": "{p0}：请选择命名空间或资源",
   "baselineTheBaselineHasNoActiveVersion": "{p0}：基线没有活动版本",

@@ -42,7 +42,7 @@
 </template>
 
 <script lang="ts" setup>
-import { onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { errorText } from '../../composables/errorText'
 import { useClusters } from '../../composables/useClusters'
@@ -60,7 +60,7 @@ const { activeClusterId } = useClusters()
 const notifications = useNotifications()
 const {
   items, nextCursor, status, loading, detail, settings, canReadLogs,
-  loadList, open, select: selectIncident, close, refreshEvents, markOutcome, saveFragment, deleteFragment, setLogCapture,
+  reset, loadList, open, select: selectIncident, close, refreshEvents, markOutcome, saveFragment, deleteFragment, setLogCapture,
   readFragment, remove, exportIncident, loadSettings, saveSettings: persistSettings, listen,
 } = useIncidents(() => activeClusterId.value)
 
@@ -131,6 +131,16 @@ const askDeleteAll = () => ask(t('incidents.evidence.deleteAllConfirm'), () => v
 onMounted(() => {
   void reload()
   unlisten = listen()
+})
+// Смена активного кластера: список, открытое расследование и настройки прежнего кластера сбрасываются,
+// ответы на его запросы отбрасываются (в composable), список читается заново для нового кластера
+watch(activeClusterId, (id, prev) => {
+  if (id === prev) return
+  reset()
+  loadError.value = ''
+  settingsOpen.value = false
+  confirm.open = false
+  if (id) void reload()
 })
 onBeforeUnmount(() => unlisten?.())
 </script>

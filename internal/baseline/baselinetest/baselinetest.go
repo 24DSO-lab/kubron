@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -44,6 +45,16 @@ func Run(t *testing.T, newEnv func(t *testing.T) Env) {
 		{"DeleteCascades", testDeleteCascades},
 		{"RetentionResults", testRetentionResults},
 		{"RetentionVersions", testRetentionVersions},
+		{"ConcurrentSameVersionNumber", testConcurrentSameSeq},
+		{"ConcurrentDistinctVersions", testConcurrentDistinctSeq},
+		{"ConcurrentResults", testConcurrentResults},
+		{"CreateWithVersion", testCreateWithVersion},
+		{"CommitVersion", testCommitVersion},
+		{"SetActiveVersion", testSetActiveVersion},
+		{"UpdateActiveExceptions", testUpdateActiveExceptions},
+		{"ConcurrentExceptionEdits", testConcurrentExceptionEdits},
+		{"ConcurrentCommitAndExceptionEdits", testConcurrentCommitAndEdits},
+		{"ConcurrentPruneAndSetActive", testConcurrentPruneAndSetActive},
 		{"ContextCancelled", testContextCancelled},
 		{"MaliciousIdentifiers", testMaliciousIDs},
 	} {
@@ -646,6 +657,410 @@ func testMaliciousIDs(t *testing.T, e Env) {
 		bad.ID = id
 		if err := e.Backend.PutBaseline(ctx, bad); !errors.Is(err, baseline.ErrInvalid) {
 			t.Errorf("PutBaseline(id=%q) = %v, want ErrInvalid", id, err)
+		}
+	}
+}
+
+// --- конкурентность --------------------------------------------------------------------------------------------
+
+// concurrently запускает n вызовов одновременно (с общим стартом) и возвращает их ошибки по номерам.
+func concurrently(n int, fn func(i int) error) []error {
+	errs := make([]error, n)
+	start := make(chan struct{})
+	var wg sync.WaitGroup
+	for i := range n {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-start
+			errs[i] = fn(i)
+		}()
+	}
+	close(start)
+	wg.Wait()
+	return errs
+}
+
+// Два пользователя одновременно создают версию с одним номером: побеждает ровно один, остальные получают ErrExists,
+// история не повреждается. Так drift.Service узнаёт, что номер занят, и берёт следующий.
+func testConcurrentSameSeq(t *testing.T, e Env) {
+	const n = 16
+	ctx := context.Background()
+	s := e.NewScope(t)
+	b := newBaseline(s, "web", t0)
+	must(t, e.Backend.PutBaseline(ctx, b))
+
+	errs := concurrently(n, func(int) error {
+		return e.Backend.PutVersion(ctx, s, newVersion(b.ID, 1, t0))
+	})
+	var won int
+	for _, err := range errs {
+		switch {
+		case err == nil:
+			won++
+		case !errors.Is(err, baseline.ErrExists):
+			t.Fatalf("a losing writer got %v, want ErrExists", err)
+		}
+	}
+	if won != 1 {
+		t.Fatalf("%d writers won the same version number, want exactly 1", won)
+	}
+	page, err := e.Backend.ListVersions(ctx, s, b.ID, baseline.Page{})
+	must(t, err)
+	if len(page.Items) != 1 || page.Items[0].Seq != 1 {
+		t.Fatalf("history = %+v, want exactly version 1", page.Items)
+	}
+	// Победившая версия читается целиком: запись не «склеилась» из двух.
+	got, err := e.Backend.GetVersion(ctx, s, b.ID, page.Items[0].ID)
+	must(t, err)
+	if len(got.Objects) != 1 || len(got.Salt) == 0 {
+		t.Fatalf("the stored version is damaged: %d objects, %d salt bytes", len(got.Objects), len(got.Salt))
+	}
+}
+
+// Разные номера, записанные одновременно, сохраняются все и без пропусков.
+func testConcurrentDistinctSeq(t *testing.T, e Env) {
+	const n = 16
+	ctx := context.Background()
+	s := e.NewScope(t)
+	b := newBaseline(s, "web", t0)
+	must(t, e.Backend.PutBaseline(ctx, b))
+
+	for i, err := range concurrently(n, func(i int) error {
+		return e.Backend.PutVersion(ctx, s, newVersion(b.ID, i+1, t0.Add(time.Duration(i)*time.Second)))
+	}) {
+		if err != nil {
+			t.Fatalf("writer %d: %v", i, err)
+		}
+	}
+	page, err := e.Backend.ListVersions(ctx, s, b.ID, baseline.Page{Limit: baseline.MaxPageLimit})
+	must(t, err)
+	if len(page.Items) != n {
+		t.Fatalf("history has %d versions, want %d", len(page.Items), n)
+	}
+	for i, it := range page.Items { // от новых к старым
+		if want := n - i; it.Seq != want {
+			t.Fatalf("version %d of the page has seq %d, want %d", i, it.Seq, want)
+		}
+	}
+}
+
+// Одновременные проверки пишут свои результаты: ни один не теряется и не перезаписывает другой.
+func testConcurrentResults(t *testing.T, e Env) {
+	const n = 16
+	ctx := context.Background()
+	s := e.NewScope(t)
+	b, vs := seed(t, e, s, 1)
+
+	for i, err := range concurrently(n, func(i int) error {
+		return e.Backend.AppendResult(ctx, s, newResult(b.ID, vs[0].ID, t0.Add(time.Duration(i)*time.Second)))
+	}) {
+		if err != nil {
+			t.Fatalf("writer %d: %v", i, err)
+		}
+	}
+	page, err := e.Backend.ListResults(ctx, s, b.ID, baseline.Page{Limit: baseline.MaxPageLimit})
+	must(t, err)
+	if len(page.Items) != n {
+		t.Fatalf("history has %d results, want %d", len(page.Items), n)
+	}
+}
+
+// --- атомарные операции ----------------------------------------------------------------------------------------
+
+func exceptionIDs(list []baseline.Exception) map[string]bool {
+	ids := make(map[string]bool, len(list))
+	for _, e := range list {
+		ids[e.ID] = true
+	}
+	return ids
+}
+
+func activeOf(t *testing.T, e Env, s tenant.Scope, id string) baseline.Baseline {
+	t.Helper()
+	b, err := e.Backend.GetBaseline(context.Background(), s, id)
+	must(t, err)
+	return b
+}
+
+func testCreateWithVersion(t *testing.T, e Env) {
+	ctx := context.Background()
+	s := e.NewScope(t)
+	b := newBaseline(s, "web", t0)
+	v := newVersion(b.ID, 1, t0)
+	b.ActiveVersionID = "ignored-by-the-store" // хранилище ставит ID первой версии само
+	must(t, e.Backend.CreateWithVersion(ctx, b, v))
+
+	got := activeOf(t, e, s, b.ID)
+	if got.ActiveVersionID != v.ID {
+		t.Fatalf("active version = %q, want %q", got.ActiveVersionID, v.ID)
+	}
+	gv, err := e.Backend.GetVersion(ctx, s, b.ID, v.ID)
+	must(t, err)
+	sameJSON(t, v.Normalized(), gv)
+
+	// Повтор ID baseline не заменяет существующий документ и не добавляет версию.
+	other := newVersion(b.ID, 1, t0.Add(time.Hour))
+	wantErr(t, e.Backend.CreateWithVersion(ctx, b, other), baseline.ErrExists)
+	if again := activeOf(t, e, s, b.ID); again.ActiveVersionID != v.ID {
+		t.Fatalf("a failed create changed the active version to %q", again.ActiveVersionID)
+	}
+	page, err := e.Backend.ListVersions(ctx, s, b.ID, baseline.Page{})
+	must(t, err)
+	if len(page.Items) != 1 {
+		t.Fatalf("a failed create left %d versions, want 1", len(page.Items))
+	}
+
+	// Атомарность: негодная версия не оставляет baseline без версии.
+	b2 := newBaseline(s, "api", t0)
+	bad := newVersion(b2.ID, 1, t0)
+	bad.Salt = nil
+	wantErr(t, e.Backend.CreateWithVersion(ctx, b2, bad), baseline.ErrInvalid)
+	wantErr(t, e.Backend.CreateWithVersion(ctx, b2, newVersion(baseline.NewID(), 1, t0)), baseline.ErrInvalid) // чужой baseline
+	list, err := e.Backend.ListBaselines(ctx, s)
+	must(t, err)
+	if len(list) != 1 {
+		t.Fatalf("a rejected create left %d baselines, want 1", len(list))
+	}
+
+	wantErr(t, e.Backend.CreateWithVersion(ctx, b, v), baseline.ErrExists)
+	wantErr(t, e.Backend.CreateWithVersion(ctx, baseline.Baseline{ID: "x", Name: "x"}, v), baseline.ErrInvalidScope)
+}
+
+func testCommitVersion(t *testing.T, e Env) {
+	ctx := context.Background()
+	s := e.NewScope(t)
+	b, vs := seed(t, e, s, 2)
+	exc := newException("spec.replicas", t0)
+	must(t, e.Backend.PutExceptions(ctx, s, b.ID, vs[1].ID, []baseline.Exception{exc}))
+
+	v3 := newVersion(b.ID, 3, t0.Add(time.Hour))
+	must(t, e.Backend.CommitVersion(ctx, s, b.ID, v3))
+	if got := activeOf(t, e, s, b.ID); got.ActiveVersionID != v3.ID {
+		t.Fatalf("active version = %q, want %q", got.ActiveVersionID, v3.ID)
+	}
+	carried, err := e.Backend.GetExceptions(ctx, s, b.ID, v3.ID)
+	must(t, err)
+	if len(carried) != 1 || carried[0].ID != exc.ID {
+		t.Fatalf("exceptions of the new version = %+v, want the one carried over", carried)
+	}
+	// Исключения прежней версии остались при ней: версия неизменяема, история не переписывается.
+	old, err := e.Backend.GetExceptions(ctx, s, b.ID, vs[1].ID)
+	must(t, err)
+	if len(old) != 1 {
+		t.Fatalf("the previous version lost its exceptions: %+v", old)
+	}
+
+	// Неудача ничего не меняет: активная версия, число версий и исключения остаются прежними.
+	wantErr(t, e.Backend.CommitVersion(ctx, s, b.ID, newVersion(b.ID, 3, t0.Add(2*time.Hour))), baseline.ErrExists) // номер занят
+	dupID := newVersion(b.ID, 4, t0)
+	dupID.ID = v3.ID
+	wantErr(t, e.Backend.CommitVersion(ctx, s, b.ID, dupID), baseline.ErrExists) // ID занят
+	bad := newVersion(b.ID, 4, t0)
+	bad.Salt = nil
+	wantErr(t, e.Backend.CommitVersion(ctx, s, b.ID, bad), baseline.ErrInvalid)
+	wantErr(t, e.Backend.CommitVersion(ctx, s, b.ID, newVersion(baseline.NewID(), 4, t0)), baseline.ErrInvalid) // версия чужого baseline
+	missing := baseline.NewID()
+	wantErr(t, e.Backend.CommitVersion(ctx, s, missing, newVersion(missing, 1, t0)), baseline.ErrNotFound)
+	if got := activeOf(t, e, s, b.ID); got.ActiveVersionID != v3.ID {
+		t.Fatalf("a failed commit changed the active version to %q", got.ActiveVersionID)
+	}
+	page, err := e.Backend.ListVersions(ctx, s, b.ID, baseline.Page{})
+	must(t, err)
+	if len(page.Items) != 3 {
+		t.Fatalf("a failed commit left %d versions, want 3", len(page.Items))
+	}
+
+	// Чужая область не видит baseline.
+	wantErr(t, e.Backend.CommitVersion(ctx, e.NewScope(t), b.ID, newVersion(b.ID, 9, t0)), baseline.ErrNotFound)
+
+	// У baseline без активной версии исключений переносить нечего: версия просто становится активной.
+	empty := newBaseline(s, "empty", t0)
+	must(t, e.Backend.PutBaseline(ctx, empty))
+	first := newVersion(empty.ID, 1, t0)
+	must(t, e.Backend.CommitVersion(ctx, s, empty.ID, first))
+	if got := activeOf(t, e, s, empty.ID); got.ActiveVersionID != first.ID {
+		t.Fatalf("active version = %q, want %q", got.ActiveVersionID, first.ID)
+	}
+	if ex, err := e.Backend.GetExceptions(ctx, s, empty.ID, first.ID); err != nil || len(ex) != 0 {
+		t.Fatalf("exceptions = %+v, %v; want none", ex, err)
+	}
+}
+
+func testSetActiveVersion(t *testing.T, e Env) {
+	ctx := context.Background()
+	s := e.NewScope(t)
+	b, vs := seed(t, e, s, 3)
+
+	got, err := e.Backend.SetActiveVersion(ctx, s, b.ID, vs[0].ID)
+	must(t, err)
+	if got.ActiveVersionID != vs[0].ID || got.ID != b.ID {
+		t.Fatalf("returned %q of %q, want %q of %q", got.ActiveVersionID, got.ID, vs[0].ID, b.ID)
+	}
+	if stored := activeOf(t, e, s, b.ID); stored.ActiveVersionID != vs[0].ID {
+		t.Fatalf("stored active version = %q, want %q", stored.ActiveVersionID, vs[0].ID)
+	}
+
+	wantErr(t, errOf(e.Backend.SetActiveVersion(ctx, s, b.ID, baseline.NewID())), baseline.ErrNotFound)
+	wantErr(t, errOf(e.Backend.SetActiveVersion(ctx, s, baseline.NewID(), vs[0].ID)), baseline.ErrNotFound)
+	wantErr(t, errOf(e.Backend.SetActiveVersion(ctx, s, b.ID, "../x")), baseline.ErrNotFound)
+	wantErr(t, errOf(e.Backend.SetActiveVersion(ctx, e.NewScope(t), b.ID, vs[1].ID)), baseline.ErrNotFound)
+	if stored := activeOf(t, e, s, b.ID); stored.ActiveVersionID != vs[0].ID {
+		t.Fatalf("a failed switch changed the active version to %q", stored.ActiveVersionID)
+	}
+}
+
+func errOf(_ baseline.Baseline, err error) error { return err }
+
+func testUpdateActiveExceptions(t *testing.T, e Env) {
+	ctx := context.Background()
+	s := e.NewScope(t)
+
+	// Без активной версии правки нет.
+	empty := newBaseline(s, "empty", t0)
+	must(t, e.Backend.PutBaseline(ctx, empty))
+	called := false
+	err := e.Backend.UpdateActiveExceptions(ctx, s, empty.ID, func(c []baseline.Exception) ([]baseline.Exception, error) {
+		called = true
+		return c, nil
+	})
+	wantErr(t, err, baseline.ErrNoActiveVersion)
+	if called {
+		t.Fatal("fn was called for a baseline without an active version")
+	}
+	wantErr(t, e.Backend.UpdateActiveExceptions(ctx, s, baseline.NewID(), func(c []baseline.Exception) ([]baseline.Exception, error) { return c, nil }), baseline.ErrNotFound)
+
+	b, vs := seed(t, e, s, 2)
+	a := newException("spec.replicas", t0)
+	must(t, e.Backend.UpdateActiveExceptions(ctx, s, b.ID, func(c []baseline.Exception) ([]baseline.Exception, error) {
+		if len(c) != 0 {
+			t.Fatalf("current = %+v, want none", c)
+		}
+		return append(c, a), nil
+	}))
+	// Список лежит на активной версии, а не на других.
+	if got, err := e.Backend.GetExceptions(ctx, s, b.ID, vs[1].ID); err != nil || len(got) != 1 || got[0].ID != a.ID {
+		t.Fatalf("active exceptions = %+v, %v", got, err)
+	}
+	if got, err := e.Backend.GetExceptions(ctx, s, b.ID, vs[0].ID); err != nil || len(got) != 0 {
+		t.Fatalf("a non-active version has exceptions: %+v, %v", got, err)
+	}
+
+	// Ошибка fn и негодный результат ничего не пишут.
+	boom := errors.ErrUnsupported // маркер ошибки fn: своего текста нет, i18n-check не требует перевода
+	wantErr(t, e.Backend.UpdateActiveExceptions(ctx, s, b.ID, func([]baseline.Exception) ([]baseline.Exception, error) { return nil, boom }), boom)
+	noComment := newException("spec.x", t0)
+	noComment.Comment = ""
+	wantErr(t, e.Backend.UpdateActiveExceptions(ctx, s, b.ID, func(c []baseline.Exception) ([]baseline.Exception, error) {
+		return append(c, noComment), nil
+	}), baseline.ErrInvalid)
+	if got, _ := e.Backend.GetExceptions(ctx, s, b.ID, vs[1].ID); len(got) != 1 || got[0].ID != a.ID {
+		t.Fatalf("a failed update changed the list: %+v", got)
+	}
+
+	// Пустой результат очищает список.
+	must(t, e.Backend.UpdateActiveExceptions(ctx, s, b.ID, func([]baseline.Exception) ([]baseline.Exception, error) { return nil, nil }))
+	if got, err := e.Backend.GetExceptions(ctx, s, b.ID, vs[1].ID); err != nil || len(got) != 0 {
+		t.Fatalf("exceptions after clearing = %+v, %v", got, err)
+	}
+	// Чужая область.
+	wantErr(t, e.Backend.UpdateActiveExceptions(ctx, e.NewScope(t), b.ID, func(c []baseline.Exception) ([]baseline.Exception, error) { return c, nil }), baseline.ErrNotFound)
+}
+
+// Параллельные добавления исключений не затирают друг друга: потеря записи была бы тихой, а исключения подавляют drift.
+func testConcurrentExceptionEdits(t *testing.T, e Env) {
+	const n = 12
+	ctx := context.Background()
+	s := e.NewScope(t)
+	b, vs := seed(t, e, s, 1)
+
+	added := make([]baseline.Exception, n)
+	for i, err := range concurrently(n, func(i int) error {
+		added[i] = newException(fmt.Sprintf("spec.field%d", i), t0)
+		return e.Backend.UpdateActiveExceptions(ctx, s, b.ID, func(c []baseline.Exception) ([]baseline.Exception, error) {
+			return append(c, added[i]), nil
+		})
+	}) {
+		if err != nil {
+			t.Fatalf("writer %d: %v", i, err)
+		}
+	}
+	got, err := e.Backend.GetExceptions(ctx, s, b.ID, vs[0].ID)
+	must(t, err)
+	ids := exceptionIDs(got)
+	for i, ex := range added {
+		if !ids[ex.ID] {
+			t.Errorf("exception %d was lost", i)
+		}
+	}
+	if len(got) != n {
+		t.Fatalf("%d exceptions stored, want %d", len(got), n)
+	}
+}
+
+// Исключение, добавленное во время фиксации новой версии, оказывается на новой активной версии: не теряется ни до,
+// ни после переключения.
+func testConcurrentCommitAndEdits(t *testing.T, e Env) {
+	const n = 8
+	ctx := context.Background()
+	s := e.NewScope(t)
+	b, _ := seed(t, e, s, 1)
+
+	added := make([]baseline.Exception, n)
+	committed := make([]baseline.Version, n)
+	errs := concurrently(2*n, func(i int) error {
+		if i%2 == 0 {
+			k := i / 2
+			added[k] = newException(fmt.Sprintf("spec.field%d", k), t0)
+			return e.Backend.UpdateActiveExceptions(ctx, s, b.ID, func(c []baseline.Exception) ([]baseline.Exception, error) {
+				return append(c, added[k]), nil
+			})
+		}
+		k := i / 2
+		committed[k] = newVersion(b.ID, 100+k, t0.Add(time.Duration(k)*time.Second))
+		return e.Backend.CommitVersion(ctx, s, b.ID, committed[k])
+	})
+	for i, err := range errs {
+		if err != nil {
+			t.Fatalf("operation %d: %v", i, err)
+		}
+	}
+	active := activeOf(t, e, s, b.ID)
+	got, err := e.Backend.GetExceptions(ctx, s, b.ID, active.ActiveVersionID)
+	must(t, err)
+	ids := exceptionIDs(got)
+	for i, ex := range added {
+		if !ids[ex.ID] {
+			t.Errorf("exception %d is missing on the active version", i)
+		}
+	}
+}
+
+// Очистка старых версий и смена активной версии на старую идут одновременно: указатель никогда не остаётся на
+// удалённой версии.
+func testConcurrentPruneAndSetActive(t *testing.T, e Env) {
+	ctx := context.Background()
+	s := e.NewScope(t)
+	b, vs := seed(t, e, s, baseline.MinVersionsKept+10)
+	for round := range 5 {
+		target := vs[round] // самые старые версии: очистка хочет их удалить
+		errs := concurrently(2, func(i int) error {
+			if i == 0 {
+				_, err := e.Backend.PruneVersions(ctx, baseline.MinVersionsKept)
+				return err
+			}
+			_, err := e.Backend.SetActiveVersion(ctx, s, b.ID, target.ID)
+			if errors.Is(err, baseline.ErrNotFound) {
+				return nil // очистка успела раньше: версии уже нет, это допустимый исход
+			}
+			return err
+		})
+		for _, err := range errs {
+			must(t, err)
+		}
+		active := activeOf(t, e, s, b.ID)
+		if _, err := e.Backend.GetVersion(ctx, s, b.ID, active.ActiveVersionID); err != nil {
+			t.Fatalf("round %d: the active version %q cannot be read: %v", round, active.ActiveVersionID, err)
 		}
 	}
 }

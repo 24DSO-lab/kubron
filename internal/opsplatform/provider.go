@@ -148,7 +148,7 @@ func (p *provider) Begin(ctx context.Context, req OpRequest) (context.Context, *
 			}
 		}
 	} else {
-		clients, err := p.env.Clients(ctx, req.ClusterID)
+		clients, err := p.clients(ctx, req.ClusterID)
 		if err != nil {
 			cancel()
 			return ctx, nil, fmt.Errorf("%w: %w", ErrUnavailable, err)
@@ -164,6 +164,32 @@ func (p *provider) Begin(ctx context.Context, req OpRequest) (context.Context, *
 		StartedAt:     op.started,
 		Reader:        reader,
 	}, Hooks{Require: op.require, Audit: op.audit, Notify: op.notify, End: op.end}), nil
+}
+
+// clients ждёт Env.Clients, но не дольше ctx: построение подключения (вход по паролю OIDC, дискавери) может быть
+// медленным, а оно не обязано уважать контекст. Незавершённый вызов не отменяется (его результат разделяют другие
+// ожидающие и кладут в пул), он дорабатывает в фоне, а буфер канала не даёт горутине зависнуть.
+func (p *provider) clients(ctx context.Context, clusterID string) (Clients, error) {
+	type result struct {
+		c   Clients
+		err error
+	}
+	done := make(chan result, 1)
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				done <- result{err: fmt.Errorf("cluster connection: %v", r)}
+			}
+		}()
+		c, err := p.env.Clients(ctx, clusterID)
+		done <- result{c, err}
+	}()
+	select {
+	case r := <-done:
+		return r.c, r.err
+	case <-ctx.Done():
+		return Clients{}, ctx.Err()
+	}
 }
 
 // opState — состояние одной операции для хуков Op.
@@ -185,10 +211,13 @@ func (s *opState) require(perm auth.Permission) error {
 	return err
 }
 
+// notify посылает событие владельцу сессии. Событие — уведомление, а не часть результата: паника доставки не должна
+// ломать операцию, как и отказ аудита.
 func (s *opState) notify(event, id string) {
 	if event == "" {
 		return
 	}
+	defer func() { _ = recover() }()
 	s.p.env.Notify(event, id)
 }
 
@@ -223,13 +252,15 @@ func (s *opState) audit(action, target string, err error, attrs ...slog.Attr) {
 	})
 }
 
-// end пишет технический журнал и метрику; журнал отделён от аудита.
+// end пишет технический журнал и метрику; журнал отделён от аудита. Контекст операции отпускается при любом исходе,
+// в том числе при панике журнала или наблюдателя метрик (они не должны ни ломать завершение, ни держать ресурсы).
 func (s *opState) end(err error, partial ...string) {
 	defer s.cancel()
+	defer func() { _ = recover() }()
 	d := s.p.cfg.Now().Sub(s.started)
 	status := opStatus(err, partial)
 	level := slog.LevelInfo
-	if status == "failed" {
+	if status == "failed" || status == "deadline" {
 		level = slog.LevelWarn
 	}
 	attrs := []slog.Attr{
@@ -249,16 +280,18 @@ func (s *opState) end(err error, partial ...string) {
 	if err != nil {
 		attrs = append(attrs, slog.String("error", clipRunes(logging.Redact(err.Error()), maxLoggedErr)))
 	}
-	s.p.cfg.Logger.LogAttrs(context.Background(), level, "ops operation finished", attrs...)
 	if o := observer.Load(); o != nil {
-		(*o).ObserveOp(s.req.Module, s.req.Operation, status, d)
+		defer (*o).ObserveOp(s.req.Module, s.req.Operation, status, d) // метрика учитывается, даже если журнал упал
 	}
+	s.p.cfg.Logger.LogAttrs(context.Background(), level, "ops operation finished", attrs...)
 }
 
 func opStatus(err error, partial []string) string {
 	switch {
 	case errors.Is(err, context.Canceled):
 		return "canceled"
+	case errors.Is(err, context.DeadlineExceeded):
+		return "deadline" // вышел срок операции или вызова к кластеру: отдельно от прочих сбоев, чтобы это было видно в метриках
 	case err != nil:
 		return "failed"
 	case len(partial) > 0:
