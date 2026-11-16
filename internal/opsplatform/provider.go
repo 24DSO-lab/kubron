@@ -66,6 +66,9 @@ type Config struct {
 	Limiter *ClusterLimiter
 	// Limits — ограничения чтения.
 	Limits ReaderLimits
+	// Metrics — координаты встроенного стека мониторинга (ADR-0032 §3). Нулевое значение — метрики не настроены,
+	// Op.Metrics == nil. Заполняет слой связки.
+	Metrics MetricsConfig
 	// Logger — технический журнал; nil — slog.Default().
 	Logger *slog.Logger
 	// Now подменяется в тестах.
