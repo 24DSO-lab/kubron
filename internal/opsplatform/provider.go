@@ -141,6 +141,7 @@ func (p *provider) Begin(ctx context.Context, req OpRequest) (context.Context, *
 	ctx, cancel := context.WithTimeout(ctx, p.cfg.OpTimeout)
 
 	var reader Reader
+	var metrics MetricsReader // nil: операция StoredOnly либо метрики не настроены (ADR-0032 §3)
 	if req.StoredOnly {
 		// Подключения нет, поэтому существование кластера проверяет окружение (если умеет): иначе на десктопе
 		// несуществующий id выглядел бы как кластер с пустой историей.
@@ -157,8 +158,14 @@ func (p *provider) Begin(ctx context.Context, req OpRequest) (context.Context, *
 			return ctx, nil, fmt.Errorf("%w: %w", ErrUnavailable, err)
 		}
 		reader = NewReader(req.ClusterID, clients, p.cfg.Limiter, p.cfg.Limits)
+		if p.cfg.Metrics.Configured() && clients.Core != nil {
+			metrics = NewMetricsReader(req.ClusterID, clients, p.cfg.Limiter, p.cfg.Metrics)
+		}
 	}
 	op := &opState{p: p, req: req, actor: actor, scope: scope, corr: corr, started: p.cfg.Now(), cancel: cancel}
+	if c, ok := metrics.(queryCounter); ok {
+		op.metrics = c
+	}
 	return ctx, NewOp(&Op{
 		Scope:         scope,
 		Initiator:     actor.Username,
@@ -166,6 +173,7 @@ func (p *provider) Begin(ctx context.Context, req OpRequest) (context.Context, *
 		CorrelationID: corr,
 		StartedAt:     op.started,
 		Reader:        reader,
+		Metrics:       metrics,
 	}, Hooks{Require: op.require, Audit: op.audit, Notify: op.notify, End: op.end}), nil
 }
 
@@ -204,6 +212,7 @@ type opState struct {
 	corr    string
 	started time.Time
 	cancel  context.CancelFunc
+	metrics queryCounter // счётчик запросов метрик операции; nil — метрик нет
 }
 
 func (s *opState) require(perm auth.Permission) error {
@@ -279,6 +288,10 @@ func (s *opState) end(err error, partial ...string) {
 	}
 	if len(partial) > 0 {
 		attrs = append(attrs, slog.Int("partial_sources", len(partial)))
+	}
+	if s.metrics != nil {
+		// Только число запросов: ни выражений, ни значений метрик в журнале нет (ADR-0032 §8).
+		attrs = append(attrs, slog.Int("metric_queries", s.metrics.Queries()))
 	}
 	if err != nil {
 		attrs = append(attrs, slog.String("error", clipRunes(logging.Redact(err.Error()), maxLoggedErr)))
