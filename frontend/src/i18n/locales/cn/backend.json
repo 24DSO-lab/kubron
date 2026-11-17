@@ -990,6 +990,14 @@
   "baselineUnknownExceptionScope": "{p0}：未知的例外范围",
   "baselineUnsupportedVersionSource": "{p0}：不支持的版本来源",
   "baselinePreviewKey": "基线预览密钥：{p0}",
+
+  "depgraphUnsupportedOrIncompleteSeed": "depgraph：不支持或不完整的起始目标",
+  "depgraphReadLimitReached": "depgraph：已达到读取次数上限",
+  "depgraphSeedError": "{p0}: {p1}/{p2}",
+  "depgraphFakeGetError": "get {p0} {p1}/{p2}: {p3}",
+  "depgraphFakeLabelSelectorError": "graphtest：标签选择器：{p0}",
+  "depgraphFakeFieldSelectorError": "graphtest：字段选择器无效 {p0}",
+
   "signalsProviderFailed": "信号提供方失败",
   "metricsTransportNotAvailable": "{p0}：指标传输不可用",
   "metricsEmptyQuery": "{p0}：查询为空",
@@ -1017,4 +1025,5 @@
   "metricsStackForbidden": "禁止访问指标栈",
   "metricsStackUnavailable": "指标栈不可用",
   "metricsResponseTooLarge": "指标响应过大"
+
 }

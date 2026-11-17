@@ -21,7 +21,7 @@ type Reader interface {
 }
 var ErrNotFound, ErrForbidden, ErrTooLarge, ErrUnavailable error // errors.New(...), тексты — как в diagnose
 
-// Ref — идентификатор вершины; Key() = "group/kind/namespace/name" (пустая группа — core).
+// Ref — идентификатор вершины; Key() = "group/kind/namespace/name"; у core-ресурсов группа в ключе — "core" ("core/Pod/ns/p").
 type Ref struct{ Group, Kind, Namespace, Name string }
 func (r Ref) Key() string
 
@@ -52,7 +52,9 @@ func (g *Graph) Edges() []Edge            // отсортировано по (Fr
 func (g *Graph) EdgesFrom(r Ref, t EdgeType) []Edge
 func (g *Graph) EdgesTo(r Ref, t EdgeType) []Edge
 func (g *Graph) Owners(r Ref) []Node      // вверх по owns, до корня
-func (g *Graph) Dependents(r Ref) []Node  // вниз по owns/selects/routes/mounts/binds/runs_on/scales (направление зависимости)
+func (g *Graph) Dependents(r Ref) []Node  // область влияния r (кто пострадает при его отказе), транзитивно, ближайшие первыми: входящие mounts/binds/runs_on/selects/routes/scales и исходящие owns. Node → Pod'ы на ней → Service → Ingress; Deployment → ReplicaSet → Pod'ы
+func (g *Graph) SetTruncated(code string) // пометить граф усечённым (+ код предупреждения); для построителя и тестовых графов
+func (g *Graph) AddWarning(code string)   // короткий код без имён ресурсов и значений; повторы схлопываются
 func (g *Graph) Truncated() bool
 func (g *Graph) Warnings() []string
 func (g *Graph) Snapshot() Snapshot
@@ -72,7 +74,7 @@ type Options struct { Limits Limits; ExpandIngress, ExpandHPA, ExpandConfigMapRe
 func Build(ctx context.Context, r Reader, seed Ref, o Options) (*Graph, error) // ошибка — только программная; всё остальное в Unknown/Warnings
 ```
 
-`internal/depgraph/graphtest` [Фаза 0, D2]: `type FakeReader struct{...}` реализует `depgraph.Reader`; методы `Put(*unstructured.Unstructured)`, `PutYAML(t, string)`, `Fail(gvk, err)`, `Forbid(gvk)`, `Calls() int`, `CallLog() []string`. Потребители (D3, D4) встраивают его в свои фейки `diagnose.Reader` (добавляя `PodLogs`).
+`internal/depgraph/graphtest` [Фаза 0, D2]: `type FakeReader struct{...}` (конструктор `NewFakeReader()`, нулевое значение тоже работает) реализует `depgraph.Reader`; методы `Put(*unstructured.Unstructured)`, `PutYAML(t, string)`, `Fail(gvk, err)`, `Forbid(gvk)`, `FailObject(gvk, ns, name, err)`, `Calls() int`, `CallLog() []string`. `List` понимает namespace, label-селектор, field-селектор по пути через точку (`spec.nodeName=n1`) и `Limit` (с `Truncated`). Потребители (D3, D4) встраивают его в свои фейки `diagnose.Reader` (добавляя `PodLogs`).
 
 ## 2. `internal/signals` и `opsplatform.MetricsReader` (D1) [Фаза 0]
 

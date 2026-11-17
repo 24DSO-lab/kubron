@@ -22,6 +22,8 @@ import (
 var opsPackages = []string{
 	"internal/opsplatform", "internal/incident", "internal/diagnose",
 	"internal/readiness", "internal/baseline", "internal/drift",
+	// Kubron Intelligence, ADR-0031…0034: новые пакеты подпадают под те же запреты.
+	"internal/depgraph", "internal/signals", "internal/correlation", "internal/feedback",
 }
 
 // forbiddenOpsImports — пакеты, через которые строится подключение или создаются клиенты.

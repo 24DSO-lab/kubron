@@ -1,0 +1,135 @@
+{
+  "nodes": [
+    {
+      "group": "apps",
+      "kind": "Deployment",
+      "namespace": "app",
+      "name": "web",
+      "health": "Healthy"
+    },
+    {
+      "group": "apps",
+      "kind": "ReplicaSet",
+      "namespace": "app",
+      "name": "web-7d",
+      "health": "Healthy"
+    },
+    {
+      "kind": "Node",
+      "name": "n1",
+      "health": "Healthy"
+    },
+    {
+      "kind": "PersistentVolume",
+      "name": "pv-1",
+      "health": "Healthy"
+    },
+    {
+      "kind": "PersistentVolumeClaim",
+      "namespace": "app",
+      "name": "data",
+      "health": "Healthy"
+    },
+    {
+      "kind": "Pod",
+      "namespace": "app",
+      "name": "web-7d-x",
+      "health": "Healthy"
+    },
+    {
+      "kind": "Pod",
+      "namespace": "other",
+      "name": "other-1",
+      "health": "Healthy"
+    },
+    {
+      "kind": "Secret",
+      "namespace": "app",
+      "name": "web-tls",
+      "health": "Unknown",
+      "unknown": "policy"
+    },
+    {
+      "kind": "Service",
+      "namespace": "app",
+      "name": "web",
+      "health": "Healthy"
+    },
+    {
+      "group": "discovery.k8s.io",
+      "kind": "EndpointSlice",
+      "namespace": "app",
+      "name": "web-abc",
+      "health": "Healthy"
+    },
+    {
+      "group": "storage.k8s.io",
+      "kind": "StorageClass",
+      "name": "fast",
+      "health": "Healthy"
+    }
+  ],
+  "edges": [
+    {
+      "from": "apps/Deployment/app/web",
+      "to": "apps/ReplicaSet/app/web-7d",
+      "type": "owns",
+      "state": "ok"
+    },
+    {
+      "from": "apps/ReplicaSet/app/web-7d",
+      "to": "core/Pod/app/web-7d-x",
+      "type": "owns",
+      "state": "ok"
+    },
+    {
+      "from": "core/PersistentVolumeClaim/app/data",
+      "to": "core/PersistentVolume//pv-1",
+      "type": "binds",
+      "state": "ok"
+    },
+    {
+      "from": "core/PersistentVolumeClaim/app/data",
+      "to": "storage.k8s.io/StorageClass//fast",
+      "type": "binds",
+      "state": "ok"
+    },
+    {
+      "from": "core/Pod/app/web-7d-x",
+      "to": "core/Node//n1",
+      "type": "runs_on",
+      "state": "ok"
+    },
+    {
+      "from": "core/Pod/app/web-7d-x",
+      "to": "core/PersistentVolumeClaim/app/data",
+      "type": "mounts",
+      "state": "ok"
+    },
+    {
+      "from": "core/Pod/app/web-7d-x",
+      "to": "core/Secret/app/web-tls",
+      "type": "mounts",
+      "state": "unknown",
+      "reason": "policy"
+    },
+    {
+      "from": "core/Pod/other/other-1",
+      "to": "core/Node//n1",
+      "type": "runs_on",
+      "state": "ok"
+    },
+    {
+      "from": "core/Service/app/web",
+      "to": "core/Pod/app/web-7d-x",
+      "type": "selects",
+      "state": "ok"
+    },
+    {
+      "from": "core/Service/app/web",
+      "to": "discovery.k8s.io/EndpointSlice/app/web-abc",
+      "type": "backed_by",
+      "state": "ok"
+    }
+  ]
+}
