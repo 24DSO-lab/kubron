@@ -996,7 +996,7 @@
   "depgraphSeedError": "{p0}: {p1}/{p2}",
   "depgraphFakeGetError": "get {p0} {p1}/{p2}: {p3}",
   "depgraphFakeLabelSelectorError": "graphtest: label selector: {p0}",
-  "depgraphFakeFieldSelectorError": "graphtest: bad field selector {p0}"
+  "depgraphFakeFieldSelectorError": "graphtest: bad field selector {p0}",
 
   "signalsProviderFailed": "signals provider failed",
   "metricsTransportNotAvailable": "{p0}: metrics transport is not available",
