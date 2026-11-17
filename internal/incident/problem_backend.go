@@ -47,3 +47,18 @@ type ProblemPage struct {
 	Items      []Problem `json:"items"`
 	NextCursor string    `json:"nextCursor,omitempty"`
 }
+
+// NormalizeProblem приводит запись к виду, который хранят обе реализации: время в UTC с микросекундами, список
+// участников не nil (в JSON — [], а не null). Общая для файловой и PostgreSQL реализаций.
+func NormalizeProblem(p *Problem) {
+	p.CreatedAt, p.UpdatedAt = Micro(p.CreatedAt), Micro(p.UpdatedAt)
+	if p.Members == nil {
+		p.Members = []ProblemMember{}
+	}
+	for i := range p.Members {
+		p.Members[i].AddedAt = Micro(p.Members[i].AddedAt)
+	}
+}
+
+// ValidStatus сообщает, что состояние проблемы допустимо для хранения.
+func (s ProblemStatus) ValidStatus() bool { return s == ProblemOpen || s == ProblemClosed }
