@@ -19,6 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	utiljson "k8s.io/apimachinery/pkg/util/json"
 	utilyaml "k8s.io/apimachinery/pkg/util/yaml"
 	"sigs.k8s.io/yaml"
 
@@ -74,8 +75,12 @@ func (f *FakeReader) PutYAML(t testing.TB, manifests string) {
 		if len(bytes.TrimSpace(doc)) == 0 {
 			continue
 		}
+		js, err := yaml.YAMLToJSON(doc)
+		if err != nil {
+			t.Fatalf("graphtest: parsing manifest: %v", err)
+		}
 		var m map[string]any
-		if err := yaml.Unmarshal(doc, &m); err != nil {
+		if err := utiljson.Unmarshal(js, &m); err != nil { // числа как int64, как у настоящих клиентов
 			t.Fatalf("graphtest: parsing manifest: %v", err)
 		}
 		if len(m) == 0 {
