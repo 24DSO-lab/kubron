@@ -15,6 +15,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/24DSO-lab/kubron/internal/correlation"
 	"github.com/24DSO-lab/kubron/internal/diagnose"
 	"github.com/24DSO-lab/kubron/internal/tenant"
 )
@@ -51,6 +52,36 @@ const (
 	ResultInconclusive Result = "inconclusive" // проверить не удалось
 )
 
+// RuleRef — ссылка на правило диагностики: идентификатор правила, его эпоха и код результата (ADR-0034 §3).
+// Хранит только коды и числа, без имён ресурсов.
+type RuleRef struct {
+	RuleID string `json:"ruleId"`
+	Epoch  int    `json:"epoch"`
+	Code   string `json:"code"`
+}
+
+// Вердикты человека о кандидате корреляции (ADR-0034 §2): значения CorrelationFeedback.Verdict и
+// CorrelationVerdict.Verdict.
+const (
+	VerdictConfirmed = "confirmed" // общий источник подтверждён
+	VerdictRejected  = "rejected"  // общий источник отвергнут
+	VerdictUnknown   = "unknown"   // проверить не удалось
+)
+
+// CorrelationFeedback — оценка кандидата корреляции (ADR-0033) в отметке результата (ADR-0034 §2).
+type CorrelationFeedback struct {
+	CandidateID string `json:"candidateId"` // кандидат из снимка Incident.Correlation
+	Verdict     string `json:"verdict"`     // confirmed | rejected | unknown
+}
+
+// CorrelationVerdict — оценка кандидата корреляции в строке истории: вид и уверенность кандидата и вердикт
+// человека (ADR-0034 §5). Только коды.
+type CorrelationVerdict struct {
+	Kind       string `json:"kind"`
+	Confidence string `json:"confidence"`
+	Verdict    string `json:"verdict"`
+}
+
 // Outcome — отметка результата расследования.
 type Outcome struct {
 	Result Result `json:"result"`
@@ -59,6 +90,15 @@ type Outcome struct {
 	Note                  string    `json:"note,omitempty"` // редактированный комментарий, до MaxNoteRunes
 	MarkedBy              string    `json:"markedBy"`
 	MarkedAt              time.Time `json:"markedAt"`
+
+	// Расширение обратной связи (ADR-0034 §2). Все поля необязательны: старые записи остаются валидными.
+	// Правила проверки и умолчания — в outcome.go (D6).
+	RejectedHypothesisIDs    []string             `json:"rejectedHypothesisIds,omitempty"`    // отвергнутые гипотезы отчёта
+	HelpfulRecommendationIDs []string             `json:"helpfulRecommendationIds,omitempty"` // помогшие рекомендации
+	UselessRecommendationIDs []string             `json:"uselessRecommendationIds,omitempty"` // явно не помогшие рекомендации
+	OtherAction              bool                 `json:"otherAction,omitempty"`              // помогло действие вне рекомендаций
+	ResolvedAt               *time.Time           `json:"resolvedAt,omitempty"`               // момент устранения, только для resolved
+	Correlation              *CorrelationFeedback `json:"correlation,omitempty"`              // оценка кандидата корреляции
 }
 
 // EvidenceStatus — состояние доказательства-лога для finding.
@@ -115,6 +155,18 @@ type Incident struct {
 	Evidence []Evidence `json:"evidence"`
 	Outcome  *Outcome   `json:"outcome,omitempty"`
 
+	// Correlation — снимок корреляции по живым данным на момент открытия (ADR-0033 §5); nil — не строился
+	// или запись создана до его появления.
+	Correlation *correlation.Result `json:"correlation,omitempty"`
+	// ProblemID — проблема, в которую сгруппировано расследование (ADR-0033 §6). Единственное поле расследования,
+	// которое меняют операции с проблемами; пусто — без группы. Ссылка на несуществующую проблему трактуется как
+	// «без группы».
+	ProblemID string `json:"problemId,omitempty"`
+	// Signature — сигнатура для поиска повторений (ADR-0034 §4); считает signatureOf.
+	Signature string `json:"signature,omitempty"`
+	// RecurrenceOf — идентификатор расследования, повторением которого является это (ADR-0034 §4).
+	RecurrenceOf string `json:"recurrenceOf,omitempty"`
+
 	// Version — версия записи для оптимистичной блокировки: ведёт её Backend, вызывающий её не меняет.
 	Version int64 `json:"version"`
 }
@@ -131,16 +183,38 @@ type Summary struct {
 	Facts      int                  `json:"facts"`
 	Hypotheses int                  `json:"hypotheses"`
 	Result     Result               `json:"result,omitempty"`
+
+	// Расширение для проблем и обратной связи (ADR-0033 §5, ADR-0034 §5). Все поля необязательны и состоят из
+	// кодов и чисел: у строк, записанных до появления полей, они пусты, и статистика такие строки пропускает.
+	ProblemID          string              `json:"problemId,omitempty"`
+	Signature          string              `json:"signature,omitempty"`
+	RecurrenceOf       string              `json:"recurrenceOf,omitempty"`
+	ResolvedAt         *time.Time          `json:"resolvedAt,omitempty"`
+	RuleSetVersion     int                 `json:"ruleSetVersion,omitempty"`
+	Confirmed          *RuleRef            `json:"confirmed,omitempty"` // подтверждённая гипотеза
+	Rejected           []RuleRef           `json:"rejected,omitempty"`  // отвергнутые гипотезы
+	Helpful            []RuleRef           `json:"helpful,omitempty"`   // помогшие рекомендации
+	Useless            []RuleRef           `json:"useless,omitempty"`   // не помогшие рекомендации
+	Features           []string            `json:"features,omitempty"`  // источники отчёта: graph, metrics, correlation
+	CorrelationVerdict *CorrelationVerdict `json:"correlationVerdict,omitempty"`
 }
 
-// Summarize строит строку истории из записи.
+// Summarize строит строку истории из записи. Простые поля копирует сама, ссылки на правила, признаки и оценку
+// корреляции дописывает summarizeFeedback (summarize_feedback.go).
 func (in *Incident) Summarize() Summary {
 	s := Summary{ID: in.ID, Target: in.Target, Status: in.Status, OpenedAt: in.OpenedAt, UpdatedAt: in.UpdatedAt,
 		OpenedBy: in.OpenedBy, Symptoms: append([]string{}, in.Report.Symptoms...),
-		Facts: len(in.Report.Facts), Hypotheses: len(in.Report.Hypotheses)}
+		Facts: len(in.Report.Facts), Hypotheses: len(in.Report.Hypotheses),
+		ProblemID: in.ProblemID, Signature: in.Signature, RecurrenceOf: in.RecurrenceOf,
+		RuleSetVersion: in.Report.RuleSetVersion}
 	if in.Outcome != nil {
 		s.Result = in.Outcome.Result
+		if in.Outcome.ResolvedAt != nil {
+			t := *in.Outcome.ResolvedAt
+			s.ResolvedAt = &t
+		}
 	}
+	in.summarizeFeedback(&s)
 	return s
 }
 

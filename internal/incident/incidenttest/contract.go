@@ -63,6 +63,7 @@ func Run(t *testing.T, newBackend func(t *testing.T) incident.Backend) {
 		{"settings", settings},
 		{"purge by retention", purge},
 		{"concurrent puts", concurrent},
+		{"legacy documents without new fields", legacy},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) { c.fn(t, newBackend(t)) })

@@ -14,6 +14,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/24DSO-lab/kubron/internal/diagnose"
+	"github.com/24DSO-lab/kubron/internal/signals"
 	"github.com/24DSO-lab/kubron/internal/tenant"
 )
 
@@ -32,6 +33,8 @@ type Caller struct {
 	Scope  tenant.Scope
 	Actor  string
 	Reader diagnose.Reader
+	// Signals — источник метрик операции (ADR-0032); nil — метрики недоступны, отчёт строится без них.
+	Signals signals.Provider
 }
 
 // LogsAuthorizer повторно проверяет право diagnostics.logs на сервере; вызывается при КАЖДОМ чтении содержимого.
@@ -40,6 +43,7 @@ type LogsAuthorizer func() error
 // Service — сервис расследований. Не знает про платформу, Store и приложение.
 type Service struct {
 	b        Backend
+	problems ProblemBackend // nil — группировки нет: хуки проблем ничего не делают (ADR-0033 §6)
 	red      Redactor
 	defaults Settings
 	now      func() time.Time
@@ -68,7 +72,25 @@ func NewService(b Backend, red Redactor, opts ...Option) *Service {
 	return s
 }
 
+// WithProblems подключает хранилище проблем (ADR-0033 §6) и возвращает тот же сервис для цепочки вызовов.
+// Вызывается при сборке сервиса, до первой операции; не потокобезопасна. Без хранилища (или с nil) корреляция
+// остаётся снимком в расследовании, а группировки нет.
+func (s *Service) WithProblems(pb ProblemBackend) *Service {
+	s.problems = pb
+	return s
+}
+
 func (s *Service) clock() time.Time { return Micro(s.now()) }
+
+// mergePartial добавляет имена частичных источников к списку без повторов, сохраняя порядок.
+func mergePartial(dst []string, names ...string) []string {
+	for _, n := range names {
+		if n != "" && !slices.Contains(dst, n) {
+			dst = append(dst, n)
+		}
+	}
+	return dst
+}
 
 // Settings возвращает действующие настройки организации.
 func (s *Service) Settings(ctx context.Context, orgID string) (Settings, error) {
@@ -103,6 +125,11 @@ type OpenRequest struct {
 
 // Open открывает расследование: собирает контекст, строит отчёт, редактирует тексты кластера, сохраняет снимок
 // Events и (если разрешено) фрагменты, на которые ссылаются findings.
+//
+// Необязательные источники подключаются хуками (ADR-0033, ADR-0034) и не делают Open неуспешным: недоступное
+// попадает в Report.Partial. Порядок: корреляция → сигнатура → повторение → сохранение → автоприсоединение к
+// проблеме. Имена частичных источников хуков до сохранения записываются в документ; источник "problems"
+// (автоприсоединение идёт после сохранения) показывается только в возвращённом значении.
 func (s *Service) Open(ctx context.Context, c Caller, req OpenRequest) (*Incident, error) {
 	if err := CheckScope(c.Scope); err != nil {
 		return nil, err
@@ -114,7 +141,7 @@ func (s *Service) Open(ctx context.Context, c Caller, req OpenRequest) (*Inciden
 	allowed, _ := st.LogsAllowed(req.Target.Namespace)
 	allowed = allowed && !req.DisableLogs
 	now := s.clock()
-	dc, err := diagnose.Collect(ctx, c.Reader, req.Target, diagnose.CollectOptions{Logs: allowed, Now: s.now})
+	dc, err := diagnose.CollectWith(ctx, c.Reader, req.Target, diagnose.CollectOptions{Logs: allowed, Now: s.now, Signals: c.Signals})
 	if err != nil {
 		return nil, err
 	}
@@ -125,6 +152,9 @@ func (s *Service) Open(ctx context.Context, c Caller, req OpenRequest) (*Inciden
 		Events: s.sanitizeEvents(dc.Events), EventsUpdatedAt: now,
 		SaveLogs: !req.DisableLogs, Evidence: []Evidence{},
 	}
+	in.Report.Partial = mergePartial(in.Report.Partial, s.correlate(ctx, dc, in)...)
+	in.Signature = signatureOf(in, &in.Report)
+	in.Report.Partial = mergePartial(in.Report.Partial, s.detectRecurrence(ctx, in)...)
 	var saved []string
 	var existing []FragmentMeta
 	for _, ref := range logRefs(rep) {
@@ -143,6 +173,7 @@ func (s *Service) Open(ctx context.Context, c Caller, req OpenRequest) (*Inciden
 		}
 		return nil, err
 	}
+	in.Report.Partial = mergePartial(in.Report.Partial, s.autoAttach(ctx, in)...)
 	return in, nil
 }
 
@@ -311,14 +342,23 @@ func (s *Service) MarkOutcome(ctx context.Context, c Caller, id string, o Outcom
 	}
 	o.Note = s.redactText(o.Note)
 	o.MarkedBy, o.MarkedAt = c.Actor, s.clock()
-	return s.mutate(ctx, c.Scope, id, func(in *Incident) error {
+	saved, err := s.mutate(ctx, c.Scope, id, func(in *Incident) error {
 		if o.ConfirmedHypothesisID != "" && !slices.ContainsFunc(in.Report.Hypotheses,
 			func(h diagnose.Hypothesis) bool { return h.ID == o.ConfirmedHypothesisID }) {
 			return fmt.Errorf("%w: unknown hypothesis", ErrInvalidOutcome)
 		}
-		in.Outcome, in.Status = &o, StatusClosed
+		oc := o // копия на каждую попытку: при конфликте версий fn вызывается повторно
+		if err := s.prepareOutcome(in, &oc); err != nil {
+			return err
+		}
+		in.Outcome, in.Status = &oc, StatusClosed
 		return nil
 	})
+	if err != nil {
+		return nil, err
+	}
+	s.onOutcomeSaved(ctx, saved)
+	return saved, nil
 }
 
 // SaveFragmentRequest — явное действие «сохранить как доказательство».
@@ -499,6 +539,7 @@ func (s *Service) Purge(ctx context.Context) (int, error) {
 		if err != nil {
 			errs = append(errs, err)
 		}
+		s.purgeProblems(ctx, org, st.IncidentCutoff(now))
 	}
 	return total, errors.Join(errs...)
 }
