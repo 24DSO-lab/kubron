@@ -989,5 +989,11 @@
   "baselineTooManyResourcesSelected": "{p0}: выбрано слишком много ресурсов",
   "baselineUnknownExceptionScope": "{p0}: неизвестная область исключения",
   "baselineUnsupportedVersionSource": "{p0}: неподдерживаемый источник версии",
-  "baselinePreviewKey": "ключ предпросмотра baseline: {p0}"
+  "baselinePreviewKey": "ключ предпросмотра baseline: {p0}",
+  "depgraphUnsupportedOrIncompleteSeed": "depgraph: неподдерживаемая или неполная начальная цель",
+  "depgraphReadLimitReached": "depgraph: достигнут предел чтений",
+  "depgraphSeedError": "{p0}: {p1}/{p2}",
+  "depgraphFakeGetError": "get {p0} {p1}/{p2}: {p3}",
+  "depgraphFakeLabelSelectorError": "graphtest: селектор меток: {p0}",
+  "depgraphFakeFieldSelectorError": "graphtest: неверный селектор полей {p0}"
 }
