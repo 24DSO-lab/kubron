@@ -395,7 +395,7 @@ func TestRuleFailureIsContained(t *testing.T) {
 	// Не параллельный: подменяет глобальный набор правил.
 	old := rules
 	t.Cleanup(func() { rules = old })
-	rules = append([]rule{{"boom", func(*builder) { panic("boom") }}}, old...)
+	rules = append([]rule{{"boom", 1, func(*builder) { panic("boom") }}}, old...)
 	rep := Analyze(&Context{Target: ResourceRef{Kind: "Pod", Namespace: "a", Name: "b"}, ObservedAt: fixedNow})
 	if !slices.ContainsFunc(rep.Missing, func(m MissingContext) bool { return m.Code == "rule.failed" && m.Params["rule"] == "boom" }) {
 		t.Errorf("missing = %+v", rep.Missing)
