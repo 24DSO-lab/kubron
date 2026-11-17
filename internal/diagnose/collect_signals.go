@@ -182,3 +182,25 @@ func fetchSignals(ctx context.Context, p signals.Provider, req signals.Request) 
 	}()
 	return p.Fetch(ctx, req)
 }
+
+// Идентификатор и эпоха правил метрик у записей, которые создаёт пост-хук (ADR-0034 §3). Эпоха растёт при изменении
+// смысла: порогов, состава гипотез, условий их добавления.
+const (
+	metricsRuleID    = "metrics.evidence"
+	metricsRuleEpoch = 1
+)
+
+func init() {
+	RegisterCollectHook(200, "signals", func(ctx context.Context, _ Reader, c *Context) {
+		o := collectSignals(ctx, c, c.opts.Signals)
+		if o == nil {
+			return
+		}
+		c.metrics = o
+		c.Signals = o.Set
+	})
+	registerPostHook(200, "metrics", func(b *builder) {
+		b.ruleID, b.ruleEpoch = metricsRuleID, metricsRuleEpoch
+		applyMetrics(b, b.c.metrics)
+	})
+}

@@ -62,6 +62,10 @@ type Context struct {
 	Signals *signals.Set
 
 	observed map[ResourceRef]time.Time
+	// opts — параметры сбора, переданные CollectWith: хукам сбора нужны источники (сигналы метрик).
+	opts CollectOptions
+	// metrics — итог сбора метрик (collect_signals.go); читает пост-хук метрик. nil — метрики не запрашивались.
+	metrics *signalOutcome
 }
 
 // observedAt — когда объект был прочитан; для неизвестного объекта — время начала сбора.
