@@ -13,6 +13,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+
+	"github.com/24DSO-lab/kubron/internal/depgraph"
+	"github.com/24DSO-lab/kubron/internal/signals"
 )
 
 // Event — нормализованный Kubernetes Event. Message — сырой текст кластера: слой сервиса редактирует его
@@ -51,6 +54,12 @@ type Context struct {
 	Logs        []LogCapture
 	Missing     []MissingContext
 	Partial     []string
+
+	// Graph — граф зависимостей цели (ADR-0031); nil, если не строился или построить не удалось. Правила обязаны
+	// переносить отсутствие графа без ошибки: тогда отчёт совпадает с построенным без графа.
+	Graph *depgraph.Graph
+	// Signals — сигналы метрик (ADR-0032); nil, если метрики не настроены или не запрашивались.
+	Signals *signals.Set
 
 	observed map[ResourceRef]time.Time
 }

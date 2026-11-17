@@ -5,36 +5,30 @@ package diagnose
 
 import (
 	"context"
-	"errors"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"time"
+
+	"github.com/24DSO-lab/kubron/internal/depgraph"
 )
 
-// Ошибки чтения. Тексты совпадают с ошибками платформенного Reader (их шаблоны уже есть в backend.json):
-// адаптер слоя связки оборачивает ошибку платформы так, что errors.Is видит и ту, и другую.
+// Типы и ошибки чтения живут в depgraph (ADR-0031 §4): граф и диагностика читают кластер одним и тем же
+// интерфейсом, поэтому здесь — псевдонимы, а не копии. Тексты ошибок совпадают с ошибками платформенного Reader
+// (их шаблоны уже есть в backend.json): адаптер слоя связки оборачивает ошибку платформы так, что errors.Is видит
+// и ту, и другую. Идентичность значений ошибок сохраняется (это одни и те же переменные).
+type (
+	// ListOptions — параметры выборки (подмножество платформенных).
+	ListOptions = depgraph.ListOptions
+	// ListResult — результат List. Truncated=true — объектов больше, чем вернулось: отчёт обязан показать неполноту.
+	ListResult = depgraph.ListResult
+)
+
 var (
-	ErrNotFound    = errors.New("resource not found")
-	ErrForbidden   = errors.New("access to the resource is forbidden")
-	ErrUnavailable = errors.New("cluster source is unavailable")
-	ErrTooLarge    = errors.New("response is too large")
+	ErrNotFound    = depgraph.ErrNotFound
+	ErrForbidden   = depgraph.ErrForbidden
+	ErrUnavailable = depgraph.ErrUnavailable
+	ErrTooLarge    = depgraph.ErrTooLarge
 )
-
-// ListOptions — параметры выборки (подмножество платформенных).
-type ListOptions struct {
-	Namespace     string
-	LabelSelector string
-	FieldSelector string
-	Limit         int64
-}
-
-// ListResult — результат List. Truncated=true — объектов больше, чем вернулось: отчёт обязан показать неполноту.
-type ListResult struct {
-	Items      []unstructured.Unstructured
-	Truncated  bool
-	ObservedAt time.Time
-}
 
 // LogRequest — запрос лога контейнера.
 type LogRequest struct {
