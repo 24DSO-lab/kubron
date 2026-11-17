@@ -18,8 +18,7 @@ import (
 	"slices"
 	"time"
 
-	// ВРЕМЕННО: заглушка контракта D2. После слияния скелета D2 заменить на internal/depgraph (см. stubs/depgraph).
-	"github.com/24DSO-lab/kubron/internal/diagnose/stubs/depgraph"
+	"github.com/24DSO-lab/kubron/internal/depgraph"
 )
 
 // RuleSetVersion — версия набора правил. Поднимается при любом изменении правил или кодов: сохранённый инцидент

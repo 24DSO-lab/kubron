@@ -9,8 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
-	// ВРЕМЕННО: заглушка контракта D2. После слияния скелета D2 заменить на internal/depgraph (см. stubs/depgraph).
-	"github.com/24DSO-lab/kubron/internal/diagnose/stubs/depgraph"
+	"github.com/24DSO-lab/kubron/internal/depgraph"
 )
 
 // Типы и ошибки чтения живут в depgraph (ADR-0031 §4): граф и диагностика читают кластер одним и тем же

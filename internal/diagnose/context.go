@@ -14,10 +14,8 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 
-	// ВРЕМЕННО: заглушки контрактов D2 и D1. После слияния их скелетов заменить на internal/depgraph и
-	// internal/signals (см. stubs/depgraph, stubs/signals).
-	"github.com/24DSO-lab/kubron/internal/diagnose/stubs/depgraph"
-	"github.com/24DSO-lab/kubron/internal/diagnose/stubs/signals"
+	"github.com/24DSO-lab/kubron/internal/depgraph"
+	"github.com/24DSO-lab/kubron/internal/signals"
 )
 
 // Event — нормализованный Kubernetes Event. Message — сырой текст кластера: слой сервиса редактирует его
