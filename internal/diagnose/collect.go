@@ -16,10 +16,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
-	// ВРЕМЕННО: заглушки контрактов D2 и D1. После слияния их скелетов заменить на internal/depgraph и
-	// internal/signals (см. stubs/depgraph, stubs/signals).
-	"github.com/24DSO-lab/kubron/internal/diagnose/stubs/depgraph"
-	"github.com/24DSO-lab/kubron/internal/diagnose/stubs/signals"
+	"github.com/24DSO-lab/kubron/internal/depgraph"
+	"github.com/24DSO-lab/kubron/internal/signals"
 )
 
 // Пределы сбора: диагностика короткая и синхронная (ADR-0026 §8), нагрузка на кластер ограничена.
