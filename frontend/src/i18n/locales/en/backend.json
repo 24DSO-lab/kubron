@@ -989,5 +989,11 @@
   "baselineTooManyResourcesSelected": "{p0}: too many resources selected",
   "baselineUnknownExceptionScope": "{p0}: unknown exception scope",
   "baselineUnsupportedVersionSource": "{p0}: unsupported version source",
-  "baselinePreviewKey": "baseline preview key: {p0}"
+  "baselinePreviewKey": "baseline preview key: {p0}",
+  "depgraphUnsupportedOrIncompleteSeed": "depgraph: unsupported or incomplete seed",
+  "depgraphReadLimitReached": "depgraph: read limit reached",
+  "depgraphSeedError": "{p0}: {p1}/{p2}",
+  "depgraphFakeGetError": "get {p0} {p1}/{p2}: {p3}",
+  "depgraphFakeLabelSelectorError": "graphtest: label selector: {p0}",
+  "depgraphFakeFieldSelectorError": "graphtest: bad field selector {p0}"
 }
