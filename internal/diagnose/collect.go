@@ -15,6 +15,11 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+
+	// ВРЕМЕННО: заглушки контрактов D2 и D1. После слияния их скелетов заменить на internal/depgraph и
+	// internal/signals (см. stubs/depgraph, stubs/signals).
+	"github.com/24DSO-lab/kubron/internal/diagnose/stubs/depgraph"
+	"github.com/24DSO-lab/kubron/internal/diagnose/stubs/signals"
 )
 
 // Пределы сбора: диагностика короткая и синхронная (ADR-0026 §8), нагрузка на кластер ограничена.
@@ -30,16 +35,21 @@ const (
 	logLimitBytes  = 512 << 10
 )
 
-// ErrUnsupportedTarget — вид цели не поддерживается: MVP диагностирует Pod, Deployment и ReplicaSet.
+// ErrUnsupportedTarget — вид цели не поддерживается: нет сборщика, зарегистрированного через RegisterTarget.
 var ErrUnsupportedTarget = errors.New("diagnostics are not supported for this resource kind")
 
-// CollectOptions — параметры сбора.
+// CollectOptions — параметры сбора. Состав — контракт для internal/incident (D5): поля только добавляются.
 type CollectOptions struct {
 	// Logs — читать ли логи проблемных контейнеров (для фрагментов-доказательств). false — политика запрещает
 	// сохранять фрагменты (выключатель, исключённый namespace, отключено для расследования): тогда лог не читается.
 	Logs bool
 	// Now — источник времени; nil — time.Now. Нужен тестам.
 	Now func() time.Time
+	// Graph — параметры построения графа зависимостей (ADR-0031 §4); nil — по умолчанию (DefaultLimits, флаги
+	// этапа 2 выключены). Граф строит хук сбора 100.
+	Graph *depgraph.Options
+	// Signals — источник метрик (ADR-0032); nil — метрики не запрашиваются, отчёт строится без них.
+	Signals signals.Provider
 }
 
 func (o CollectOptions) now() time.Time {
@@ -56,19 +66,44 @@ type collector struct {
 	c    *Context
 }
 
-// Collect читает контекст цели. Ошибка возвращается, только если не удалось прочитать саму цель (или отменён ctx);
-// недоступность остальных источников попадает в Context.Missing / Context.Partial, а не роняет сбор.
+func init() {
+	for _, kind := range []string{"Pod", "Deployment", "ReplicaSet"} {
+		RegisterTarget(kind, collectWorkload)
+	}
+}
+
+// Collect читает контекст цели с заданными параметрами. Сохранён ради существующих вызовов и равен
+// CollectWith: оба принимают CollectOptions целиком.
 func Collect(ctx context.Context, r Reader, target ResourceRef, opts CollectOptions) (*Context, error) {
+	return CollectWith(ctx, r, target, opts)
+}
+
+// CollectWith читает контекст цели: сборщик вида цели (RegisterTarget), затем хуки сбора по возрастанию order
+// (граф, сигналы, ...). Ошибка возвращается, только если не удалось прочитать саму цель (или отменён ctx);
+// недоступность остальных источников попадает в Context.Missing / Context.Partial, а не роняет сбор.
+// Сигнатура и состав CollectOptions — контракт для internal/incident (D5): менять нельзя.
+func CollectWith(ctx context.Context, r Reader, target ResourceRef, opts CollectOptions) (*Context, error) {
 	if target.Name == "" {
 		return nil, fmt.Errorf("target name is empty: %w", ErrNotFound)
 	}
-	switch target.Kind {
-	case "Pod", "Deployment", "ReplicaSet":
-		if target.Namespace == "" {
-			return nil, fmt.Errorf("target namespace is empty: %w", ErrNotFound)
-		}
-	default:
+	tc, ok := targets[target.Kind]
+	if !ok {
 		return nil, fmt.Errorf("%w: %s", ErrUnsupportedTarget, target.Kind)
+	}
+	c, err := tc(ctx, r, target, opts)
+	if err != nil {
+		return nil, err
+	}
+	if err := runCollectHooks(ctx, r, c); err != nil {
+		return nil, err
+	}
+	return c, nil
+}
+
+// collectWorkload — сборщик Pod, Deployment и ReplicaSet (поведение прежнего Collect без изменений).
+func collectWorkload(ctx context.Context, r Reader, target ResourceRef, opts CollectOptions) (*Context, error) {
+	if target.Namespace == "" {
+		return nil, fmt.Errorf("target namespace is empty: %w", ErrNotFound)
 	}
 	col := &collector{r: r, opts: opts, c: &Context{Target: target, ObservedAt: opts.now(), Nodes: map[string]*corev1.Node{}}}
 	if err := col.run(ctx); err != nil {
