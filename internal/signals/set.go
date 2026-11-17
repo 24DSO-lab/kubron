@@ -16,6 +16,7 @@ const partialSource = "metrics"
 // Нулевой *Set безопасен: сигналов нет, стек считается доступным. Set неизменяем после создания.
 type Set struct {
 	stack  Reason
+	failed bool // хотя бы один запрос существующего стека не удался (таймаут, ошибка Prometheus)
 	values map[setKey]Value
 	gaps   map[setKey]Gap
 }
@@ -28,9 +29,17 @@ type setKey struct {
 // NewSet собирает Set. stack — причина недоступности стека целиком (not_installed, forbidden, unavailable) либо
 // пусто, если стек доступен. Конструктор нужен реализациям Provider и тестам потребителей (правила диагностики
 // проверяются подставленным Set). Если один и тот же сигнал по одной цели указан и значением, и пробелом,
-// остаётся значение; из повторов одного вида побеждает последний.
+// остаётся значение; из повторов одного вида побеждает последний. Пробел unavailable делает операцию частичной
+// (PartialSource): это отказ существующего стека, а не его отсутствие.
 func NewSet(stack Reason, values []Value, gaps []Gap) *Set {
-	s := &Set{stack: stack, values: make(map[setKey]Value, len(values)), gaps: make(map[setKey]Gap, len(gaps))}
+	failed := slices.ContainsFunc(gaps, func(g Gap) bool { return g.Reason == ReasonUnavailable })
+	return newSet(stack, values, gaps, failed)
+}
+
+// newSet — конструктор с явным признаком отказа: пробел unavailable без отказа (запрос не выполнялся из-за бюджета)
+// операцию частичной не делает.
+func newSet(stack Reason, values []Value, gaps []Gap, failed bool) *Set {
+	s := &Set{stack: stack, failed: failed, values: make(map[setKey]Value, len(values)), gaps: make(map[setKey]Gap, len(gaps))}
 	for _, g := range gaps {
 		s.gaps[setKey{g.Signal, g.Subject}] = g
 	}
@@ -92,10 +101,11 @@ func (s *Set) StackReason() Reason {
 	return s.stack
 }
 
-// PartialSource возвращает "metrics" только при unavailable у существующего стека (таймаут, ошибка Prometheus): тогда
-// операция «частичная». Отсутствие стека и forbidden операцию частичной не делают: метрики опциональны (ADR-0032 §7).
+// PartialSource возвращает "metrics" только при unavailable у существующего стека — стек целиком или отдельные его
+// запросы (таймаут, ошибка Prometheus): тогда операция «частичная». Отсутствие стека, forbidden, пустые серии и
+// короткая история операцию частичной не делают: метрики опциональны (ADR-0032 §7).
 func (s *Set) PartialSource() string {
-	if s.StackReason() == ReasonUnavailable {
+	if s != nil && (s.stack == ReasonUnavailable || s.failed) {
 		return partialSource
 	}
 	return ""

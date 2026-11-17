@@ -98,11 +98,23 @@ func TestPartialSource(t *testing.T) {
 			t.Errorf("PartialSource() with stack %q = %q, want %q", tc.stack, got, tc.want)
 		}
 	}
-}
-
-func TestPrometheusSkeletonReturnsAvailableEmptySet(t *testing.T) {
-	set, err := NewPrometheus(nil).Fetch(t.Context(), Request{})
-	if err != nil || set == nil || set.StackReason() != "" || len(set.Values()) != 0 {
-		t.Errorf("skeleton Fetch = %v, %v", set, err)
+	// Отказ отдельного запроса существующего стека тоже делает операцию частичной; пустые серии и короткая
+	// история — нет.
+	sub := Subject{Node: "n1"}
+	for _, tc := range []struct {
+		reason Reason
+		want   string
+	}{
+		{ReasonUnavailable, "metrics"},
+		{ReasonNoSeries, ""},
+		{ReasonHistoryShort, ""},
+		{ReasonFamilyMissing, ""},
+		{ReasonForbidden, ""},
+		{ReasonInvalidRef, ""},
+	} {
+		set := NewSet("", nil, []Gap{{Signal: NodeCPUUtilization, Subject: sub, Reason: tc.reason}})
+		if got := set.PartialSource(); got != tc.want {
+			t.Errorf("PartialSource() with a %q gap = %q, want %q", tc.reason, got, tc.want)
+		}
 	}
 }
