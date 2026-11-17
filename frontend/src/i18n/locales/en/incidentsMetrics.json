@@ -1,0 +1,46 @@
+{
+  "facts": {
+    "metric_cpu_throttling_ratio": "Container {container}: CPU throttling in {percent}% of periods over {window}.",
+    "metric_cpu_usage_vs_limit": "Container {container}: peak CPU use was {percent}% of its limit over {window}.",
+    "metric_memory_usage_vs_limit": "Container {container}: peak memory use was {percent}% of its limit over {window}.",
+    "metric_container_restarts": "Container {container}: {value} restarts over {window}.",
+    "metric_oom_events": "Container {container}: {value} out-of-memory kills over {window}.",
+    "metric_node_memory_available_ratio": "Node {node}: available memory dropped to {percent}% over {window}.",
+    "metric_node_cpu_utilization": "Node {node}: average CPU load was {percent}% over {window}.",
+    "metric_node_disk_available_ratio": "Node {node}: {percent}% of the root filesystem was free over {window}.",
+    "metric_node_pressure_history": "Node {node}: resource pressure flag over {window} is {value} (1 means pressure was seen)."
+  },
+  "hypotheses": {
+    "metrics_cpu_limited": "Container {container} is slowed down by its CPU limit.",
+    "metrics_memory_near_limit": "Container {container} runs close to its memory limit.",
+    "metrics_restarts_growing": "Container {container} has been restarting recently, not only in the past.",
+    "metrics_node_pressure": "Node {node} was short of resources recently."
+  },
+  "recommendations": {
+    "rec_review_cpu_limit": "Review the CPU limit of container {container}: raise it or remove it if throttling is not intended.",
+    "rec_review_memory_limit": "Review the memory limit of container {container} against its real peak usage.",
+    "rec_relieve_node_pressure": "Move load off node {node} or add capacity to it."
+  },
+  "missing": {
+    "metrics_unavailable": "Metrics could not be used as evidence ({reason}). The report is complete without them.",
+    "metrics_signal_unavailable": "Metric {signal} is not available ({reason})."
+  },
+  "reasons": {
+    "not_installed": "monitoring is not installed",
+    "forbidden": "no access to the monitoring service",
+    "unavailable": "monitoring did not respond in time",
+    "family_missing": "the required metrics are not collected",
+    "no_series": "no data for this object",
+    "history_short": "monitoring has not collected enough history yet",
+    "invalid_ref": "object name cannot be used in a query"
+  },
+  "hints": {
+    "not_installed": "Kubron monitoring is not installed in this cluster. Enable it in the cluster settings to add resource usage to diagnostics; everything else works without it.",
+    "forbidden": "This session may not reach the monitoring service. A cluster administrator needs to bind the role prometheus-proxy-access to your user or group.",
+    "unavailable": "Monitoring did not answer in time. Diagnostics are based on Kubernetes data only; try again later.",
+    "family_missing": "Monitoring is running but does not collect the metrics needed here.",
+    "no_series": "Monitoring has no data for this object.",
+    "history_short": "Monitoring has not been running long enough to cover the period.",
+    "invalid_ref": "The object name cannot be safely used in a monitoring query, so the query was not sent."
+  }
+}
