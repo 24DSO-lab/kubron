@@ -333,8 +333,8 @@ func TestResourceRefGroupIsOptional(t *testing.T) {
 
 func TestReaderTypesAreDepgraphAliases(t *testing.T) {
 	t.Parallel()
-	var _ depgraph.ListOptions = ListOptions{}
-	var _ *depgraph.ListResult = (*ListResult)(nil)
+	var _ = depgraph.ListOptions{}
+	var _ = (*depgraph.ListResult)(nil)
 	for _, p := range [][2]error{
 		{ErrNotFound, depgraph.ErrNotFound}, {ErrForbidden, depgraph.ErrForbidden},
 		{ErrUnavailable, depgraph.ErrUnavailable}, {ErrTooLarge, depgraph.ErrTooLarge},
