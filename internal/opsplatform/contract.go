@@ -115,6 +115,10 @@ type Op struct {
 	CorrelationID string
 	StartedAt     time.Time
 	Reader        Reader
+	// Metrics — безопасный запрос метрик встроенного стека мониторинга (ADR-0032 §3). nil, если операция StoredOnly
+	// или метрики не настроены (Config.Metrics): потребитель обязан обходиться без них. Дополнение к замороженному
+	// контракту (нулевое значение — прежнее поведение); зафиксировано в NOTES.md.
+	Metrics MetricsReader
 
 	hooks Hooks
 	ended atomic.Bool
@@ -130,6 +134,7 @@ func NewOp(base *Op, h Hooks) *Op {
 		CorrelationID: base.CorrelationID,
 		StartedAt:     base.StartedAt,
 		Reader:        base.Reader,
+		Metrics:       base.Metrics,
 		hooks:         h,
 	}
 }

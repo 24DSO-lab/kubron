@@ -4,9 +4,11 @@
 package opsplatform
 
 import (
+	"context"
 	"errors"
 	"log/slog"
 	"testing"
+	"time"
 
 	"github.com/24DSO-lab/kubron/internal/auth"
 )
@@ -69,3 +71,26 @@ func TestNewOpCopiesFieldsNotState(t *testing.T) {
 		t.Fatalf("closing state leaked from the template: calls=%d", calls)
 	}
 }
+
+// NewOp переносит Metrics шаблона: иначе подставка Op в тестах доменов теряла бы метрики.
+func TestNewOpCopiesMetrics(t *testing.T) {
+	m := stubMetrics{}
+	op := NewOp(&Op{Metrics: m}, Hooks{})
+	if op.Metrics != m {
+		t.Error("NewOp did not copy Metrics")
+	}
+	if NewOp(&Op{}, Hooks{}).Metrics != nil {
+		t.Error("an Op without metrics must keep Metrics nil")
+	}
+}
+
+func TestMetricsQueriesWithoutCounter(t *testing.T) {
+	var nilOp *Op
+	if nilOp.MetricsQueries() != 0 || (&Op{}).MetricsQueries() != 0 || (&Op{Metrics: stubMetrics{}}).MetricsQueries() != 0 {
+		t.Error("MetricsQueries must be 0 when there are no metrics or no counter")
+	}
+}
+
+type stubMetrics struct{}
+
+func (stubMetrics) Query(context.Context, string, time.Time) ([]MetricSample, error) { return nil, nil }

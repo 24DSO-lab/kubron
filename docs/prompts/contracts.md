@@ -125,6 +125,18 @@ type MetricsReader interface{ Query(ctx context.Context, expr string, at time.Ti
 // Config получает: Metrics MetricsConfig{ Namespace, Service string } // заполняет слой связки
 ```
 
+Аддитивные дополнения скелета D1 (старый код не ломают; сообщить D3 и D7):
+
+```go
+// signals
+func NewSet(stack Reason, values []Value, gaps []Gap) *Set // для Provider и тестов потребителей: Set иначе не построить
+func (s *Set) GapOf(sig Signal, sub Subject) (Gap, bool)   // причина отсутствия значения по сигналу и цели
+type Option func(*prometheus)                              // публичных опций пока нет
+// opsplatform
+func (c MetricsConfig) Configured() bool                   // координаты стека заполнены
+func (o *Op) MetricsQueries() int                          // число запросов метрик в операции (для Op.Audit; ни выражений, ни значений)
+```
+
 Дополнение к замороженному контракту платформы записывается в `NOTES.md` (как для `StoredOnly`).
 
 ## 3. `internal/diagnose` (D3) [Фаза 0: ядро]

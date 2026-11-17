@@ -1,0 +1,46 @@
+{
+  "facts": {
+    "metric_cpu_throttling_ratio": "Контейнер {container}: CPU ограничивался в {percent}% периодов за {window}.",
+    "metric_cpu_usage_vs_limit": "Контейнер {container}: пик использования CPU — {percent}% лимита за {window}.",
+    "metric_memory_usage_vs_limit": "Контейнер {container}: пик использования памяти — {percent}% лимита за {window}.",
+    "metric_container_restarts": "Контейнер {container}: перезапусков за {window} — {value}.",
+    "metric_oom_events": "Контейнер {container}: остановок по нехватке памяти за {window} — {value}.",
+    "metric_node_memory_available_ratio": "Node {node}: доступная память опускалась до {percent}% за {window}.",
+    "metric_node_cpu_utilization": "Node {node}: средняя загрузка CPU — {percent}% за {window}.",
+    "metric_node_disk_available_ratio": "Node {node}: свободно {percent}% корневого раздела за {window}.",
+    "metric_node_pressure_history": "Node {node}: признак давления на ресурсы за {window} — {value} (1 — давление было)."
+  },
+  "hypotheses": {
+    "metrics_cpu_limited": "Контейнер {container} замедляется лимитом CPU.",
+    "metrics_memory_near_limit": "Контейнер {container} работает вплотную к лимиту памяти.",
+    "metrics_restarts_growing": "Контейнер {container} перезапускается недавно, а не только в прошлом.",
+    "metrics_node_pressure": "Node {node} недавно испытывала нехватку ресурсов."
+  },
+  "recommendations": {
+    "rec_review_cpu_limit": "Пересмотрите лимит CPU контейнера {container}: увеличьте его или уберите, если троттлинг не нужен.",
+    "rec_review_memory_limit": "Сверьте лимит памяти контейнера {container} с реальным пиком потребления.",
+    "rec_relieve_node_pressure": "Перенесите нагрузку с Node {node} или добавьте ей ресурсов."
+  },
+  "missing": {
+    "metrics_unavailable": "Метрики не удалось использовать как доказательства ({reason}). Отчёт полон и без них.",
+    "metrics_signal_unavailable": "Метрика {signal} недоступна ({reason})."
+  },
+  "reasons": {
+    "not_installed": "мониторинг не установлен",
+    "forbidden": "нет доступа к сервису мониторинга",
+    "unavailable": "мониторинг не ответил вовремя",
+    "family_missing": "нужные метрики не собираются",
+    "no_series": "по объекту нет данных",
+    "history_short": "мониторинг ещё не накопил достаточно истории",
+    "invalid_ref": "имя объекта нельзя использовать в запросе"
+  },
+  "hints": {
+    "not_installed": "Мониторинг Kubron в этом кластере не установлен. Включите его в настройках кластера, чтобы диагностика учитывала потребление ресурсов; остальное работает и без него.",
+    "forbidden": "У этой сессии нет доступа к сервису мониторинга. Администратору кластера нужно привязать роль prometheus-proxy-access к вашему пользователю или группе.",
+    "unavailable": "Мониторинг не ответил вовремя. Диагностика построена только на данных Kubernetes; повторите позже.",
+    "family_missing": "Мониторинг работает, но не собирает метрики, нужные здесь.",
+    "no_series": "В мониторинге нет данных по этому объекту.",
+    "history_short": "Мониторинг работает недостаточно долго, чтобы покрыть этот период.",
+    "invalid_ref": "Имя объекта нельзя безопасно использовать в запросе к мониторингу, поэтому запрос не отправлялся."
+  }
+}
