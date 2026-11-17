@@ -15,6 +15,11 @@ type builder struct {
 	rep      *Report
 	refs     map[ResourceRef]bool
 	podFacts map[string][]string // имя пода → идентификаторы его фактов (для связи с правилом rollout)
+
+	// Правило, которое выполняется сейчас (ставит runRule): hypothesis и recommend проставляют по нему
+	// RuleID и RuleEpoch (ADR-0034 §3). Вне правила (пост-хук) пусты.
+	ruleID    string
+	ruleEpoch int
 }
 
 func newBuilder(c *Context) *builder {
@@ -68,13 +73,14 @@ func (b *builder) hypothesis(res ResourceRef, code string, conf Confidence, para
 	id := fmt.Sprintf("h%d", len(b.rep.Hypotheses)+1)
 	b.touch(res)
 	b.rep.Hypotheses = append(b.rep.Hypotheses, Hypothesis{Kind: KindHypothesis, ID: id, Code: code, Resource: res,
-		Params: params, Confidence: conf, Supporting: nonNil(supporting), Contradicting: nonNil(contradicting)})
+		Params: params, Confidence: conf, Supporting: nonNil(supporting), Contradicting: nonNil(contradicting),
+		RuleID: b.ruleID, RuleEpoch: b.ruleEpoch})
 	return id
 }
 
 func (b *builder) recommend(res ResourceRef, code string, params map[string]string, hyps ...string) {
 	b.rep.Recommendations = append(b.rep.Recommendations, Recommendation{Kind: KindRecommendation,
-		ID: fmt.Sprintf("r%d", len(b.rep.Recommendations)+1), Code: code, Resource: res, Params: params, Hypotheses: nonNil(hyps)})
+		ID: fmt.Sprintf("r%d", len(b.rep.Recommendations)+1), Code: code, Resource: res, Params: params, Hypotheses: nonNil(hyps), RuleID: b.ruleID, RuleEpoch: b.ruleEpoch})
 }
 
 func (b *builder) step(res ResourceRef, code string, params map[string]string, hyps ...string) {
@@ -97,18 +103,21 @@ func nonNil(s []string) []string {
 }
 
 // rule — одно версионируемое правило. Правило не должно паниковать, но движок защищается и от этого.
+// epoch >= 1 — эпоха правила (ADR-0034 §3): поднимается только при изменении смысла правила.
 type rule struct {
 	id    string
+	epoch int
 	apply func(b *builder)
 }
 
-// rules — набор правил версии RuleSetVersion. Порядок определяет порядок записей отчёта.
+// rules — набор правил версии RuleSetVersion. Порядок определяет порядок записей отчёта. Базовые правила
+// (эпоха 1) перечислены здесь; правила расширений добавляет registerRule из своих файлов.
 var rules = []rule{
-	{"pod.pending", rulePending},
-	{"pod.startup", ruleStartup},
-	{"pod.crash_loop", ruleCrashLoop},
-	{"pod.oom_killed", ruleOOMKilled},
-	{"workload.rollout", ruleRollout},
+	{"pod.pending", 1, rulePending},
+	{"pod.startup", 1, ruleStartup},
+	{"pod.crash_loop", 1, ruleCrashLoop},
+	{"pod.oom_killed", 1, ruleOOMKilled},
+	{"workload.rollout", 1, ruleRollout},
 }
 
 // RuleIDs возвращает идентификаторы правил набора (для документации и тестов).
@@ -131,6 +140,7 @@ func Analyze(c *Context) Report {
 	for _, r := range rules {
 		runRule(b, r)
 	}
+	runPostHooks(b)
 	for _, m := range c.Missing {
 		b.missing(m.Code, m.Resource, m.Params)
 	}
@@ -145,7 +155,9 @@ func Analyze(c *Context) Report {
 }
 
 func runRule(b *builder, r rule) {
+	b.ruleID, b.ruleEpoch = r.id, r.epoch
 	defer func() {
+		b.ruleID, b.ruleEpoch = "", 0
 		if p := recover(); p != nil {
 			b.missing("rule.failed", b.c.Target, map[string]string{"rule": r.id})
 		}

@@ -14,11 +14,20 @@
 // AI в MVP не используется.
 package diagnose
 
-import "time"
+import (
+	"slices"
+	"time"
+
+	// ВРЕМЕННО: заглушка контракта D2. После слияния скелета D2 заменить на internal/depgraph (см. stubs/depgraph).
+	"github.com/24DSO-lab/kubron/internal/diagnose/stubs/depgraph"
+)
 
 // RuleSetVersion — версия набора правил. Поднимается при любом изменении правил или кодов: сохранённый инцидент
 // хранит версию, которой построен его отчёт, и изменение диагностики остаётся проверяемым.
-const RuleSetVersion = 1
+//
+// Версия 2 (ADR-0031, ADR-0034): граф зависимостей, RuleID/RuleEpoch у гипотез и рекомендаций, Explains,
+// Group у ссылки на ресурс. Изменение аддитивное: отчёты версии 1 остаются читаемыми, новые поля в них пусты.
+const RuleSetVersion = 2
 
 // Kind — тип записи отчёта. Он входит в контракт (JSON) и в интерфейс: факт, гипотеза и рекомендация различимы
 // не только оформлением, но и типом.
@@ -48,6 +57,8 @@ func (c Confidence) Valid() bool {
 
 // ResourceRef — ссылка на ресурс кластера.
 type ResourceRef struct {
+	// Group — API-группа вида; пусто для core и для отчётов версии 1 (там вид однозначен по имени).
+	Group     string `json:"group,omitempty"`
 	Kind      string `json:"kind"`
 	Namespace string `json:"namespace,omitempty"`
 	Name      string `json:"name"`
@@ -62,6 +73,7 @@ const (
 	SourceEvent    SourceKind = "event"    // Kubernetes Event
 	SourceLog      SourceKind = "log"      // лог контейнера (содержимое здесь не хранится)
 	SourceDerived  SourceKind = "derived"  // вычислено из нескольких источников
+	SourceMetric   SourceKind = "metric"   // сигнал метрик (ADR-0032); имя сигнала — в Source.Signal
 )
 
 // Source — источник факта: что именно прочитано. Поле Field — путь в объекте (например, status.phase).
@@ -69,6 +81,8 @@ type Source struct {
 	Kind     SourceKind  `json:"kind"`
 	Resource ResourceRef `json:"resource"`
 	Field    string      `json:"field,omitempty"`
+	// Signal — имя сигнала метрик; заполнено только при Kind == SourceMetric.
+	Signal string `json:"signal,omitempty"`
 }
 
 // LogRef — указание, что к факту относится фрагмент лога контейнера. Само содержимое в отчёт не входит:
@@ -100,6 +114,13 @@ type Hypothesis struct {
 	Confidence    Confidence        `json:"confidence"`
 	Supporting    []string          `json:"supporting"`
 	Contradicting []string          `json:"contradicting"`
+	// RuleID и RuleEpoch — правило, выдавшее гипотезу, и его эпоха (ADR-0034 §3). Ставит builder; в отчётах
+	// версии 1 пусты.
+	RuleID    string `json:"ruleId,omitempty"`
+	RuleEpoch int    `json:"ruleEpoch,omitempty"`
+	// Explains — идентификаторы гипотез этого же отчёта, которые данная гипотеза объясняет (ADR-0031 §5).
+	// Это связь, а не вердикт: «первопричина установлена» и поля root_cause нет (ADR-0024 §3).
+	Explains []string `json:"explains,omitempty"`
 }
 
 // Recommendation — предлагаемое изменение или решение. Kubron его не выполняет (MVP только читает).
@@ -110,6 +131,9 @@ type Recommendation struct {
 	Resource   ResourceRef       `json:"resource"`
 	Params     map[string]string `json:"params,omitempty"`
 	Hypotheses []string          `json:"hypotheses"` // на какие гипотезы опирается
+	// RuleID и RuleEpoch — правило, выдавшее рекомендацию, и его эпоха (ADR-0034 §3).
+	RuleID    string `json:"ruleId,omitempty"`
+	RuleEpoch int    `json:"ruleEpoch,omitempty"`
 }
 
 // Step — диагностический шаг: что ещё проверить (read-only), чтобы подтвердить или опровергнуть гипотезы.
@@ -142,6 +166,53 @@ type Report struct {
 	Steps           []Step           `json:"steps"`
 	Missing         []MissingContext `json:"missing"`
 	Partial         []string         `json:"partial,omitempty"` // источники, прочитанные частично
+	// Graph — слепок графа зависимостей, по которому построены цепочки (ADR-0031). Пусто, если граф не строился.
+	Graph *depgraph.Snapshot `json:"graph,omitempty"`
+	// Chains — пути по графу от затронутого ресурса до гипотезы-кандидата.
+	Chains []Chain `json:"chains,omitempty"`
+}
+
+// Chain — путь по графу от затронутого ресурса к ресурсу гипотезы-кандидата. Это объяснение «как связаны»,
+// а не установленная причина.
+type Chain struct {
+	Path []ChainStep `json:"path"`
+	// Candidate — идентификатор гипотезы-кандидата, на которой цепочка заканчивается.
+	Candidate string `json:"candidate,omitempty"`
+}
+
+// ChainStep — звено цепочки: ресурс, его состояние в графе и код причины состояния (без значений из кластера).
+type ChainStep struct {
+	Ref    ResourceRef `json:"ref"`
+	Health string      `json:"health"`
+	Reason string      `json:"reason,omitempty"`
+}
+
+// RootCandidates возвращает идентификаторы гипотез, которые объясняют другие гипотезы и сами не объясняются
+// никакой другой (ADR-0031 §5). Порядок — как в отчёте. Это «кандидаты», а не «первопричины»: подтвердить
+// причину может только человек. Циклы Explains безопасны: участники цикла объясняются друг другом, поэтому
+// кандидатами не становятся, а обход графа здесь не нужен.
+func (r *Report) RootCandidates() []string {
+	out := []string{}
+	if r == nil {
+		return out
+	}
+	explained := map[string]bool{}
+	for _, h := range r.Hypotheses {
+		for _, id := range h.Explains {
+			if id != h.ID {
+				explained[id] = true
+			}
+		}
+	}
+	for _, h := range r.Hypotheses {
+		if explained[h.ID] {
+			continue
+		}
+		if slices.ContainsFunc(h.Explains, func(id string) bool { return id != h.ID }) {
+			out = append(out, h.ID)
+		}
+	}
+	return out
 }
 
 // Коды симптомов.
