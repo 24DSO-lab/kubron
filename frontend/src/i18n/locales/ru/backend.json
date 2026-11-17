@@ -996,7 +996,7 @@
   "depgraphSeedError": "{p0}: {p1}/{p2}",
   "depgraphFakeGetError": "get {p0} {p1}/{p2}: {p3}",
   "depgraphFakeLabelSelectorError": "graphtest: селектор меток: {p0}",
-  "depgraphFakeFieldSelectorError": "graphtest: неверный селектор полей {p0}"
+  "depgraphFakeFieldSelectorError": "graphtest: неверный селектор полей {p0}",
 
   "signalsProviderFailed": "сбой поставщика сигналов",
   "metricsTransportNotAvailable": "{p0}: транспорт метрик недоступен",
