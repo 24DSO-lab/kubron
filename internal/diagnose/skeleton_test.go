@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/24DSO-lab/kubron/internal/diagnose/stubs/depgraph"
+	"github.com/24DSO-lab/kubron/internal/depgraph"
 )
 
 // (а) Отчёт набора правил версии 1 читается без потерь: новые поля пусты, версия сохраняется. Документ версии 1
@@ -345,7 +345,9 @@ func TestReaderTypesAreDepgraphAliases(t *testing.T) {
 	}
 }
 
-func hyp(id string, explains ...string) Hypothesis { return Hypothesis{ID: id, Explains: explains} }
+func hypExplains(id string, explains ...string) Hypothesis {
+	return Hypothesis{ID: id, Explains: explains}
+}
 
 func TestRootCandidates(t *testing.T) {
 	t.Parallel()
@@ -355,14 +357,14 @@ func TestRootCandidates(t *testing.T) {
 		want []string
 	}{
 		{"none", nil, []string{}},
-		{"unrelated hypotheses are not candidates", []Hypothesis{hyp("h1"), hyp("h2")}, []string{}},
-		{"chain of three", []Hypothesis{hyp("h3"), hyp("h2", "h3"), hyp("h1", "h2")}, []string{"h1"}},
-		{"two independent chains", []Hypothesis{hyp("h1", "h2"), hyp("h2"), hyp("h3", "h4"), hyp("h4")}, []string{"h1", "h3"}},
-		{"one cause explains two", []Hypothesis{hyp("h1", "h2", "h3"), hyp("h2"), hyp("h3")}, []string{"h1"}},
-		{"cycle has no candidate and does not hang", []Hypothesis{hyp("h1", "h2"), hyp("h2", "h1")}, []string{}},
-		{"self reference is ignored", []Hypothesis{hyp("h1", "h1")}, []string{}},
-		{"cycle with a head", []Hypothesis{hyp("h0", "h1"), hyp("h1", "h2"), hyp("h2", "h1")}, []string{"h0"}},
-		{"unknown target still makes a candidate", []Hypothesis{hyp("h1", "h9")}, []string{"h1"}},
+		{"unrelated hypotheses are not candidates", []Hypothesis{hypExplains("h1"), hypExplains("h2")}, []string{}},
+		{"chain of three", []Hypothesis{hypExplains("h3"), hypExplains("h2", "h3"), hypExplains("h1", "h2")}, []string{"h1"}},
+		{"two independent chains", []Hypothesis{hypExplains("h1", "h2"), hypExplains("h2"), hypExplains("h3", "h4"), hypExplains("h4")}, []string{"h1", "h3"}},
+		{"one cause explains two", []Hypothesis{hypExplains("h1", "h2", "h3"), hypExplains("h2"), hypExplains("h3")}, []string{"h1"}},
+		{"cycle has no candidate and does not hang", []Hypothesis{hypExplains("h1", "h2"), hypExplains("h2", "h1")}, []string{}},
+		{"self reference is ignored", []Hypothesis{hypExplains("h1", "h1")}, []string{}},
+		{"cycle with a head", []Hypothesis{hypExplains("h0", "h1"), hypExplains("h1", "h2"), hypExplains("h2", "h1")}, []string{"h0"}},
+		{"unknown target still makes a candidate", []Hypothesis{hypExplains("h1", "h9")}, []string{"h1"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
