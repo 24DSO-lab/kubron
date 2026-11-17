@@ -34,10 +34,8 @@ const (
 	nodeMemLow = 0.10
 	// nodeMemHealthy — минимум доступной памяти не ниже 30%: Node за час не подходила к нехватке памяти.
 	nodeMemHealthy = 0.30
-	// nodeDiskLow — свободно не более 15% корневого раздела: близко к порогу вытеснения kubelet по диску.
-	nodeDiskLow = 0.15
-	// nodeCPUHigh — средняя загрузка CPU Node за 15 минут не ниже 90%.
-	nodeCPUHigh = 0.90
+	// Диск и CPU Node (node_disk_available_ratio, node_cpu_utilization) на этапе A дают только факты: порогов и
+	// гипотез по ним нет, пока правила не просят этих сигналов.
 )
 
 // Коды гипотез, добавляемых метриками.
