@@ -298,3 +298,55 @@ func TestWantsBudgetAndOrder(t *testing.T) {
 		t.Errorf("wants depend on input order or exceed the budget: %d", len(w1))
 	}
 }
+
+// Сквозной путь: Collect вызывает хук сигналов, Analyze — пост-хук метрик; без провайдера отчёт тот же, что без метрик.
+func TestMetricsHooksEndToEnd(t *testing.T) {
+	var sc *scenario
+	for _, s := range loadScenarios(t) {
+		if s.Name == "oom_limit" {
+			sc = &s
+		}
+	}
+	if sc == nil {
+		t.Fatal("scenario oom_limit not found")
+	}
+	collect := func(p signals.Provider) *Context {
+		r := newFakeReader(sc.Objects, sc.Logs)
+		c, err := Collect(t.Context(), r, sc.Expect.Target, CollectOptions{Logs: true, Signals: p, Now: func() time.Time { return fixedNow }})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return c
+	}
+	base := Analyze(collect(nil))
+	if slices.ContainsFunc(base.Missing, func(m MissingContext) bool { return m.Code == missingMetricsUnavailable }) {
+		t.Fatal("hint about metrics without a provider")
+	}
+	sub := signals.Subject{Namespace: "shop", Pod: "api-1", Container: "app"}
+	p := &fakeProvider{set: signals.NewSet("", []signals.Value{
+		{Signal: signals.MemoryUsageVsLimit, Subject: sub, Value: 0.96, Unit: "ratio", Agg: "max", Window: time.Hour, ObservedAt: fixedNow},
+	}, nil)}
+	c := collect(p)
+	if c.Signals == nil || len(p.got.Want) == 0 {
+		t.Fatalf("hook did not fetch signals: %+v", p.got)
+	}
+	rep := Analyze(c)
+	i := slices.IndexFunc(rep.Facts, func(f Fact) bool { return f.Code == "metric.memory_usage_vs_limit" })
+	if i < 0 || rep.Facts[i].Source.Kind != SourceMetric || rep.Facts[i].Source.Signal != "memory_usage_vs_limit" {
+		t.Fatalf("metric fact missing or has a wrong source: %+v", rep.Facts)
+	}
+	if h := hyp(rep, "oom.limit_too_low"); h == nil || h.Confidence != ConfidenceMedium {
+		t.Errorf("limit_too_low = %+v", h)
+	}
+	// Стек не установлен: подсказка, отчёт в остальном тот же.
+	rep = Analyze(collect(&fakeProvider{set: signals.NewSet(signals.ReasonNotInstalled, nil, nil)}))
+	if !slices.ContainsFunc(rep.Missing, func(m MissingContext) bool {
+		return m.Code == missingMetricsUnavailable && m.Params["reason"] == "not_installed"
+	}) {
+		t.Errorf("missing = %+v", rep.Missing)
+	}
+	rep.Missing = slices.DeleteFunc(rep.Missing, func(m MissingContext) bool { return m.Code == missingMetricsUnavailable })
+	if !reflect.DeepEqual(rep, base) {
+		t.Error("an absent stack changed the report beyond the hint")
+	}
+}

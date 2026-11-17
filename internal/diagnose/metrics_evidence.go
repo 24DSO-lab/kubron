@@ -46,12 +46,8 @@ const (
 	hypNodePressure    = "metrics.node_pressure"
 )
 
-// sourceMetric — вид источника «метрика». После слияния ядра D3 заменяется его SourceMetric с полем Signal; точка
-// замены одна — metricSource.
-const sourceMetric SourceKind = "metric"
-
 func metricSource(sig signals.Signal, res ResourceRef) Source {
-	return Source{Kind: sourceMetric, Resource: res, Field: "signal/" + string(sig)}
+	return Source{Kind: SourceMetric, Resource: res, Signal: string(sig)}
 }
 
 // applyMetrics — тело пост-хука: добавляет факты метрик, корректирует уверенность существующих гипотез не более чем

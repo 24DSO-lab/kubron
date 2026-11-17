@@ -92,6 +92,7 @@ func CollectWith(ctx context.Context, r Reader, target ResourceRef, opts Collect
 	if err != nil {
 		return nil, err
 	}
+	c.opts = opts
 	if err := runCollectHooks(ctx, r, c); err != nil {
 		return nil, err
 	}
