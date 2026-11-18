@@ -23,6 +23,11 @@ import (
 // EventIncidentUpdated — снимок Events расследования обновлён (адресно сессии, ADR-0009). Данные — ID инцидента.
 const EventIncidentUpdated = "incident:updated"
 
+// EventProblemChanged — проблема изменилась: создана, изменён состав, закрыта или объединена (адресно сессии,
+// ADR-0009). Данные — только ID проблемы; подробности клиент загружает RPC IncidentProblemGet, который повторно
+// проверяет права.
+const EventProblemChanged = "problem:changed"
+
 const moduleIncident = "incident"
 
 // Операции модуля. Имя действия аудита — opsplatform.ActionName(moduleIncident, операция): IncidentMarkOutcome и т. п.
@@ -40,6 +45,16 @@ const (
 	incOpDelete         = "delete"
 	incOpSettingsGet    = "settings_get"
 	incOpSaveSettings   = "save_settings"
+
+	// Проблемы и статистика правил (ADR-0033 §6–§7, ADR-0034 §5, §8): работают только с сохранёнными данными.
+	incOpProblemList     = "problem_list"
+	incOpProblemGet      = "problem_get"
+	incOpProblemAttach   = "problem_attach"
+	incOpProblemDetach   = "problem_detach"
+	incOpProblemMerge    = "problem_merge"
+	incOpProblemCreate   = "problem_create"
+	incOpRuleStats       = "rule_stats"
+	incOpRuleStatsExport = "rule_stats_export"
 )
 
 // incidentAction — имя действия аудита операции модуля.
@@ -48,6 +63,13 @@ func incidentAction(operation string) string {
 }
 
 var errIncidentsUnavailable = errors.New("incident storage is not available")
+
+// problemBackendOf возвращает хранилище проблем, если его реализует хранилище расследований: файловая и PostgreSQL
+// реализации Backend реализуют и ProblemBackend (ADR-0033 §6). nil — группировки проблем нет.
+func problemBackendOf(b incident.Backend) incident.ProblemBackend {
+	pb, _ := b.(incident.ProblemBackend)
+	return pb
+}
 
 // SetupIncidents подключает сервис расследований: хранилище берётся из общего Store (PostgreSQL) или из каталога
 // данных (десктоп), значения по умолчанию — из KUBRON_INCIDENT_*. Возвращает задачу retention для internal/jobs
@@ -61,7 +83,11 @@ func SetupIncidents(root *App, getenv func(string) string) (*jobs.Job, error) {
 	if st == nil {
 		st = store.NewFile(k8s.GetKubronDir())
 	}
-	svc := incident.NewService(st.Incidents(), incidentRedactor(), incident.WithDefaults(cfg.Defaults))
+	backend := st.Incidents()
+	svc := incident.NewService(backend, incidentRedactor(), incident.WithDefaults(cfg.Defaults))
+	if pb := problemBackendOf(backend); pb != nil {
+		svc = svc.WithProblems(pb)
+	}
 	root.incidents = svc
 	return &jobs.Job{Name: "incident retention", Every: cfg.PurgeInterval, Logf: func(format string, args ...any) {
 		slog.Info(fmt.Sprintf(format, args...), "component", "incident")
@@ -81,13 +107,6 @@ type IncidentListQuery struct {
 	Limit  int             `json:"limit"`
 	Cursor string          `json:"cursor"`
 	Status incident.Status `json:"status"`
-}
-
-// IncidentOutcomeRequest — отметка результата расследования.
-type IncidentOutcomeRequest struct {
-	Result                incident.Result `json:"result"`
-	ConfirmedHypothesisID string          `json:"confirmedHypothesisId"`
-	Note                  string          `json:"note"`
 }
 
 // IncidentFragmentRequest — явное сохранение фрагмента лога как доказательства.
@@ -128,8 +147,28 @@ func (a *App) incidentOp(clusterID, operation string, perm auth.Permission) (con
 	return ctx, op, a.incidents, nil
 }
 
+// incidentStoredOp начинает операцию, которой не нужно подключение к кластеру: проблемы и статистика работают только
+// с сохранёнными данными (opsplatform.OpRequest.StoredOnly). Права и принадлежность кластера команде проверяются
+// как обычно; Op.Reader и Op.Metrics пусты.
+func (a *App) incidentStoredOp(clusterID, operation string, perm auth.Permission) (context.Context, *opsplatform.Op, *incident.Service, error) {
+	if a.incidents == nil {
+		return nil, nil, nil, errIncidentsUnavailable
+	}
+	ctx, op, err := a.beginOp(opsplatform.OpRequest{Module: moduleIncident, Operation: operation, ClusterID: clusterID,
+		Permission: perm, StoredOnly: true})
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	return ctx, op, a.incidents, nil
+}
+
 func incidentCaller(op *opsplatform.Op) incident.Caller {
-	return incident.Caller{Scope: op.Scope, Actor: op.Initiator, Reader: diagReader{op.Reader}}
+	return incident.Caller{Scope: op.Scope, Actor: op.Initiator, Reader: diagReader{op.Reader}, Signals: metricSignals(op.Metrics)}
+}
+
+// storedCaller — вызывающий для операций без чтения кластера: ни Reader, ни метрик нет.
+func storedCaller(op *opsplatform.Op) incident.Caller {
+	return incident.Caller{Scope: op.Scope, Actor: op.Initiator}
 }
 
 // canReadLogs — есть ли у пользователя право на содержимое фрагментов. Проверка без записи отказа в аудит: она
@@ -143,6 +182,8 @@ func (a *App) canReadLogs(clusterID string) bool {
 }
 
 // IncidentOpen открывает расследование для workload: контекст, findings, гипотезы, снимок Events и фрагменты логов.
+// Метрики встроенного стека подключаются, если стек есть и доступен (ADR-0032); их отсутствие или отказ доступа не
+// делают операцию частичной, а недоступность существующего стека — делает (источник «metrics» в Report.Partial).
 func (a *App) IncidentOpen(clusterID string, req IncidentOpenRequest) (d *incident.Detail, err error) {
 	if err := a.authzCluster(auth.PermRead, clusterID); err != nil {
 		return nil, err
@@ -151,12 +192,18 @@ func (a *App) IncidentOpen(clusterID string, req IncidentOpenRequest) (d *incide
 	if err != nil {
 		return nil, err
 	}
-	defer func() { op.End(err) }()
+	var partial []string
+	defer func() { op.End(err, partial...) }()
 	in, err := svc.Open(ctx, incidentCaller(op), incident.OpenRequest{
 		Target:      diagnose.ResourceRef{Kind: req.Kind, Namespace: req.Namespace, Name: req.Name},
 		DisableLogs: req.DisableLogs,
 	})
-	op.Audit(incidentAction(incOpOpen), idOrEmpty(in), err, slog.String("kind", req.Kind), slog.String("namespace", req.Namespace), slog.String("name", req.Name))
+	if in != nil {
+		partial = in.Report.Partial
+	}
+	// В аудит метрики попадают только числом запросов и признаком, что они были настроены: ни выражений, ни значений.
+	op.Audit(incidentAction(incOpOpen), idOrEmpty(in), err, slog.String("kind", req.Kind), slog.String("namespace", req.Namespace),
+		slog.String("name", req.Name), slog.Int("metric_queries", op.MetricsQueries()), slog.Bool("metrics", op.Metrics != nil))
 	if err != nil {
 		return nil, err
 	}
@@ -213,7 +260,9 @@ func (a *App) IncidentList(clusterID string, q IncidentListQuery) (p incident.Pa
 	return svc.List(ctx, op.Scope, incident.ListQuery{Limit: q.Limit, Cursor: q.Cursor, Status: q.Status})
 }
 
-// IncidentMarkOutcome отмечает результат расследования и закрывает его. Тип запроса IncidentOutcomeRequest описан
+// IncidentMarkOutcome отмечает результат расследования и закрывает его. Расширенная отметка (отвергнутые гипотезы,
+// помогшие и бесполезные рекомендации, момент устранения, оценка корреляции) проверяется в домене; повторная
+// отметка закрытого расследования отвечает incident.ErrClosed. Тип запроса IncidentOutcomeRequest — в app_incident_dto.go.
 func (a *App) IncidentMarkOutcome(clusterID, id string, req IncidentOutcomeRequest) (d *incident.Detail, err error) {
 	if err := a.authzCluster(auth.PermRead, clusterID); err != nil {
 		return nil, err
@@ -223,8 +272,7 @@ func (a *App) IncidentMarkOutcome(clusterID, id string, req IncidentOutcomeReque
 		return nil, err
 	}
 	defer func() { op.End(err) }()
-	_, err = svc.MarkOutcome(ctx, incidentCaller(op), id, incident.Outcome{Result: req.Result,
-		ConfirmedHypothesisID: req.ConfirmedHypothesisID, Note: req.Note})
+	_, err = svc.MarkOutcome(ctx, incidentCaller(op), id, req.outcome())
 	op.Audit(incidentAction(incOpMarkOutcome), id, err, slog.String("result", string(req.Result)))
 	if err != nil {
 		return nil, err
