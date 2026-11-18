@@ -290,9 +290,13 @@ type HypothesisStat struct { Ref; Confirmed, Rejected int; Precision *float64; S
 type RecommendationStat struct { Ref; Helpful, Useless int; Ratio *float64; Sample int; Trusted, PreviouslyUnhelpful bool }
 type SymptomStat struct { Code string; Closed, WithConfirmed int; Coverage *float64 }
 type CorrelationStat struct { Kind, Confidence string; Confirmed, Rejected int; Precision *float64 }
+// Добавлено D6 (ADR-0034 §5, §8; аддитивно): точность гипотез в расследованиях с источником (graph, metrics, correlation) и без него.
+type FeatureCounts struct { Records, Confirmed, Rejected int; Precision *float64 }
+type FeatureStat struct { Feature string; With, Without FeatureCounts }
 type Stats struct {
     Records, Unevaluated int; Truncated bool; ComputedAt time.Time; RuleSetVersions []int
     Hypotheses []HypothesisStat; Recommendations []RecommendationStat; Symptoms []SymptomStat; Correlations []CorrelationStat
+    Features []FeatureStat
 }
 func Compute(recs []Record, now time.Time) Stats
 func Export(st Stats, ruleSetVersion int) ([]byte, error) // анонимный JSON, без имён ресурсов, namespace, идентификаторов, комментариев и точных времён
@@ -303,6 +307,10 @@ func Signature(in SignatureInput) string // hex от стабильной сер
 func (s *Service) RuleStats(ctx context.Context, scope tenant.Scope) (feedback.Stats, error)
 func (s *Service) ExportRuleStats(ctx context.Context, scope tenant.Scope) ([]byte, error)
 ```
+
+Семантика (D6, реализовано): JSON всех типов — camelCase, доли `omitempty` (нет ключа = нет процента, показывать только число случаев); срезы в `Stats` никогда не `null`.
+`Unevaluated` — закрытые расследования без явных оценок. Точность гипотез и корреляции считается только по результату `resolved`; `unresolved`/`inconclusive` учитываются в покрытии симптомов и в пользе рекомендаций (явные отметки). В статистику входят строки с `RuleSetVersion >= 2`. Повторение (`Recurred`) считается, когда расследование-повторение уже закрыто. `Truncated` — закрытых расследований больше `StatsWindow`.
+`incident.MarkOutcome` теперь отвечает `ErrClosed` на повторную отметку закрытого расследования; `MaxOutcomeRefs = 20` — предел списков в отметке и в строке истории.
 
 ## 7. RPC и DTO (D7 владеет именами; D8 использует) [Фаза 0 D7]
 
