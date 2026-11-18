@@ -1,0 +1,33 @@
+{
+  "title": "可能的共同来源",
+  "kinds": {
+    "shared_node": "可能的共同来源：节点",
+    "shared_storage": "可能的共同来源：存储类"
+  },
+  "facts": {
+    "correlation_shared_node_runs_on": "该节点上有 {workloads} 个出现故障的工作负载（{pods} 个 Pod）。",
+    "correlation_shared_node_condition": "节点状况：{condition}。",
+    "correlation_shared_node_unschedulable": "该节点已被隔离（不可调度）。",
+    "correlation_shared_node_taint_noexecute": "该节点带有 NoExecute 污点，会驱逐没有对应容忍度的 Pod。",
+    "correlation_shared_node_warning_events": "该节点记录了 {count} 条警告事件。",
+    "correlation_shared_node_temporal": "节点状况在首次故障前 {gapSeconds} 秒发生了变化。",
+    "correlation_shared_node_multi_workload": "受影响的不同工作负载共 {workloads} 个。",
+    "correlation_shared_storage_consumers": "{workloads} 个工作负载（{pods} 个 Pod）使用了该存储类下 {pvcs} 个未绑定的卷声明。",
+    "correlation_shared_storage_class_missing": "该存储类不存在。",
+    "correlation_shared_storage_no_provisioner": "该存储类没有动态供应器。",
+    "correlation_shared_storage_provision_failed": "该存储类下有 {pvcs} 个卷声明供应失败。",
+    "correlation_shared_storage_temporal": "这些供应失败发生在彼此 {spanSeconds} 秒之内。",
+    "correlation_shared_storage_multi_workload": "受影响的不同工作负载共 {workloads} 个。"
+  },
+  "missing": {
+    "correlation_unavailable": "对可能的共同来源的查找不完整：部分集群数据无法读取。"
+  },
+  "reasons": {
+    "forbidden": "当前会话无权访问这些数据。",
+    "unavailable": "集群数据源没有响应。",
+    "too_large": "响应过大：受影响工作负载的列表可能不完整。",
+    "budget": "已达到额外读取集群的次数上限。",
+    "deadline": "剩余时间不足以完成查找。",
+    "not_found": "未找到该对象。"
+  }
+}

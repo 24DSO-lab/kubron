@@ -1,0 +1,33 @@
+{
+  "title": "Possible common source",
+  "kinds": {
+    "shared_node": "Possible common source: node",
+    "shared_storage": "Possible common source: storage class"
+  },
+  "facts": {
+    "correlation_shared_node_runs_on": "{workloads} workloads ({pods} pods) with failures run on this node.",
+    "correlation_shared_node_condition": "Node condition: {condition}.",
+    "correlation_shared_node_unschedulable": "The node is cordoned (unschedulable).",
+    "correlation_shared_node_taint_noexecute": "The node has a NoExecute taint, which evicts pods without a matching toleration.",
+    "correlation_shared_node_warning_events": "{count} warning events were recorded for the node.",
+    "correlation_shared_node_temporal": "The node's condition changed {gapSeconds} seconds before the first failures.",
+    "correlation_shared_node_multi_workload": "{workloads} different workloads are affected.",
+    "correlation_shared_storage_consumers": "{workloads} workloads ({pods} pods) use {pvcs} unbound volume claims of this storage class.",
+    "correlation_shared_storage_class_missing": "The storage class does not exist.",
+    "correlation_shared_storage_no_provisioner": "The storage class has no dynamic provisioner.",
+    "correlation_shared_storage_provision_failed": "Provisioning failed for {pvcs} volume claims of this storage class.",
+    "correlation_shared_storage_temporal": "The provisioning failures happened within {spanSeconds} seconds of each other.",
+    "correlation_shared_storage_multi_workload": "{workloads} different workloads are affected."
+  },
+  "missing": {
+    "correlation_unavailable": "The search for a possible common source is incomplete: some cluster data could not be read."
+  },
+  "reasons": {
+    "forbidden": "Access to this data is not permitted for your session.",
+    "unavailable": "The cluster data source did not respond.",
+    "too_large": "The response was too large; the list of affected workloads may be incomplete.",
+    "budget": "The limit of additional cluster reads was reached.",
+    "deadline": "There was not enough time left to finish the search.",
+    "not_found": "The object was not found."
+  }
+}
