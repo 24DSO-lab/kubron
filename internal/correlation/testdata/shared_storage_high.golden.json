@@ -1,0 +1,168 @@
+{
+  "version": 1,
+  "observedAt": "2026-11-17T12:00:00Z",
+  "candidates": [
+    {
+      "id": "cc-2d43f617d5f5",
+      "kind": "shared_storage",
+      "source": {
+        "group": "storage.k8s.io",
+        "kind": "StorageClass",
+        "name": "fast"
+      },
+      "confidence": "high",
+      "since": "2026-11-17T11:38:00Z",
+      "affected": [
+        {
+          "kind": "Pod",
+          "namespace": "prod",
+          "name": "db-0",
+          "problemPods": 1,
+          "symptoms": [
+            "pod.pending"
+          ],
+          "since": "2026-11-17T11:40:00Z"
+        },
+        {
+          "kind": "Pod",
+          "namespace": "prod",
+          "name": "queue-0",
+          "problemPods": 1,
+          "symptoms": [
+            "pod.pending"
+          ],
+          "since": "2026-11-17T11:39:00Z"
+        },
+        {
+          "kind": "Pod",
+          "namespace": "prod",
+          "name": "search-0",
+          "problemPods": 1,
+          "symptoms": [
+            "pod.pending"
+          ],
+          "since": "2026-11-17T11:38:00Z"
+        }
+      ],
+      "total": 3,
+      "supporting": [
+        "cf1",
+        "cf2",
+        "cf3",
+        "cf4",
+        "cf5"
+      ]
+    }
+  ],
+  "facts": [
+    {
+      "kind": "fact",
+      "id": "cf1",
+      "code": "correlation.shared_storage.consumers",
+      "resource": {
+        "group": "storage.k8s.io",
+        "kind": "StorageClass",
+        "name": "fast"
+      },
+      "params": {
+        "pods": "3",
+        "pvcs": "3",
+        "workloads": "3"
+      },
+      "source": {
+        "kind": "derived",
+        "resource": {
+          "group": "storage.k8s.io",
+          "kind": "StorageClass",
+          "name": "fast"
+        }
+      },
+      "observedAt": "2026-11-17T12:00:00Z"
+    },
+    {
+      "kind": "fact",
+      "id": "cf2",
+      "code": "correlation.shared_storage.no_provisioner",
+      "resource": {
+        "group": "storage.k8s.io",
+        "kind": "StorageClass",
+        "name": "fast"
+      },
+      "source": {
+        "kind": "derived",
+        "resource": {
+          "group": "storage.k8s.io",
+          "kind": "StorageClass",
+          "name": "fast"
+        }
+      },
+      "observedAt": "2026-11-17T12:00:00Z"
+    },
+    {
+      "kind": "fact",
+      "id": "cf3",
+      "code": "correlation.shared_storage.provision_failed",
+      "resource": {
+        "group": "storage.k8s.io",
+        "kind": "StorageClass",
+        "name": "fast"
+      },
+      "params": {
+        "pvcs": "3"
+      },
+      "source": {
+        "kind": "derived",
+        "resource": {
+          "group": "storage.k8s.io",
+          "kind": "StorageClass",
+          "name": "fast"
+        }
+      },
+      "observedAt": "2026-11-17T12:00:00Z"
+    },
+    {
+      "kind": "fact",
+      "id": "cf4",
+      "code": "correlation.shared_storage.temporal",
+      "resource": {
+        "group": "storage.k8s.io",
+        "kind": "StorageClass",
+        "name": "fast"
+      },
+      "params": {
+        "spanSeconds": "120"
+      },
+      "source": {
+        "kind": "derived",
+        "resource": {
+          "group": "storage.k8s.io",
+          "kind": "StorageClass",
+          "name": "fast"
+        }
+      },
+      "observedAt": "2026-11-17T12:00:00Z"
+    },
+    {
+      "kind": "fact",
+      "id": "cf5",
+      "code": "correlation.shared_storage.multi_workload",
+      "resource": {
+        "group": "storage.k8s.io",
+        "kind": "StorageClass",
+        "name": "fast"
+      },
+      "params": {
+        "workloads": "3"
+      },
+      "source": {
+        "kind": "derived",
+        "resource": {
+          "group": "storage.k8s.io",
+          "kind": "StorageClass",
+          "name": "fast"
+        }
+      },
+      "observedAt": "2026-11-17T12:00:00Z"
+    }
+  ]
+}
