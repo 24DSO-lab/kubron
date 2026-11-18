@@ -47,6 +47,7 @@ func RunProblems(t *testing.T, newBackend func(t *testing.T) incident.ProblemBac
 		{"problem delete", problemDelete},
 		{"problem purge by retention", problemPurge},
 		{"problem concurrent puts", problemConcurrent},
+		{"problem with the maximum number of members", problemMaxMembers},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) { c.fn(t, newBackend(t)) })
@@ -323,5 +324,22 @@ func problemConcurrent(t *testing.T, b incident.ProblemBackend) {
 	}
 	if got, _ := b.GetProblem(ctx, Scope, "p1"); got.Version != 2 || len(got.Members) != 3 {
 		t.Errorf("stored = version %d, %d members", got.Version, len(got.Members))
+	}
+}
+
+// problemMaxMembers: документ с MaxProblemMembers участниками и списком отсоединённых пишется и читается целиком.
+func problemMaxMembers(t *testing.T, b incident.ProblemBackend) {
+	ctx := t.Context()
+	p := NewProblem(Scope, "big", base)
+	p.Members = p.Members[:0]
+	for i := range incident.MaxProblemMembers {
+		p.Members = append(p.Members, incident.ProblemMember{IncidentID: fmt.Sprintf("inc%03d", i), AddedAt: base.Add(time.Duration(i) * time.Second), AddedBy: "u"})
+		p.Detached = append(p.Detached, fmt.Sprintf("det%03d", i))
+	}
+	must(t, b.PutProblem(ctx, p))
+	got, err := b.GetProblem(ctx, Scope, "big")
+	must(t, err)
+	if len(got.Members) != incident.MaxProblemMembers || got.Members[99].IncidentID != "inc099" || len(got.Detached) != incident.MaxProblemMembers {
+		t.Errorf("members %d, detached %d", len(got.Members), len(got.Detached))
 	}
 }
