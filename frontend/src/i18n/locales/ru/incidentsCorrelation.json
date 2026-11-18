@@ -15,6 +15,7 @@
     "correlation_shared_storage_consumers": "Нагрузок, использующих непривязанные тома этого класса хранилища: {workloads} (подов: {pods}, запросов тома: {pvcs}).",
     "correlation_shared_storage_class_missing": "Класса хранилища не существует.",
     "correlation_shared_storage_no_provisioner": "У класса хранилища нет динамического provisioner.",
+    "correlation_shared_storage_no_default_class": "В кластере нет класса хранилища по умолчанию, поэтому запросы тома без указанного класса остаются непривязанными.",
     "correlation_shared_storage_provision_failed": "Не удалось создать тома для запросов этого класса хранилища: {pvcs}.",
     "correlation_shared_storage_temporal": "Сбои создания томов произошли в пределах {spanSeconds} с друг от друга.",
     "correlation_shared_storage_multi_workload": "Затронуто разных нагрузок: {workloads}."
