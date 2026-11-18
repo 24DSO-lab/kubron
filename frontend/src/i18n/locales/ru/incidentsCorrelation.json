@@ -1,0 +1,33 @@
+{
+  "title": "Возможный общий источник",
+  "kinds": {
+    "shared_node": "Возможный общий источник: узел",
+    "shared_storage": "Возможный общий источник: класс хранилища"
+  },
+  "facts": {
+    "correlation_shared_node_runs_on": "Нагрузок со сбоями на этом узле: {workloads} (подов: {pods}).",
+    "correlation_shared_node_condition": "Состояние узла: {condition}.",
+    "correlation_shared_node_unschedulable": "Узел закрыт для планирования (unschedulable).",
+    "correlation_shared_node_taint_noexecute": "На узле есть taint NoExecute: он вытесняет поды без подходящего toleration.",
+    "correlation_shared_node_warning_events": "Для узла зафиксировано предупреждающих событий: {count}.",
+    "correlation_shared_node_temporal": "Состояние узла изменилось за {gapSeconds} с до первых сбоев.",
+    "correlation_shared_node_multi_workload": "Затронуто разных нагрузок: {workloads}.",
+    "correlation_shared_storage_consumers": "Нагрузок, использующих непривязанные тома этого класса хранилища: {workloads} (подов: {pods}, запросов тома: {pvcs}).",
+    "correlation_shared_storage_class_missing": "Класса хранилища не существует.",
+    "correlation_shared_storage_no_provisioner": "У класса хранилища нет динамического provisioner.",
+    "correlation_shared_storage_provision_failed": "Не удалось создать тома для запросов этого класса хранилища: {pvcs}.",
+    "correlation_shared_storage_temporal": "Сбои создания томов произошли в пределах {spanSeconds} с друг от друга.",
+    "correlation_shared_storage_multi_workload": "Затронуто разных нагрузок: {workloads}."
+  },
+  "missing": {
+    "correlation_unavailable": "Поиск возможного общего источника неполон: часть данных кластера прочитать не удалось."
+  },
+  "reasons": {
+    "forbidden": "Доступ к этим данным для вашей сессии не разрешён.",
+    "unavailable": "Источник данных кластера не ответил.",
+    "too_large": "Ответ слишком большой: список затронутых нагрузок может быть неполным.",
+    "budget": "Достигнут предел дополнительных чтений кластера.",
+    "deadline": "До конца времени не осталось достаточно, чтобы завершить поиск.",
+    "not_found": "Объект не найден."
+  }
+}

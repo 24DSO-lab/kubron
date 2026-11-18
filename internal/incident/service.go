@@ -152,7 +152,7 @@ func (s *Service) Open(ctx context.Context, c Caller, req OpenRequest) (*Inciden
 		Events: s.sanitizeEvents(dc.Events), EventsUpdatedAt: now,
 		SaveLogs: !req.DisableLogs, Evidence: []Evidence{},
 	}
-	in.Report.Partial = mergePartial(in.Report.Partial, s.correlate(ctx, dc, in)...)
+	in.Report.Partial = mergePartial(in.Report.Partial, s.correlate(ctx, c.Reader, dc, in)...)
 	in.Signature = signatureOf(in, &in.Report)
 	in.Report.Partial = mergePartial(in.Report.Partial, s.detectRecurrence(ctx, in)...)
 	var saved []string

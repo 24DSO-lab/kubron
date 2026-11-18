@@ -46,7 +46,7 @@ type WorkloadRef struct {
 	Name        string    `json:"name"`
 	ProblemPods int       `json:"problemPods"`
 	Symptoms    []string  `json:"symptoms,omitempty"` // коды симптомов, отсортированы
-	Since       time.Time `json:"since"`              // время первого сбоя по меткам объектов
+	Since       time.Time `json:"since,omitzero"`     // время первого сбоя по меткам объектов; нет у «потенциальных»
 }
 
 // Candidate — возможный общий источник сбоев. Это гипотеза, а не установленная причина.
@@ -88,13 +88,15 @@ func (r *Result) Best() *Candidate {
 	return &r.Candidates[0]
 }
 
-// sourceKey строит часть ключа по ссылке источника в формате depgraph.Ref.Key().
-// У diagnose.ResourceRef пока нет поля Group (контракт D3, contracts.md §3), поэтому группа берётся
-// по виду ресурса. Когда поле появится, достаточно заменить тело этой функции.
+// sourceKey строит часть ключа по ссылке источника в формате depgraph.Ref.Key(): «группа/вид/namespace/имя»,
+// пустая группа — core. Для StorageClass без заполненной группы (старые данные) группа восстанавливается по виду.
 func sourceKey(ref diagnose.ResourceRef) string {
-	group := "core"
-	if ref.Kind == "StorageClass" {
-		group = "storage.k8s.io"
+	group := ref.Group
+	if group == "" {
+		group = "core"
+		if ref.Kind == "StorageClass" {
+			group = "storage.k8s.io"
+		}
 	}
 	return group + "/" + ref.Kind + "/" + ref.Namespace + "/" + ref.Name
 }
