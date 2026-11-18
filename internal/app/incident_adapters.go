@@ -6,6 +6,7 @@ package app
 import (
 	"context"
 	"errors"
+	"time"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -14,6 +15,7 @@ import (
 	"github.com/24DSO-lab/kubron/internal/incident"
 	"github.com/24DSO-lab/kubron/internal/logredact"
 	"github.com/24DSO-lab/kubron/internal/opsplatform"
+	"github.com/24DSO-lab/kubron/internal/signals"
 )
 
 // Адаптеры между доменом Intelligence и платформой (ADR-0026): домены платформу не импортируют, переводит слой связки.
@@ -61,6 +63,49 @@ func (d diagReader) PodLogs(ctx context.Context, req diagnose.LogRequest) ([]byt
 	b, err := d.r.PodLogs(ctx, opsplatform.LogRequest{Namespace: req.Namespace, Pod: req.Pod, Container: req.Container,
 		Previous: req.Previous, TailLines: req.TailLines, LimitBytes: req.LimitBytes})
 	return b, mapReadErr(err)
+}
+
+// mapMetricsErr приводит ошибку платформенного читателя метрик к ошибкам signals.Querier. Текст исходной ошибки
+// сохраняется (платформа уже очистила его от выражений), остальные ошибки Provider считает недоступностью источника.
+func mapMetricsErr(err error) error {
+	switch {
+	case err == nil:
+		return nil
+	case errors.Is(err, opsplatform.ErrNotFound):
+		return mappedErr{signals.ErrNotFound, err}
+	case errors.Is(err, opsplatform.ErrForbidden):
+		return mappedErr{signals.ErrForbidden, err}
+	case errors.Is(err, opsplatform.ErrTooLarge):
+		return mappedErr{signals.ErrTooLarge, err}
+	case errors.Is(err, opsplatform.ErrUnavailable):
+		return mappedErr{signals.ErrUnavailable, err}
+	}
+	return err
+}
+
+// metricsQuerier — signals.Querier поверх платформенного MetricsReader (ADR-0032 §3): ни прав, ни пределов запроса
+// он не добавляет и не меняет, это делает платформа.
+type metricsQuerier struct{ r opsplatform.MetricsReader }
+
+func (m metricsQuerier) Query(ctx context.Context, expr string, at time.Time) ([]signals.Sample, error) {
+	res, err := m.r.Query(ctx, expr, at)
+	if err != nil {
+		return nil, mapMetricsErr(err)
+	}
+	out := make([]signals.Sample, len(res))
+	for i, s := range res {
+		out[i] = signals.Sample{Labels: s.Labels, Value: s.Value, At: s.At}
+	}
+	return out, nil
+}
+
+// metricSignals возвращает провайдера сигналов поверх читателя метрик операции. Метрик нет (стек не настроен,
+// операция без подключения к кластеру) — nil: расследование идёт без сигналов, а не падает (ADR-0032 §7).
+func metricSignals(m opsplatform.MetricsReader) signals.Provider {
+	if m == nil {
+		return nil
+	}
+	return signals.NewPrometheus(metricsQuerier{m})
 }
 
 // incidentRedactor — incident.Redactor поверх logredact (ADR-0022): fail-closed, ошибки переведены в доменные.
