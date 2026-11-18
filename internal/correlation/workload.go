@@ -12,6 +12,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	"github.com/24DSO-lab/kubron/internal/depgraph"
 	"github.com/24DSO-lab/kubron/internal/diagnose"
@@ -128,13 +129,20 @@ func (k wkey) less(o wkey) bool {
 	return k.Name < o.Name
 }
 
+var gvkJob = schema.GroupVersionKind{Group: "batch", Version: "v1", Kind: "Job"}
+
 // workloadResolver определяет нагрузку верхнего уровня Pod'а. ReplicaSet → Deployment требует чтения владельцев
 // ReplicaSet: один List на запуск (лениво, кеш). Если прочитать нельзя — имя Deployment выводится из имени
 // ReplicaSet и метки pod-template-hash, иначе нагрузкой остаётся сам ReplicaSet.
+// Job → CronJob устроен так же (один ленивый List Job), но без выведения по имени: если Job не прочитан,
+// нагрузкой остаётся сам Job.
 type workloadResolver struct {
 	loaded   bool
 	complete bool            // список прочитан целиком: отсутствие ReplicaSet в нём означает самостоятельный ReplicaSet
 	owners   map[string]wkey // «ns/имя ReplicaSet» → контроллер-владелец (Deployment, Rollout и т. п.)
+
+	jobsLoaded bool
+	jobOwners  map[string]wkey // «ns/имя Job» → CronJob-владелец; у самостоятельного Job записи нет
 }
 
 func (e *env) loadReplicaSets(ctx context.Context) {
@@ -165,6 +173,32 @@ func (e *env) loadReplicaSets(ctx context.Context) {
 			}
 		}
 		e.rs.owners[it.GetNamespace()+"/"+it.GetName()] = wkey{o.Kind, it.GetNamespace(), o.Name}
+	}
+}
+
+// loadJobs читает Job одним запросом и запоминает владельцев-CronJob. Недоступность — в Missing; тогда Pod'ы
+// от Job остаются нагрузкой «Job».
+func (e *env) loadJobs(ctx context.Context) {
+	if e.rs.jobsLoaded {
+		return
+	}
+	e.rs.jobsLoaded = true
+	e.rs.jobOwners = map[string]wkey{}
+	res, err := e.r.List(ctx, gvkJob, diagnose.ListOptions{Limit: podListLimit})
+	if err != nil {
+		e.unavailable(diagnose.ResourceRef{Kind: "Job", Group: "batch"}, reasonOf(err))
+		return
+	}
+	if res.Truncated {
+		e.unavailable(diagnose.ResourceRef{Kind: "Job", Group: "batch"}, reasonTooLarge)
+	}
+	for _, it := range res.Items {
+		for _, o := range it.GetOwnerReferences() {
+			if o.Kind == "CronJob" {
+				e.rs.jobOwners[it.GetNamespace()+"/"+it.GetName()] = wkey{"CronJob", it.GetNamespace(), o.Name}
+				break
+			}
+		}
 	}
 }
 
@@ -200,6 +234,12 @@ func (e *env) workloadOf(ctx context.Context, p *corev1.Pod) wkey {
 			}
 		}
 		return wkey{"ReplicaSet", p.Namespace, name}
+	case kind == "Job":
+		e.loadJobs(ctx)
+		if k, found := e.rs.jobOwners[p.Namespace+"/"+name]; found {
+			return k
+		}
+		return wkey{"Job", p.Namespace, name}
 	default:
 		return wkey{kind, p.Namespace, name}
 	}
