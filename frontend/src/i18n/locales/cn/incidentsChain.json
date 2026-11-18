@@ -1,0 +1,6 @@
+{
+  "missing": {
+    "service_selector_missing": "该 Service 没有选择器，因此不会选中任何 Pod。",
+    "graph_unavailable": "无法构建依赖关系图（{reason}）。"
+  }
+}

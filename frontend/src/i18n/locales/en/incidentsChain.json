@@ -1,0 +1,6 @@
+{
+  "missing": {
+    "service_selector_missing": "The Service has no selector, so it does not choose any Pods.",
+    "graph_unavailable": "The dependency graph could not be built ({reason})."
+  }
+}

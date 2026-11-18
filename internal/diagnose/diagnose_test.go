@@ -18,8 +18,13 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-// allowedReads — всё, что вправе читать диагностика (ADR-0024 §2). Secret здесь нет и быть не может.
-var allowedReads = []string{"Pod", "Namespace", "Node", "Event", "ReplicaSet", "Deployment", "pods/log"}
+// allowedReads — всё, что вправе читать диагностика (ADR-0024 §2 и этап 1 ADR-0031 §6, включая граф). Secret здесь
+// нет и быть не может.
+var allowedReads = []string{
+	"Pod", "Namespace", "Node", "Event", "ReplicaSet", "Deployment", "pods/log",
+	"Service", "EndpointSlice", "PersistentVolumeClaim", "PersistentVolume", "StorageClass",
+	"StatefulSet", "DaemonSet", "Job", "CronJob",
+}
 
 func errFor(kind string) error {
 	switch kind {
@@ -409,8 +414,14 @@ func TestAllowedKindsExcludeSecret(t *testing.T) {
 			t.Errorf("Secret must not be in the allowlist: %v", gk)
 		}
 	}
-	if len(AllowedKinds()) != 6 {
-		t.Errorf("ADR-0024 §2 allowlist changed: %v", AllowedKinds())
+	var got []string
+	for _, gk := range AllowedKinds() {
+		got = append(got, gk.Kind)
+	}
+	want := slices.Clone(allowedReads)
+	want = slices.DeleteFunc(want, func(k string) bool { return k == "pods/log" })
+	if !slices.Equal(slices.Sorted(slices.Values(got)), slices.Sorted(slices.Values(want))) {
+		t.Errorf("allowlist of diagnostics changed (ADR-0024 §2, ADR-0031 §6): %v, want kinds %v", got, want)
 	}
 }
 
