@@ -1026,5 +1026,7 @@
   "problem": "问题：{p0}",
   "problemHasTheMaximumNumberOfMembers": "该问题已达到成员数量上限",
   "problemRequestIsInvalid": "问题请求无效",
-  "problemsAreNotAvailable": "问题功能当前不可用"
+  "problemsAreNotAvailable": "问题功能当前不可用",
+  "corruptedProblem": "问题 {p0} 已损坏：{p1}",
+  "corruptedProblemRecord": "问题记录已损坏：{p0}"
 }

@@ -11,8 +11,13 @@ import (
 	"github.com/24DSO-lab/kubron/internal/tenant"
 )
 
-// errNoChange возвращает fn из updateProblem, когда менять нечего: запись не пишется, ошибки нет.
-var errNoChange = errors.New("no change")
+// noChange — служебный признак, не ошибка для пользователя: fn из updateProblem возвращает errNoChange, когда
+// менять нечего (запись не пишется, ошибки нет). Наружу не выходит, поэтому текста для перевода у него нет.
+type noChange struct{}
+
+func (noChange) Error() string { return "" }
+
+var errNoChange error = noChange{}
 
 // updateProblem читает проблему, применяет fn и записывает с повтором при конфликте версий (как Service.mutate).
 // Отсутствующая проблема — ErrProblemNotFound. Если fn вернула errNoChange, возвращается текущая запись без

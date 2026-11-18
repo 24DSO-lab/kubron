@@ -6,7 +6,7 @@ package incident
 import (
 	"context"
 	"errors"
-	"fmt"
+	"log/slog"
 	"slices"
 
 	"github.com/24DSO-lab/kubron/internal/tenant"
@@ -50,7 +50,8 @@ func (s *Service) AttachToProblem(ctx context.Context, c Caller, incidentID, pro
 		return nil, err
 	}
 	if _, err := s.setProblemID(ctx, c.Scope, incidentID, p.ID); err != nil {
-		return nil, fmt.Errorf("problem updated, investigation was not linked: %w", err)
+		slog.WarnContext(ctx, "incident: problem updated, investigation was not linked", "incident", incidentID, "problem", p.ID, "error", err)
+		return nil, err
 	}
 	if prev != "" && prev != p.ID {
 		s.leaveProblem(ctx, c.Scope, prev, incidentID)
@@ -90,7 +91,8 @@ func (s *Service) DetachFromProblem(ctx context.Context, c Caller, incidentID st
 		return nil, err
 	}
 	if _, serr := s.setProblemID(ctx, c.Scope, incidentID, ""); serr != nil {
-		return nil, fmt.Errorf("problem updated, investigation was not unlinked: %w", serr)
+		slog.WarnContext(ctx, "incident: problem updated, investigation was not unlinked", "incident", incidentID, "error", serr)
+		return nil, serr
 	}
 	if err != nil {
 		return nil, err // проблемы уже нет: ссылка снята
@@ -106,14 +108,14 @@ func (s *Service) MergeProblems(ctx context.Context, c Caller, fromID, toID stri
 		return nil, ErrProblemsDisabled
 	}
 	if fromID == toID {
-		return nil, fmt.Errorf("%w: a problem cannot be merged into itself", ErrInvalidProblem)
+		return nil, ErrInvalidProblem // проблему нельзя объединить с самой собой
 	}
 	from, err := s.problems.GetProblem(ctx, c.Scope, fromID)
 	if err != nil {
 		return nil, mapProblemErr(err)
 	}
 	if from.MergedInto != "" && from.MergedInto != toID {
-		return nil, fmt.Errorf("%w: the source problem is already merged", ErrInvalidProblem)
+		return nil, ErrInvalidProblem // исходная проблема уже объединена с другой
 	}
 	moved := s.pruneDead(ctx, from, "")
 	to, err := s.updateProblem(ctx, c.Scope, toID, func(to *Problem) error {
@@ -142,13 +144,15 @@ func (s *Service) MergeProblems(ctx context.Context, c Caller, fromID, toID stri
 		}
 	}
 	if firstErr != nil {
-		return nil, fmt.Errorf("problems merged, some investigations were not relinked: %w", firstErr)
+		slog.WarnContext(ctx, "incident: problems merged, some investigations were not relinked", "from", fromID, "to", toID, "error", firstErr)
+		return nil, firstErr
 	}
 	if _, err := s.updateProblem(ctx, c.Scope, fromID, func(f *Problem) error {
 		f.Status, f.MergedInto, f.Members = ProblemClosed, to.ID, []ProblemMember{}
 		return nil
 	}); err != nil {
-		return nil, fmt.Errorf("problems merged, source was not closed: %w", err)
+		slog.WarnContext(ctx, "incident: problems merged, source was not closed", "from", fromID, "to", toID, "error", err)
+		return nil, err
 	}
 	return to, nil
 }
@@ -163,7 +167,7 @@ func (s *Service) CreateProblem(ctx context.Context, c Caller, incidentIDs []str
 	}
 	switch {
 	case len(incidentIDs) == 0:
-		return nil, fmt.Errorf("%w: no investigations selected", ErrInvalidProblem)
+		return nil, ErrInvalidProblem // не выбрано ни одного расследования
 	case len(incidentIDs) > MaxProblemMembers:
 		return nil, ErrProblemFull
 	}
@@ -171,7 +175,7 @@ func (s *Service) CreateProblem(ctx context.Context, c Caller, incidentIDs []str
 	ins := make([]*Incident, 0, len(incidentIDs))
 	for _, id := range incidentIDs {
 		if !ValidID(id) || seen[id] {
-			return nil, fmt.Errorf("%w: invalid or repeated investigation id", ErrInvalidProblem)
+			return nil, ErrInvalidProblem // недопустимый или повторяющийся идентификатор
 		}
 		seen[id] = true
 		in, err := s.b.GetIncident(ctx, c.Scope, id)
@@ -203,7 +207,8 @@ func (s *Service) CreateProblem(ctx context.Context, c Caller, incidentIDs []str
 		}
 	}
 	if firstErr != nil {
-		return nil, fmt.Errorf("problem created, some investigations were not linked: %w", firstErr)
+		slog.WarnContext(ctx, "incident: problem created, some investigations were not linked", "problem", p.ID, "error", firstErr)
+		return nil, firstErr
 	}
 	return p, nil
 }

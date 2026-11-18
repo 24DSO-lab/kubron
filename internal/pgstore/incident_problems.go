@@ -134,7 +134,7 @@ func (b problemBackend) ListProblems(ctx context.Context, scope tenant.Scope, q 
 		}
 		var p incident.Problem
 		if err := json.Unmarshal(raw, &p); err != nil {
-			return incident.ProblemPage{}, fmt.Errorf("corrupted problem: %w", err)
+			return incident.ProblemPage{}, fmt.Errorf("corrupted problem record: %w", err)
 		}
 		if len(page.Items) == n {
 			last := page.Items[n-1]
