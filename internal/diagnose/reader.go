@@ -52,14 +52,24 @@ var (
 	gvkNamespace  = schema.GroupVersionKind{Version: "v1", Kind: "Namespace"}
 	gvkNode       = schema.GroupVersionKind{Version: "v1", Kind: "Node"}
 	gvkEvent      = schema.GroupVersionKind{Version: "v1", Kind: "Event"}
+	gvkService    = schema.GroupVersionKind{Version: "v1", Kind: "Service"}
+	gvkPVC        = schema.GroupVersionKind{Version: "v1", Kind: "PersistentVolumeClaim"}
 	gvkReplicaSet = schema.GroupVersionKind{Group: "apps", Version: "v1", Kind: "ReplicaSet"}
 	gvkDeployment = schema.GroupVersionKind{Group: "apps", Version: "v1", Kind: "Deployment"}
 )
 
-// AllowedKinds — виды, которые читает диагностика (для документации и тестов, сверяемых с allowlist платформы).
+// AllowedKinds — виды, которые читает диагностика, включая граф зависимостей (для документации и тестов, сверяемых
+// с allowlist платформы). Состав: ADR-0024 §2 (шесть видов), этап 1 ADR-0031 §6 (Service, EndpointSlice, PVC, PV,
+// StorageClass) и владельцы Pod, которых граф читает по ownerReferences (StatefulSet, DaemonSet, Job, CronJob).
+// Secret здесь нет и быть не может; ConfigMap граф читает только при флаге этапа 2, выключенном по умолчанию.
 func AllowedKinds() []schema.GroupKind {
 	return []schema.GroupKind{
 		gvkPod.GroupKind(), gvkNamespace.GroupKind(), gvkNode.GroupKind(),
 		gvkEvent.GroupKind(), gvkReplicaSet.GroupKind(), gvkDeployment.GroupKind(),
+		gvkService.GroupKind(), gvkPVC.GroupKind(),
+		{Kind: "PersistentVolume"}, {Group: "storage.k8s.io", Kind: "StorageClass"},
+		{Group: "discovery.k8s.io", Kind: "EndpointSlice"},
+		{Group: "apps", Kind: "StatefulSet"}, {Group: "apps", Kind: "DaemonSet"},
+		{Group: "batch", Kind: "Job"}, {Group: "batch", Kind: "CronJob"},
 	}
 }

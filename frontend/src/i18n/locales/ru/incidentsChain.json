@@ -1,0 +1,6 @@
+{
+  "missing": {
+    "service_selector_missing": "У Service нет селектора, поэтому он не выбирает поды.",
+    "graph_unavailable": "Граф зависимостей построить не удалось ({reason})."
+  }
+}
