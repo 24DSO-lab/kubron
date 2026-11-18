@@ -237,15 +237,15 @@ func TestTargetRegistry(t *testing.T) {
 	}
 	t.Cleanup(func() { targets = oldTargets })
 
-	if got, want := targetKinds(), []string{"Deployment", "Pod", "ReplicaSet"}; !slices.Equal(got, want) {
+	if got, want := targetKinds(), []string{"Deployment", "Node", "PersistentVolumeClaim", "Pod", "ReplicaSet", "Service"}; !slices.Equal(got, want) {
 		t.Fatalf("built-in targets = %v, want %v", got, want)
 	}
-	node := ResourceRef{Kind: "Node", Name: "n1"}
+	node := ResourceRef{Kind: "Ingress", Namespace: "shop", Name: "web"}
 	if _, err := CollectWith(t.Context(), newFakeReader(nil, nil), node, CollectOptions{}); !errors.Is(err, ErrUnsupportedTarget) {
 		t.Fatalf("unregistered kind: err = %v", err)
 	}
 	var got ResourceRef
-	RegisterTarget("Node", func(_ context.Context, _ Reader, target ResourceRef, o CollectOptions) (*Context, error) {
+	RegisterTarget("Ingress", func(_ context.Context, _ Reader, target ResourceRef, o CollectOptions) (*Context, error) {
 		got = target
 		return &Context{Target: target, ObservedAt: o.now()}, nil
 	})
@@ -255,7 +255,7 @@ func TestTargetRegistry(t *testing.T) {
 	}
 	for name, call := range map[string]func(){
 		"duplicate": func() {
-			RegisterTarget("Node", func(context.Context, Reader, ResourceRef, CollectOptions) (*Context, error) { return nil, nil })
+			RegisterTarget("Ingress", func(context.Context, Reader, ResourceRef, CollectOptions) (*Context, error) { return nil, nil })
 		},
 		"empty": func() {
 			RegisterTarget("", func(context.Context, Reader, ResourceRef, CollectOptions) (*Context, error) { return nil, nil })
@@ -298,8 +298,8 @@ func TestCollectDelegatesToCollectWith(t *testing.T) {
 		if string(ja) != string(jb) {
 			t.Errorf("%s: Collect and CollectWith differ", sc.Name)
 		}
-		if a.Graph != nil || a.Signals != nil {
-			t.Errorf("%s: without hooks the context has no graph or signals", sc.Name)
+		if a.Signals != nil {
+			t.Errorf("%s: without a provider the context has no signals", sc.Name)
 		}
 	}
 }
