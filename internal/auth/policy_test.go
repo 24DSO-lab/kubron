@@ -178,6 +178,17 @@ var exactPermission = map[string]Permission{
 	"IncidentGetSettings":    PermRead,
 	"IncidentSaveSettings":   PermUsersManage,
 
+	// Проблемы и статистика правил (ADR-0033, ADR-0034): просмотр — read, состав проблем — operate (как действия
+	// над рабочими нагрузками), выгрузка статистики для мантейнеров — как настройки хранения (users.manage).
+	"IncidentProblemList":     PermRead,
+	"IncidentProblemGet":      PermRead,
+	"IncidentProblemAttach":   PermOperate,
+	"IncidentProblemDetach":   PermOperate,
+	"IncidentProblemMerge":    PermOperate,
+	"IncidentProblemCreate":   PermOperate,
+	"IncidentRuleStats":       PermRead,
+	"IncidentRuleStatsExport": PermUsersManage,
+
 	// Upgrade Readiness (ADR-0025): только чтение, ничего в кластере не меняется.
 	"ReadinessInfo":    PermRead,
 	"ReadinessRun":     PermRead,
