@@ -25,8 +25,9 @@ func TestRecurrenceAndStatsThroughOpen(t *testing.T) {
 		t.Fatalf("report carries no rule ids: %+v", first.Report.Hypotheses)
 	}
 	hyp := first.Report.Hypotheses[0].ID
-	if _, err := e.svc.MarkOutcome(t.Context(), e.call, first.ID, incident.Outcome{
-		Result: incident.ResultResolved, ConfirmedHypothesisID: hyp}); err != nil {
+	afterMark, err := e.svc.MarkOutcome(t.Context(), e.call, first.ID, incident.Outcome{
+		Result: incident.ResultResolved, ConfirmedHypothesisID: hyp})
+	if err != nil {
 		t.Fatal(err)
 	}
 
@@ -36,6 +37,11 @@ func TestRecurrenceAndStatsThroughOpen(t *testing.T) {
 	}
 	if second.Signature != first.Signature || second.RecurrenceOf != first.ID {
 		t.Fatalf("second: signature=%q recurrenceOf=%q, want %q / %q", second.Signature, second.RecurrenceOf, first.Signature, first.ID)
+	}
+	// Закрытое предыдущее расследование не изменено повторным открытием.
+	prev, err := e.b.GetIncident(t.Context(), e.call.Scope, first.ID)
+	if err != nil || prev.RecurrenceOf != "" || prev.Version != afterMark.Version || !prev.UpdatedAt.Equal(afterMark.UpdatedAt) {
+		t.Errorf("closed investigation changed: %+v %v", prev, err)
 	}
 	if _, err := e.svc.MarkOutcome(t.Context(), e.call, second.ID, incident.Outcome{Result: incident.ResultUnresolved}); err != nil {
 		t.Fatal(err)

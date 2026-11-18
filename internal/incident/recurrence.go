@@ -17,26 +17,20 @@ const partialRecurrence = "recurrence"
 // идентификатор в in.RecurrenceOf. Подходит закрытое расследование этой же области с результатом resolved,
 // устранённое не раньше feedback.RecurrenceWindow до открытия текущего; из нескольких берётся устранённое
 // последним (при равенстве — с меньшим ID). Возвращает имена частично прочитанных источников для
-// Report.Partial: сбой чтения истории Open не роняет. Закрытое расследование не изменяется.
+// Report.Partial: сбой чтения истории Open не роняет. Читается одна страница (MaxPageSize последних закрытых). Закрытое расследование не изменяется.
 func (s *Service) detectRecurrence(ctx context.Context, in *Incident) []string {
 	if in.Signature == "" {
 		return nil
 	}
-	cursor := ""
+	page, err := s.b.ListIncidents(ctx, in.Scope, ListQuery{Limit: MaxPageSize, Status: StatusClosed})
+	if err != nil {
+		slog.WarnContext(ctx, "incident: recurrence lookup failed", "incident", in.ID, "error", err)
+		return []string{partialRecurrence}
+	}
 	var best *Summary
-	for range StatsWindow / MaxPageSize {
-		page, err := s.b.ListIncidents(ctx, in.Scope, ListQuery{Limit: MaxPageSize, Cursor: cursor, Status: StatusClosed})
-		if err != nil {
-			slog.WarnContext(ctx, "incident: recurrence lookup failed", "incident", in.ID, "error", err)
-			return []string{partialRecurrence}
-		}
-		for i := range page.Items {
-			if sm := &page.Items[i]; isRecurrenceOf(in, sm) && (best == nil || newerResolved(sm, best)) {
-				best = sm
-			}
-		}
-		if cursor = page.NextCursor; cursor == "" {
-			break
+	for i := range page.Items {
+		if sm := &page.Items[i]; isRecurrenceOf(in, sm) && (best == nil || newerResolved(sm, best)) {
+			best = sm
 		}
 	}
 	if best != nil {
