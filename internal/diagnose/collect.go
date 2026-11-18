@@ -125,13 +125,18 @@ func (col *collector) run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	return col.readCommon(ctx)
+}
+
+// readCommon — шаги, общие для всех целей: namespace, узлы неготовых подов, события, логи; затем порядок подов.
+func (col *collector) readCommon(ctx context.Context) error {
 	for _, step := range []func(context.Context){col.readNamespace, col.readNodes, col.readEvents, col.readLogs} {
 		if err := ctx.Err(); err != nil {
 			return fmt.Errorf("%w: %w", ErrUnavailable, err)
 		}
 		step(ctx)
 	}
-	slices.SortFunc(c.Pods, func(a, b *corev1.Pod) int { return strings.Compare(a.Name, b.Name) })
+	slices.SortFunc(col.c.Pods, func(a, b *corev1.Pod) int { return strings.Compare(a.Name, b.Name) })
 	return nil
 }
 
@@ -278,17 +283,27 @@ func (col *collector) listReplicaSets(ctx context.Context, ns, selector string, 
 
 // listPods выбирает поды по селектору; оставляет принадлежащие известным ReplicaSet (если они есть в контексте).
 func (col *collector) listPods(ctx context.Context, ns, selector string) {
-	res, err := col.r.List(ctx, gvkPod, ListOptions{Namespace: ns, LabelSelector: selector, Limit: maxListObjects})
+	owners := map[string]bool{}
+	for _, rs := range col.c.ReplicaSets {
+		owners[rs.Name] = true
+	}
+	col.listPodsWhere(ctx, ListOptions{Namespace: ns, LabelSelector: selector, Limit: maxListObjects}, func(p *corev1.Pod) bool {
+		o := controllerOf(p.OwnerReferences, "ReplicaSet")
+		return len(owners) == 0 || (o != nil && owners[o.Name])
+	})
+}
+
+// listPodsWhere читает поды выборкой opts и оставляет те, для которых keep истинно. Неготовые идут первыми:
+// они и есть предмет диагностики; сверх maxPods выборка усечена и помечена Partial.
+func (col *collector) listPodsWhere(ctx context.Context, opts ListOptions, keep func(*corev1.Pod) bool) {
+	ns := opts.Namespace
+	res, err := col.r.List(ctx, gvkPod, opts)
 	if err != nil {
 		col.c.addMissing("source.unavailable", ResourceRef{Kind: "Pod", Namespace: ns}, map[string]string{"reason": errorReason(err)})
 		return
 	}
 	if res.Truncated {
 		col.c.addPartial("Pod")
-	}
-	owners := map[string]bool{}
-	for _, rs := range col.c.ReplicaSets {
-		owners[rs.Name] = true
 	}
 	var pods []*corev1.Pod
 	for i := range res.Items {
@@ -297,12 +312,10 @@ func (col *collector) listPods(ctx context.Context, ns, selector string) {
 			col.c.addMissing("object.unreadable", ResourceRef{Kind: "Pod", Namespace: ns, Name: res.Items[i].GetName()}, nil)
 			continue
 		}
-		if o := controllerOf(p.OwnerReferences, "ReplicaSet"); len(owners) > 0 && (o == nil || !owners[o.Name]) {
-			continue
+		if keep(p) {
+			pods = append(pods, p)
 		}
-		pods = append(pods, p)
 	}
-	// Неготовые поды первыми: они и есть предмет диагностики.
 	slices.SortStableFunc(pods, func(a, b *corev1.Pod) int {
 		return boolRank(podReady(a)) - boolRank(podReady(b))
 	})
@@ -374,7 +387,9 @@ func (col *collector) readEvents(ctx context.Context) {
 		if err != nil {
 			continue // нечитаемое событие — не повод ронять сбор
 		}
-		if ev := NormalizeEvent(e); known[ev.Object.Kind+"/"+ev.Object.Name] {
+		ev := NormalizeEvent(e)
+		c.eventPool = append(c.eventPool, ev)
+		if known[ev.Object.Kind+"/"+ev.Object.Name] {
 			c.Events = append(c.Events, ev)
 		}
 	}

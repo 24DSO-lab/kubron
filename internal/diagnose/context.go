@@ -61,8 +61,12 @@ type Context struct {
 	// Signals — сигналы метрик (ADR-0032); nil, если метрики не настроены или не запрашивались.
 	Signals *signals.Set
 
+	// eventPool — все события namespace после нормализации (в Events попадают только события объектов контекста).
+	// Хук графа берёт отсюда события найденных им PVC и Service. Не сериализуется и в отчёт не попадает.
+	eventPool []Event
+
 	observed map[ResourceRef]time.Time
-	// opts — параметры сбора, переданные CollectWith: хукам сбора нужны источники (сигналы метрик).
+	// opts — параметры сбора, переданные CollectWith: хукам сбора нужны настройки графа и источники (сигналы метрик).
 	opts CollectOptions
 	// metrics — итог сбора метрик (collect_signals.go); читает пост-хук метрик. nil — метрики не запрашивались.
 	metrics *signalOutcome
