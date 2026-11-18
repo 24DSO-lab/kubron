@@ -70,3 +70,9 @@ func TestFileBackendCorruptedRecordDoesNotHideHistory(t *testing.T) {
 		t.Error("a corrupted record must be an error, not an empty incident")
 	}
 }
+
+func TestFileProblemBackendContract(t *testing.T) {
+	incidenttest.RunProblems(t, func(t *testing.T) incident.ProblemBackend {
+		return incident.NewFileBackend(t.TempDir())
+	})
+}

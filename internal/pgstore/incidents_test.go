@@ -87,3 +87,9 @@ func TestIncidentFragmentsSurviveRekey(t *testing.T) {
 		t.Errorf("check with a foreign key ring: %v", err)
 	}
 }
+
+// Контрактные тесты хранилища проблем те же, что у файловой реализации (нужна KUBRON_TEST_DATABASE_URL).
+func TestProblemBackendContract(t *testing.T) {
+	key := keyString("k1")
+	incidenttest.RunProblems(t, func(t *testing.T) incident.ProblemBackend { return newProblemBackend(newTestStore(t, key)) })
+}

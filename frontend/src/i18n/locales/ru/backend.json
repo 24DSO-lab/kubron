@@ -1026,5 +1026,7 @@
   "problem": "проблема: {p0}",
   "problemHasTheMaximumNumberOfMembers": "в проблеме уже максимальное число участников",
   "problemRequestIsInvalid": "некорректный запрос к проблеме",
-  "problemsAreNotAvailable": "группировка проблем недоступна"
+  "problemsAreNotAvailable": "группировка проблем недоступна",
+  "corruptedProblem": "повреждённая проблема {p0}: {p1}",
+  "corruptedProblemRecord": "повреждённая запись проблемы: {p0}"
 }

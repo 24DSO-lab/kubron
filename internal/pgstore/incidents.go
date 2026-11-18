@@ -328,7 +328,8 @@ func (b incidentBackend) PutSettings(ctx context.Context, orgID string, s incide
 func (b incidentBackend) OrgIDs(ctx context.Context) ([]string, error) {
 	rows, err := b.s.pool.Query(ctx, `
 		SELECT org_id FROM (SELECT org_id FROM incidents UNION SELECT org_id FROM incident_fragments
-		                    UNION SELECT org_id FROM incident_settings) o ORDER BY org_id COLLATE "C"`)
+		                    UNION SELECT org_id FROM incident_settings
+		                    UNION SELECT org_id FROM incident_problems) o ORDER BY org_id COLLATE "C"`)
 	if err != nil {
 		return nil, err
 	}

@@ -1026,5 +1026,7 @@
   "problem": "problem: {p0}",
   "problemHasTheMaximumNumberOfMembers": "problem has the maximum number of members",
   "problemRequestIsInvalid": "problem request is invalid",
-  "problemsAreNotAvailable": "problems are not available"
+  "problemsAreNotAvailable": "problems are not available",
+  "corruptedProblem": "corrupted problem {p0}: {p1}",
+  "corruptedProblemRecord": "corrupted problem record: {p0}"
 }
