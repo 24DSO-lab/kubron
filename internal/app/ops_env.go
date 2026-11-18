@@ -112,9 +112,13 @@ func (e opsEnv) Notify(event string, data ...any) {
 	}
 }
 
-// opsProvider возвращает Provider платформы для этого вида. Лимитер общий для процесса (SharedLimiter).
+// opsProvider возвращает Provider платформы для этого вида. Лимитер общий для процесса (SharedLimiter). Метрики
+// читаются из встроенного стека (неймспейс и сервис Prometheus — константы пакета k8s); отсутствие стека или отказ
+// доступа не ошибка операции: расследование просто идёт без метрик (ADR-0032).
 func (a *App) opsProvider() opsplatform.Provider {
-	return opsplatform.NewProvider(opsEnv{a}, opsplatform.Config{})
+	return opsplatform.NewProvider(opsEnv{a}, opsplatform.Config{
+		Metrics: opsplatform.MetricsConfig{Namespace: k8s.MetricsNamespace, Service: k8s.PrometheusService},
+	})
 }
 
 // beginOp начинает операцию операционного модуля: проверка права и принадлежности кластера команде, tenant.Scope из
