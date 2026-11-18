@@ -22,6 +22,15 @@ var allowedMethods = []string{
 	"IncidentDelete",
 	"IncidentGetSettings",
 	"IncidentSaveSettings",
+	// Проблемы и статистика правил (ADR-0033, ADR-0034).
+	"IncidentProblemList",
+	"IncidentProblemGet",
+	"IncidentProblemAttach",
+	"IncidentProblemDetach",
+	"IncidentProblemMerge",
+	"IncidentProblemCreate",
+	"IncidentRuleStats",
+	"IncidentRuleStatsExport",
 	// Baseline конфигурации и дрейф (ADR-0027).
 	"BaselineKinds",
 	"BaselineList",

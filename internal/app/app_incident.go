@@ -213,7 +213,7 @@ func (a *App) IncidentList(clusterID string, q IncidentListQuery) (p incident.Pa
 	return svc.List(ctx, op.Scope, incident.ListQuery{Limit: q.Limit, Cursor: q.Cursor, Status: q.Status})
 }
 
-// IncidentMarkOutcome отмечает результат расследования и закрывает его.
+// IncidentMarkOutcome отмечает результат расследования и закрывает его. Тип запроса IncidentOutcomeRequest описан
 func (a *App) IncidentMarkOutcome(clusterID, id string, req IncidentOutcomeRequest) (d *incident.Detail, err error) {
 	if err := a.authzCluster(auth.PermRead, clusterID); err != nil {
 		return nil, err
