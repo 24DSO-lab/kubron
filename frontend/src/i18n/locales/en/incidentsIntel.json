@@ -1,0 +1,33 @@
+{
+  "chain": {
+    "title": "Dependency chain",
+    "aria": "Dependency chain from the affected resource",
+    "pathAria": "Chain {n}",
+    "note": "The chain shows what the affected resource depends on. “Candidate” is a hypothesis that explains others, not a confirmed cause.",
+    "candidate": "Candidate",
+    "missingHint": "does not exist",
+    "unknownHint": "not checked: {reason}",
+    "health": {
+      "Healthy": "healthy",
+      "Degraded": "degraded",
+      "Progressing": "in progress",
+      "Suspended": "suspended",
+      "Missing": "missing",
+      "Unknown": "unknown",
+      "other": "state not recognised"
+    },
+    "unknownReasons": {
+      "forbidden": "no permission to read it",
+      "unavailable": "the source did not answer",
+      "too_large": "the response was too large",
+      "limit": "the read limit was reached",
+      "policy": "excluded by policy",
+      "other": "reason not stated"
+    },
+    "reasons": {
+      "pending": "pending"
+    },
+    "explainedByCandidate": "explained by the candidate above"
+  },
+  "unknownEntry": "Entry not recognised by this version of the interface"
+}

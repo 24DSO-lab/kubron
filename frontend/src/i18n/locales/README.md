@@ -1,31 +1,30 @@
 # Локализация: схема ключей Kubron Intelligence
 
-Locale-файлы лежат в `locales/{en,ru,cn}/`, подхватываются автоматически (`import.meta.glob`), все файлы одного языка сливаются в одно дерево сообщений. Паритет ключей между языками проверяется тестом и `npm run i18n:check`.
+Locale-файлы лежат в `locales/{en,ru,cn}/` и подхватываются автоматически (`import.meta.glob`). **Имя файла — пространство имён**: `incidentsMetrics.json` доступен как `incidentsMetrics.*`, а не как `incidents.*`. Паритет ключей между языками проверяется тестом и `npm run i18n:check`.
 
 ## Коды диагностики
 
-Код с точками превращается в плоский ключ заменой `.` на `_` (`codeKey()` в `composables/incidentModel.ts`):
+Код с точками превращается в плоский ключ заменой `.` на `_`. Интерфейс (`codeText()` в `composables/incidentModel.ts`) ищет ключ по очереди в пространствах `incidents`, `incidentsMetrics`, `incidentsChain`, `incidentsCorrelation`; для кодов с префиксами `metric(s).`, `graph.`, `correlation.` сначала смотрит пространство владельца. Не найден нигде — выводится безопасный текст `incidentsIntel.unknownEntry`, «сырой» код не показывается.
 
-| Раздел | Ключ | Пример |
+| Раздел | Ключ внутри пространства | Пример |
 |---|---|---|
-| симптом | `incidents.symptoms.<код>` | `pod.pending_unbound_pvc` → `incidents.symptoms.pod_pending_unbound_pvc` |
-| факт | `incidents.facts.<код>` | `metric.memory_usage_vs_limit` → `incidents.facts.metric_memory_usage_vs_limit` |
-| гипотеза | `incidents.hypotheses.<код>` | `pending.unbound_pvc` → `incidents.hypotheses.pending_unbound_pvc` |
-| рекомендация | `incidents.recommendations.<код>` | |
-| шаг | `incidents.steps.<код>` | |
-| недостающий контекст | `incidents.missing.<код>` | `metrics.unavailable` → `incidents.missing.metrics_unavailable` |
+| симптом | `symptoms.<код>` | `pod.pending_unbound_pvc` → `symptoms.pod_pending_unbound_pvc` |
+| факт | `facts.<код>` | `metric.memory_usage_vs_limit` → `incidentsMetrics.facts.metric_memory_usage_vs_limit` |
+| гипотеза | `hypotheses.<код>` | `pending.unbound_pvc` → `hypotheses.pending_unbound_pvc` |
+| рекомендация | `recommendations.<код>` | |
+| шаг | `steps.<код>` | |
+| недостающий контекст | `missing.<код>` | `metrics.unavailable` → `incidentsMetrics.missing.metrics_unavailable` |
 
-Подстановки — именованные (`{container}`, `{percent}`); значения берутся из `params` кода.
+Подстановки — именованные (`{container}`, `{percent}`) из `params` кода. Параметр `reason` подставляется словами: ищется `reasons.<значение>` в пространстве владельца (для `metrics.*` — `incidentsMetrics`, для `correlation.*` — `incidentsCorrelation`), затем в `incidents.reasons` и `incidentsIntel.chain.unknownReasons`; не найден — «причина не указана». Причины чужих владельцев не подставляются.
 
 ## Файлы и владельцы
 
-| Файл | Владелец | Содержимое |
+| Файл (пространство) | Владелец | Содержимое |
 |---|---|---|
-| `incidents.json` | D8 | заголовки, кнопки, пометки, подсказки статистики, формы |
-| `incidentsMetrics.json` | D1 | `facts.metric_*`, `hypotheses.metrics_*`, `missing.metrics_*` |
-| `incidentsChain.json` | D3 | коды цепочечных правил, причины `Missing`/`Unknown` вершин графа |
-| `incidentsCorrelation.json` | D4 | `facts.correlation_*`, `missing.correlation_*`, названия видов кандидатов |
+| `incidents.json` | D8 | существующие заголовки, кнопки, пометки и формы расследований |
+| `incidentsIntel.json` | D8 | новые тексты интерфейса Intelligence: `chain.*`, `unknownEntry`, далее проблемы, корреляция, статистика |
+| `incidentsMetrics.json` | D1 | `facts.metric_*`, `hypotheses.metrics_*`, `missing.metrics_*`, `reasons.*`, `hints.*` |
+| `incidentsChain.json` | D3 | коды цепочечных правил, `missing.graph_*` |
+| `incidentsCorrelation.json` | D4 | `facts.correlation_*`, `missing.correlation_*`, `kinds.*`, `reasons.*` |
 
-Файлы владельцев пишут только в корне `incidents.{facts,hypotheses,recommendations,steps,missing,symptoms}`. Собственные ключи интерфейса (`incidents.chain.*`, `incidents.problem.*` и т. п.) — только в `incidents.json`. Конфликт ключей решает D8.
-
-Неизвестный код в интерфейсе не показывается «сырым»: `te()` не нашёл ключ — выводится безопасный текст по умолчанию.
+Владельцы пишут только в свои файлы. Собственные новые ключи интерфейса (`chain.*`, `problem.*` и т. п.) — только в `incidentsIntel.json`. Конфликт решает D8.

@@ -31,7 +31,8 @@ describe('incidentModel', () => {
   it('codeText: известный код переводится с параметрами, неизвестный показывается как есть', () => {
     expect(codeText('facts', 'container.restarts', { container: 'app', count: '7' })).toContain('app')
     expect(codeText('facts', 'container.restarts', { container: 'app', count: '7' })).toContain('7')
-    expect(codeText('facts', 'no.such.code')).toBe('no.such.code')
+    expect(codeText('facts', 'no.such.code')).not.toContain('no.such.code')
+    expect(codeText('facts', 'no.such.code')).toBe(codeText('hypotheses', 'other.unknown'))
     expect(reasonText('redaction_failed')).not.toBe('redaction_failed')
     expect(reasonText('mystery')).toBe('mystery')
     expect(reasonText(undefined)).toBe('')
@@ -95,5 +96,15 @@ describe('incidentModel', () => {
     expect(n.report.facts).toEqual([])
     expect(n.report.hypotheses[0].supporting).toEqual([])
     expect(n.report.hypotheses[0].contradicting).toEqual([])
+  })
+
+  it('codeText: тексты владельцев кодов (metrics, chain, correlation) находятся и без «сырых» причин', () => {
+    expect(codeText('facts', 'metric.oom_events', { container: 'app', value: '2', window: '1h' })).not.toContain('metric.')
+    expect(codeText('facts', 'metric.oom_events')).not.toContain('unknownEntry')
+    const missing = codeText('missing', 'metrics.unavailable', { reason: 'not_installed' })
+    expect(missing).toContain('monitoring is not installed')
+    expect(missing).not.toContain('not_installed')
+    expect(codeText('missing', 'graph.unavailable', { reason: 'forbidden' })).toContain('no permission to read it')
+    expect(codeText('missing', 'correlation.unavailable', { reason: 'weird_reason' })).not.toContain('weird_reason')
   })
 })

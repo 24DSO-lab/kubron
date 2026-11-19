@@ -1,0 +1,33 @@
+{
+  "chain": {
+    "title": "依赖链",
+    "aria": "从受影响资源出发的依赖链",
+    "pathAria": "依赖链 {n}",
+    "note": "依赖链显示受影响资源所依赖的对象。“候选”是能解释其他假设的假设，而非已确认的原因。",
+    "candidate": "候选",
+    "missingHint": "不存在",
+    "unknownHint": "未检查：{reason}",
+    "health": {
+      "Healthy": "正常",
+      "Degraded": "异常",
+      "Progressing": "进行中",
+      "Suspended": "已暂停",
+      "Missing": "缺失",
+      "Unknown": "未知",
+      "other": "状态无法识别"
+    },
+    "unknownReasons": {
+      "forbidden": "无权读取",
+      "unavailable": "数据源未响应",
+      "too_large": "响应过大",
+      "limit": "已达读取上限",
+      "policy": "被策略排除",
+      "other": "未说明原因"
+    },
+    "reasons": {
+      "pending": "等待中"
+    },
+    "explainedByCandidate": "由上方候选解释"
+  },
+  "unknownEntry": "此版本界面无法识别该条目"
+}

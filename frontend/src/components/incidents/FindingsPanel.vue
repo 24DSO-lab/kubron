@@ -13,6 +13,8 @@
       {{ $t('incidents.partial', { sources: report.partial.join(', ') }) }}
     </p>
 
+    <ChainView v-if="report.chains?.length" :chains="report.chains" :hypotheses="report.hypotheses" />
+
     <section class="block">
       <h3>{{ $t('incidents.sections.facts') }}</h3>
       <ul class="items">
@@ -40,11 +42,13 @@
       <h3>{{ $t('incidents.sections.hypotheses') }}</h3>
       <p class="note" data-testid="hypothesis-note">{{ $t('incidents.hypothesisNote') }}</p>
       <ul class="items">
-        <li v-for="h in report.hypotheses" :key="h.id" class="item item-hyp" data-testid="hypothesis" data-kind="hypothesis"
-          :data-code="h.code" :data-confidence="confidenceLevel(h.confidence)"
-          :class="{ confirmed: incident.outcome?.confirmedHypothesisId === h.id }">
+        <li v-for="{ h, role } in orderedHypotheses" :key="h.id" class="item item-hyp" data-testid="hypothesis" data-kind="hypothesis"
+          :data-code="h.code" :data-confidence="confidenceLevel(h.confidence)" :data-role="role"
+          :class="{ confirmed: incident.outcome?.confirmedHypothesisId === h.id, explained: role === 'explained', candidate: role === 'candidate' }">
           <span class="tag tag-hyp">{{ $t('incidents.kindLabels.hypothesis') }}</span>
           <span class="text">{{ codeText('hypotheses', h.code, h.params) }}</span>
+          <span v-if="role === 'candidate'" class="tag tag-cand" data-testid="hypothesis-candidate">{{ $t('incidentsIntel.chain.candidate') }}</span>
+          <span v-else-if="role === 'explained'" class="explained-by" data-testid="hypothesis-explained">{{ $t('incidentsIntel.chain.explainedByCandidate') }}</span>
           <span class="conf" :class="`conf-${confidenceLevel(h.confidence)}`" data-testid="confidence">
             {{ $t('incidents.confidence.label', { level: $t(`incidents.confidence.${confidenceLevel(h.confidence)}`) }) }}
           </span>
@@ -102,6 +106,7 @@
 
 <script lang="ts" setup>
 import { computed } from 'vue'
+import ChainView from './ChainView.vue'
 import { useI18n } from 'vue-i18n'
 import { codeText, confidenceLevel, evidenceFor, factsByIds, reasonText } from '../../composables/incidentModel'
 import type { Fact, Hypothesis, Incident } from '../../types/incident'
@@ -109,6 +114,31 @@ import type { Fact, Hypothesis, Incident } from '../../types/incident'
 const props = defineProps<{ incident: Incident }>()
 const { t } = useI18n()
 const report = computed(() => props.incident.report)
+
+/**
+ * Гипотезы без потери данных: кандидат первопричины (объясняет другие и сам не объясняется) идёт первым,
+ * за ним — объяснённые им гипотезы; остальные — в исходном порядке. Показываются все гипотезы.
+ */
+type Role = 'candidate' | 'explained' | 'plain'
+const orderedHypotheses = computed<{ h: Hypothesis; role: Role }[]>(() => {
+  const all = report.value.hypotheses
+  const byId = new Map(all.map((h) => [h.id, h]))
+  const explainedIds = new Set(all.flatMap((h) => (h.explains ?? []).filter((id) => byId.has(id) && id !== h.id)))
+  const isCandidate = (h: Hypothesis) => (h.explains ?? []).some((id) => byId.has(id) && id !== h.id) && !explainedIds.has(h.id)
+  const placed = new Set<string>()
+  const out: { h: Hypothesis; role: Role }[] = []
+  for (const h of all) {
+    if (placed.has(h.id) || !isCandidate(h)) continue
+    placed.add(h.id)
+    out.push({ h, role: 'candidate' })
+    for (const id of h.explains ?? []) {
+      const e = byId.get(id)
+      if (e && !placed.has(id)) { placed.add(id); out.push({ h: e, role: 'explained' }) }
+    }
+  }
+  for (const h of all) if (!placed.has(h.id)) out.push({ h, role: 'plain' })
+  return out
+})
 
 const support = (h: Hypothesis) => factsByIds(report.value.facts, h.supporting)
 const contra = (h: Hypothesis) => factsByIds(report.value.facts, h.contradicting)
@@ -140,6 +170,9 @@ function sourceText(f: Fact): string {
 .item-missing { border-left-color: #fab387; color: #fab387; }
 .tag { display: inline-block; margin-right: 8px; padding: 1px 7px; border-radius: 4px; font-size: 11px; font-weight: 600; }
 .tag-fact { background: rgba(137, 180, 250, 0.18); color: #89b4fa; }
+.tag-cand { margin: 0 0 0 8px; background: rgba(249, 226, 175, 0.18); color: #f9e2af; }
+.item-hyp.explained { margin-left: 18px; }
+.explained-by { margin-left: 8px; color: #a6adc8; font-size: 12px; }
 .tag-hyp { background: rgba(249, 226, 175, 0.18); color: #f9e2af; }
 .tag-rec { background: rgba(166, 227, 161, 0.18); color: #a6e3a1; }
 .tag-step { background: rgba(148, 226, 213, 0.18); color: #94e2d5; }
