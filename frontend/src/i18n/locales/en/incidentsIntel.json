@@ -29,5 +29,32 @@
     },
     "explainedByCandidate": "explained by the candidate above"
   },
-  "unknownEntry": "Entry not recognised by this version of the interface"
+  "unknownEntry": "Entry not recognised by this version of the interface",
+  "metric": {
+    "badge": "Metric",
+    "summary": "{value} · {agg} over {window}",
+    "summaryNoWindow": "{value} · {agg}",
+    "limit": "limit {limit}",
+    "cores": "cores",
+    "flagOn": "pressure seen",
+    "flagOff": "no pressure",
+    "agg": {
+      "max": "peak",
+      "min": "lowest",
+      "avg": "average",
+      "increase": "increase",
+      "last": "latest value",
+      "ratio": "share",
+      "other": "value"
+    }
+  },
+  "monitoring": {
+    "title": "With monitoring enabled, the diagnosis will be more precise and complete",
+    "generic": "Monitoring data could not be used here. Diagnostics are based on Kubernetes data only and stay complete without it.",
+    "open": "Open cluster settings"
+  },
+  "sourceKinds": {
+    "metric": "Monitoring metric",
+    "other": "source"
+  }
 }

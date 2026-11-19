@@ -29,5 +29,32 @@
     },
     "explainedByCandidate": "由上方候选解释"
   },
-  "unknownEntry": "此版本界面无法识别该条目"
+  "unknownEntry": "此版本界面无法识别该条目",
+  "metric": {
+    "badge": "指标",
+    "summary": "{value} · {window}内{agg}",
+    "summaryNoWindow": "{value} · {agg}",
+    "limit": "上限 {limit}",
+    "cores": "核",
+    "flagOn": "出现过压力",
+    "flagOff": "无压力",
+    "agg": {
+      "max": "峰值",
+      "min": "最低值",
+      "avg": "平均值",
+      "increase": "增量",
+      "last": "最新值",
+      "ratio": "占比",
+      "other": "数值"
+    }
+  },
+  "monitoring": {
+    "title": "启用监控后，诊断会更准确、更完整",
+    "generic": "此处无法使用监控数据。诊断仅基于 Kubernetes 数据，没有监控也是完整的。",
+    "open": "打开集群设置"
+  },
+  "sourceKinds": {
+    "metric": "监控指标",
+    "other": "来源"
+  }
 }
