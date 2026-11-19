@@ -9,7 +9,7 @@
 
 export type ReportKind = 'fact' | 'hypothesis' | 'recommendation' | 'step'
 export type Confidence = 'low' | 'medium' | 'high'
-export type SourceKind = 'resource' | 'event' | 'log' | 'derived'
+export type SourceKind = 'resource' | 'event' | 'log' | 'derived' | 'metric'
 export type IncidentStatus = 'open' | 'closed'
 export type OutcomeResult = 'resolved' | 'unresolved' | 'inconclusive'
 export type EvidenceStatus = 'saved' | 'not_saved'
@@ -18,6 +18,7 @@ export type WorkloadKind = 'Pod' | 'Deployment' | 'ReplicaSet'
 export type Params = Record<string, string>
 
 export interface ResourceRef {
+  group?: string
   kind: string
   namespace?: string
   name: string
@@ -28,6 +29,8 @@ export interface Source {
   kind: SourceKind
   resource: ResourceRef
   field?: string
+  /** Сигнал метрики (SourceKind = 'metric'), ADR-0032 */
+  signal?: string
 }
 
 export interface LogRef {
@@ -55,6 +58,10 @@ export interface Hypothesis {
   confidence: Confidence
   supporting: string[]
   contradicting: string[]
+  ruleId?: string
+  ruleEpoch?: number
+  /** ID гипотез, которые объясняет эта (ADR-0031): она — кандидат первопричины */
+  explains?: string[]
 }
 
 export interface Recommendation {
@@ -64,6 +71,8 @@ export interface Recommendation {
   resource: ResourceRef
   params?: Params
   hypotheses: string[]
+  ruleId?: string
+  ruleEpoch?: number
 }
 
 export interface Step {
@@ -81,6 +90,49 @@ export interface MissingContext {
   params?: Params
 }
 
+/** Снимок графа зависимостей (internal/depgraph.Snapshot). */
+export type GraphHealth = 'Healthy' | 'Degraded' | 'Progressing' | 'Suspended' | 'Missing' | 'Unknown'
+export type GraphUnknownReason = 'forbidden' | 'unavailable' | 'too_large' | 'limit' | 'policy'
+
+export interface GraphNode {
+  group?: string
+  kind: string
+  namespace?: string
+  name: string
+  health: GraphHealth | string
+  reason?: string
+  unknown?: GraphUnknownReason | string
+  placeholder?: boolean
+}
+
+export interface GraphEdge {
+  /** Ref.Key(): «group/kind/namespace/name» */
+  from: string
+  to: string
+  type: string
+  state: string
+  reason?: string
+}
+
+export interface GraphSnapshot {
+  nodes: GraphNode[]
+  edges: GraphEdge[]
+  truncated?: boolean
+  warnings?: string[]
+}
+
+export interface ChainStep {
+  ref: ResourceRef
+  health: GraphHealth | string
+  reason?: string
+}
+
+export interface Chain {
+  path: ChainStep[]
+  /** ID гипотезы-кандидата первопричины */
+  candidate?: string
+}
+
 export interface Report {
   ruleSetVersion: number
   target: ResourceRef
@@ -92,6 +144,42 @@ export interface Report {
   recommendations: Recommendation[]
   steps: Step[]
   missing: MissingContext[]
+  partial?: string[]
+  graph?: GraphSnapshot
+  chains?: Chain[]
+}
+
+/** Корреляция (internal/correlation, ADR-0033) */
+export type CorrelationKind = 'shared_node' | 'shared_storage' | 'shared_dependency' | 'shared_root' | 'shared_symptom'
+
+export interface WorkloadRef {
+  kind: string
+  namespace?: string
+  name: string
+  problemPods?: number
+  symptoms?: string[]
+  since?: string
+}
+
+export interface CorrelationCandidate {
+  id: string
+  kind: CorrelationKind | string
+  source: ResourceRef
+  confidence: Confidence
+  since?: string
+  affected?: WorkloadRef[]
+  total: number
+  truncated?: boolean
+  potential?: WorkloadRef[]
+  supporting?: string[]
+}
+
+export interface CorrelationResult {
+  version: number
+  observedAt: string
+  candidates?: CorrelationCandidate[]
+  facts?: Fact[]
+  missing?: MissingContext[]
   partial?: string[]
 }
 
@@ -116,9 +204,22 @@ export interface Evidence {
   updatedAt: string
 }
 
+export type CorrelationVerdictValue = 'confirmed' | 'rejected' | 'unknown'
+
+export interface CorrelationFeedback {
+  candidateId: string
+  verdict: CorrelationVerdictValue
+}
+
 export interface Outcome {
   result: OutcomeResult
   confirmedHypothesisId?: string
+  rejectedHypothesisIds?: string[]
+  helpfulRecommendationIds?: string[]
+  uselessRecommendationIds?: string[]
+  otherAction?: boolean
+  resolvedAt?: string
+  correlation?: CorrelationFeedback
   note?: string
   markedBy: string
   markedAt: string
@@ -138,6 +239,10 @@ export interface Incident {
   evidence: Evidence[]
   outcome?: Outcome
   version: number
+  correlation?: CorrelationResult
+  problemId?: string
+  signature?: string
+  recurrenceOf?: string
 }
 
 export interface FragmentMeta {
@@ -189,6 +294,24 @@ export interface IncidentSummary {
   facts: number
   hypotheses: number
   result?: OutcomeResult
+  problemId?: string
+  signature?: string
+  recurrenceOf?: string
+  resolvedAt?: string
+  ruleSetVersion?: number
+  confirmed?: RuleRef
+  rejected?: RuleRef[]
+  helpful?: RuleRef[]
+  useless?: RuleRef[]
+  features?: string[]
+  correlationVerdict?: { kind: string; confidence: string; verdict: string }
+}
+
+/** Ключ статистики правил: (ruleId, epoch, code) */
+export interface RuleRef {
+  ruleId: string
+  epoch: number
+  code: string
 }
 
 export interface IncidentPage {
@@ -224,4 +347,121 @@ export interface OpenIncidentRequest {
   namespace: string
   name: string
   disableLogs: boolean
+}
+
+/** Вход IncidentMarkOutcome. Обязателен только result; не заданное поле = «не отмечено». */
+export interface OutcomeInput {
+  result: OutcomeResult
+  confirmedHypothesisId?: string
+  note?: string
+  rejectedHypothesisIds?: string[]
+  helpfulRecommendationIds?: string[]
+  uselessRecommendationIds?: string[]
+  otherAction?: boolean
+  resolvedAt?: string
+  correlation?: CorrelationFeedback
+}
+
+/** Проблемы (ADR-0033, contracts.md §7) */
+export type ProblemStatus = 'open' | 'closed'
+export type ProblemOrigin = 'auto' | 'manual'
+
+export interface ProblemSummary {
+  id: string
+  key: string
+  kind: CorrelationKind | string
+  source: ResourceRef
+  status: ProblemStatus
+  origin: ProblemOrigin
+  memberCount: number
+  affectedTotal: number
+  updatedAt: string
+}
+
+export interface ProblemMemberView {
+  incidentId: string
+  addedAt: string
+  /** ID пользователя или «auto» */
+  addedBy: string
+  summary?: IncidentSummary
+}
+
+export interface ProblemDetail extends ProblemSummary {
+  members: ProblemMemberView[]
+  affected?: WorkloadRef[]
+  affectedTruncated?: boolean
+  detached?: string[]
+}
+
+export interface ProblemPage {
+  items: ProblemSummary[]
+  nextCursor?: string
+}
+
+/** Статистика правил (internal/feedback.Stats, camelCase). Нет ключа доли = нет процента. */
+export interface HypothesisStat extends RuleRef {
+  confirmed: number
+  rejected: number
+  precision?: number
+  sample: number
+  trusted: boolean
+  medianResolveSeconds?: number
+  resolved: number
+  recurred: number
+}
+
+export interface RecommendationStat extends RuleRef {
+  helpful: number
+  useless: number
+  ratio?: number
+  sample: number
+  trusted: boolean
+  previouslyUnhelpful?: boolean
+}
+
+export interface SymptomStat {
+  code: string
+  closed: number
+  withConfirmed: number
+  coverage?: number
+}
+
+export interface CorrelationStat {
+  kind: string
+  confidence: string
+  confirmed: number
+  rejected: number
+  precision?: number
+}
+
+export interface FeatureCounts {
+  records: number
+  confirmed: number
+  rejected: number
+  precision?: number
+}
+
+export interface FeatureStat {
+  feature: string
+  with: FeatureCounts
+  without: FeatureCounts
+}
+
+export interface RuleStats {
+  records: number
+  unevaluated: number
+  truncated?: boolean
+  computedAt: string
+  ruleSetVersions: number[]
+  hypotheses: HypothesisStat[]
+  recommendations: RecommendationStat[]
+  symptoms: SymptomStat[]
+  correlations: CorrelationStat[]
+  features: FeatureStat[]
+}
+
+export interface RuleStatsExport {
+  filename: string
+  mime: string
+  dataBase64: string
 }
