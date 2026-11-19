@@ -15,6 +15,7 @@
     "correlation_shared_storage_consumers": "{workloads} 个工作负载（{pods} 个 Pod）使用了该存储类下 {pvcs} 个未绑定的卷声明。",
     "correlation_shared_storage_class_missing": "该存储类不存在。",
     "correlation_shared_storage_no_provisioner": "该存储类没有动态供应器。",
+    "correlation_shared_storage_no_default_class": "集群中没有默认存储类，因此未指定存储类的卷声明保持未绑定状态。",
     "correlation_shared_storage_provision_failed": "该存储类下有 {pvcs} 个卷声明供应失败。",
     "correlation_shared_storage_temporal": "这些供应失败发生在彼此 {spanSeconds} 秒之内。",
     "correlation_shared_storage_multi_workload": "受影响的不同工作负载共 {workloads} 个。"

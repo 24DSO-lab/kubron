@@ -15,6 +15,7 @@
     "correlation_shared_storage_consumers": "{workloads} workloads ({pods} pods) use {pvcs} unbound volume claims of this storage class.",
     "correlation_shared_storage_class_missing": "The storage class does not exist.",
     "correlation_shared_storage_no_provisioner": "The storage class has no dynamic provisioner.",
+    "correlation_shared_storage_no_default_class": "The cluster has no default storage class, so volume claims without a class stay unbound.",
     "correlation_shared_storage_provision_failed": "Provisioning failed for {pvcs} volume claims of this storage class.",
     "correlation_shared_storage_temporal": "The provisioning failures happened within {spanSeconds} seconds of each other.",
     "correlation_shared_storage_multi_workload": "{workloads} different workloads are affected."

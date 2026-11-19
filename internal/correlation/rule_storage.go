@@ -5,6 +5,7 @@ package correlation
 
 import (
 	"context"
+	"slices"
 	"strconv"
 	"time"
 
@@ -21,6 +22,7 @@ const (
 	factStorageConsumers  = "correlation.shared_storage.consumers"
 	factStorageNoClass    = "correlation.shared_storage.class_missing"
 	factStorageNoProvider = "correlation.shared_storage.no_provisioner"
+	factStorageNoDefault  = "correlation.shared_storage.no_default_class"
 	factStorageProvFailed = "correlation.shared_storage.provision_failed"
 	factStorageTemporal   = "correlation.shared_storage.temporal"
 	factStorageMulti      = "correlation.shared_storage.multi_workload"
@@ -31,6 +33,8 @@ const (
 	noProvisioner     = "kubernetes.io/no-provisioner"
 	reasonProvFailed  = "ProvisioningFailed"
 	bindingWaitFirst  = "WaitForFirstConsumer"
+	annDefaultClass   = "storageclass.kubernetes.io/is-default-class"
+	annDefaultBeta    = "storageclass.beta.kubernetes.io/is-default-class"
 	annSelectedNode   = "volume.kubernetes.io/selected-node"
 	storageEventLimit = 200
 	// minProvFailedPVCs — сколько PVC класса должно иметь событие ProvisioningFailed, чтобы это считалось признаком (б).
@@ -62,12 +66,16 @@ func ruleSharedStorage(ctx context.Context, e *env) []Candidate {
 		return nil
 	}
 	var classes []depgraph.Node
+	noDefault := false
 	for _, n := range g.Nodes() {
-		if n.Kind == "StorageClass" && n.Group == storageGroup {
+		switch {
+		case n.Kind == "StorageClass" && n.Group == storageGroup:
 			classes = append(classes, n)
+		case n.Kind == "PersistentVolumeClaim" && n.Reason == depgraph.ReasonNoDefaultClass:
+			noDefault = true // граф уже установил: PVC без класса, а класса по умолчанию в кластере нет
 		}
 	}
-	if len(classes) == 0 {
+	if len(classes) == 0 && !noDefault {
 		return nil
 	}
 	data := e.readStorage(ctx)
@@ -77,6 +85,11 @@ func ruleSharedStorage(ctx context.Context, e *env) []Candidate {
 	var out []Candidate
 	for _, cls := range classes {
 		if c, ok := e.sharedStorage(ctx, cls, data); ok {
+			out = append(out, c)
+		}
+	}
+	if noDefault {
+		if c, ok := e.noDefaultClass(ctx, data); ok {
 			out = append(out, c)
 		}
 	}
@@ -149,9 +162,14 @@ func (e *env) sharedStorage(ctx context.Context, cls depgraph.Node, d *storageDa
 		waitFirst = mode == bindingWaitFirst
 	}
 
+	isDefault := cls.Object != nil && (cls.Object.GetAnnotations()[annDefaultClass] == "true" ||
+		cls.Object.GetAnnotations()[annDefaultBeta] == "true")
 	claims := map[string]bool{}
 	for _, p := range d.pvcs {
-		if p.Spec.StorageClassName == nil || *p.Spec.StorageClassName != cls.Name || p.Status.Phase == corev1.ClaimBound {
+		// PVC без storageClassName относится к классу по умолчанию; явно пустой класс — статическая привязка, не наш случай.
+		own := p.Spec.StorageClassName != nil && *p.Spec.StorageClassName == cls.Name ||
+			p.Spec.StorageClassName == nil && isDefault
+		if !own || p.Status.Phase == corev1.ClaimBound {
 			continue
 		}
 		// WaitForFirstConsumer: PVC ждёт Pod'а — это не поломка привязки.
@@ -164,6 +182,32 @@ func (e *env) sharedStorage(ctx context.Context, cls depgraph.Node, d *storageDa
 		return Candidate{}, false
 	}
 
+	// Признаки класса считаются до чтения потребителей: от них зависит только набор фактов.
+	var abnormal []factSpec
+	switch {
+	case cls.Placeholder:
+		abnormal = append(abnormal, factSpec{factStorageNoClass, src, nil})
+	case cls.Object != nil && (!havePrv || provisioner == "" || provisioner == noProvisioner):
+		abnormal = append(abnormal, factSpec{factStorageNoProvider, src, nil})
+	}
+	return e.storageCandidate(ctx, storageInput{src: src, claims: claims, base: abnormal, d: d,
+		potential: &depgraph.Ref{Group: storageGroup, Kind: "StorageClass", Name: cls.Name}})
+}
+
+// storageInput — то, что отличает источники shared_storage друг от друга: сам источник, его PVC, признаки
+// ненормальности источника и ссылка на него в графе (nil — зависимых по графу нет).
+type storageInput struct {
+	src       diagnose.ResourceRef
+	claims    map[string]bool
+	base      []factSpec
+	d         *storageData
+	potential *depgraph.Ref
+}
+
+// storageCandidate строит кандидата по PVC источника: потребители, события ProvisioningFailed, признаки уверенности.
+func (e *env) storageCandidate(ctx context.Context, in storageInput) (Candidate, bool) {
+	src, claims, d := in.src, in.claims, in.d
+	abnormal := slices.Clone(in.base)
 	set := newWorkloadSet()
 	for _, p := range d.pods {
 		if !usesClaim(p, claims) {
@@ -177,13 +221,6 @@ func (e *env) sharedStorage(ctx context.Context, cls depgraph.Node, d *storageDa
 		return Candidate{}, false
 	}
 
-	var abnormal []factSpec
-	switch {
-	case cls.Placeholder:
-		abnormal = append(abnormal, factSpec{factStorageNoClass, src, nil})
-	case cls.Object != nil && (!havePrv || provisioner == "" || provisioner == noProvisioner):
-		abnormal = append(abnormal, factSpec{factStorageNoProvider, src, nil})
-	}
 	failedPVCs := map[string]bool{}
 	var evTimes []time.Time
 	for _, ev := range d.events {
@@ -234,14 +271,37 @@ func (e *env) sharedStorage(ctx context.Context, cls depgraph.Node, d *storageDa
 	if since.IsZero() {
 		since = evFirst
 	}
+	var potential []WorkloadRef
+	if in.potential != nil {
+		potential = e.potentialFromGraph(ctx, *in.potential, set)
+	}
 	c := Candidate{
 		Kind: KindSharedStorage, Source: src, Confidence: conf, Since: since,
 		Affected: set.sorted(), Total: set.total(), Truncated: d.truncated,
-		Potential:  e.potentialFromGraph(ctx, depgraph.Ref{Group: storageGroup, Kind: "StorageClass", Name: cls.Name}, set),
+		Potential:  potential,
 		Supporting: e.addFacts(specs),
 	}
 	c.ID = candidateID(c)
 	return c, true
+}
+
+// noDefaultClass: в кластере нет класса по умолчанию, а PVC без storageClassName остаются неприсоединёнными.
+// Источника-объекта нет, поэтому источником служит «безымянный» StorageClass (Name пуст): ключ
+// shared_storage:storage.k8s.io/StorageClass// один на кластер, и автоприсоединение собирает такие
+// расследования в одну проблему. Условие подтверждено графом (причина no_default_storageclass у PVC).
+func (e *env) noDefaultClass(ctx context.Context, d *storageData) (Candidate, bool) {
+	claims := map[string]bool{}
+	for _, p := range d.pvcs {
+		if p.Spec.StorageClassName == nil && p.Status.Phase != corev1.ClaimBound {
+			claims[p.Namespace+"/"+p.Name] = true
+		}
+	}
+	if len(claims) == 0 {
+		return Candidate{}, false
+	}
+	src := diagnose.ResourceRef{Group: storageGroup, Kind: "StorageClass"}
+	return e.storageCandidate(ctx, storageInput{src: src, claims: claims, d: d,
+		base: []factSpec{{factStorageNoDefault, src, nil}}})
 }
 
 func usesClaim(p *corev1.Pod, claims map[string]bool) bool {
