@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, expect, it } from 'vitest'
-import { chainIncident, correlationIncident, legacyIncident, metricsIncident, noMetricsIncidents, problemDetail, ruleStatsFixture } from './__fixtures__'
+import { chainIncident, correlationIncident, legacyIncident, metricsIncident, noMetricsIncident, problemDetail, ruleStatsFixture } from './__fixtures__'
 
 describe('фикстуры Kubron Intelligence', () => {
   it('цепочка содержит Missing и Unknown и кандидата', () => {
@@ -13,7 +13,7 @@ describe('фикстуры Kubron Intelligence', () => {
   })
   it('метрики и причины их отсутствия', () => {
     expect(metricsIncident.report.facts.some((f) => f.source.kind === 'metric')).toBe(true)
-    expect(Object.keys(noMetricsIncidents)).toHaveLength(7)
+    expect(noMetricsIncident.report.missing).toHaveLength(7)
   })
   it('корреляция, проблема и статистика согласованы', () => {
     expect(correlationIncident.correlation!.candidates![0].total).toBe(12)
