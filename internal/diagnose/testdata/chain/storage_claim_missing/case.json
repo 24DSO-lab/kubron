@@ -1,0 +1,10 @@
+{
+  "target": {"kind": "Pod", "namespace": "app", "name": "db-0"},
+  "golden": true,
+  "expect": {
+    "symptoms": ["pod.startup_failure", "storage.claim_pending"],
+    "hypotheses": ["startup.volume_mount_failed:medium", "pvc.missing:high"],
+    "explains": [["pvc.missing", "startup.volume_mount_failed"]],
+    "chains": ["pvc.missing: Pod/db-0 > PersistentVolumeClaim/data"]
+  }
+}
