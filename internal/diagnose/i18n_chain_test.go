@@ -41,7 +41,7 @@ func TestEveryChainCodeIsTranslated(t *testing.T) {
 	add("recommendations", `"(rec\.[a-z_]+)"`)
 	add("steps", `"(step\.[a-z_]+)"`)
 	add("missing", `(?:b\.missing|c\.addMissing|col\.c\.addMissing)\(\s*"([a-z_.]+)"`)
-	add("hypotheses", `"((?:pvc|storage|service|endpoints|node|volume|chain|oom)\.[a-z_]+)"`)
+	add("hypotheses", `b\.hypothesis\(\s*[^,]+,\s*"((?:pvc|storage|service|endpoints|node|volume|chain|oom)\.[a-z_]+)"`)
 	for c := range codes["missing"] {
 		delete(codes["hypotheses"], c)
 	}
@@ -107,9 +107,7 @@ func TestChainLocalesHaveTheSameKeys(t *testing.T) {
 	}
 	placeholders := func(s string) string {
 		var ph []string
-		for _, m := range regexp.MustCompile(`\{[a-zA-Z0-9_]+\}`).FindAllString(s, -1) {
-			ph = append(ph, m)
-		}
+		ph = append(ph, regexp.MustCompile(`\{[a-zA-Z0-9_]+\}`).FindAllString(s, -1)...)
 		slices.Sort(ph)
 		return strings.Join(ph, ",")
 	}
