@@ -56,5 +56,69 @@
   "sourceKinds": {
     "metric": "Monitoring metric",
     "other": "source"
+  },
+  "correlation": {
+    "note": "This is a likely shared source, not a proven cause: check it before acting.",
+    "lowHint": "Low confidence: treat this as a hint only.",
+    "since": "since {time}",
+    "affected": "Affected workloads: {total}",
+    "noneListed": "No workloads listed.",
+    "truncated": "The list is truncated: {shown} of {total} shown.",
+    "potential": "Potentially affected",
+    "potentialNote": "These workloads share the source but show no problems yet.",
+    "supporting": "Supporting facts",
+    "pods": "{n} pods with problems",
+    "incompleteForbidden": "The list is incomplete: no permission to read some data.",
+    "openProblem": "Open the problem",
+    "kindOther": "Possible common source"
+  },
+  "problem": {
+    "title": "Problems",
+    "subtitle": "Investigations that share a likely source are grouped into one problem. Grouping never deletes or merges investigations.",
+    "empty": "No problems.",
+    "filter": {
+      "open": "Open",
+      "closed": "Closed",
+      "all": "All"
+    },
+    "columns": {
+      "source": "Source",
+      "members": "Investigations",
+      "affected": "Affected",
+      "updated": "Updated"
+    },
+    "manual": "manual",
+    "status": {
+      "open": "Open",
+      "closed": "Closed"
+    },
+    "origin": {
+      "auto": "formed automatically",
+      "manual": "formed manually"
+    },
+    "members": "{n} investigations",
+    "membersTitle": "Investigations",
+    "affected": "Affected workloads: {total}",
+    "addedAuto": "added automatically",
+    "addedBy": "added by {user}",
+    "detach": "Detach",
+    "detachedNote": "{n} investigations were detached and will not be added again automatically.",
+    "actions": "Change the group",
+    "safeNote": "Investigations are not deleted or merged: only their grouping changes.",
+    "attach": "Attach",
+    "pickIncident": "Choose an investigation",
+    "merge": "Merge into",
+    "pickProblem": "Choose a problem",
+    "needOperate": "Changing problems requires the operate permission.",
+    "createTitle": "Create a problem from investigations",
+    "createHint": "Select investigations that are not in a problem yet.",
+    "createEmpty": "All investigations already belong to a problem.",
+    "createSubmit": "Create problem ({n})",
+    "confirm": {
+      "attach": "Attach this investigation to the problem?",
+      "detach": "Detach this investigation from the problem?",
+      "merge": "Merge this problem into the selected one?",
+      "create": "Create a problem from the selected investigations?"
+    }
   }
 }

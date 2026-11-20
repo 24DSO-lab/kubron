@@ -56,5 +56,69 @@
   "sourceKinds": {
     "metric": "监控指标",
     "other": "来源"
+  },
+  "correlation": {
+    "note": "这是可能的共同来源，而非已证实的原因：请先核实再操作。",
+    "lowHint": "置信度低：仅作提示。",
+    "since": "自 {time}",
+    "affected": "受影响的工作负载：{total}",
+    "noneListed": "未列出工作负载。",
+    "truncated": "列表已截断：显示 {shown} / {total}。",
+    "potential": "潜在受影响",
+    "potentialNote": "这些工作负载使用同一来源，但目前尚未出现问题。",
+    "supporting": "支持事实",
+    "pods": "有问题的 Pod：{n}",
+    "incompleteForbidden": "列表不完整：无权读取部分数据。",
+    "openProblem": "打开问题",
+    "kindOther": "可能的共同来源"
+  },
+  "problem": {
+    "title": "问题",
+    "subtitle": "具有可能共同来源的调查会归入同一个问题。分组不会删除或合并调查。",
+    "empty": "暂无问题。",
+    "filter": {
+      "open": "未关闭",
+      "closed": "已关闭",
+      "all": "全部"
+    },
+    "columns": {
+      "source": "来源",
+      "members": "调查数",
+      "affected": "受影响",
+      "updated": "更新时间"
+    },
+    "manual": "手动",
+    "status": {
+      "open": "未关闭",
+      "closed": "已关闭"
+    },
+    "origin": {
+      "auto": "自动形成",
+      "manual": "手动形成"
+    },
+    "members": "调查数：{n}",
+    "membersTitle": "调查",
+    "affected": "受影响的工作负载：{total}",
+    "addedAuto": "自动加入",
+    "addedBy": "由 {user} 加入",
+    "detach": "移出",
+    "detachedNote": "已移出 {n} 项调查，不会再被自动加入。",
+    "actions": "调整分组",
+    "safeNote": "调查不会被删除或合并：只改变其分组。",
+    "attach": "加入",
+    "pickIncident": "选择调查",
+    "merge": "合并到",
+    "pickProblem": "选择问题",
+    "needOperate": "修改问题需要 operate 权限。",
+    "createTitle": "从调查创建问题",
+    "createHint": "选择尚未属于任何问题的调查。",
+    "createEmpty": "所有调查都已属于某个问题。",
+    "createSubmit": "创建问题（{n}）",
+    "confirm": {
+      "attach": "将此调查加入该问题？",
+      "detach": "将此调查从问题中移出？",
+      "merge": "将此问题合并到所选问题？",
+      "create": "用所选调查创建问题？"
+    }
   }
 }
