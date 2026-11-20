@@ -104,10 +104,12 @@
       </ul>
     </section>
 
-    <section v-if="report.missing.length" class="block">
+    <section v-if="report.missing.length" class="block" data-testid="missing-context">
       <h3>{{ $t('incidents.sections.missing') }}</h3>
       <ul class="items">
-        <li v-for="(m, i) in report.missing" :key="i" class="item item-missing" data-testid="missing">{{ m }}</li>
+        <li v-for="(m, i) in report.missing" :key="i" class="item item-missing" data-testid="missing" :data-code="m.code">
+          {{ codeText('missing', m.code, m.params) }}
+        </li>
       </ul>
     </section>
 
@@ -130,6 +132,10 @@ const props = defineProps<{ incident: Incident }>()
 const { t } = useI18n()
 const report = computed(() => props.incident.report)
 
+/**
+ * Гипотезы без потери данных: кандидат первопричины (объясняет другие и сам не объясняется) идёт первым,
+ * за ним — объяснённые им гипотезы; остальные — в исходном порядке. Показываются все гипотезы.
+ */
 type Role = 'candidate' | 'explained' | 'plain'
 const orderedHypotheses = computed<{ h: Hypothesis; role: Role }[]>(() => {
   const all = report.value.hypotheses
