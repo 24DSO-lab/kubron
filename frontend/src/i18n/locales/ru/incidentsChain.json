@@ -1,6 +1,87 @@
 {
+  "symptoms": {
+    "storage_claim_pending": "Заявка на том не привязана."
+  },
+  "facts": {
+    "pvc_not_bound": "Заявка {pvc} не привязана (фаза: {phase}).",
+    "pvc_lost": "Заявка {pvc} в фазе {phase}: том, к которому она была привязана, больше не существует.",
+    "pvc_mounted": "Под {pod} монтирует заявку {pvc}.",
+    "pvc_missing": "Под монтирует заявку {pvc}, но такой заявки нет.",
+    "storage_class_missing": "Заявка {pvc} просит StorageClass {class}, которого нет.",
+    "storage_default_class_missing": "В заявке {pvc} не указан StorageClass, а класса по умолчанию в кластере нет.",
+    "storage_no_consumers": "Заявку {pvc} не использует ни один под."
+  },
+  "hypotheses": {
+    "pvc_missing": "Заявки {pvc} нет, поэтому поды, которые её монтируют, не могут запуститься.",
+    "pvc_lost": "Том заявки {pvc} исчез, поэтому заявка в состоянии Lost.",
+    "pvc_unbound": "Заявка {pvc} не привязана к тому, а более точная причина не найдена.",
+    "storage_class_not_found": "Заявка {pvc} просит StorageClass {class}, которого нет, поэтому том создать нельзя.",
+    "storage_no_default_class": "В заявке {pvc} не указан StorageClass, а класса по умолчанию в кластере нет, поэтому том не создаётся.",
+    "storage_waiting_first_consumer": "Заявка {pvc} привяжется только после появления пода, который её использует, а такого пода нет.",
+    "storage_provisioning_failed": "Провизионер томов не смог создать том для заявки {pvc}."
+  },
+  "recommendations": {
+    "rec_create_missing_claim": "Создайте PersistentVolumeClaim {pvc} или исправьте имя заявки в спецификации пода.",
+    "rec_restore_volume": "Восстановите или пересоздайте том, к которому была привязана заявка {pvc}, либо создайте новую заявку.",
+    "rec_fix_storage_class": "Создайте StorageClass {class} или укажите в заявке {pvc} существующий класс.",
+    "rec_set_default_storage_class": "Назначьте StorageClass по умолчанию или укажите класс в заявке {pvc}.",
+    "rec_use_or_delete_claim": "Запустите под, который использует заявку {pvc}, или удалите заявку, если она больше не нужна."
+  },
+  "steps": {
+    "step_check_provisioner": "Проверьте логи провизионера томов и события заявки {pvc}."
+  },
   "missing": {
     "service_selector_missing": "У Service нет селектора, поэтому он не выбирает поды.",
     "graph_unavailable": "Граф зависимостей построить не удалось ({reason})."
+  },
+  "graphHealth": {
+    "Healthy": "Исправен",
+    "Degraded": "Неисправен",
+    "Progressing": "В процессе",
+    "Missing": "Отсутствует",
+    "Unknown": "Неизвестно"
+  },
+  "graphReasons": {
+    "terminating": "Удаляется",
+    "completed": "Завершён",
+    "failed": "Завершился с ошибкой",
+    "evicted": "Вытеснен",
+    "oom_killed": "Убит из-за нехватки памяти",
+    "crash_loop": "Перезапускается по кругу",
+    "image_pull_failed": "Образ не скачивается",
+    "config_error": "Ошибка конфигурации",
+    "container_failed": "Контейнер завершился с ошибкой",
+    "init_failed": "Init-контейнер завершился с ошибкой",
+    "pending_unscheduled": "Не назначен на узел",
+    "pending": "Ожидает",
+    "container_creating": "Контейнеры создаются",
+    "not_ready": "Не готов",
+    "scaled_to_zero": "Масштабирован до нуля",
+    "paused": "Приостановлен",
+    "suspended": "Остановлен",
+    "replicas_unavailable": "Реплики недоступны",
+    "replica_failure": "Не удалось создать реплику",
+    "rollout_in_progress": "Выкатка идёт",
+    "progress_deadline_exceeded": "Время выкатки истекло",
+    "not_available": "Недоступен",
+    "unbound": "Не привязана",
+    "lost": "Том потерян",
+    "released": "Том освобождён",
+    "no_default_storageclass": "Нет StorageClass по умолчанию",
+    "waiting_first_consumer": "Ждёт первого пода",
+    "no_endpoints": "Нет endpoints",
+    "no_ready_endpoints": "Нет готовых endpoints",
+    "selector_matches_nothing": "Селектор не выбирает ни одного пода",
+    "node_not_ready": "Узел не готов",
+    "node_unreachable": "Узел недоступен",
+    "node_pressure_memory": "Нехватка памяти",
+    "node_pressure_disk": "Нехватка диска",
+    "node_pressure_pid": "Нехватка процессов",
+    "node_network_unavailable": "Сеть недоступна",
+    "node_unschedulable": "Закрыт для новых подов",
+    "job_failed": "Задание завершилось с ошибкой",
+    "running": "Работает",
+    "unreadable": "Не удаётся прочитать",
+    "not_found": "Не существует"
   }
 }
