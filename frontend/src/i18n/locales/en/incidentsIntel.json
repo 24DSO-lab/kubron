@@ -3,7 +3,7 @@
     "title": "Dependency chain",
     "aria": "Dependency chain from the affected resource",
     "pathAria": "Chain {n}",
-    "note": "The chain shows what the affected resource depends on. “Candidate” is a hypothesis that explains others, not a confirmed cause.",
+    "note": "The chain shows what the affected resource depends on. \u201cCandidate\u201d is a hypothesis that explains others, not a confirmed cause.",
     "candidate": "Candidate",
     "missingHint": "does not exist",
     "unknownHint": "not checked: {reason}",
@@ -32,8 +32,8 @@
   "unknownEntry": "Entry not recognised by this version of the interface",
   "metric": {
     "badge": "Metric",
-    "summary": "{value} · {agg} over {window}",
-    "summaryNoWindow": "{value} · {agg}",
+    "summary": "{value} \u00b7 {agg} over {window}",
+    "summaryNoWindow": "{value} \u00b7 {agg}",
     "limit": "limit {limit}",
     "cores": "cores",
     "flagOn": "pressure seen",
@@ -119,6 +119,43 @@
       "detach": "Detach this investigation from the problem?",
       "merge": "Merge this problem into the selected one?",
       "create": "Create a problem from the selected investigations?"
+    }
+  },
+  "outcome": {
+    "more": "More details (optional)",
+    "optionalHint": "Nothing here is required",
+    "rejected": "Ruled out hypotheses",
+    "recommendations": "Did the recommendations help?",
+    "mark": {
+      "none": "Not marked",
+      "helpful": "Helped",
+      "useless": "Did not help"
+    },
+    "otherAction": "Something outside the recommendations helped",
+    "resolvedAt": "Resolved at",
+    "resolvedAtHint": "When the problem went away",
+    "correlation": "Possible common source",
+    "verdict": {
+      "none": "Not marked",
+      "confirmed": "confirmed",
+      "rejected": "rejected",
+      "unknown": "unknown"
+    },
+    "doneRejected": "Ruled out: {items}",
+    "doneHelpful": "Helped: {items}",
+    "doneUseless": "Did not help: {items}",
+    "doneOtherAction": "Something outside the recommendations helped",
+    "doneResolvedAt": "Resolved at {time}",
+    "doneCorrelation": "Possible common source: {verdict}",
+    "rejectedBadge": "Ruled out",
+    "helpfulBadge": "Helped",
+    "uselessBadge": "Did not help",
+    "errors": {
+      "tooMany": "Too many items selected in one list.",
+      "noteTooLong": "The note is too long.",
+      "resolvedBeforeOpen": "Resolution time cannot be before the investigation was opened.",
+      "resolvedInFuture": "Resolution time cannot be in the future.",
+      "resolvedInvalid": "Could not parse the resolution time."
     }
   }
 }
