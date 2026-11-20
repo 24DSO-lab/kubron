@@ -120,5 +120,42 @@
       "merge": "Merge this problem into the selected one?",
       "create": "Create a problem from the selected investigations?"
     }
+  },
+  "outcome": {
+    "more": "More details (optional)",
+    "optionalHint": "Nothing here is required. Anything you leave unmarked is simply not recorded.",
+    "rejected": "Hypotheses you checked and ruled out",
+    "recommendations": "Recommendations",
+    "mark": {
+      "none": "not marked",
+      "helpful": "helped",
+      "useless": "did not help"
+    },
+    "otherAction": "Something that was not in the recommendations helped (describe it in the note)",
+    "resolvedAt": "When it was resolved",
+    "resolvedAtHint": "Leave empty to use the moment you mark the result. Not earlier than the investigation was opened, not in the future.",
+    "correlation": "Possible common source: was it right?",
+    "verdict": {
+      "none": "not marked",
+      "confirmed": "confirmed",
+      "rejected": "ruled out",
+      "unknown": "could not tell"
+    },
+    "errors": {
+      "tooMany": "Too many marks in one list: no more than 20 are accepted.",
+      "noteTooLong": "The note is too long.",
+      "resolvedBeforeOpen": "The resolution time cannot be earlier than the moment the investigation was opened.",
+      "resolvedInFuture": "The resolution time cannot be in the future.",
+      "resolvedInvalid": "The resolution time could not be read."
+    },
+    "markRejected": "ruled out by a person",
+    "markHelpful": "helped",
+    "markUseless": "did not help",
+    "doneRejected": "Ruled out: {items}",
+    "doneHelpful": "Helped: {items}",
+    "doneUseless": "Did not help: {items}",
+    "doneOtherAction": "Something outside the recommendations helped",
+    "doneResolvedAt": "Resolved at {time}",
+    "doneCorrelation": "Possible common source: {verdict}"
   }
 }

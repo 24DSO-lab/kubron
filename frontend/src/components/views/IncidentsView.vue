@@ -23,7 +23,7 @@
         @save-fragment="(ev) => run(() => saveFragment(ev.pod, ev.container, !!ev.previous), 'evidence.saveDone')"
         @delete-fragment="askDeleteFragment" @delete-all-fragments="askDeleteAll"
         @capture="(on) => run(() => setLogCapture(on, false))"
-        @outcome="(v) => run(() => markOutcome(v.result, v.confirmed, v.note))"
+        @outcome="(v) => run(() => markOutcome(v))"
         @open-problem="openProblem" />
     </template>
     <template v-else-if="problemDetail">

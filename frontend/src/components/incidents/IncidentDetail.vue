@@ -59,7 +59,7 @@ import EventsTable from './EventsTable.vue'
 import EvidencePanel from './EvidencePanel.vue'
 import FindingsPanel from './FindingsPanel.vue'
 import OutcomeForm from './OutcomeForm.vue'
-import type { Evidence, Fragment, FragmentView, Incident, OutcomeResult } from '../../types/incident'
+import type { Evidence, Fragment, FragmentView, Incident, OutcomeInput } from '../../types/incident'
 
 defineProps<{
   incident: Incident
@@ -78,7 +78,7 @@ const emit = defineEmits<{
   (e: 'deleteFragment', id: string): void
   (e: 'deleteAllFragments'): void
   (e: 'capture', enabled: boolean): void
-  (e: 'outcome', v: { result: OutcomeResult; confirmed: string; note: string }): void
+  (e: 'outcome', v: OutcomeInput): void
 }>()
 
 function when(iso: string): string {

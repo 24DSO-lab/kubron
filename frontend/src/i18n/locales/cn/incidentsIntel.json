@@ -120,5 +120,42 @@
       "merge": "将此问题合并到所选问题？",
       "create": "用所选调查创建问题？"
     }
+  },
+  "outcome": {
+    "more": "更多（可选）",
+    "optionalHint": "以下均无需填写。未标记的内容不会被记录。",
+    "rejected": "您已核查并排除的假设",
+    "recommendations": "建议",
+    "mark": {
+      "none": "未标记",
+      "helpful": "有帮助",
+      "useless": "没有帮助"
+    },
+    "otherAction": "建议之外的做法起了作用（请在备注中说明）",
+    "resolvedAt": "解决时间",
+    "resolvedAtHint": "留空则取标记结果的时刻。不得早于调查开启时间，也不得晚于现在。",
+    "correlation": "可能的共同来源：判断对了吗？",
+    "verdict": {
+      "none": "未标记",
+      "confirmed": "已证实",
+      "rejected": "已排除",
+      "unknown": "无法判断"
+    },
+    "errors": {
+      "tooMany": "同一列表中的标记过多：最多接受 20 项。",
+      "noteTooLong": "备注过长。",
+      "resolvedBeforeOpen": "解决时间不能早于调查开启时间。",
+      "resolvedInFuture": "解决时间不能晚于现在。",
+      "resolvedInvalid": "无法识别解决时间。"
+    },
+    "markRejected": "已被人工排除",
+    "markHelpful": "有帮助",
+    "markUseless": "没有帮助",
+    "doneRejected": "已排除：{items}",
+    "doneHelpful": "有帮助：{items}",
+    "doneUseless": "没有帮助：{items}",
+    "doneOtherAction": "建议之外的做法起了作用",
+    "doneResolvedAt": "解决于 {time}",
+    "doneCorrelation": "可能的共同来源：{verdict}"
   }
 }

@@ -50,6 +50,9 @@
           <span class="text">{{ codeText('hypotheses', h.code, h.params) }}</span>
           <span v-if="role === 'candidate'" class="tag tag-cand" data-testid="hypothesis-candidate">{{ $t('incidentsIntel.chain.candidate') }}</span>
           <span v-else-if="role === 'explained'" class="explained-by" data-testid="hypothesis-explained">{{ $t('incidentsIntel.chain.explainedByCandidate') }}</span>
+          <span v-if="incident.outcome?.rejectedHypothesisIds?.includes(h.id)" class="outcome-mark" data-testid="hypothesis-rejected">
+            {{ $t('incidentsIntel.outcome.markRejected') }}
+          </span>
           <span class="conf" :class="`conf-${confidenceLevel(h.confidence)}`" data-testid="confidence">
             {{ $t('incidents.confidence.label', { level: $t(`incidents.confidence.${confidenceLevel(h.confidence)}`) }) }}
           </span>
@@ -80,6 +83,12 @@
         <li v-for="r in report.recommendations" :key="r.id" class="item item-rec" data-testid="recommendation" data-kind="recommendation">
           <span class="tag tag-rec">{{ $t('incidents.kindLabels.recommendation') }}</span>
           <span class="text">{{ codeText('recommendations', r.code, r.params) }}</span>
+          <span v-if="incident.outcome?.helpfulRecommendationIds?.includes(r.id)" class="outcome-mark ok" data-testid="recommendation-helpful">
+            {{ $t('incidentsIntel.outcome.markHelpful') }}
+          </span>
+          <span v-else-if="incident.outcome?.uselessRecommendationIds?.includes(r.id)" class="outcome-mark" data-testid="recommendation-useless">
+            {{ $t('incidentsIntel.outcome.markUseless') }}
+          </span>
         </li>
       </ul>
     </section>
@@ -180,6 +189,8 @@ function sourceText(f: Fact): string {
 .tag-fact { background: rgba(137, 180, 250, 0.18); color: #89b4fa; }
 .tag-cand { margin: 0 0 0 8px; background: rgba(249, 226, 175, 0.18); color: #f9e2af; }
 .item-hyp.explained { margin-left: 18px; }
+.outcome-mark { margin-left: 8px; font-size: 12px; color: #fab387; }
+.outcome-mark.ok { color: #a6e3a1; }
 .explained-by { margin-left: 8px; color: #a6adc8; font-size: 12px; }
 .tag-hyp { background: rgba(249, 226, 175, 0.18); color: #f9e2af; }
 .tag-rec { background: rgba(166, 227, 161, 0.18); color: #a6e3a1; }

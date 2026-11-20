@@ -55,7 +55,7 @@ describe('useIncidents', () => {
     api.callApp.mockResolvedValueOnce(detail()).mockResolvedValue(detail('i1', 'closed'))
     const inc = useIncidents(() => 'cl1')
     await inc.open({ kind: 'Deployment', namespace: 'shop', name: 'web', disableLogs: false })
-    await inc.markOutcome('resolved', 'h1', 'ok')
+    await inc.markOutcome({ result: 'resolved', confirmedHypothesisId: 'h1', note: 'ok' })
     expect(api.callApp).toHaveBeenLastCalledWith('IncidentMarkOutcome', 'cl1', 'i1', { result: 'resolved', confirmedHypothesisId: 'h1', note: 'ok' })
     await inc.saveFragment('web-1', 'app', true)
     expect(api.callApp).toHaveBeenCalledWith('IncidentSaveFragment', 'cl1', 'i1', expect.objectContaining({ pod: 'web-1', previous: true }))
@@ -84,7 +84,7 @@ describe('useIncidents', () => {
   it('без выбранного расследования действия ничего не вызывают', async () => {
     const inc = useIncidents(() => 'cl1')
     await inc.refreshEvents()
-    await inc.markOutcome('resolved', '', '')
+    await inc.markOutcome({ result: 'resolved' })
     await inc.remove()
     expect(api.callApp).not.toHaveBeenCalled()
     await expect(inc.readFragment('x')).rejects.toThrow()
