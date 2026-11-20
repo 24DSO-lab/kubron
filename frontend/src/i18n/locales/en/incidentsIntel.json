@@ -123,39 +123,39 @@
   },
   "outcome": {
     "more": "More details (optional)",
-    "optionalHint": "Nothing here is required",
-    "rejected": "Ruled out hypotheses",
-    "recommendations": "Did the recommendations help?",
+    "optionalHint": "Nothing here is required. Anything you leave unmarked is simply not recorded.",
+    "rejected": "Hypotheses you checked and ruled out",
+    "recommendations": "Recommendations",
     "mark": {
-      "none": "Not marked",
-      "helpful": "Helped",
-      "useless": "Did not help"
+      "none": "not marked",
+      "helpful": "helped",
+      "useless": "did not help"
     },
-    "otherAction": "Something outside the recommendations helped",
-    "resolvedAt": "Resolved at",
-    "resolvedAtHint": "When the problem went away",
-    "correlation": "Possible common source",
+    "otherAction": "Something that was not in the recommendations helped (describe it in the note)",
+    "resolvedAt": "When it was resolved",
+    "resolvedAtHint": "Leave empty to use the moment you mark the result. Not earlier than the investigation was opened, not in the future.",
+    "correlation": "Possible common source: was it right?",
     "verdict": {
-      "none": "Not marked",
+      "none": "not marked",
       "confirmed": "confirmed",
-      "rejected": "rejected",
-      "unknown": "unknown"
+      "rejected": "ruled out",
+      "unknown": "could not tell"
     },
+    "errors": {
+      "tooMany": "Too many marks in one list: no more than 20 are accepted.",
+      "noteTooLong": "The note is too long.",
+      "resolvedBeforeOpen": "The resolution time cannot be earlier than the moment the investigation was opened.",
+      "resolvedInFuture": "The resolution time cannot be in the future.",
+      "resolvedInvalid": "The resolution time could not be read."
+    },
+    "markRejected": "ruled out by a person",
+    "markHelpful": "helped",
+    "markUseless": "did not help",
     "doneRejected": "Ruled out: {items}",
     "doneHelpful": "Helped: {items}",
     "doneUseless": "Did not help: {items}",
     "doneOtherAction": "Something outside the recommendations helped",
     "doneResolvedAt": "Resolved at {time}",
-    "doneCorrelation": "Possible common source: {verdict}",
-    "rejectedBadge": "Ruled out",
-    "helpfulBadge": "Helped",
-    "uselessBadge": "Did not help",
-    "errors": {
-      "tooMany": "Too many items selected in one list.",
-      "noteTooLong": "The note is too long.",
-      "resolvedBeforeOpen": "Resolution time cannot be before the investigation was opened.",
-      "resolvedInFuture": "Resolution time cannot be in the future.",
-      "resolvedInvalid": "Could not parse the resolution time."
-    }
+    "doneCorrelation": "Possible common source: {verdict}"
   }
 }

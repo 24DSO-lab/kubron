@@ -122,6 +122,7 @@
     }
   },
   "outcome": {
+
     "more": "更多详情（可选）",
     "optionalHint": "此处均可不填",
     "rejected": "已排除的假设",
@@ -157,5 +158,6 @@
       "resolvedInFuture": "解决时间不能是将来。",
       "resolvedInvalid": "无法解析解决时间。"
     }
+
   }
 }
