@@ -16,7 +16,7 @@ import type {
   IncidentStatus,
   IncidentSummary,
   OpenIncidentRequest,
-  OutcomeResult,
+  OutcomeInput,
 } from '../types/incident'
 
 /** Имя события бэкенда: снимок Events расследования обновлён (internal/app.EventIncidentUpdated) */
@@ -131,13 +131,12 @@ export function useIncidents(clusterId: () => string) {
     applyDetail(g, id, normalizeDetail((await callApp('IncidentRefresh', clusterId(), id)) as IncidentDetail))
   }
 
-  async function markOutcome(result: OutcomeResult, confirmedHypothesisId: string, note: string): Promise<void> {
+  /** Отметка результата: в запрос уходят только заполненные поля (ADR-0034 §2), «не отмечено» — отсутствие поля. */
+  async function markOutcome(input: OutcomeInput): Promise<void> {
     if (!detail.value) return
     const g = gen
     const id = detail.value.incident.id
-    applyDetail(g, id, normalizeDetail((await callApp('IncidentMarkOutcome', clusterId(), id, {
-      result, confirmedHypothesisId, note,
-    } as never)) as IncidentDetail))
+    applyDetail(g, id, normalizeDetail((await callApp('IncidentMarkOutcome', clusterId(), id, input as never)) as IncidentDetail))
   }
 
   async function saveFragment(pod: string, container: string, previous: boolean): Promise<void> {
