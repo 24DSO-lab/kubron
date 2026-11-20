@@ -1,0 +1,176 @@
+{
+  "ruleSetVersion": 2,
+  "target": {
+    "kind": "Pod",
+    "namespace": "app",
+    "name": "db-0",
+    "uid": "p1"
+  },
+  "observedAt": "2026-11-11T10:00:00Z",
+  "symptoms": [
+    "pod.pending"
+  ],
+  "resources": [
+    {
+      "kind": "Pod",
+      "namespace": "app",
+      "name": "db-0",
+      "uid": "p1"
+    }
+  ],
+  "facts": [
+    {
+      "kind": "fact",
+      "id": "f1",
+      "code": "pod.pending",
+      "resource": {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "db-0",
+        "uid": "p1"
+      },
+      "params": {
+        "phase": "Pending"
+      },
+      "source": {
+        "kind": "resource",
+        "resource": {
+          "kind": "Pod",
+          "namespace": "app",
+          "name": "db-0",
+          "uid": "p1"
+        },
+        "field": "status.phase"
+      },
+      "observedAt": "2026-11-11T10:00:00Z"
+    },
+    {
+      "kind": "fact",
+      "id": "f2",
+      "code": "pod.unscheduled",
+      "resource": {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "db-0",
+        "uid": "p1"
+      },
+      "params": {
+        "message": "0/1 nodes are available: pod has unbound immediate PersistentVolumeClaims.",
+        "reason": "Unschedulable"
+      },
+      "source": {
+        "kind": "resource",
+        "resource": {
+          "kind": "Pod",
+          "namespace": "app",
+          "name": "db-0",
+          "uid": "p1"
+        },
+        "field": "status.conditions[PodScheduled]"
+      },
+      "observedAt": "2026-11-11T10:00:00Z"
+    },
+    {
+      "kind": "fact",
+      "id": "f3",
+      "code": "event",
+      "resource": {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "db-0",
+        "uid": "p1"
+      },
+      "params": {
+        "count": "2",
+        "message": "0/1 nodes are available: pod has unbound immediate PersistentVolumeClaims.",
+        "reason": "FailedScheduling",
+        "type": "Warning"
+      },
+      "source": {
+        "kind": "event",
+        "resource": {
+          "kind": "Pod",
+          "namespace": "app",
+          "name": "db-0"
+        }
+      },
+      "observedAt": "2026-11-11T09:59:00Z"
+    }
+  ],
+  "hypotheses": [
+    {
+      "kind": "hypothesis",
+      "id": "h1",
+      "code": "pending.unbound_pvc",
+      "resource": {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "db-0",
+        "uid": "p1"
+      },
+      "confidence": "high",
+      "supporting": [
+        "f1",
+        "f2",
+        "f3"
+      ],
+      "contradicting": [],
+      "ruleId": "pod.pending",
+      "ruleEpoch": 1
+    }
+  ],
+  "recommendations": [
+    {
+      "kind": "recommendation",
+      "id": "r1",
+      "code": "rec.fix_volume_claim",
+      "resource": {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "db-0",
+        "uid": "p1"
+      },
+      "hypotheses": [
+        "h1"
+      ],
+      "ruleId": "pod.pending",
+      "ruleEpoch": 1
+    }
+  ],
+  "steps": [
+    {
+      "kind": "step",
+      "id": "s1",
+      "code": "step.check_pvc",
+      "resource": {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "db-0",
+        "uid": "p1"
+      },
+      "hypotheses": [
+        "h1"
+      ]
+    }
+  ],
+  "missing": [],
+  "partial": [
+    "Graph"
+  ],
+  "graph": {
+    "nodes": [
+      {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "db-0",
+        "health": "Degraded",
+        "reason": "pending_unscheduled"
+      }
+    ],
+    "edges": [],
+    "truncated": true,
+    "warnings": [
+      "limit.nodes"
+    ]
+  }
+}
