@@ -30,6 +30,9 @@
 
     <FindingsPanel :incident="incident" />
 
+    <CorrelationBlock v-if="incident.correlation || incident.problemId" :correlation="incident.correlation" :problem-id="incident.problemId"
+      @open-problem="(id) => emit('openProblem', id)" />
+
     <section class="block">
       <h3>{{ $t('incidents.sections.events') }}</h3>
       <p class="sub" data-testid="events-updated">{{ $t('incidents.detail.eventsUpdated', { time: when(incident.eventsUpdatedAt) }) }}</p>
@@ -51,6 +54,7 @@
 </template>
 
 <script lang="ts" setup>
+import CorrelationBlock from './CorrelationBlock.vue'
 import EventsTable from './EventsTable.vue'
 import EvidencePanel from './EvidencePanel.vue'
 import FindingsPanel from './FindingsPanel.vue'
@@ -66,6 +70,7 @@ defineProps<{
 }>()
 const emit = defineEmits<{
   (e: 'back'): void
+  (e: 'openProblem', id: string): void
   (e: 'refresh'): void
   (e: 'export', withFragments: boolean): void
   (e: 'delete'): void

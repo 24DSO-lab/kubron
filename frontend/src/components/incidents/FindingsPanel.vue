@@ -21,6 +21,7 @@
         <li v-for="f in report.facts" :key="f.id" class="item item-fact" data-testid="fact" data-kind="fact" :data-code="f.code">
           <span class="tag tag-fact">{{ $t('incidents.kindLabels.fact') }}</span>
           <span class="text">{{ codeText('facts', f.code, f.params) }}</span>
+          <MetricFacts v-if="isMetricFact(f)" :facts="[f]" />
           <div class="meta">
             {{ $t('incidents.source.label', { source: sourceText(f) }) }} · {{ $t('incidents.observedAt', { time: when(f.observedAt) }) }}
           </div>
@@ -101,13 +102,19 @@
         </li>
       </ul>
     </section>
+
+    <MonitoringHint :missing="report.missing" />
   </div>
 </template>
 
 <script lang="ts" setup>
 import { computed } from 'vue'
 import ChainView from './ChainView.vue'
+import MetricFacts from './MetricFacts.vue'
+import MonitoringHint from './MonitoringHint.vue'
 import { useI18n } from 'vue-i18n'
+import { te } from '../../i18n'
+import { isMetricFact } from '../../composables/metricFormat'
 import { codeText, confidenceLevel, evidenceFor, factsByIds, reasonText } from '../../composables/incidentModel'
 import type { Fact, Hypothesis, Incident } from '../../types/incident'
 
@@ -149,7 +156,8 @@ function when(iso: string): string {
 }
 
 function sourceText(f: Fact): string {
-  const kind = t(`incidents.source.kinds.${f.source.kind}`)
+  const kindKey = `incidents.source.kinds.${f.source.kind}`
+  const kind = te(kindKey) ? t(kindKey) : t(f.source.kind === 'metric' ? 'incidentsIntel.sourceKinds.metric' : 'incidentsIntel.sourceKinds.other')
   const where = f.source.field ? `${f.source.resource.kind}/${f.source.resource.name} ${f.source.field}` : `${f.source.resource.kind}/${f.source.resource.name}`
   return `${kind}: ${where}`
 }
