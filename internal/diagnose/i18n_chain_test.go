@@ -13,16 +13,54 @@ import (
 	"testing"
 )
 
-// Каждый код, который выдают цепочечные правила и сбор этапа 1, обязан иметь перевод в en, ru и cn. Коды ищутся в
-// исходниках этапа 1; перевод — в incidentsChain.json или (для кодов, которые правила этапа 1 делят с прежними) в
-// incidents.json. Так непереведённый код не превратится в «сырую» строку в интерфейсе.
+var chainLangs = []string{"en", "ru", "cn"}
+
+// chainMessages — переводы языка из incidents.json и incidentsChain.json, слитые по разделам: цепочечные правила
+// делят часть кодов с прежними (source.unavailable, event, rec.fix_volume_claim), остальное лежит в incidentsChain.json.
+func chainMessages(t *testing.T, lang string) map[string]map[string]any {
+	t.Helper()
+	msgs := map[string]map[string]any{}
+	for _, file := range []string{"incidents.json", "incidentsChain.json"} {
+		raw, err := os.ReadFile(filepath.Join("..", "..", "frontend", "src", "i18n", "locales", lang, file))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var m map[string]any
+		if err := json.Unmarshal(raw, &m); err != nil {
+			t.Fatalf("%s/%s: %v", lang, file, err)
+		}
+		for section, v := range m {
+			sec, ok := v.(map[string]any)
+			if !ok {
+				continue
+			}
+			if msgs[section] == nil {
+				msgs[section] = map[string]any{}
+			}
+			for k, x := range sec {
+				msgs[section][k] = x
+			}
+		}
+	}
+	return msgs
+}
+
+func translated(msgs map[string]map[string]any, section, code string) bool {
+	v, ok := msgs[section][strings.ReplaceAll(code, ".", "_")].(string)
+	return ok && v != ""
+}
+
+// Каждый код из исходников этапа 1 переведён на en, ru и cn. Исходники не различают разделы надёжно (код факта
+// может прийти в помощник строкой), поэтому здесь код должен быть хотя бы в одном из разделов «факт, гипотеза,
+// симптом, пропуск»; рекомендации и шаги проверяются по своим разделам строго, а точное соответствие разделам
+// проверяет TestChainFixtureCodesAreTranslated по настоящим отчётам.
 func TestEveryChainCodeIsTranslated(t *testing.T) {
 	t.Parallel()
 	files, err := filepath.Glob("rules_chain_*.go")
 	if err != nil {
 		t.Fatal(err)
 	}
-	files = append(files, "targets_chain.go", "graph_hook.go")
+	files = append(files, "targets_chain.go", "graph_hook.go", "chains.go")
 	var src strings.Builder
 	for _, f := range files {
 		raw, err := os.ReadFile(f)
@@ -31,53 +69,98 @@ func TestEveryChainCodeIsTranslated(t *testing.T) {
 		}
 		src.Write(raw)
 	}
-	codes := map[string]map[string]bool{"facts": {}, "hypotheses": {}, "recommendations": {}, "steps": {}, "missing": {}}
-	add := func(section, re string) {
+	find := func(re string) map[string]bool {
+		out := map[string]bool{}
 		for _, m := range regexp.MustCompile(re).FindAllStringSubmatch(src.String(), -1) {
-			codes[section][m[1]] = true
+			out[m[1]] = true
+		}
+		return out
+	}
+	recs := find(`"(rec\.[a-z_]+)"`)
+	steps := find(`"(step\.[a-z_]+)"`)
+	missing := find(`(?:b\.missing|c\.addMissing|col\.c\.addMissing)\(\s*"([a-z_.]+)"`)
+	dotted := find(`"((?:pvc|storage|service|endpoints|node|volume|chain|oom)\.[a-z_]+)"`)
+	symptoms := find(`Symptom[A-Za-z]+\s*=\s*"([a-z_.]+)"`)
+	for _, id := range RuleIDs() { // идентификаторы правил — не коды отчёта
+		delete(dotted, id)
+	}
+	if len(missing) == 0 || len(dotted) == 0 || len(symptoms) == 0 {
+		t.Fatalf("code extraction found nothing: missing=%v dotted=%v symptoms=%v", missing, dotted, symptoms)
+	}
+	for _, lang := range chainLangs {
+		msgs := chainMessages(t, lang)
+		for code := range recs {
+			if !translated(msgs, "recommendations", code) {
+				t.Errorf("%s: no translation for recommendation %q", lang, code)
+			}
+		}
+		for code := range steps {
+			if !translated(msgs, "steps", code) {
+				t.Errorf("%s: no translation for step %q", lang, code)
+			}
+		}
+		for code := range missing {
+			if !translated(msgs, "missing", code) {
+				t.Errorf("%s: no translation for missing-context code %q", lang, code)
+			}
+		}
+		for code := range symptoms {
+			if !translated(msgs, "symptoms", code) {
+				t.Errorf("%s: no translation for symptom %q", lang, code)
+			}
+		}
+		for code := range dotted {
+			if !slices.ContainsFunc([]string{"facts", "hypotheses", "symptoms", "missing"}, func(s string) bool { return translated(msgs, s, code) }) {
+				t.Errorf("%s: code %q has no translation in facts, hypotheses, symptoms or missing", lang, code)
+			}
 		}
 	}
-	add("facts", `b\.fact(?:Log)?\(\s*[^,]+,\s*"([^"]+)"`)
-	add("recommendations", `"(rec\.[a-z_]+)"`)
-	add("steps", `"(step\.[a-z_]+)"`)
-	add("missing", `(?:b\.missing|c\.addMissing|col\.c\.addMissing)\(\s*"([a-z_.]+)"`)
-	add("hypotheses", `b\.hypothesis\(\s*[^,]+,\s*"((?:pvc|storage|service|endpoints|node|volume|chain|oom)\.[a-z_]+)"`)
-	for c := range codes["missing"] {
-		delete(codes["hypotheses"], c)
+}
+
+// Точная проверка по разделам: каждый код настоящих отчётов фикстур переведён в своём разделе.
+func TestChainFixtureCodesAreTranslated(t *testing.T) {
+	t.Parallel()
+	reports := map[string]Report{}
+	for name, c := range loadChainCases(t) {
+		reports[name] = Analyze(chainContext(t, name, c))
 	}
-	for _, id := range RuleIDs() { // идентификаторы правил — не коды отчёта
-		delete(codes["hypotheses"], id)
-	}
-	if len(codes["missing"]) == 0 {
-		t.Fatal("code extraction found no missing-context codes")
-	}
-	for _, lang := range []string{"en", "ru", "cn"} {
-		msgs := map[string]map[string]any{}
-		for _, file := range []string{"incidents.json", "incidentsChain.json"} {
-			raw, err := os.ReadFile(filepath.Join("..", "..", "frontend", "src", "i18n", "locales", lang, file))
-			if err != nil {
-				t.Fatal(err)
-			}
-			var m map[string]any
-			if err := json.Unmarshal(raw, &m); err != nil {
-				t.Fatalf("%s/%s: %v", lang, file, err)
-			}
-			for section, v := range m {
-				if sec, ok := v.(map[string]any); ok {
-					if msgs[section] == nil {
-						msgs[section] = map[string]any{}
-					}
-					for k, x := range sec {
-						msgs[section][k] = x
-					}
+	for _, lang := range chainLangs {
+		msgs := chainMessages(t, lang)
+		for name, rep := range reports {
+			check := func(section, code string) {
+				if !translated(msgs, section, code) {
+					t.Errorf("%s: %s: no translation for %s code %q", lang, name, section, code)
 				}
 			}
-		}
-		for section, set := range codes {
-			for code := range set {
-				key := strings.ReplaceAll(code, ".", "_")
-				if v, ok := msgs[section][key].(string); !ok || v == "" {
-					t.Errorf("%s: no translation for %s code %q (incidentsChain.%s.%s)", lang, section, code, section, key)
+			for _, s := range rep.Symptoms {
+				check("symptoms", s)
+			}
+			for _, f := range rep.Facts {
+				check("facts", f.Code)
+			}
+			for _, h := range rep.Hypotheses {
+				check("hypotheses", h.Code)
+			}
+			for _, r := range rep.Recommendations {
+				check("recommendations", r.Code)
+			}
+			for _, s := range rep.Steps {
+				check("steps", s.Code)
+			}
+			for _, m := range rep.Missing {
+				check("missing", m.Code)
+			}
+			// Состояния и причины звеньев цепочки показываются словарями incidentsChain.
+			for _, ch := range rep.Chains {
+				for _, st := range ch.Path {
+					if v, _ := msgs["graphHealth"][st.Health].(string); v == "" {
+						t.Errorf("%s: %s: no translation for graph health %q", lang, name, st.Health)
+					}
+					if st.Reason != "" {
+						if v, _ := msgs["graphReasons"][st.Reason].(string); v == "" {
+							t.Errorf("%s: %s: no translation for graph reason %q", lang, name, st.Reason)
+						}
+					}
 				}
 			}
 		}
@@ -106,8 +189,7 @@ func TestChainLocalesHaveTheSameKeys(t *testing.T) {
 		return out
 	}
 	placeholders := func(s string) string {
-		var ph []string
-		ph = append(ph, regexp.MustCompile(`\{[a-zA-Z0-9_]+\}`).FindAllString(s, -1)...)
+		ph := regexp.MustCompile(`\{[a-zA-Z0-9_]+\}`).FindAllString(s, -1)
 		slices.Sort(ph)
 		return strings.Join(ph, ",")
 	}

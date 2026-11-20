@@ -1,0 +1,7 @@
+{
+  "target": {"kind": "PersistentVolumeClaim", "namespace": "app", "name": "data"},
+  "expect": {
+    "symptoms": ["storage.claim_pending"],
+    "hypotheses": ["storage.waiting_first_consumer:medium"]
+  }
+}
