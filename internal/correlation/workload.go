@@ -67,7 +67,7 @@ func inspectPod(p *corev1.Pod) podInfo {
 			if t.Reason == "OOMKilled" {
 				oom = true
 			}
-			if t.FinishedAt.Time.After(lastFinished) {
+			if t.FinishedAt.After(lastFinished) {
 				lastFinished = t.FinishedAt.Time
 			}
 		}
