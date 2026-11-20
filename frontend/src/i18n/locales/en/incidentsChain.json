@@ -1,6 +1,87 @@
 {
+  "symptoms": {
+    "storage_claim_pending": "A volume claim is not bound."
+  },
+  "facts": {
+    "pvc_not_bound": "Claim {pvc} is not bound (phase: {phase}).",
+    "pvc_lost": "Claim {pvc} is in phase {phase}: the volume it was bound to no longer exists.",
+    "pvc_mounted": "Pod {pod} mounts claim {pvc}.",
+    "pvc_missing": "A Pod mounts claim {pvc}, but the claim does not exist.",
+    "storage_class_missing": "Claim {pvc} asks for StorageClass {class}, which does not exist.",
+    "storage_default_class_missing": "Claim {pvc} names no StorageClass, and the cluster has no default one.",
+    "storage_no_consumers": "No Pod uses claim {pvc}."
+  },
+  "hypotheses": {
+    "pvc_missing": "Claim {pvc} does not exist, so Pods that mount it cannot start.",
+    "pvc_lost": "The volume behind claim {pvc} is gone, so the claim is Lost.",
+    "pvc_unbound": "Claim {pvc} is not bound to a volume, and no more specific cause was found.",
+    "storage_class_not_found": "Claim {pvc} asks for StorageClass {class}, which does not exist, so no volume can be provisioned.",
+    "storage_no_default_class": "Claim {pvc} names no StorageClass and the cluster has no default one, so no volume is provisioned.",
+    "storage_waiting_first_consumer": "Claim {pvc} binds only when a Pod uses it, and no Pod does.",
+    "storage_provisioning_failed": "The volume provisioner failed to create a volume for claim {pvc}."
+  },
+  "recommendations": {
+    "rec_create_missing_claim": "Create PersistentVolumeClaim {pvc}, or correct the claim name in the Pod spec.",
+    "rec_restore_volume": "Recover or recreate the volume that claim {pvc} was bound to, or create a new claim.",
+    "rec_fix_storage_class": "Create StorageClass {class}, or point claim {pvc} to an existing one.",
+    "rec_set_default_storage_class": "Mark a StorageClass as the default, or name one in claim {pvc}.",
+    "rec_use_or_delete_claim": "Start a Pod that uses claim {pvc}, or delete the claim if it is no longer needed."
+  },
+  "steps": {
+    "step_check_provisioner": "Check the volume provisioner's logs and the events of claim {pvc}."
+  },
   "missing": {
     "service_selector_missing": "The Service has no selector, so it does not choose any Pods.",
     "graph_unavailable": "The dependency graph could not be built ({reason})."
+  },
+  "graphHealth": {
+    "Healthy": "Healthy",
+    "Degraded": "Degraded",
+    "Progressing": "In progress",
+    "Missing": "Missing",
+    "Unknown": "Unknown"
+  },
+  "graphReasons": {
+    "terminating": "Being deleted",
+    "completed": "Completed",
+    "failed": "Failed",
+    "evicted": "Evicted",
+    "oom_killed": "Killed for running out of memory",
+    "crash_loop": "Restarting in a loop",
+    "image_pull_failed": "Image cannot be pulled",
+    "config_error": "Configuration error",
+    "container_failed": "Container failed",
+    "init_failed": "Init container failed",
+    "pending_unscheduled": "Not scheduled to a node",
+    "pending": "Pending",
+    "container_creating": "Containers are being created",
+    "not_ready": "Not ready",
+    "scaled_to_zero": "Scaled to zero",
+    "paused": "Paused",
+    "suspended": "Suspended",
+    "replicas_unavailable": "Replicas unavailable",
+    "replica_failure": "Replica creation failed",
+    "rollout_in_progress": "Rollout in progress",
+    "progress_deadline_exceeded": "Rollout deadline exceeded",
+    "not_available": "Not available",
+    "unbound": "Not bound",
+    "lost": "Volume lost",
+    "released": "Volume released",
+    "no_default_storageclass": "No default StorageClass",
+    "waiting_first_consumer": "Waiting for the first Pod",
+    "no_endpoints": "No endpoints",
+    "no_ready_endpoints": "No ready endpoints",
+    "selector_matches_nothing": "Selector matches no Pods",
+    "node_not_ready": "Node not ready",
+    "node_unreachable": "Node unreachable",
+    "node_pressure_memory": "Memory pressure",
+    "node_pressure_disk": "Disk pressure",
+    "node_pressure_pid": "Process limit pressure",
+    "node_network_unavailable": "Network unavailable",
+    "node_unschedulable": "Closed to new Pods",
+    "job_failed": "Job failed",
+    "running": "Running",
+    "unreadable": "Cannot be read",
+    "not_found": "Does not exist"
   }
 }
