@@ -798,7 +798,7 @@ jobs:
       - name: Playwright browsers
         run: |
           for attempt in 1 2 3; do
-            timeout 300 npx playwright install --with-deps chromium && exit 0
+            timeout 600 npx playwright install --with-deps chromium && exit 0
             echo "::warning::playwright install, попытка $attempt из 3: ошибка или таймаут"
           done
           exit 1
