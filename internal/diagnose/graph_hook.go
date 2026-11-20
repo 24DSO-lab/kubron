@@ -61,7 +61,13 @@ func graphGaps(c *Context, g *depgraph.Graph) {
 		case kind == "list_truncated":
 			c.addPartial(arg)
 		case graphWarnKinds[kind] != "":
-			c.addMissing("source.unavailable", ResourceRef{Kind: arg}, map[string]string{"reason": graphWarnKinds[kind]})
+			reason := graphWarnKinds[kind]
+			// Запись уровня вида лишняя, если тот же отказ уже записан по конкретному объекту этого вида.
+			if !slices.ContainsFunc(c.Missing, func(m MissingContext) bool {
+				return m.Code == "source.unavailable" && m.Resource.Kind == arg && m.Params["reason"] == reason
+			}) {
+				c.addMissing("source.unavailable", ResourceRef{Kind: arg}, map[string]string{"reason": reason})
+			}
 		case strings.HasPrefix(kind, "limit.") || kind == "canceled":
 			c.addPartial("Graph")
 		}
