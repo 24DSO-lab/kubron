@@ -56,6 +56,9 @@
           <span v-if="incident.outcome?.confirmedHypothesisId === h.id" class="confirmed-by" data-testid="hypothesis-confirmed">
             {{ $t('incidents.outcome.confirmedBy', { hypothesis: codeText('hypotheses', h.code, h.params) }) }}
           </span>
+          <span v-else-if="incident.outcome?.rejectedHypothesisIds?.includes(h.id)" class="rejected-by" data-testid="hypothesis-rejected">
+            {{ $t('incidentsIntel.outcome.rejectedBadge') }}
+          </span>
           <div class="refs" data-testid="supporting">
             <strong>{{ $t('incidents.supporting') }}:</strong>
             <template v-if="support(h).length">
@@ -77,9 +80,16 @@
     <section v-if="report.recommendations.length" class="block">
       <h3>{{ $t('incidents.sections.recommendations') }}</h3>
       <ul class="items">
-        <li v-for="r in report.recommendations" :key="r.id" class="item item-rec" data-testid="recommendation" data-kind="recommendation">
+        <li v-for="r in report.recommendations" :key="r.id" class="item item-rec" data-testid="recommendation" data-kind="recommendation"
+          :class="{ helpful: incident.outcome?.helpfulRecommendationIds?.includes(r.id), useless: incident.outcome?.uselessRecommendationIds?.includes(r.id) }">
           <span class="tag tag-rec">{{ $t('incidents.kindLabels.recommendation') }}</span>
           <span class="text">{{ codeText('recommendations', r.code, r.params) }}</span>
+          <span v-if="incident.outcome?.helpfulRecommendationIds?.includes(r.id)" class="rec-mark" data-testid="recommendation-helpful">
+            {{ $t('incidentsIntel.outcome.helpfulBadge') }}
+          </span>
+          <span v-else-if="incident.outcome?.uselessRecommendationIds?.includes(r.id)" class="rec-mark" data-testid="recommendation-useless">
+            {{ $t('incidentsIntel.outcome.uselessBadge') }}
+          </span>
         </li>
       </ul>
     </section>
@@ -87,112 +97,18 @@
     <section v-if="report.steps.length" class="block">
       <h3>{{ $t('incidents.sections.steps') }}</h3>
       <ul class="items">
-        <li v-for="s in report.steps" :key="s.id" class="item item-step" data-testid="step" data-kind="step">
+        <li v-for="s in report.steps" :key="s.id" class="item item-step" data-testid="step" data-kind="step" :data-code="s.code">
           <span class="tag tag-step">{{ $t('incidents.kindLabels.step') }}</span>
           <span class="text">{{ codeText('steps', s.code, s.params) }}</span>
         </li>
       </ul>
     </section>
 
-    <section v-if="report.missing.length" class="block" data-testid="missing-context">
+    <section v-if="report.missing.length" class="block">
       <h3>{{ $t('incidents.sections.missing') }}</h3>
       <ul class="items">
-        <li v-for="(m, i) in report.missing" :key="i" class="item item-missing" data-testid="missing" :data-code="m.code">
-          {{ codeText('missing', m.code, m.params) }}
-        </li>
+        <li v-for="(m, i) in report.missing" :key="i" class="item item-missing" data-testid="missing">{{ m }}</li>
       </ul>
     </section>
-
-    <MonitoringHint :missing="report.missing" />
   </div>
 </template>
-
-<script lang="ts" setup>
-import { computed } from 'vue'
-import ChainView from './ChainView.vue'
-import MetricFacts from './MetricFacts.vue'
-import MonitoringHint from './MonitoringHint.vue'
-import { useI18n } from 'vue-i18n'
-import { te } from '../../i18n'
-import { isMetricFact } from '../../composables/metricFormat'
-import { codeText, confidenceLevel, evidenceFor, factsByIds, reasonText } from '../../composables/incidentModel'
-import type { Fact, Hypothesis, Incident } from '../../types/incident'
-
-const props = defineProps<{ incident: Incident }>()
-const { t } = useI18n()
-const report = computed(() => props.incident.report)
-
-/**
- * Гипотезы без потери данных: кандидат первопричины (объясняет другие и сам не объясняется) идёт первым,
- * за ним — объяснённые им гипотезы; остальные — в исходном порядке. Показываются все гипотезы.
- */
-type Role = 'candidate' | 'explained' | 'plain'
-const orderedHypotheses = computed<{ h: Hypothesis; role: Role }[]>(() => {
-  const all = report.value.hypotheses
-  const byId = new Map(all.map((h) => [h.id, h]))
-  const explainedIds = new Set(all.flatMap((h) => (h.explains ?? []).filter((id) => byId.has(id) && id !== h.id)))
-  const isCandidate = (h: Hypothesis) => (h.explains ?? []).some((id) => byId.has(id) && id !== h.id) && !explainedIds.has(h.id)
-  const placed = new Set<string>()
-  const out: { h: Hypothesis; role: Role }[] = []
-  for (const h of all) {
-    if (placed.has(h.id) || !isCandidate(h)) continue
-    placed.add(h.id)
-    out.push({ h, role: 'candidate' })
-    for (const id of h.explains ?? []) {
-      const e = byId.get(id)
-      if (e && !placed.has(id)) { placed.add(id); out.push({ h: e, role: 'explained' }) }
-    }
-  }
-  for (const h of all) if (!placed.has(h.id)) out.push({ h, role: 'plain' })
-  return out
-})
-
-const support = (h: Hypothesis) => factsByIds(report.value.facts, h.supporting)
-const contra = (h: Hypothesis) => factsByIds(report.value.facts, h.contradicting)
-
-function when(iso: string): string {
-  const d = new Date(iso)
-  return Number.isNaN(d.getTime()) ? iso : d.toLocaleString()
-}
-
-function sourceText(f: Fact): string {
-  const kindKey = `incidents.source.kinds.${f.source.kind}`
-  const kind = te(kindKey) ? t(kindKey) : t(f.source.kind === 'metric' ? 'incidentsIntel.sourceKinds.metric' : 'incidentsIntel.sourceKinds.other')
-  const where = f.source.field ? `${f.source.resource.kind}/${f.source.resource.name} ${f.source.field}` : `${f.source.resource.kind}/${f.source.resource.name}`
-  return `${kind}: ${where}`
-}
-</script>
-
-<style scoped>
-.findings { display: flex; flex-direction: column; gap: 18px; }
-.block h3 { margin: 0 0 8px; font-size: 15px; color: #cdd6f4; }
-.chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.chip { padding: 3px 10px; border-radius: 999px; background: #313244; color: #cdd6f4; font-size: 12px; }
-.items { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
-.item { padding: 10px 12px; border-radius: 8px; border-left: 3px solid #45475a; background: #1e1e2e; font-size: 13px; }
-.item-fact { border-left-color: #89b4fa; }
-.item-hyp { border-left-style: dashed; border-left-color: #f9e2af; background: rgba(249, 226, 175, 0.05); }
-.item-hyp.confirmed { border-left-style: solid; border-left-color: #a6e3a1; }
-.item-rec { border-left-color: #a6e3a1; }
-.item-step { border-left-color: #94e2d5; }
-.item-missing { border-left-color: #fab387; color: #fab387; }
-.tag { display: inline-block; margin-right: 8px; padding: 1px 7px; border-radius: 4px; font-size: 11px; font-weight: 600; }
-.tag-fact { background: rgba(137, 180, 250, 0.18); color: #89b4fa; }
-.tag-cand { margin: 0 0 0 8px; background: rgba(249, 226, 175, 0.18); color: #f9e2af; }
-.item-hyp.explained { margin-left: 18px; }
-.explained-by { margin-left: 8px; color: #a6adc8; font-size: 12px; }
-.tag-hyp { background: rgba(249, 226, 175, 0.18); color: #f9e2af; }
-.tag-rec { background: rgba(166, 227, 161, 0.18); color: #a6e3a1; }
-.tag-step { background: rgba(148, 226, 213, 0.18); color: #94e2d5; }
-.text { color: #cdd6f4; }
-.meta, .refs { margin-top: 4px; color: #a6adc8; font-size: 12px; }
-.refs .ref { display: inline-block; margin: 0 6px 2px 0; padding: 0 6px; border-radius: 4px; background: #313244; }
-.conf { margin-left: 8px; font-size: 12px; }
-.conf-low { color: #a6adc8; } .conf-medium { color: #f9e2af; } .conf-high { color: #fab387; }
-.confirmed-by { display: block; margin-top: 4px; color: #a6e3a1; font-size: 12px; }
-.note { margin: 0 0 8px; color: #a6adc8; font-size: 12px; }
-.note.warn { color: #f9e2af; }
-.muted { color: #6c7086; }
-.evidence-state { margin-top: 4px; font-size: 12px; }
-.ev-ok { color: #a6e3a1; } .ev-no { color: #fab387; }
-</style>
