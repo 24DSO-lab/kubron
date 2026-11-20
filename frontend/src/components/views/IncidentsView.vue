@@ -78,3 +78,127 @@ const {
   reset, loadList, open, select: selectIncident, close, refreshEvents, markOutcome, saveFragment, deleteFragment, setLogCapture,
   readFragment, remove, exportIncident, loadSettings, saveSettings: persistSettings, listen,
 } = useIncidents(() => activeClusterId.value)
+
+const {
+  items: problemItems, nextCursor: problemCursor, status: problemStatus, loading: problemsLoading, detail: problemDetail, canOperate,
+  reset: resetProblems, loadList: loadProblems, select: selectProblem, close: closeProblem, attach, detach, merge, create, listen: listenProblems,
+} = useIncidentProblems(() => activeClusterId.value)
+
+/** Расследования без проблемы: их можно присоединить или объединить в новую проблему. */
+const attachable = computed(() => items.value.filter((i) => !i.problemId))
+const mergeTargets = computed(() => problemItems.value.filter((p) => p.status === 'open' && p.id !== problemDetail.value?.id))
+
+const busy = ref(false)
+const loadError = ref('')
+const settingsOpen = ref(false)
+const confirm = reactive({ open: false, title: '', action: () => {} })
+let unlisten: (() => void) | null = null
+let unlistenProblems: (() => void) | null = null
+
+/** Выполняет действие с блокировкой кнопок; ошибка бэкенда показывается, а не теряется. */
+async function run(action: () => Promise<unknown>, successKey = '') {
+  busy.value = true
+  loadError.value = ''
+  try {
+    await action()
+    if (successKey) notifications.notifySuccess(t(`incidents.${successKey}`))
+  } catch (e) {
+    loadError.value = errorText(e)
+  } finally {
+    busy.value = false
+  }
+}
+
+async function reload() {
+  await run(() => loadList())
+  await run(() => loadProblems())
+}
+
+function setProblemFilter(s: ProblemStatus | '') {
+  problemStatus.value = s
+  void run(() => loadProblems())
+}
+
+/** Из расследования или списка — на экран проблемы; расследование закрывается, чтобы показать проблему. */
+async function openProblem(id: string) {
+  close()
+  await run(() => selectProblem(id))
+}
+
+function setFilter(s: IncidentStatus | '') {
+  status.value = s
+  void reload()
+}
+
+async function select(id: string) {
+  await run(() => selectIncident(id))
+}
+
+async function openIncident(r: OpenIncidentRequest) {
+  busy.value = true
+  loadError.value = ''
+  try {
+    await open(r)
+  } catch (e) {
+    loadError.value = t('incidents.open.failed', { error: errorText(e) })
+  } finally {
+    busy.value = false
+  }
+}
+
+async function toggleSettings() {
+  settingsOpen.value = !settingsOpen.value
+  if (settingsOpen.value && !settings.value) await run(loadSettings)
+}
+
+async function saveSettings(s: Settings) {
+  await run(() => persistSettings(s), 'settings.saved')
+}
+
+function ask(title: string, action: () => void) {
+  confirm.title = title
+  confirm.action = action
+  confirm.open = true
+}
+
+/** Действия над проблемой всегда с подтверждением и напоминанием: расследования не удаляются и не сливаются. */
+const confirmText = (key: string) => `${t(`incidentsIntel.problem.confirm.${key}`)} ${t('incidentsIntel.problem.safeNote')}`
+const askAttach = (incidentId: string) => ask(confirmText('attach'), () => void run(() => attach(incidentId)))
+const askDetach = (incidentId: string) => ask(confirmText('detach'), () => void run(() => detach(incidentId)))
+const askMerge = (toId: string) => ask(confirmText('merge'), () => void run(() => merge(toId)))
+const askCreate = (ids: string[]) => ask(confirmText('create'), () => void run(() => create(ids)))
+
+const askDelete = () => ask(t('incidents.detail.deleteConfirm'), () => void run(remove))
+const askDeleteFragment = (id: string) => ask(t('incidents.evidence.deleteConfirm'), () => void run(() => deleteFragment(id)))
+const askDeleteAll = () => ask(t('incidents.evidence.deleteAllConfirm'), () => void run(() => setLogCapture(detail.value?.incident.saveLogs ?? true, true)))
+
+onMounted(() => {
+  void reload()
+  unlisten = listen()
+  unlistenProblems = listenProblems()
+})
+// Смена активного кластера: список, открытое расследование и настройки прежнего кластера сбрасываются,
+// ответы на его запросы отбрасываются (в composable), список читается заново для нового кластера
+watch(activeClusterId, (id, prev) => {
+  if (id === prev) return
+  reset()
+  resetProblems()
+  loadError.value = ''
+  settingsOpen.value = false
+  confirm.open = false
+  if (id) void reload()
+})
+onBeforeUnmount(() => {
+  unlisten?.()
+  unlistenProblems?.()
+})
+</script>
+
+<style scoped>
+.incidents-view { padding: 24px; text-align: left; max-width: 1300px; display: flex; flex-direction: column; gap: 20px; }
+.head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; }
+.head h2 { margin: 0; font-size: 22px; color: #89b4fa; }
+.sub { margin: 4px 0 0; color: #a6adc8; font-size: 13px; }
+.actions { display: flex; gap: 8px; }
+.panel h3 { margin: 0 0 10px; font-size: 15px; color: #cdd6f4; }
+</style>
