@@ -311,7 +311,10 @@ func TestLimits(t *testing.T) {
 		w.node("n1", false, "Ready=False@30")
 		res, _ := run(t, w, "prod", "p000")
 		b := res.Best()
-		if b == nil || b.Total != n || len(b.Affected) != correlation.MaxAffected {
+		if b == nil {
+			t.Fatal("кандидата нет")
+		}
+		if b.Total != n || len(b.Affected) != correlation.MaxAffected {
 			t.Fatalf("total=%d affected=%d", b.Total, len(b.Affected))
 		}
 		if b.Affected[0].Name != "p000" {
