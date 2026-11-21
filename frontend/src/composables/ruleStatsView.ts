@@ -56,7 +56,7 @@ export function hypothesisNotes(s: HypothesisStat | undefined): string[] {
   return out
 }
 
-/** Пометка у рекомендации: «ранее не помегала» (только при trusted), «помегала в N из M» или число случаев. */
+/** Пометка у рекомендации: «ранее не помогала» (только при trusted), «помогала в N из M» или число случаев. */
 export function recommendationNote(s: RecommendationStat | undefined): { text: string; warn: boolean } | null {
   if (!s || s.sample <= 0) return null
   if (!s.trusted) return { text: t('incidentsInsights.stats.fewCases', { m: s.sample }), warn: false }
