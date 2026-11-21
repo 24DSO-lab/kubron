@@ -30,7 +30,7 @@ describe('FindingsPanel: статистика правил', () => {
     expect(html).not.toContain('confirmed in 1 of 2')
   })
 
-  it('рекомендации остаются на экране; «ранее не помегала» — предупреждение, а не скрытие', async () => {
+  it('рекомендации остаются на экране; «ранее не помогала» — предупреждение, а не скрытие', async () => {
     const stats: RuleStats = { ...ruleStatsFixture, recommendations: [{ ruleId: 'storage.class_missing', epoch: 1, code: 'rec.create_storageclass', helpful: 0, useless: 4, ratio: 0, sample: 4, trusted: true, previouslyUnhelpful: true }] }
     const html = await render(FindingsPanel, { incident: chainIncident, stats })
     expect(count(html, 'data-testid="recommendation"')).toBe(1)
