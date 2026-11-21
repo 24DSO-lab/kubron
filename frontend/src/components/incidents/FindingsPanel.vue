@@ -53,14 +53,12 @@
           <span v-if="incident.outcome?.rejectedHypothesisIds?.includes(h.id)" class="outcome-mark" data-testid="hypothesis-rejected">
             {{ $t('incidentsIntel.outcome.markRejected') }}
           </span>
+          <span v-for="(n, ni) in hypothesisNotes(hypothesisStatFor(stats, h))" :key="ni" class="stat-note" data-testid="hypothesis-stat">{{ n }}</span>
           <span class="conf" :class="`conf-${confidenceLevel(h.confidence)}`" data-testid="confidence">
             {{ $t('incidents.confidence.label', { level: $t(`incidents.confidence.${confidenceLevel(h.confidence)}`) }) }}
           </span>
           <span v-if="incident.outcome?.confirmedHypothesisId === h.id" class="confirmed-by" data-testid="hypothesis-confirmed">
             {{ $t('incidents.outcome.confirmedBy', { hypothesis: codeText('hypotheses', h.code, h.params) }) }}
-          </span>
-          <span v-else-if="incident.outcome?.rejectedHypothesisIds?.includes(h.id)" class="rejected-by" data-testid="hypothesis-rejected">
-            {{ $t('incidentsIntel.outcome.rejectedBadge') }}
           </span>
           <div class="refs" data-testid="supporting">
             <strong>{{ $t('incidents.supporting') }}:</strong>
@@ -87,14 +85,13 @@
           :class="{ helpful: incident.outcome?.helpfulRecommendationIds?.includes(r.id), useless: incident.outcome?.uselessRecommendationIds?.includes(r.id) }">
           <span class="tag tag-rec">{{ $t('incidents.kindLabels.recommendation') }}</span>
           <span class="text">{{ codeText('recommendations', r.code, r.params) }}</span>
-
           <span v-if="incident.outcome?.helpfulRecommendationIds?.includes(r.id)" class="outcome-mark ok" data-testid="recommendation-helpful">
             {{ $t('incidentsIntel.outcome.markHelpful') }}
           </span>
           <span v-else-if="incident.outcome?.uselessRecommendationIds?.includes(r.id)" class="outcome-mark" data-testid="recommendation-useless">
             {{ $t('incidentsIntel.outcome.markUseless') }}
-
           </span>
+          <span v-if="recNote(r)" class="stat-note" :class="{ warn: recNote(r)!.warn }" data-testid="recommendation-stat">{{ recNote(r)!.text }}</span>
         </li>
       </ul>
     </section>
@@ -131,9 +128,10 @@ import { useI18n } from 'vue-i18n'
 import { te } from '../../i18n'
 import { isMetricFact } from '../../composables/metricFormat'
 import { codeText, confidenceLevel, evidenceFor, factsByIds, reasonText } from '../../composables/incidentModel'
-import type { Fact, Hypothesis, Incident } from '../../types/incident'
+import { hypothesisNotes, hypothesisStatFor, rankWithinConfidence, recommendationNote, recommendationStatFor } from '../../composables/ruleStatsView'
+import type { Fact, Hypothesis, Incident, Recommendation, RuleStats } from '../../types/incident'
 
-const props = defineProps<{ incident: Incident }>()
+const props = defineProps<{ incident: Incident; stats?: RuleStats | null }>()
 const { t } = useI18n()
 const report = computed(() => props.incident.report)
 
@@ -158,9 +156,14 @@ const orderedHypotheses = computed<{ h: Hypothesis; role: Role }[]>(() => {
       if (e && !placed.has(id)) { placed.add(id); out.push({ h: e, role: 'explained' }) }
     }
   }
-  for (const h of all) if (!placed.has(h.id)) out.push({ h, role: 'plain' })
-  return out
+  const plain: { h: Hypothesis; role: Role }[] = []
+  for (const h of all) if (!placed.has(h.id)) plain.push({ h, role: 'plain' })
+  // Статистика кластера переставляет гипотезы только внутри одного уровня уверенности (ADR-0034 §7).
+  return [...out, ...rankWithinConfidence(plain, props.stats)]
 })
+
+/** Пометка рекомендации по статистике; рекомендации не скрываются никогда. */
+const recNote = (r: Recommendation) => recommendationNote(recommendationStatFor(props.stats, r))
 
 const support = (h: Hypothesis) => factsByIds(report.value.facts, h.supporting)
 const contra = (h: Hypothesis) => factsByIds(report.value.facts, h.contradicting)
@@ -195,6 +198,8 @@ function sourceText(f: Fact): string {
 .tag-fact { background: rgba(137, 180, 250, 0.18); color: #89b4fa; }
 .tag-cand { margin: 0 0 0 8px; background: rgba(249, 226, 175, 0.18); color: #f9e2af; }
 .item-hyp.explained { margin-left: 18px; }
+.stat-note { display: inline-block; margin-left: 8px; color: #a6adc8; font-size: 12px; }
+.stat-note.warn { color: #fab387; }
 .outcome-mark { margin-left: 8px; font-size: 12px; color: #fab387; }
 .outcome-mark.ok { color: #a6e3a1; }
 .explained-by { margin-left: 8px; color: #a6adc8; font-size: 12px; }
@@ -207,7 +212,6 @@ function sourceText(f: Fact): string {
 .conf { margin-left: 8px; font-size: 12px; }
 .conf-low { color: #a6adc8; } .conf-medium { color: #f9e2af; } .conf-high { color: #fab387; }
 .confirmed-by { display: block; margin-top: 4px; color: #a6e3a1; font-size: 12px; }
-.rejected-by { display: block; margin-top: 4px; color: #f38ba8; font-size: 12px; }
 .rec-mark { margin-left: 8px; font-size: 12px; color: #a6adc8; }
 .item-rec.helpful .rec-mark { color: #a6e3a1; }
 .item-rec.useless .rec-mark { color: #f38ba8; }

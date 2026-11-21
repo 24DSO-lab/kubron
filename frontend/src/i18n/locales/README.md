@@ -23,8 +23,9 @@ Locale-файлы лежат в `locales/{en,ru,cn}/` и подхватываю�
 |---|---|---|
 | `incidents.json` | D8 | существующие заголовки, кнопки, пометки и формы расследований |
 | `incidentsIntel.json` | D8 | новые тексты интерфейса Intelligence: `chain.*`, `unknownEntry`, далее проблемы, корреляция, статистика |
+| `incidentsInsights.json` | D8 | статистика правил кластера (`stats.*`), баннер повторения (`recurrence.*`) |
 | `incidentsMetrics.json` | D1 | `facts.metric_*`, `hypotheses.metrics_*`, `missing.metrics_*`, `reasons.*`, `hints.*` |
 | `incidentsChain.json` | D3 | коды цепочечных правил, `missing.graph_*` |
 | `incidentsCorrelation.json` | D4 | `facts.correlation_*`, `missing.correlation_*`, `kinds.*`, `reasons.*` |
 
-Владельцы пишут только в свои файлы. Собственные новые ключи интерфейса (`chain.*`, `problem.*` и т. п.) — только в `incidentsIntel.json`. Конфликт решает D8.
+Владельцы пишут только в свои файлы. Собственные новые ключи интерфейса — в `incidentsIntel.json` (цепочка, метрики, проблемы, отметка результата) и `incidentsInsights.json` (статистика, повторение). Конфликт решает D8.

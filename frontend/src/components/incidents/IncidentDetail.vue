@@ -28,7 +28,9 @@
       </div>
     </header>
 
-    <FindingsPanel :incident="incident" />
+    <RecurrenceBanner :incident="incident" :previous="previous" @open-incident="(id) => emit('openIncident', id)" />
+
+    <FindingsPanel :incident="incident" :stats="stats" />
 
     <CorrelationBlock v-if="incident.correlation || incident.problemId" :correlation="incident.correlation" :problem-id="incident.problemId"
       @open-problem="(id) => emit('openProblem', id)" />
@@ -59,7 +61,8 @@ import EventsTable from './EventsTable.vue'
 import EvidencePanel from './EvidencePanel.vue'
 import FindingsPanel from './FindingsPanel.vue'
 import OutcomeForm from './OutcomeForm.vue'
-import type { Evidence, Fragment, FragmentView, Incident, OutcomeInput } from '../../types/incident'
+import RecurrenceBanner from './RecurrenceBanner.vue'
+import type { Evidence, Fragment, FragmentView, Incident, OutcomeInput, RuleStats } from '../../types/incident'
 
 defineProps<{
   incident: Incident
@@ -67,10 +70,14 @@ defineProps<{
   canReadLogs: boolean
   read: (id: string) => Promise<Fragment>
   busy?: boolean
+  stats?: RuleStats | null
+  /** предыдущее расследование при повторении (для баннера); null — недоступно */
+  previous?: Incident | null
 }>()
 const emit = defineEmits<{
   (e: 'back'): void
   (e: 'openProblem', id: string): void
+  (e: 'openIncident', id: string): void
   (e: 'refresh'): void
   (e: 'export', withFragments: boolean): void
   (e: 'delete'): void
