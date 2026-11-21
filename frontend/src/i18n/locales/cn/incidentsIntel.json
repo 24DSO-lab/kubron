@@ -122,7 +122,6 @@
     }
   },
   "outcome": {
-
     "more": "更多详情（可选）",
     "optionalHint": "此处均可不填",
     "rejected": "已排除的假设",
@@ -142,22 +141,21 @@
       "rejected": "已排除",
       "unknown": "未知"
     },
-    "doneRejected": "已排除：{items}",
-    "doneHelpful": "有帮助：{items}",
-    "doneUseless": "无帮助：{items}",
-    "doneOtherAction": "建议之外的操作有帮助",
-    "doneResolvedAt": "解决于 {time}",
-    "doneCorrelation": "可能的共同来源：{verdict}",
-    "rejectedBadge": "已排除",
-    "helpfulBadge": "有帮助",
-    "uselessBadge": "无帮助",
     "errors": {
       "tooMany": "单个列表中选中项过多。",
       "noteTooLong": "备注过长。",
       "resolvedBeforeOpen": "解决时间不能早于调查开始时间。",
       "resolvedInFuture": "解决时间不能是将来。",
       "resolvedInvalid": "无法解析解决时间。"
-    }
-
+    },
+    "markRejected": "已被人工排除",
+    "markHelpful": "有帮助",
+    "markUseless": "没有帮助",
+    "doneRejected": "已排除：{items}",
+    "doneHelpful": "有帮助：{items}",
+    "doneUseless": "无帮助：{items}",
+    "doneOtherAction": "建议之外的操作有帮助",
+    "doneResolvedAt": "解决于 {time}",
+    "doneCorrelation": "可能的共同来源：{verdict}"
   }
 }
