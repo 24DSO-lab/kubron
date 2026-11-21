@@ -1,0 +1,51 @@
+{
+  "stats": {
+    "title": "本集群的规则统计",
+    "subtitle": "本集群中人们对各诊断规则的确认频率。这只是阅读报告的参考，不是结论。",
+    "loading": "加载中…",
+    "none": "统计不可用。",
+    "scope": "基于 {records} 个有明确标记的已关闭调查；{unevaluated} 个无标记的不计入。",
+    "note": "仅统计人们标记过的内容。累计至少 5 个案例后才显示百分比，之前只显示案例数。",
+    "truncated": "仅统计最近的已关闭调查。",
+    "nothing": "已标记的调查还不够多。",
+    "hypotheses": "假设",
+    "recommendations": "建议",
+    "symptoms": "症状",
+    "correlations": "可能的共同来源",
+    "cols": {
+      "rule": "规则",
+      "confirmed": "已证实",
+      "rejected": "已排除",
+      "share": "占比",
+      "time": "典型解决时间",
+      "recurred": "复发 / 已解决",
+      "helpful": "有帮助",
+      "useless": "没有帮助",
+      "symptom": "症状",
+      "closed": "已关闭",
+      "withConfirmed": "有已证实原因",
+      "coverage": "覆盖率",
+      "kind": "类型"
+    },
+    "confirmedIn": "在本集群 {m} 个案例中证实 {n} 次",
+    "typicalTime": "通常约 {time} 内解决",
+    "recurred": "{m} 次解决后有 {n} 次复发",
+    "fewCases": "目前 {m} 个案例：样本太少，不显示百分比",
+    "helpedIn": "在本集群 {m} 个案例中有帮助 {n} 次",
+    "previouslyUnhelpful": "此前在本集群没有帮助（{m} 次中有帮助 {n} 次）",
+    "previouslyUnhelpfulShort": "此前没有帮助",
+    "exportTitle": "导出规则统计",
+    "exportInfo": "生成仅含汇总数据的 JSON 文件：规则代码、计数、中位时间和覆盖率。不含资源名称、命名空间、调查标识、备注、用户、集群或组织标识、签名及精确时间戳。不会向任何地方发送：是否分享文件由您决定。",
+    "exportButton": "导出统计",
+    "exportConfirm": "将匙名规则统计导出为文件吗？其中只有规则代码和计数，没有名称或备注。不会自动发送任何内容。"
+  },
+  "recurrence": {
+    "title": "看起来是重复问题",
+    "summary": "此问题的上一次调查已于 {time} 以“{result}”关闭。",
+    "summaryNoOutcome": "此问题的上一次调查开启于 {time}。",
+    "confirmed": "当时证实的原因：{cause}",
+    "helped": "当时有帮助的做法：{items}",
+    "unavailable": "这是重复出现的问题，但上一次调查已不可用。",
+    "open": "打开上一次调查"
+  }
+}

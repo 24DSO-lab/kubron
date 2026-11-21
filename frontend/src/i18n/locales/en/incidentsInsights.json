@@ -1,0 +1,51 @@
+{
+  "stats": {
+    "title": "Rule statistics for this cluster",
+    "subtitle": "How often each diagnostic rule was confirmed by people in this cluster. This is a hint for reading a report, not a verdict.",
+    "loading": "Loading…",
+    "none": "Statistics are not available.",
+    "scope": "Based on {records} closed investigations with an explicit mark; {unevaluated} without one are not counted.",
+    "note": "Only what people marked is counted. Percentages appear once there are at least 5 cases; before that only the number of cases is shown.",
+    "truncated": "Only the most recent closed investigations are counted.",
+    "nothing": "Not enough marked investigations yet.",
+    "hypotheses": "Hypotheses",
+    "recommendations": "Recommendations",
+    "symptoms": "Symptoms",
+    "correlations": "Possible common source",
+    "cols": {
+      "rule": "Rule",
+      "confirmed": "Confirmed",
+      "rejected": "Ruled out",
+      "share": "Share",
+      "time": "Typical time to resolve",
+      "recurred": "Recurred / resolved",
+      "helpful": "Helped",
+      "useless": "Did not help",
+      "symptom": "Symptom",
+      "closed": "Closed",
+      "withConfirmed": "With a confirmed cause",
+      "coverage": "Coverage",
+      "kind": "Kind"
+    },
+    "confirmedIn": "confirmed in {n} of {m} cases here",
+    "typicalTime": "typically resolved in about {time}",
+    "recurred": "came back after {n} of {m} resolutions",
+    "fewCases": "{m} cases so far: too few for a percentage",
+    "helpedIn": "helped in {n} of {m} cases here",
+    "previouslyUnhelpful": "previously did not help here (helped in {n} of {m})",
+    "previouslyUnhelpfulShort": "previously did not help",
+    "exportTitle": "Export rule statistics",
+    "exportInfo": "Creates a JSON file with aggregates only: rule codes, counters, median times and coverage. It contains no resource names, namespaces, investigation IDs, notes, users, cluster or organisation identifiers, signatures or exact timestamps. Nothing is sent anywhere: sharing the file is your decision.",
+    "exportButton": "Export statistics",
+    "exportConfirm": "Export anonymous rule statistics to a file? It contains only rule codes and counters, with no names or notes. Nothing is sent automatically."
+  },
+  "recurrence": {
+    "title": "This looks like a repeat",
+    "summary": "An earlier investigation of this problem was closed as “{result}” on {time}.",
+    "summaryNoOutcome": "An earlier investigation of this problem was opened on {time}.",
+    "confirmed": "Confirmed cause then: {cause}",
+    "helped": "What helped then: {items}",
+    "unavailable": "It repeats an earlier investigation that is no longer available.",
+    "open": "Open the earlier investigation"
+  }
+}
