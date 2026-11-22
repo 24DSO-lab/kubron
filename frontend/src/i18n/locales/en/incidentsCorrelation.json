@@ -30,5 +30,8 @@
     "budget": "The limit of additional cluster reads was reached.",
     "deadline": "There was not enough time left to finish the search.",
     "not_found": "The object was not found."
+  },
+  "symptoms": {
+    "pod_not_ready": "Pod is not ready"
   }
 }

@@ -30,5 +30,8 @@
     "budget": "已达到额外读取集群的次数上限。",
     "deadline": "剩余时间不足以完成查找。",
     "not_found": "未找到该对象。"
+  },
+  "symptoms": {
+    "pod_not_ready": "Pod 未就绪"
   }
 }
