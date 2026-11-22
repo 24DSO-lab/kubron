@@ -57,8 +57,22 @@ func explainable(cause, effect Hypothesis) bool {
 	case strings.HasPrefix(cause.Code, "node."):
 		return effect.Resource.Kind == "Pod" && nodeEffects[effect.Code]
 	case cause.Resource.Kind == "Pod":
-		// Неготовый Pod объясняет пустые endpoints Service, который его выбирает.
-		return effect.Resource.Kind == "Service" && strings.HasPrefix(effect.Code, "service.")
+		// Неготовый Pod объясняет отсутствие готовых endpoints у Service, который его выбирает (но не неверный
+		// селектор или порт: их причина в самом Service).
+		return effect.Resource.Kind == "Service" && effect.Code == "service.no_ready_endpoints"
+	}
+	return false
+}
+
+// graphLimited — граф ограничен пределами, усечением выборки или отменой: отсутствие объекта в нём ничего не доказывает.
+// Сбой чтения вида (forbidden, unavailable) ограничением не считается: он записан как пробел (Missing), а данные
+// остальных видов остаются верными.
+func graphLimited(g *depgraph.Graph) bool {
+	for _, w := range g.Warnings() {
+		kind, _, _ := strings.Cut(w, ":")
+		if kind == "list_truncated" || kind == "canceled" || strings.HasPrefix(kind, "limit.") {
+			return true
+		}
 	}
 	return false
 }
