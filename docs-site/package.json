@@ -8,7 +8,9 @@
     "docs:build": "vitepress build",
     "docs:preview": "vitepress preview",
     "test:relay": "node --test \"relay/*.test.ts\"",
-    "donations:check": "node scripts/check-donations.mjs"
+    "donations:check": "node scripts/check-donations.mjs",
+    "donations:sync": "node scripts/sync-donations.mjs",
+    "test:donations": "node --test scripts/sync-donations.test.mjs"
   },
   "devDependencies": {
     "vitepress": "^1.6.3",
