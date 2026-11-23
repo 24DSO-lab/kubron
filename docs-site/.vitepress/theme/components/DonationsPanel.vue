@@ -110,7 +110,7 @@ async function copyAddress(wallet: Wallet) {
           </div>
           <div class="donations-qr-wrap">
             <img class="donations-qr" :src="withBase(`/qr/${wallet.id}.svg`)" :alt="isRussian ? `QR-код для ${wallet.asset} в сети ${wallet.network}` : `QR code for ${wallet.asset} on ${wallet.network}`" width="144" height="144">
-            <span>{{ isRussian ? 'Сканируйте кошельком' : 'Scan with your wallet' }}</span>
+            
           </div>
         </article>
       </div>
