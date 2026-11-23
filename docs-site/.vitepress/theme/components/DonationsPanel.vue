@@ -61,7 +61,7 @@ const recentTransactions = computed(() => {
   const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000
   return (data.value?.transactions ?? []).filter(tx => {
     const receivedAt = Date.parse(tx.receivedAt)
-    return tx.status === 'confirmed' && Number.isFinite(receivedAt) && receivedAt >= cutoff
+    return tx.status === 'confirmed' && Number.isFinite(receivedAt) && receivedAt >= cutoff && receivedAt <= Date.now()
   })
 })
 const assets = computed(() => [...new Set(recentTransactions.value.map(tx => tx.asset))].sort())
