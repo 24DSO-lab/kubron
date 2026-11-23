@@ -1,0 +1,54 @@
+# Copyright 2026 The Kubron Authors
+# SPDX-License-Identifier: Apache-2.0
+
+name: Update public donation ledger
+
+on:
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: donations-ledger
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout refactor
+        uses: actions/checkout@v7.0.1
+        with:
+          ref: refactor
+          persist-credentials: true
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Sync confirmed on-chain transfers
+        working-directory: docs-site
+        env:
+          TRONGRID_API_KEY: ${{ secrets.TRONGRID_API_KEY }}
+        run: npm run donations:sync
+
+      - name: Validate public ledger
+        working-directory: docs-site
+        run: npm run donations:check
+
+      - name: Commit and push ledger update
+        run: |
+          if git diff --quiet -- docs-site/public/donations.json; then
+            echo "No new donation transactions."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs-site/public/donations.json
+          git commit -m "chore(sponsors): update public donation ledger"
+          git push origin refactor

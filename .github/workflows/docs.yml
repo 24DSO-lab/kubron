@@ -47,6 +47,12 @@ jobs:
       - name: Test the bug report receiver
         working-directory: docs-site
         run: npm run test:relay
+      - name: Test donation indexer
+        working-directory: docs-site
+        run: npm run test:donations
+      - name: Validate public donation data
+        working-directory: docs-site
+        run: npm run donations:check
 
       - name: Build site
         working-directory: docs-site
