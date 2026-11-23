@@ -205,8 +205,8 @@ func noDefaultClass(b *builder, u *claimUse, claim ResourceRef) {
 // waitingFirstConsumer: PVC ждёт первого потребителя. Это поломка только если потребителей нет вовсе; если Pod его
 // монтирует, ожидание штатное и причина Pending — в другом месте.
 func waitingFirstConsumer(b *builder, g *depgraph.Graph, u *claimUse, claim ResourceRef) {
-	if len(g.EdgesTo(u.node.Ref, depgraph.EdgeMounts)) > 0 {
-		return
+	if len(g.EdgesTo(u.node.Ref, depgraph.EdgeMounts)) > 0 || graphLimited(g) {
+		return // потребитель есть, либо граф ограничен и «потребителей нет» утверждать нельзя
 	}
 	b.symptom(SymptomClaimPending)
 	sup := []string{
