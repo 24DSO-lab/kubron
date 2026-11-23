@@ -10,7 +10,6 @@ type Wallet = {
   network: string
   address: string
   explorerAddressUrl?: string
-  paymentUri?: string
 }
 
 type Transaction = {
@@ -58,13 +57,17 @@ onMounted(async () => {
 })
 
 const wallets = computed(() => (data.value?.wallets ?? []).filter(wallet => wallet.address.trim()))
-const assets = computed(() => [...new Set((data.value?.transactions ?? []).map(tx => tx.asset))].sort())
-const transactions = computed(() => {
-  const rows = data.value?.transactions ?? []
-  return [...rows]
-    .filter(tx => filter.value === 'all' || tx.asset === filter.value)
-    .sort((a, b) => Date.parse(b.receivedAt) - Date.parse(a.receivedAt))
+const recentTransactions = computed(() => {
+  const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000
+  return (data.value?.transactions ?? []).filter(tx => {
+    const receivedAt = Date.parse(tx.receivedAt)
+    return tx.status === 'confirmed' && Number.isFinite(receivedAt) && receivedAt >= cutoff
+  })
 })
+const assets = computed(() => [...new Set(recentTransactions.value.map(tx => tx.asset))].sort())
+const transactions = computed(() => [...recentTransactions.value]
+  .filter(tx => filter.value === 'all' || tx.asset === filter.value)
+  .sort((a, b) => Date.parse(b.receivedAt) - Date.parse(a.receivedAt)))
 
 function shortAddress(value: string): string {
   if (value.length <= 18) return value
@@ -97,14 +100,17 @@ async function copyAddress(wallet: Wallet) {
       <p v-else-if="wallets.length === 0" class="donations-empty">{{ isRussian ? 'Адреса кошельков настраиваются. Адреса для перевода пока не опубликованы.' : 'Wallet addresses are being configured. No deposit address is published yet.' }}</p>
       <div v-else class="donations-wallets">
         <article v-for="wallet in wallets" :key="wallet.id" class="donations-wallet">
-          <div>
+          <div class="donations-wallet-info">
             <strong>{{ wallet.asset }} · {{ wallet.network }}</strong>
             <code>{{ wallet.address }}</code>
+            <div class="donations-actions">
+              <button type="button" @click="copyAddress(wallet)">{{ copied === wallet.id ? (isRussian ? 'Скопировано' : 'Copied') : (isRussian ? 'Копировать адрес' : 'Copy address') }}</button>
+              <a v-if="wallet.explorerAddressUrl" :href="wallet.explorerAddressUrl" target="_blank" rel="noopener noreferrer">{{ isRussian ? 'Обозреватель ↗' : 'Explorer ↗' }}</a>
+            </div>
           </div>
-          <div class="donations-actions">
-            <button type="button" @click="copyAddress(wallet)">{{ copied === wallet.id ? (isRussian ? 'Скопировано' : 'Copied') : (isRussian ? 'Копировать адрес' : 'Copy address') }}</button>
-            <a v-if="wallet.explorerAddressUrl" :href="wallet.explorerAddressUrl" target="_blank" rel="noopener noreferrer">{{ isRussian ? 'Обозреватель ↗' : 'Explorer ↗' }}</a>
-            <a v-if="wallet.paymentUri" :href="wallet.paymentUri">{{ isRussian ? 'Открыть кошелёк' : 'Open wallet' }}</a>
+          <div class="donations-qr-wrap">
+            <img class="donations-qr" :src="withBase(`/qr/${wallet.id}.svg`)" :alt="isRussian ? `QR-код для ${wallet.asset} в сети ${wallet.network}` : `QR code for ${wallet.asset} on ${wallet.network}`" width="144" height="144">
+            <span>{{ isRussian ? 'Сканируйте кошельком' : 'Scan with your wallet' }}</span>
           </div>
         </article>
       </div>
@@ -113,10 +119,10 @@ async function copyAddress(wallet: Wallet) {
     <section class="donations-section" aria-labelledby="donations-ledger-title">
       <div class="donations-ledger-head">
         <div>
-          <h3 id="donations-ledger-title">{{ isRussian ? 'Публичный реестр пожертвований' : 'Public contribution ledger' }}</h3>
-          <p class="donations-muted">{{ isRussian ? 'Здесь публикуются подтверждённые переводы в блокчейне с адресами транзакций и отправителей. Адрес в блокчейне не является подтверждённой личностью человека.' : 'Confirmed on-chain transfers are listed here with their transaction and sender addresses. A blockchain address is not a verified personal identity.' }}</p>
+          <h3 id="donations-ledger-title">{{ isRussian ? 'Поступления за последние 30 дней' : 'Contributions in the last 30 days' }}</h3>
+          <p class="donations-muted">{{ isRussian ? 'Показываются только подтверждённые переводы за последние 30 дней. Полная история транзакций сохраняется в реестре.' : 'Only confirmed transfers from the last 30 days are shown. The complete transaction history remains in the ledger.' }}</p>
         </div>
-        <label>
+        <label v-if="recentTransactions.length > 0">
           <span class="vp-sr-only">{{ isRussian ? 'Фильтр по активу' : 'Filter by asset' }}</span>
           <select v-model="filter" class="donations-filter">
             <option value="all">{{ isRussian ? 'Все активы' : 'All assets' }}</option>
@@ -126,7 +132,7 @@ async function copyAddress(wallet: Wallet) {
       </div>
       <p v-if="loading" class="donations-status" role="status">{{ isRussian ? 'Загрузка реестра…' : 'Loading ledger…' }}</p>
       <p v-else-if="error" class="donations-empty" role="alert">{{ isRussian ? 'Публичный реестр временно недоступен.' : 'The public ledger is temporarily unavailable.' }}</p>
-      <p v-else-if="transactions.length === 0" class="donations-empty">{{ isRussian ? 'Подтверждённые пожертвования пока не опубликованы.' : 'No confirmed contributions have been published yet.' }}</p>
+      <p v-else-if="transactions.length === 0" class="donations-empty">{{ isRussian ? 'Пока нет поступлений за последние 30 дней. Станьте одним из первых спонсоров Kubron.' : 'There are no contributions in the last 30 days yet. Be one of the first Kubron sponsors.' }}</p>
       <div v-else class="donations-table-wrap">
         <table class="donations-table">
           <thead><tr><th>{{ isRussian ? 'Дата (UTC)' : 'Date (UTC)' }}</th><th>{{ isRussian ? 'Актив / сеть' : 'Asset / network' }}</th><th>{{ isRussian ? 'Сумма' : 'Amount' }}</th><th>{{ isRussian ? 'Отправитель' : 'From' }}</th><th>{{ isRussian ? 'Транзакция' : 'Transaction' }}</th></tr></thead>
