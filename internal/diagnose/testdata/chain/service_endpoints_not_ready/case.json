@@ -1,0 +1,9 @@
+{
+  "target": {"kind": "Service", "namespace": "app", "name": "web"},
+  "golden": true,
+  "expect": {
+    "symptoms": ["service.no_endpoints"],
+    "hypotheses": ["service.no_ready_endpoints:high"],
+    "absent": ["service.selector_no_match", "service.target_port_mismatch"]
+  }
+}

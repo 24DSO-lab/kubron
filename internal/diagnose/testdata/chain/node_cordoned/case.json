@@ -1,0 +1,9 @@
+{
+  "target": {"kind": "Node", "name": "n1"},
+  "golden": true,
+  "expect": {
+    "symptoms": ["node.unhealthy"],
+    "hypotheses": ["node.unschedulable:low"],
+    "absent": ["node.not_ready"]
+  }
+}

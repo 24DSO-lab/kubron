@@ -65,7 +65,9 @@ describe.skipIf(!haveChain)('золотые отчёты D3 (цепочки и �
       if (!report.chains?.length) continue
       const text = visible(await render(FindingsPanel, { incident: wrap(report) }))
       for (const raw of ['Healthy', 'Degraded', 'Progressing', 'Unknown', 'Missing', 'too_large', 'forbidden']) {
-        expect(text, `${name}: «${raw}» показан сырым`).not.toContain(raw)
+        // «Missing context» — заголовок раздела недостающего контекста, а не сырое состояние звена цепочки.
+        const found = new RegExp(raw === 'Missing' ? 'Missing(?! context)' : raw).test(text)
+        expect(found, `${name}: «${raw}» показан сырым`).toBe(false)
       }
     }
   })

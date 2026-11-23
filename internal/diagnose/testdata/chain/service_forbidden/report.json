@@ -1,0 +1,117 @@
+{
+  "ruleSetVersion": 2,
+  "target": {
+    "kind": "Service",
+    "namespace": "app",
+    "name": "web",
+    "uid": "s1"
+  },
+  "observedAt": "2026-11-11T10:00:00Z",
+  "symptoms": [
+    "none"
+  ],
+  "resources": [
+    {
+      "kind": "Service",
+      "namespace": "app",
+      "name": "web",
+      "uid": "s1"
+    }
+  ],
+  "facts": [
+    {
+      "kind": "fact",
+      "id": "f1",
+      "code": "no_problem_detected",
+      "resource": {
+        "kind": "Service",
+        "namespace": "app",
+        "name": "web",
+        "uid": "s1"
+      },
+      "params": {
+        "pods": "1"
+      },
+      "source": {
+        "kind": "derived",
+        "resource": {
+          "kind": "Service",
+          "namespace": "app",
+          "name": "web",
+          "uid": "s1"
+        }
+      },
+      "observedAt": "2026-11-11T10:00:00Z"
+    }
+  ],
+  "hypotheses": [],
+  "recommendations": [],
+  "steps": [
+    {
+      "kind": "step",
+      "id": "s1",
+      "code": "step.check_events",
+      "resource": {
+        "kind": "Service",
+        "namespace": "app",
+        "name": "web",
+        "uid": "s1"
+      },
+      "hypotheses": []
+    }
+  ],
+  "missing": [
+    {
+      "code": "source.unavailable",
+      "resource": {
+        "kind": "EndpointSlice",
+        "name": ""
+      },
+      "params": {
+        "reason": "forbidden"
+      }
+    },
+    {
+      "code": "context.insufficient",
+      "resource": {
+        "kind": "Service",
+        "namespace": "app",
+        "name": "web",
+        "uid": "s1"
+      }
+    }
+  ],
+  "partial": [
+    "Graph"
+  ],
+  "graph": {
+    "nodes": [
+      {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "web-1",
+        "health": "Degraded",
+        "reason": "not_ready"
+      },
+      {
+        "kind": "Service",
+        "namespace": "app",
+        "name": "web",
+        "health": "Healthy"
+      }
+    ],
+    "edges": [
+      {
+        "from": "core/Service/app/web",
+        "to": "core/Pod/app/web-1",
+        "type": "selects",
+        "state": "broken",
+        "reason": "not_ready"
+      }
+    ],
+    "truncated": true,
+    "warnings": [
+      "forbidden:EndpointSlice"
+    ]
+  }
+}

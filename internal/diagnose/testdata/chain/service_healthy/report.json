@@ -1,0 +1,111 @@
+{
+  "ruleSetVersion": 2,
+  "target": {
+    "kind": "Service",
+    "namespace": "app",
+    "name": "web",
+    "uid": "s1"
+  },
+  "observedAt": "2026-11-11T10:00:00Z",
+  "symptoms": [
+    "none"
+  ],
+  "resources": [
+    {
+      "kind": "Service",
+      "namespace": "app",
+      "name": "web",
+      "uid": "s1"
+    }
+  ],
+  "facts": [
+    {
+      "kind": "fact",
+      "id": "f1",
+      "code": "no_problem_detected",
+      "resource": {
+        "kind": "Service",
+        "namespace": "app",
+        "name": "web",
+        "uid": "s1"
+      },
+      "params": {
+        "pods": "1"
+      },
+      "source": {
+        "kind": "derived",
+        "resource": {
+          "kind": "Service",
+          "namespace": "app",
+          "name": "web",
+          "uid": "s1"
+        }
+      },
+      "observedAt": "2026-11-11T10:00:00Z"
+    }
+  ],
+  "hypotheses": [],
+  "recommendations": [],
+  "steps": [
+    {
+      "kind": "step",
+      "id": "s1",
+      "code": "step.check_events",
+      "resource": {
+        "kind": "Service",
+        "namespace": "app",
+        "name": "web",
+        "uid": "s1"
+      },
+      "hypotheses": []
+    }
+  ],
+  "missing": [
+    {
+      "code": "context.insufficient",
+      "resource": {
+        "kind": "Service",
+        "namespace": "app",
+        "name": "web",
+        "uid": "s1"
+      }
+    }
+  ],
+  "graph": {
+    "nodes": [
+      {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "web-1",
+        "health": "Healthy"
+      },
+      {
+        "kind": "Service",
+        "namespace": "app",
+        "name": "web",
+        "health": "Healthy"
+      },
+      {
+        "group": "discovery.k8s.io",
+        "kind": "EndpointSlice",
+        "namespace": "app",
+        "name": "web-abc",
+        "health": "Healthy"
+      }
+    ],
+    "edges": [
+      {
+        "from": "core/Service/app/web",
+        "to": "core/Pod/app/web-1",
+        "type": "selects",
+        "state": "ok"
+      },
+      {
+        "from": "core/Service/app/web",
+        "to": "discovery.k8s.io/EndpointSlice/app/web-abc",
+        "type": "backed_by",
+        "state": "ok"
+      }
+    ]
+  }
+}

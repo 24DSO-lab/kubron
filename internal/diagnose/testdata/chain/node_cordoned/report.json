@@ -1,0 +1,160 @@
+{
+  "ruleSetVersion": 2,
+  "target": {
+    "kind": "Node",
+    "name": "n1",
+    "uid": "n-1"
+  },
+  "observedAt": "2026-11-11T10:00:00Z",
+  "symptoms": [
+    "node.unhealthy"
+  ],
+  "resources": [
+    {
+      "kind": "Node",
+      "name": "n1",
+      "uid": "n-1"
+    },
+    {
+      "kind": "Node",
+      "name": "n1"
+    }
+  ],
+  "facts": [
+    {
+      "kind": "fact",
+      "id": "f1",
+      "code": "node.pods_unready",
+      "resource": {
+        "kind": "Node",
+        "name": "n1"
+      },
+      "params": {
+        "node": "n1",
+        "total": "1",
+        "unready": "1"
+      },
+      "source": {
+        "kind": "derived",
+        "resource": {
+          "kind": "Node",
+          "name": "n1"
+        },
+        "field": "pods"
+      },
+      "observedAt": "2026-11-11T10:00:00Z"
+    },
+    {
+      "kind": "fact",
+      "id": "f2",
+      "code": "node.cordoned",
+      "resource": {
+        "kind": "Node",
+        "name": "n1"
+      },
+      "params": {
+        "node": "n1"
+      },
+      "source": {
+        "kind": "resource",
+        "resource": {
+          "kind": "Node",
+          "name": "n1"
+        },
+        "field": "spec.unschedulable"
+      },
+      "observedAt": "2026-11-11T10:00:00Z"
+    }
+  ],
+  "hypotheses": [
+    {
+      "kind": "hypothesis",
+      "id": "h1",
+      "code": "node.unschedulable",
+      "resource": {
+        "kind": "Node",
+        "name": "n1"
+      },
+      "params": {
+        "node": "n1"
+      },
+      "confidence": "low",
+      "supporting": [
+        "f2"
+      ],
+      "contradicting": [],
+      "ruleId": "node.chain",
+      "ruleEpoch": 1
+    }
+  ],
+  "recommendations": [
+    {
+      "kind": "recommendation",
+      "id": "r1",
+      "code": "rec.uncordon_node",
+      "resource": {
+        "kind": "Node",
+        "name": "n1"
+      },
+      "params": {
+        "node": "n1"
+      },
+      "hypotheses": [
+        "h1"
+      ],
+      "ruleId": "node.chain",
+      "ruleEpoch": 1
+    }
+  ],
+  "steps": [],
+  "missing": [],
+  "graph": {
+    "nodes": [
+      {
+        "kind": "Node",
+        "name": "n1",
+        "health": "Suspended",
+        "reason": "node_unschedulable"
+      },
+      {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "api-0",
+        "health": "Degraded",
+        "reason": "not_ready"
+      }
+    ],
+    "edges": [
+      {
+        "from": "core/Pod/app/api-0",
+        "to": "core/Node//n1",
+        "type": "runs_on",
+        "state": "ok"
+      }
+    ]
+  },
+  "chains": [
+    {
+      "path": [
+        {
+          "ref": {
+            "kind": "Pod",
+            "namespace": "app",
+            "name": "api-0"
+          },
+          "health": "Degraded",
+          "reason": "not_ready"
+        },
+        {
+          "ref": {
+            "kind": "Node",
+            "name": "n1"
+          },
+          "health": "Suspended",
+          "reason": "node_unschedulable"
+        }
+      ],
+      "candidate": "h1"
+    }
+  ]
+}
