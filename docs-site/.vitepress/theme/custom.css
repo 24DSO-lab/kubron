@@ -233,3 +233,15 @@
   .donations-wallet { grid-template-columns: 1fr; }
   .donations-section { padding: 16px; }
 }
+
+
+/* Sponsor wallet QR codes */
+.donations-wallet-info { min-width: 0; }
+.donations-wallet .donations-actions { margin-top: 12px; }
+.donations-qr-wrap { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.donations-qr { display: block; width: 112px; height: 112px; padding: 5px; border-radius: 8px; background: #fff; image-rendering: pixelated; }
+.donations-qr-wrap span { color: var(--vp-c-text-3); font-size: 11px; text-align: center; }
+@media (max-width: 720px) {
+  .donations-qr-wrap { flex-direction: row; justify-content: flex-start; }
+  .donations-qr { width: 104px; height: 104px; }
+}
