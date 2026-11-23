@@ -16,7 +16,7 @@
     "service_endpoints_not_ready": "У Service {service} адресов endpoints: {total}, из них готовы: {ready}.",
     "service_no_endpoint_slices": "У Service {service} есть поды, но EndpointSlice для него не найден.",
     "service_port_mismatch": "Service {service} направляет порт {port} на targetPort {target}, который не объявлен ни у одного контейнера выбранных подов.",
-    "node_condition": "Узел {node} сообщает условие {condition} со статусом {status}.",
+    "node_condition": "Узел {node} сообщает о проблеме в условии {condition}.",
     "node_pods_unready": "На узле {node} не готовы {unready} из {total} подов.",
     "node_cordoned": "Узел {node} закрыт для новых подов (spec.unschedulable)."
   },
@@ -32,7 +32,7 @@
     "service_no_ready_endpoints": "Ни один endpoint Service {service} не готов, поэтому на него не идёт трафик.",
     "service_no_endpoints": "У Service {service} ещё нет EndpointSlice; возможно, контроллер endpoints пока не успел.",
     "service_target_port_mismatch": "Порт {port} Service {service} может указывать на targetPort {target}, которого нет у выбранных подов.",
-    "node_not_ready": "Узел {node} не готов (статус {status}), поэтому поды на нём могут быть недоступны.",
+    "node_not_ready": "Узел {node} не готов или перестал отчитываться, поэтому поды на нём могут быть недоступны.",
     "node_pressure_memory": "На узле {node} не хватает памяти, поэтому поды на нём могут вытесняться или убиваться.",
     "node_pressure_disk": "На узле {node} не хватает места на диске, поэтому поды на нём могут вытесняться.",
     "node_pressure_pid": "На узле {node} исчерпан лимит процессов, поэтому новые процессы могут не запускаться.",

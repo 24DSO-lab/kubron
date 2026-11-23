@@ -16,7 +16,7 @@
     "service_endpoints_not_ready": "Service {service} 共有 {total} 个端点地址，其中 {ready} 个就绪。",
     "service_no_endpoint_slices": "Service {service} 有对应的 Pod，但未找到它的 EndpointSlice。",
     "service_port_mismatch": "Service {service} 将端口 {port} 转发到 targetPort {target}，而所选 Pod 的容器均未声明该端口。",
-    "node_condition": "节点 {node} 报告状况 {condition}，状态为 {status}。",
+    "node_condition": "节点 {node} 报告其状况 {condition} 存在问题。",
     "node_pods_unready": "节点 {node} 上 {total} 个 Pod 中有 {unready} 个未就绪。",
     "node_cordoned": "节点 {node} 已禁止调度新的 Pod（spec.unschedulable）。"
   },
@@ -32,7 +32,7 @@
     "service_no_ready_endpoints": "Service {service} 的端点均未就绪，因此它收不到流量。",
     "service_no_endpoints": "Service {service} 暂时没有 EndpointSlice；可能是端点控制器尚未处理完成。",
     "service_target_port_mismatch": "Service {service} 的端口 {port} 可能指向了所选 Pod 未声明的 targetPort {target}。",
-    "node_not_ready": "节点 {node} 未就绪（状态 {status}），因此其上的 Pod 可能不可用。",
+    "node_not_ready": "节点 {node} 未就绪或已停止上报，因此其上的 Pod 可能不可用。",
     "node_pressure_memory": "节点 {node} 内存紧张，因此其上的 Pod 可能被驱逐或被终止。",
     "node_pressure_disk": "节点 {node} 磁盘空间紧张，因此其上的 Pod 可能被驱逐。",
     "node_pressure_pid": "节点 {node} 的进程数已达上限，因此新进程可能无法启动。",
