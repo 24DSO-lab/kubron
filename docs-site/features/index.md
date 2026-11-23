@@ -45,6 +45,14 @@ Kubron is a Kubernetes Operations Workspace available as a native Desktop applic
 - Port-forward to Pods and Services, subject to edition and server configuration.
 - Optionally install Prometheus, kube-state-metrics and node-exporter in a cluster.
 
+## Incident diagnosis
+
+- Open an investigation for a Pod, Deployment, ReplicaSet, Service, PersistentVolumeClaim or Node and get facts, hypotheses with a confidence, recommendations and missing context. Nothing is changed in the cluster and no AI is used.
+- Follow the chain of dependencies, for example Pod → PVC → StorageClass, to a candidate root cause. A missing object and an object that could not be read are shown differently.
+- Add evidence from the metrics stack when it is available. The report is complete without it.
+- See which other workloads share the same source, such as a Node under memory pressure, and group related investigations into a problem.
+- Mark the result and see which hypotheses and recommendations helped in your cluster. Nothing is sent anywhere automatically.
+
 ## Helm and GitOps
 
 - Browse chart repositories and OCI registries, install and upgrade releases with dry-run and manifest diff.
@@ -71,6 +79,7 @@ Kubron is a Kubernetes Operations Workspace available as a native Desktop applic
 - [Debug containers](/features/debug-containers)
 - [Configuration baseline](/features/baseline)
 - [Metrics stack and charts](/features/metrics)
+- [Incidents](/features/intelligence)
 - [Helm](/features/helm)
 - [GitOps with Argo CD and Flux CD](/features/gitops)
 - [Teams and shared access](/features/teams)

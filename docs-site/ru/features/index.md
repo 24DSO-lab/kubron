@@ -45,6 +45,14 @@ Kubron — Kubernetes Operations Workspace в двух версиях: desktop-�
 - Port-forward к Pod и Service с учётом версии и настроек сервера.
 - Дополнительная установка Prometheus, kube-state-metrics и node-exporter в кластер.
 
+## Диагностика инцидентов
+
+- Расследование для Pod, Deployment, ReplicaSet, Service, PersistentVolumeClaim или Node: факты, гипотезы с уверенностью, рекомендации и недостающий контекст. Кластер не меняется, AI не используется.
+- Проход по цепочке зависимостей, например Pod → PVC → StorageClass, до кандидата первопричины. Отсутствующий объект и объект, который не удалось прочитать, показываются по-разному.
+- Доказательства из стека метрик, когда он доступен. Без него отчёт полный.
+- Видно, какие ещё workloads зависят от того же источника, например от Node под давлением памяти, а связанные расследования объединяются в проблему.
+- Отметка результата и статистика того, какие гипотезы и рекомендации помогали в вашем кластере. Ничего не отправляется автоматически.
+
 ## Helm и GitOps
 
 - Каталог Helm-репозиториев и OCI registry, установка и обновление с dry-run и diff manifest.
@@ -71,6 +79,7 @@ Kubron — Kubernetes Operations Workspace в двух версиях: desktop-�
 - [Debug-контейнеры](/ru/features/debug-containers)
 - [Baseline конфигурации](/ru/features/baseline)
 - [Стек метрик и графики](/ru/features/metrics)
+- [Инциденты](/ru/features/intelligence)
 - [Helm](/ru/features/helm)
 - [GitOps с Argo CD и Flux CD](/ru/features/gitops)
 - [Команды и совместный доступ](/ru/features/teams)
