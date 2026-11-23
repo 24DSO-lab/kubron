@@ -49,8 +49,8 @@ for (const [index, tx] of (data.transactions ?? []).entries()) {
   if (tx.status !== 'confirmed') errors.push(`${label}.status must be confirmed`)
   if (transactionIds.has(tx.id)) errors.push(`${label}.id is duplicated`)
   transactionIds.add(tx.id)
-  const key = `${tx.network}/${tx.txHash}`
-  if (transactionKeys.has(key)) errors.push(`${label} duplicates transaction ${key}`)
+  const key = `${tx.network}/${tx.txHash}/${tx.id}`
+  if (transactionKeys.has(key)) errors.push(`${label} duplicates transaction record ${key}`)
   transactionKeys.add(key)
   if (tx.fromAddress !== undefined && typeof tx.fromAddress !== 'string') errors.push(`${label}.fromAddress must be a string`)
 }
