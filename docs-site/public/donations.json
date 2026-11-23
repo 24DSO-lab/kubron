@@ -7,16 +7,14 @@
       "asset": "BTC",
       "network": "Bitcoin",
       "address": "bc1q7qazgg8xqsd7q9ajqvhru0ekmxrj9y6usty3g2",
-      "explorerAddressUrl": "https://mempool.space/address/bc1q7qazgg8xqsd7q9ajqvhru0ekmxrj9y6usty3g2",
-      "paymentUri": "bitcoin:bc1q7qazgg8xqsd7q9ajqvhru0ekmxrj9y6usty3g2"
+      "explorerAddressUrl": "https://mempool.space/address/bc1q7qazgg8xqsd7q9ajqvhru0ekmxrj9y6usty3g2"
     },
     {
       "id": "eth-ethereum",
       "asset": "ETH",
       "network": "Ethereum",
       "address": "0x45c14C29fC24848054bdefC24AB3FfF3de0648F8",
-      "explorerAddressUrl": "https://etherscan.io/address/0x45c14C29fC24848054bdefC24AB3FfF3de0648F8",
-      "paymentUri": "ethereum:0x45c14C29fC24848054bdefC24AB3FfF3de0648F8"
+      "explorerAddressUrl": "https://etherscan.io/address/0x45c14C29fC24848054bdefC24AB3FfF3de0648F8"
     },
     {
       "id": "usdt-tron",
