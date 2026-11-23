@@ -120,7 +120,7 @@ async function copyAddress(wallet: Wallet) {
       <div class="donations-ledger-head">
         <div>
           <h3 id="donations-ledger-title">{{ isRussian ? 'Поступления за последние 30 дней' : 'Contributions in the last 30 days' }}</h3>
-          <p class="donations-muted">{{ isRussian ? 'Показываются только подтверждённые переводы за последние 30 дней. Полная история транзакций сохраняется в реестре.' : 'Only confirmed transfers from the last 30 days are shown. The complete transaction history remains in the ledger.' }}</p>
+          <p class="donations-muted">{{ isRussian ? 'Здесь отображаются только подтверждённые переводы за последние 30 дней.' : 'This list shows only confirmed transfers from the last 30 days.' }}</p>
         </div>
         <label v-if="recentTransactions.length > 0">
           <span class="vp-sr-only">{{ isRussian ? 'Фильтр по активу' : 'Filter by asset' }}</span>
