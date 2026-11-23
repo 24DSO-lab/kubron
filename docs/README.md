@@ -18,6 +18,7 @@
 | [ha.md](ha.md), [ha-sessions.md](ha-sessions.md) | Высокая доступность: несколько реплик, сессии в PostgreSQL |
 | [lifecycle-readiness.md](lifecycle-readiness.md) | Готовность к обновлению Kubernetes: что проверяется, coverage, матрица API и порядок её обновления |
 | [baseline.md](baseline.md) | Baseline конфигурации и дрейф: правила, хранение, retention, переменные |
+| [intelligence-operations.md](intelligence-operations.md) | Intelligence для администраторов: метрики, проблемы, статистика правил, права, аудит и поведение при отказах |
 | [backup.md](backup.md) | Резервное копирование и восстановление, ключ шифрования |
 | [logging.md](logging.md), [metrics.md](metrics.md) | Журнал процесса, аудит в stdout, метрики Prometheus |
 | [http-security.md](http-security.md) | Заголовки безопасности, защита от перебора |
@@ -26,7 +27,8 @@
 
 | Документ | О чём |
 |---|---|
-| [adr/](adr/README.md) | Архитектурные решения (ADR-0001…0033): почему устроено так |
+| [adr/](adr/README.md) | Архитектурные решения (ADR-0001…0034): почему устроено так |
+| [intelligence-rule-improvement.md](intelligence-rule-improvement.md) | Как мантейнеры улучшают правила Intelligence по выгруженной статистике (ADR-0034 §9) |
 | [e2e.md](e2e.md) | Smoke-e2e |
 | [authentication-lab.md](authentication-lab.md) | Ручной стенд входа в облачные кластеры (EKS, GKE, AKS) без создания кластеров |
 | [releasing.md](releasing.md) | Как выпускается релиз |

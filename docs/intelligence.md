@@ -4,7 +4,7 @@
 
 ## Что делает расследование
 
-Расследование открывается для Pod, Deployment или ReplicaSet. Kubron читает только чтением (`get`/`list`) Pod, `pods/log`, Events, ReplicaSet, Deployment, Namespace и Node. **Secret не читается и в allowlist платформы его нет.** Правила версионируются (`RuleSetVersion`, сейчас 1) и покрывают:
+Расследование открывается для Pod, Deployment или ReplicaSet. Kubron читает только чтением (`get`/`list`) Pod, `pods/log`, Events, ReplicaSet, Deployment, Namespace и Node; для графа зависимостей и корреляции дополнительно Service, EndpointSlice, PVC, PV, StorageClass, Job и CronJob. **Secret не читается и в allowlist платформы его нет.** Правила версионируются (`RuleSetVersion`, сейчас 2) и покрывают:
 
 | Симптом | Что проверяется |
 |---|---|
@@ -68,6 +68,8 @@
 
 `diagnostics.logs` по умолчанию есть у ролей `admin` и `operator`, у `user` его нет. Право проверяется на сервере при **каждом** чтении содержимого. Без права видны метаданные фрагмента (контейнер, время, число строк), а вместо текста — «содержимое скрыто». Живой просмотр логов по-прежнему требует только `read`. Чтение фрагментов и экспорт пишутся в журнал аудита (кто, кластер, инцидент, число фрагментов) **без содержимого**.
 
+Права на просмотр и изменение проблем и на выгрузку статистики правил описаны в [intelligence-operations.md](intelligence-operations.md).
+
 ## Хранение и настройки
 
 - фрагменты — не дольше **15 дней** (значение по умолчанию и верхняя граница; настраивается только в сторону сокращения, 1–15);
@@ -92,3 +94,8 @@
 ## Устройство
 
 `internal/diagnose` (сбор контекста и правила, без хранилища), `internal/incident` (модель, `Backend`, сервис, фрагменты, retention, файловое хранилище), `internal/pgstore/incidents.go` (PostgreSQL, миграция `0011_incidents`), слой связки `internal/app/app_incident.go` (методы `Incident*`: `Provider.Begin`, аудит, события). Один набор контрактных тестов `internal/incident/incidenttest` запускается против обеих реализаций хранилища.
+
+## См. также
+
+- [intelligence-operations.md](intelligence-operations.md) — метрики, проблемы и статистика правил для администраторов: что нужно кластеру, какие права, что попадает в аудит.
+- [intelligence-rule-improvement.md](intelligence-rule-improvement.md) — как мантейнеры улучшают правила по выгруженной статистике.
