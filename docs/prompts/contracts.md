@@ -314,29 +314,37 @@ func (s *Service) ExportRuleStats(ctx context.Context, scope tenant.Scope) ([]by
 
 ## 7. RPC и DTO (D7 владеет именами; D8 использует) [Фаза 0 D7]
 
-Имена, если нельзя иначе по существующему образцу, D7 уточняет в скелет-PR и правит этот раздел. Права: чтение — `read`; изменение состава проблем — `operate`; выгрузка — право смены настроек хранения расследований.
+Раздел приведён к коду (`internal/app/app_incident_dto.go`, `app_incident_problems.go`, D7). Права: чтение — `read`; изменение состава проблем — `operate`; выгрузка статистики — `users.manage` (право смены настроек хранения расследований) плюс `read` на кластер. Все RPC проблем и статистики работают только с сохранёнными данными, без подключения к кластеру.
 
 | RPC | Вход | Выход | Права |
 |---|---|---|---|
-| `IncidentProblemList` | `clusterID`, `status`, `cursor` | `{items: ProblemSummaryDTO[], nextCursor}` | read |
+| `IncidentProblemList` | `clusterID`, `IncidentProblemListQuery{status, limit, cursor}` (`limit` необязателен) | `ProblemListDTO` = `{items: ProblemSummaryDTO[], nextCursor}` | read |
 | `IncidentProblemGet` | `clusterID`, `problemID` | `ProblemDetailDTO` | read |
 | `IncidentProblemAttach` | `clusterID`, `problemID`, `incidentID` | `ProblemDetailDTO` | operate |
-| `IncidentProblemDetach` | `clusterID`, `incidentID` | `{}` | operate |
-| `IncidentProblemMerge` | `clusterID`, `fromID`, `toID` | `ProblemDetailDTO` | operate |
+| `IncidentProblemDetach` | `clusterID`, `incidentID` | ничего (только ошибка) | operate |
+| `IncidentProblemMerge` | `clusterID`, `fromID`, `toID` | `ProblemDetailDTO` (проблема `toID`) | operate |
 | `IncidentProblemCreate` | `clusterID`, `incidentIDs[]` | `ProblemDetailDTO` | operate |
-| `IncidentRuleStats` | `clusterID` | `feedback.Stats` (JSON, camelCase) | read |
-| `IncidentRuleStatsExport` | `clusterID` | `{filename, mime, dataBase64}` | настройки хранения |
-| `IncidentMarkOutcome` (расширен) | `clusterID`, `incidentID`, `OutcomeInput` | как сейчас | как сейчас |
+| `IncidentRuleStats` | `clusterID` | `feedback.Stats` (`RuleStatsDTO`, JSON camelCase) | read |
+| `IncidentRuleStatsExport` | `clusterID` | `ExportFileDTO` = `{filename, mime, dataBase64}` | `users.manage` + `read` на кластер |
+| `IncidentMarkOutcome` (расширен) | `clusterID`, `incidentID`, `IncidentOutcomeRequest` (во фронтенде — `OutcomeInput`) | как сейчас | как сейчас |
 
 ```jsonc
+// IncidentProblemListQuery
+{ "status": "open", "limit": 0, "cursor": "" }
 // ProblemSummaryDTO
 { "id": "", "key": "", "kind": "shared_node", "source": {"group":"","kind":"Node","namespace":"","name":"n1"},
   "status": "open", "origin": "auto", "memberCount": 3, "affectedTotal": 12, "updatedAt": "" }
-// ProblemDetailDTO = ProblemSummaryDTO + { "members": [{"incidentId":"","addedAt":"","addedBy":"auto", "summary": IncidentSummary}], "affected": WorkloadRef[], "affectedTruncated": false, "detached": [] }
-// OutcomeInput = существующие поля + rejectedHypothesisIds, helpfulRecommendationIds, uselessRecommendationIds, otherAction, resolvedAt, correlation{candidateId,verdict}
+// ProblemMemberDTO: summary пуст, если расследование удалено или недоступно
+{ "incidentId": "", "addedAt": "", "addedBy": "auto", "summary": IncidentSummary }
+// ProblemDetailDTO = ProblemSummaryDTO (плоско) + { "members": ProblemMemberDTO[], "affected": WorkloadRef[], "affectedTruncated": false, "detached": [] }
+// ExportFileDTO
+{ "filename": "kubron-rule-stats-YYYYMMDD.json", "mime": "application/json", "dataBase64": "" }
+// IncidentOutcomeRequest (OutcomeInput) = существующие поля (result, confirmedHypothesisId, note) + rejectedHypothesisIds, helpfulRecommendationIds, uselessRecommendationIds, otherAction, resolvedAt, correlation{candidateId,verdict}
 ```
 
-Событие `problem.changed` — адресное, несёт только `problemID` (ADR-0009); подробности клиент загружает RPC с повторной проверкой прав.
+`affectedTotal` в строке списка — оценка по самому новому участнику проблемы (список не читает все расследования); в `ProblemDetailDTO` оно точное по всем участникам.
+
+Событие `problem:changed` — адресное, данные — только ID проблемы (ADR-0009: имена событий с двоеточием, как `incident:updated`; в первой версии контракта было `problem.changed`). Подробности клиент загружает RPC с повторной проверкой прав. Присоединение уведомляет новую и прежнюю проблему расследования, объединение — обе проблемы, отсоединение и создание — проблему результата; проблемы, из которых расследования вышли при создании, не уведомляются, поэтому клиент перечитывает список по событию.
 
 ## 8. Фронтенд (D8) [Фаза 0]
 
