@@ -64,11 +64,18 @@ func legacyReport(t *testing.T, sc scenario) ([]byte, bool) {
 		}
 		t.Fatalf("collect: %v", err)
 	}
-	raw, err := json.Marshal(Analyze(c))
+	raw, err := json.Marshal(analyze(c, baseRules()))
 	if err != nil {
 		t.Fatal(err)
 	}
 	return raw, true
+}
+
+// baseRules — правила таблицы без цепочечных: набор версии 1, который охраняет эталон. Цепочечные правила читают граф
+// и добавляют находки там, где прежний отчёт их не знал (давление памяти узла в oom_no_limit_pressure); их проверяют
+// фикстуры testdata/chain.
+func baseRules() []rule {
+	return slices.DeleteFunc(slices.Clone(rules), func(r rule) bool { return isChainRule(r.id) })
 }
 
 func normalizeJSON(t *testing.T, raw []byte) []byte {

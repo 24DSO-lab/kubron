@@ -131,13 +131,17 @@ func RuleIDs() []string {
 
 // Analyze прогоняет правила по контексту и строит отчёт. Не возвращает ошибку и не паникует: сбой правила — это
 // MissingContext «rule.failed», остальные правила продолжают работу.
-func Analyze(c *Context) Report {
+func Analyze(c *Context) Report { return analyze(c, rules) }
+
+// analyze прогоняет заданный набор правил. Отдельная функция нужна эталону отчётов версии 1 (legacy_golden_test.go):
+// он проверяет базовые правила, не зависящие от графа, а цепочечные правила проверяют свои фикстуры.
+func analyze(c *Context, set []rule) Report {
 	if c == nil {
 		return *newBuilder(&Context{}).rep
 	}
 	b := newBuilder(c)
 	b.touch(c.Target)
-	for _, r := range rules {
+	for _, r := range set {
 		runRule(b, r)
 	}
 	runPostHooks(b)
@@ -165,7 +169,7 @@ func runRule(b *builder, r rule) {
 	r.apply(b)
 }
 
-// podEvents возвращает события, относящиеся к поду, с указанными причинами (все, если reasons пуст).
+// podEvents возвращает события, относящиеся к поду, с указанными причинами (все, если reasons пусты).
 func (c *Context) podEvents(name string, reasons ...string) []Event {
 	var out []Event
 	for _, e := range c.Events {
