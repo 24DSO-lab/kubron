@@ -9,7 +9,7 @@ const TRONGRID_API_KEY = process.env.TRONGRID_API_KEY ?? ''
 const USDC = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'
 const USDT = 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t'
 const fetchJson = async (url, headers = {}) => {
-  const res = await fetch(url, { headers: { Accept: 'application/json', ...headers }, signal: AbortSignal.timeout(20000 })
+  const res = await fetch(url, { headers: { Accept: 'application/json', ...headers }, signal: AbortSignal.timeout(20000) })
   if (!res.ok) throw new Error(`HTTP ${res.status} from ${new URL(url).host}`)
   return res.json()
 }
