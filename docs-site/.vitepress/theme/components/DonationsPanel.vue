@@ -2,7 +2,7 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { withBase } from 'vitepress'
+import { useData, withBase } from 'vitepress'
 
 type Wallet = {
   id: string
@@ -31,6 +31,9 @@ type DonationData = {
   wallets: Wallet[]
   transactions: Transaction[]
 }
+
+const { lang } = useData()
+const isRussian = computed(() => lang.value.toLowerCase().startsWith('ru'))
 
 const data = ref<DonationData | null>(null)
 const loading = ref(true)
@@ -71,7 +74,7 @@ function shortAddress(value: string): string {
 function formatDate(value: string): string {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
-  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' }).format(date) + ' UTC'
+  return new Intl.DateTimeFormat(isRussian.value ? 'ru-RU' : 'en', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' }).format(date) + ' UTC'
 }
 
 async function copyAddress(wallet: Wallet) {
@@ -87,11 +90,11 @@ async function copyAddress(wallet: Wallet) {
 <template>
   <div class="donations-panel">
     <section class="donations-section" aria-labelledby="donation-wallets-title">
-      <h3 id="donation-wallets-title">Crypto wallets</h3>
-      <p class="donations-muted">Choose the exact asset and network shown below. Sending an asset over a different network may result in a permanent loss.</p>
-      <p v-if="loading" class="donations-status" role="status">Loading wallet configuration…</p>
-      <p v-else-if="error" class="donations-empty" role="alert">Wallet configuration is temporarily unavailable. {{ error }}</p>
-      <p v-else-if="wallets.length === 0" class="donations-empty">Wallet addresses are being configured. No deposit address is published yet.</p>
+      <h3 id="donation-wallets-title">{{ isRussian ? 'Криптовалютные кошельки' : 'Crypto wallets' }}</h3>
+      <p class="donations-muted">{{ isRussian ? 'Выбирайте строго указанную ниже монету и сеть. Отправка средств через другую сеть может привести к их безвозвратной потере.' : 'Choose the exact asset and network shown below. Sending an asset over a different network may result in a permanent loss.' }}</p>
+      <p v-if="loading" class="donations-status" role="status">{{ isRussian ? 'Загрузка настроек кошельков…' : 'Loading wallet configuration…' }}</p>
+      <p v-else-if="error" class="donations-empty" role="alert">{{ isRussian ? 'Настройки кошельков временно недоступны.' : 'Wallet configuration is temporarily unavailable.' }} {{ error }}</p>
+      <p v-else-if="wallets.length === 0" class="donations-empty">{{ isRussian ? 'Адреса кошельков настраиваются. Адреса для перевода пока не опубликованы.' : 'Wallet addresses are being configured. No deposit address is published yet.' }}</p>
       <div v-else class="donations-wallets">
         <article v-for="wallet in wallets" :key="wallet.id" class="donations-wallet">
           <div>
@@ -99,9 +102,9 @@ async function copyAddress(wallet: Wallet) {
             <code>{{ wallet.address }}</code>
           </div>
           <div class="donations-actions">
-            <button type="button" @click="copyAddress(wallet)">{{ copied === wallet.id ? 'Copied' : 'Copy address' }}</button>
-            <a v-if="wallet.explorerAddressUrl" :href="wallet.explorerAddressUrl" target="_blank" rel="noopener noreferrer">Explorer ↗</a>
-            <a v-if="wallet.paymentUri" :href="wallet.paymentUri">Open wallet</a>
+            <button type="button" @click="copyAddress(wallet)">{{ copied === wallet.id ? (isRussian ? 'Скопировано' : 'Copied') : (isRussian ? 'Копировать адрес' : 'Copy address') }}</button>
+            <a v-if="wallet.explorerAddressUrl" :href="wallet.explorerAddressUrl" target="_blank" rel="noopener noreferrer">{{ isRussian ? 'Обозреватель ↗' : 'Explorer ↗' }}</a>
+            <a v-if="wallet.paymentUri" :href="wallet.paymentUri">{{ isRussian ? 'Открыть кошелёк' : 'Open wallet' }}</a>
           </div>
         </article>
       </div>
@@ -110,35 +113,35 @@ async function copyAddress(wallet: Wallet) {
     <section class="donations-section" aria-labelledby="donations-ledger-title">
       <div class="donations-ledger-head">
         <div>
-          <h3 id="donations-ledger-title">Public contribution ledger</h3>
-          <p class="donations-muted">Confirmed on-chain transfers are listed here with their transaction and sender addresses. A blockchain address is not a verified personal identity.</p>
+          <h3 id="donations-ledger-title">{{ isRussian ? 'Публичный реестр пожертвований' : 'Public contribution ledger' }}</h3>
+          <p class="donations-muted">{{ isRussian ? 'Здесь публикуются подтверждённые переводы в блокчейне с адресами транзакций и отправителей. Адрес в блокчейне не является подтверждённой личностью человека.' : 'Confirmed on-chain transfers are listed here with their transaction and sender addresses. A blockchain address is not a verified personal identity.' }}</p>
         </div>
         <label>
-          <span class="vp-sr-only">Filter by asset</span>
+          <span class="vp-sr-only">{{ isRussian ? 'Фильтр по активу' : 'Filter by asset' }}</span>
           <select v-model="filter" class="donations-filter">
-            <option value="all">All assets</option>
+            <option value="all">{{ isRussian ? 'Все активы' : 'All assets' }}</option>
             <option v-for="asset in assets" :key="asset" :value="asset">{{ asset }}</option>
           </select>
         </label>
       </div>
-      <p v-if="loading" class="donations-status" role="status">Loading ledger…</p>
-      <p v-else-if="error" class="donations-empty" role="alert">The public ledger is temporarily unavailable.</p>
-      <p v-else-if="transactions.length === 0" class="donations-empty">No confirmed contributions have been published yet.</p>
+      <p v-if="loading" class="donations-status" role="status">{{ isRussian ? 'Загрузка реестра…' : 'Loading ledger…' }}</p>
+      <p v-else-if="error" class="donations-empty" role="alert">{{ isRussian ? 'Публичный реестр временно недоступен.' : 'The public ledger is temporarily unavailable.' }}</p>
+      <p v-else-if="transactions.length === 0" class="donations-empty">{{ isRussian ? 'Подтверждённые пожертвования пока не опубликованы.' : 'No confirmed contributions have been published yet.' }}</p>
       <div v-else class="donations-table-wrap">
         <table class="donations-table">
-          <thead><tr><th>Date (UTC)</th><th>Asset / network</th><th>Amount</th><th>From</th><th>Transaction</th></tr></thead>
+          <thead><tr><th>{{ isRussian ? 'Дата (UTC)' : 'Date (UTC)' }}</th><th>{{ isRussian ? 'Актив / сеть' : 'Asset / network' }}</th><th>{{ isRussian ? 'Сумма' : 'Amount' }}</th><th>{{ isRussian ? 'Отправитель' : 'From' }}</th><th>{{ isRussian ? 'Транзакция' : 'Transaction' }}</th></tr></thead>
           <tbody>
             <tr v-for="tx in transactions" :key="tx.id">
               <td>{{ formatDate(tx.receivedAt) }}</td>
               <td>{{ tx.asset }} · {{ tx.network }}</td>
               <td>{{ tx.amount }}</td>
-              <td :title="tx.fromAddress || 'Not provided'">{{ tx.fromAddress ? shortAddress(tx.fromAddress) : '—' }}</td>
+              <td :title="tx.fromAddress || (isRussian ? 'Не указан' : 'Not provided')">{{ tx.fromAddress ? shortAddress(tx.fromAddress) : '—' }}</td>
               <td><a :href="tx.explorerTxUrl" target="_blank" rel="noopener noreferrer">{{ shortAddress(tx.txHash) }} ↗</a></td>
             </tr>
           </tbody>
         </table>
       </div>
-      <p v-if="data?.updatedAt" class="donations-status">Ledger updated: {{ formatDate(data.updatedAt) }}</p>
+      <p v-if="data?.updatedAt" class="donations-status">{{ isRussian ? 'Реестр обновлён:' : 'Ledger updated:' }} {{ formatDate(data.updatedAt) }}</p>
     </section>
   </div>
 </template>
