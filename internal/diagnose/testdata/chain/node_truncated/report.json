@@ -1,0 +1,93 @@
+{
+  "ruleSetVersion": 2,
+  "target": {
+    "kind": "Pod",
+    "namespace": "app",
+    "name": "api-0",
+    "uid": "p-api-0"
+  },
+  "observedAt": "2026-11-11T10:00:00Z",
+  "symptoms": [
+    "none"
+  ],
+  "resources": [
+    {
+      "kind": "Pod",
+      "namespace": "app",
+      "name": "api-0",
+      "uid": "p-api-0"
+    }
+  ],
+  "facts": [
+    {
+      "kind": "fact",
+      "id": "f1",
+      "code": "no_problem_detected",
+      "resource": {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "api-0",
+        "uid": "p-api-0"
+      },
+      "params": {
+        "pods": "1"
+      },
+      "source": {
+        "kind": "derived",
+        "resource": {
+          "kind": "Pod",
+          "namespace": "app",
+          "name": "api-0",
+          "uid": "p-api-0"
+        }
+      },
+      "observedAt": "2026-11-11T10:00:00Z"
+    }
+  ],
+  "hypotheses": [],
+  "recommendations": [],
+  "steps": [
+    {
+      "kind": "step",
+      "id": "s1",
+      "code": "step.check_events",
+      "resource": {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "api-0",
+        "uid": "p-api-0"
+      },
+      "hypotheses": []
+    }
+  ],
+  "missing": [
+    {
+      "code": "context.insufficient",
+      "resource": {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "api-0",
+        "uid": "p-api-0"
+      }
+    }
+  ],
+  "partial": [
+    "Graph"
+  ],
+  "graph": {
+    "nodes": [
+      {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "api-0",
+        "health": "Degraded",
+        "reason": "not_ready"
+      }
+    ],
+    "edges": [],
+    "truncated": true,
+    "warnings": [
+      "limit.nodes"
+    ]
+  }
+}

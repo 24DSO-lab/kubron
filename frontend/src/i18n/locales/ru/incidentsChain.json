@@ -1,6 +1,8 @@
 {
   "symptoms": {
-    "storage_claim_pending": "Заявка на том не привязана."
+    "storage_claim_pending": "Заявка на том не привязана.",
+    "node_unhealthy": "Узел в плохом состоянии.",
+    "service_no_endpoints": "У Service нет рабочих endpoints."
   },
   "facts": {
     "pvc_not_bound": "Заявка {pvc} не привязана (фаза: {phase}).",
@@ -9,7 +11,14 @@
     "pvc_missing": "Под монтирует заявку {pvc}, но такой заявки нет.",
     "storage_class_missing": "Заявка {pvc} просит StorageClass {class}, которого нет.",
     "storage_default_class_missing": "В заявке {pvc} не указан StorageClass, а класса по умолчанию в кластере нет.",
-    "storage_no_consumers": "Заявку {pvc} не использует ни один под."
+    "storage_no_consumers": "Заявку {pvc} не использует ни один под.",
+    "service_selector": "Service {service} выбирает поды по меткам {selector}, и ни один под им не соответствует.",
+    "service_endpoints_not_ready": "У Service {service} адресов endpoints: {total}, из них готовы: {ready}.",
+    "service_no_endpoint_slices": "У Service {service} есть поды, но EndpointSlice для него не найден.",
+    "service_port_mismatch": "Service {service} направляет порт {port} на targetPort {target}, который не объявлен ни у одного контейнера выбранных подов.",
+    "node_condition": "Узел {node} сообщает условие {condition} со статусом {status}.",
+    "node_pods_unready": "На узле {node} не готовы {unready} из {total} подов.",
+    "node_cordoned": "Узел {node} закрыт для новых подов (spec.unschedulable)."
   },
   "hypotheses": {
     "pvc_missing": "Заявки {pvc} нет, поэтому поды, которые её монтируют, не могут запуститься.",
@@ -18,14 +27,30 @@
     "storage_class_not_found": "Заявка {pvc} просит StorageClass {class}, которого нет, поэтому том создать нельзя.",
     "storage_no_default_class": "В заявке {pvc} не указан StorageClass, а класса по умолчанию в кластере нет, поэтому том не создаётся.",
     "storage_waiting_first_consumer": "Заявка {pvc} привяжется только после появления пода, который её использует, а такого пода нет.",
-    "storage_provisioning_failed": "Провизионер томов не смог создать том для заявки {pvc}."
+    "storage_provisioning_failed": "Провизионер томов не смог создать том для заявки {pvc}.",
+    "service_selector_no_match": "Селектор Service {service} не совпадает ни с одним подом, поэтому у Service нет endpoints.",
+    "service_no_ready_endpoints": "Ни один endpoint Service {service} не готов, поэтому на него не идёт трафик.",
+    "service_no_endpoints": "У Service {service} ещё нет EndpointSlice; возможно, контроллер endpoints пока не успел.",
+    "service_target_port_mismatch": "Порт {port} Service {service} может указывать на targetPort {target}, которого нет у выбранных подов.",
+    "node_not_ready": "Узел {node} не готов (статус {status}), поэтому поды на нём могут быть недоступны.",
+    "node_pressure_memory": "На узле {node} не хватает памяти, поэтому поды на нём могут вытесняться или убиваться.",
+    "node_pressure_disk": "На узле {node} не хватает места на диске, поэтому поды на нём могут вытесняться.",
+    "node_pressure_pid": "На узле {node} исчерпан лимит процессов, поэтому новые процессы могут не запускаться.",
+    "node_network_unavailable": "Сеть узла {node} не настроена, поэтому поды на нём могут быть недоступны.",
+    "node_unschedulable": "Узел {node} закрыт для новых подов; возможно, это сделано намеренно (cordon)."
   },
   "recommendations": {
     "rec_create_missing_claim": "Создайте PersistentVolumeClaim {pvc} или исправьте имя заявки в спецификации пода.",
     "rec_restore_volume": "Восстановите или пересоздайте том, к которому была привязана заявка {pvc}, либо создайте новую заявку.",
     "rec_fix_storage_class": "Создайте StorageClass {class} или укажите в заявке {pvc} существующий класс.",
     "rec_set_default_storage_class": "Назначьте StorageClass по умолчанию или укажите класс в заявке {pvc}.",
-    "rec_use_or_delete_claim": "Запустите под, который использует заявку {pvc}, или удалите заявку, если она больше не нужна."
+    "rec_use_or_delete_claim": "Запустите под, который использует заявку {pvc}, или удалите заявку, если она больше не нужна.",
+    "rec_fix_service_selector": "Приведите селектор Service {service} в соответствие с метками его подов или проставьте метки подам.",
+    "rec_check_pods_behind_service": "Выясните, почему не готовы поды за Service {service}.",
+    "rec_fix_service_port": "Приведите targetPort {target} Service {service} в соответствие с портом, который слушает контейнер.",
+    "rec_check_node": "Проверьте состояние узла {node}: kubelet, сеть и события узла.",
+    "rec_relieve_node": "Освободите ресурсы на узле {node} или перенесите с него нагрузку.",
+    "rec_uncordon_node": "Если работы на узле {node} закончены, верните ему возможность принимать поды (uncordon)."
   },
   "steps": {
     "step_check_provisioner": "Проверьте логи провизионера томов и события заявки {pvc}."
@@ -38,6 +63,7 @@
     "Healthy": "Исправен",
     "Degraded": "Неисправен",
     "Progressing": "В процессе",
+    "Suspended": "Приостановлен",
     "Missing": "Отсутствует",
     "Unknown": "Неизвестно"
   },

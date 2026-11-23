@@ -45,7 +45,8 @@ type chainCase struct {
 
 var chainKindGVK = map[string]schema.GroupVersionKind{
 	"PersistentVolumeClaim": gvkPVC, "Service": gvkService, "Node": gvkNode, "Event": gvkEvent, "Pod": gvkPod,
-	"StorageClass": {Group: "storage.k8s.io", Version: "v1", Kind: "StorageClass"},
+	"StorageClass":  {Group: "storage.k8s.io", Version: "v1", Kind: "StorageClass"},
+	"EndpointSlice": {Group: "discovery.k8s.io", Version: "v1", Kind: "EndpointSlice"},
 }
 
 func loadChainCases(t *testing.T) map[string]chainCase {

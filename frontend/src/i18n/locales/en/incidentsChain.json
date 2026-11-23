@@ -1,6 +1,8 @@
 {
   "symptoms": {
-    "storage_claim_pending": "A volume claim is not bound."
+    "storage_claim_pending": "A volume claim is not bound.",
+    "node_unhealthy": "The node is in a bad state.",
+    "service_no_endpoints": "The Service has no working endpoints."
   },
   "facts": {
     "pvc_not_bound": "Claim {pvc} is not bound (phase: {phase}).",
@@ -9,7 +11,14 @@
     "pvc_missing": "A Pod mounts claim {pvc}, but the claim does not exist.",
     "storage_class_missing": "Claim {pvc} asks for StorageClass {class}, which does not exist.",
     "storage_default_class_missing": "Claim {pvc} names no StorageClass, and the cluster has no default one.",
-    "storage_no_consumers": "No Pod uses claim {pvc}."
+    "storage_no_consumers": "No Pod uses claim {pvc}.",
+    "service_selector": "Service {service} selects Pods with the labels {selector}, and no Pod matches them.",
+    "service_endpoints_not_ready": "Service {service} has {total} endpoint addresses, {ready} of them ready.",
+    "service_no_endpoint_slices": "Service {service} has Pods, but no EndpointSlice was found for it.",
+    "service_port_mismatch": "Service {service} sends port {port} to targetPort {target}, which no container of the selected Pods declares.",
+    "node_condition": "Node {node} reports the condition {condition} with status {status}.",
+    "node_pods_unready": "{unready} of {total} Pods on node {node} are not ready.",
+    "node_cordoned": "Node {node} is closed to new Pods (spec.unschedulable)."
   },
   "hypotheses": {
     "pvc_missing": "Claim {pvc} does not exist, so Pods that mount it cannot start.",
@@ -18,14 +27,30 @@
     "storage_class_not_found": "Claim {pvc} asks for StorageClass {class}, which does not exist, so no volume can be provisioned.",
     "storage_no_default_class": "Claim {pvc} names no StorageClass and the cluster has no default one, so no volume is provisioned.",
     "storage_waiting_first_consumer": "Claim {pvc} binds only when a Pod uses it, and no Pod does.",
-    "storage_provisioning_failed": "The volume provisioner failed to create a volume for claim {pvc}."
+    "storage_provisioning_failed": "The volume provisioner failed to create a volume for claim {pvc}.",
+    "service_selector_no_match": "The selector of Service {service} matches no Pod, so the Service has no endpoints.",
+    "service_no_ready_endpoints": "None of the endpoints of Service {service} is ready, so it receives no traffic.",
+    "service_no_endpoints": "Service {service} has no EndpointSlice yet; the endpoints controller may still be catching up.",
+    "service_target_port_mismatch": "Port {port} of Service {service} may point to targetPort {target}, which the selected Pods do not declare.",
+    "node_not_ready": "Node {node} is not ready (status {status}), so Pods on it may be unavailable.",
+    "node_pressure_memory": "Node {node} is under memory pressure, so Pods on it may be evicted or killed.",
+    "node_pressure_disk": "Node {node} is under disk pressure, so Pods on it may be evicted.",
+    "node_pressure_pid": "Node {node} is under process limit pressure, so new processes may fail to start.",
+    "node_network_unavailable": "The network of node {node} is not configured, so Pods on it may be unreachable.",
+    "node_unschedulable": "Node {node} is closed to new Pods, which may be deliberate (cordon)."
   },
   "recommendations": {
     "rec_create_missing_claim": "Create PersistentVolumeClaim {pvc}, or correct the claim name in the Pod spec.",
     "rec_restore_volume": "Recover or recreate the volume that claim {pvc} was bound to, or create a new claim.",
     "rec_fix_storage_class": "Create StorageClass {class}, or point claim {pvc} to an existing one.",
     "rec_set_default_storage_class": "Mark a StorageClass as the default, or name one in claim {pvc}.",
-    "rec_use_or_delete_claim": "Start a Pod that uses claim {pvc}, or delete the claim if it is no longer needed."
+    "rec_use_or_delete_claim": "Start a Pod that uses claim {pvc}, or delete the claim if it is no longer needed.",
+    "rec_fix_service_selector": "Make the selector of Service {service} match the labels of its Pods, or label the Pods accordingly.",
+    "rec_check_pods_behind_service": "Check why the Pods behind Service {service} are not ready.",
+    "rec_fix_service_port": "Make targetPort {target} of Service {service} match a port the container listens on.",
+    "rec_check_node": "Check the state of node {node}: kubelet, network and the node's events.",
+    "rec_relieve_node": "Free resources on node {node} or move workloads away from it.",
+    "rec_uncordon_node": "If the maintenance on node {node} is over, make it schedulable again (uncordon)."
   },
   "steps": {
     "step_check_provisioner": "Check the volume provisioner's logs and the events of claim {pvc}."
@@ -38,6 +63,7 @@
     "Healthy": "Healthy",
     "Degraded": "Degraded",
     "Progressing": "In progress",
+    "Suspended": "Suspended",
     "Missing": "Missing",
     "Unknown": "Unknown"
   },

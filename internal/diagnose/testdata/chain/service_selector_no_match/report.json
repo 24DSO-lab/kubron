@@ -1,0 +1,108 @@
+{
+  "ruleSetVersion": 2,
+  "target": {
+    "kind": "Service",
+    "namespace": "app",
+    "name": "web",
+    "uid": "s1"
+  },
+  "observedAt": "2026-11-11T10:00:00Z",
+  "symptoms": [
+    "service.no_endpoints"
+  ],
+  "resources": [
+    {
+      "kind": "Service",
+      "namespace": "app",
+      "name": "web",
+      "uid": "s1"
+    },
+    {
+      "kind": "Service",
+      "namespace": "app",
+      "name": "web"
+    }
+  ],
+  "facts": [
+    {
+      "kind": "fact",
+      "id": "f1",
+      "code": "service.selector",
+      "resource": {
+        "kind": "Service",
+        "namespace": "app",
+        "name": "web"
+      },
+      "params": {
+        "selector": "app=web",
+        "service": "web"
+      },
+      "source": {
+        "kind": "resource",
+        "resource": {
+          "kind": "Service",
+          "namespace": "app",
+          "name": "web"
+        },
+        "field": "spec.selector"
+      },
+      "observedAt": "2026-11-11T10:00:00Z"
+    }
+  ],
+  "hypotheses": [
+    {
+      "kind": "hypothesis",
+      "id": "h1",
+      "code": "service.selector_no_match",
+      "resource": {
+        "kind": "Service",
+        "namespace": "app",
+        "name": "web"
+      },
+      "params": {
+        "service": "web"
+      },
+      "confidence": "high",
+      "supporting": [
+        "f1"
+      ],
+      "contradicting": [],
+      "ruleId": "service.chain",
+      "ruleEpoch": 1
+    }
+  ],
+  "recommendations": [
+    {
+      "kind": "recommendation",
+      "id": "r1",
+      "code": "rec.fix_service_selector",
+      "resource": {
+        "kind": "Service",
+        "namespace": "app",
+        "name": "web"
+      },
+      "params": {
+        "service": "web"
+      },
+      "hypotheses": [
+        "h1"
+      ],
+      "ruleId": "service.chain",
+      "ruleEpoch": 1
+    }
+  ],
+  "steps": [],
+  "missing": [],
+  "graph": {
+    "nodes": [
+      {
+        "kind": "Service",
+        "namespace": "app",
+        "name": "web",
+        "health": "Degraded",
+        "reason": "selector_matches_nothing"
+      }
+    ],
+    "edges": []
+  }
+}

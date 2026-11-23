@@ -213,3 +213,39 @@ func TestChainLocalesHaveTheSameKeys(t *testing.T) {
 		}
 	}
 }
+
+// Состояния и причины вершин графа берутся из исходников depgraph: новое значение без перевода не доходит до
+// пользователя пустым словом в цепочке (так был найден пропуск «Suspended»).
+func TestEveryGraphHealthAndReasonIsTranslated(t *testing.T) {
+	t.Parallel()
+	read := func(name string) string {
+		raw, err := os.ReadFile(filepath.Join("..", "depgraph", name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(raw)
+	}
+	var healths, reasons []string
+	for _, m := range regexp.MustCompile(`\bHealth\s*=\s*"([A-Za-z]+)"`).FindAllStringSubmatch(read("model.go"), -1) {
+		healths = append(healths, m[1])
+	}
+	for _, m := range regexp.MustCompile(`\bReason[A-Za-z]+\s*=\s*"([a-z_]+)"`).FindAllStringSubmatch(read("health.go"), -1) {
+		reasons = append(reasons, m[1])
+	}
+	if len(healths) < 6 || len(reasons) < 20 {
+		t.Fatalf("extraction found too little: %d healths, %d reasons", len(healths), len(reasons))
+	}
+	for _, lang := range chainLangs {
+		msgs := chainMessages(t, lang)
+		for _, h := range healths {
+			if v, _ := msgs["graphHealth"][h].(string); v == "" {
+				t.Errorf("%s: no translation for graph health %q", lang, h)
+			}
+		}
+		for _, r := range reasons {
+			if v, _ := msgs["graphReasons"][r].(string); v == "" {
+				t.Errorf("%s: no translation for graph reason %q", lang, r)
+			}
+		}
+	}
+}

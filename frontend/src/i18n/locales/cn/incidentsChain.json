@@ -1,6 +1,8 @@
 {
   "symptoms": {
-    "storage_claim_pending": "存储卷声明未绑定。"
+    "storage_claim_pending": "存储卷声明未绑定。",
+    "node_unhealthy": "节点状态异常。",
+    "service_no_endpoints": "该 Service 没有可用的端点。"
   },
   "facts": {
     "pvc_not_bound": "声明 {pvc} 未绑定（阶段：{phase}）。",
@@ -9,7 +11,14 @@
     "pvc_missing": "有 Pod 挂载了声明 {pvc}，但该声明不存在。",
     "storage_class_missing": "声明 {pvc} 请求的 StorageClass {class} 不存在。",
     "storage_default_class_missing": "声明 {pvc} 未指定 StorageClass，且集群没有默认的 StorageClass。",
-    "storage_no_consumers": "没有任何 Pod 使用声明 {pvc}。"
+    "storage_no_consumers": "没有任何 Pod 使用声明 {pvc}。",
+    "service_selector": "Service {service} 按标签 {selector} 选择 Pod，但没有任何 Pod 匹配。",
+    "service_endpoints_not_ready": "Service {service} 共有 {total} 个端点地址，其中 {ready} 个就绪。",
+    "service_no_endpoint_slices": "Service {service} 有对应的 Pod，但未找到它的 EndpointSlice。",
+    "service_port_mismatch": "Service {service} 将端口 {port} 转发到 targetPort {target}，而所选 Pod 的容器均未声明该端口。",
+    "node_condition": "节点 {node} 报告状况 {condition}，状态为 {status}。",
+    "node_pods_unready": "节点 {node} 上 {total} 个 Pod 中有 {unready} 个未就绪。",
+    "node_cordoned": "节点 {node} 已禁止调度新的 Pod（spec.unschedulable）。"
   },
   "hypotheses": {
     "pvc_missing": "声明 {pvc} 不存在，因此挂载它的 Pod 无法启动。",
@@ -18,14 +27,30 @@
     "storage_class_not_found": "声明 {pvc} 请求的 StorageClass {class} 不存在，因此无法创建存储卷。",
     "storage_no_default_class": "声明 {pvc} 未指定 StorageClass，且集群没有默认的 StorageClass，因此不会创建存储卷。",
     "storage_waiting_first_consumer": "声明 {pvc} 只有在有 Pod 使用它时才会绑定，而目前没有 Pod 使用它。",
-    "storage_provisioning_failed": "存储卷供应程序未能为声明 {pvc} 创建存储卷。"
+    "storage_provisioning_failed": "存储卷供应程序未能为声明 {pvc} 创建存储卷。",
+    "service_selector_no_match": "Service {service} 的选择器没有匹配任何 Pod，因此该 Service 没有端点。",
+    "service_no_ready_endpoints": "Service {service} 的端点均未就绪，因此它收不到流量。",
+    "service_no_endpoints": "Service {service} 暂时没有 EndpointSlice；可能是端点控制器尚未处理完成。",
+    "service_target_port_mismatch": "Service {service} 的端口 {port} 可能指向了所选 Pod 未声明的 targetPort {target}。",
+    "node_not_ready": "节点 {node} 未就绪（状态 {status}），因此其上的 Pod 可能不可用。",
+    "node_pressure_memory": "节点 {node} 内存紧张，因此其上的 Pod 可能被驱逐或被终止。",
+    "node_pressure_disk": "节点 {node} 磁盘空间紧张，因此其上的 Pod 可能被驱逐。",
+    "node_pressure_pid": "节点 {node} 的进程数已达上限，因此新进程可能无法启动。",
+    "node_network_unavailable": "节点 {node} 的网络尚未配置，因此其上的 Pod 可能无法访问。",
+    "node_unschedulable": "节点 {node} 已禁止调度新的 Pod，这可能是有意为之（cordon）。"
   },
   "recommendations": {
     "rec_create_missing_claim": "创建 PersistentVolumeClaim {pvc}，或在 Pod 规约中更正声明名称。",
     "rec_restore_volume": "恢复或重新创建声明 {pvc} 原先绑定的存储卷，或创建新的声明。",
     "rec_fix_storage_class": "创建 StorageClass {class}，或让声明 {pvc} 指向已有的 StorageClass。",
     "rec_set_default_storage_class": "将某个 StorageClass 设为默认，或在声明 {pvc} 中指定一个。",
-    "rec_use_or_delete_claim": "启动使用声明 {pvc} 的 Pod，或在不再需要时删除该声明。"
+    "rec_use_or_delete_claim": "启动使用声明 {pvc} 的 Pod，或在不再需要时删除该声明。",
+    "rec_fix_service_selector": "让 Service {service} 的选择器与其 Pod 的标签一致，或为 Pod 添加相应标签。",
+    "rec_check_pods_behind_service": "检查 Service {service} 背后的 Pod 为何未就绪。",
+    "rec_fix_service_port": "让 Service {service} 的 targetPort {target} 与容器实际监听的端口一致。",
+    "rec_check_node": "检查节点 {node} 的状态：kubelet、网络以及节点事件。",
+    "rec_relieve_node": "释放节点 {node} 上的资源，或将工作负载迁出。",
+    "rec_uncordon_node": "如果节点 {node} 的维护已结束，请恢复其可调度状态（uncordon）。"
   },
   "steps": {
     "step_check_provisioner": "检查存储卷供应程序的日志以及声明 {pvc} 的事件。"
@@ -38,6 +63,7 @@
     "Healthy": "正常",
     "Degraded": "异常",
     "Progressing": "进行中",
+    "Suspended": "已暂停",
     "Missing": "不存在",
     "Unknown": "未知"
   },
