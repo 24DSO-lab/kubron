@@ -135,7 +135,7 @@ async function copyAddress(wallet: Wallet) {
               <td>{{ formatDate(tx.receivedAt) }}</td>
               <td>{{ tx.asset }} · {{ tx.network }}</td>
               <td>{{ tx.amount }}</td>
-              <td :title="tx.fromAddress || isRussian ? 'Не указан' : 'Not provided'">{{ tx.fromAddress ? shortAddress(tx.fromAddress) : '—' }}</td>
+              <td :title="tx.fromAddress || (isRussian ? 'Не указан' : 'Not provided')">{{ tx.fromAddress ? shortAddress(tx.fromAddress) : '—' }}</td>
               <td><a :href="tx.explorerTxUrl" target="_blank" rel="noopener noreferrer">{{ shortAddress(tx.txHash) }} ↗</a></td>
             </tr>
           </tbody>
