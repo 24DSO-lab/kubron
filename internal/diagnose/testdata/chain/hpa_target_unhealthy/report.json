@@ -1,0 +1,188 @@
+{
+  "ruleSetVersion": 2,
+  "target": {
+    "group": "autoscaling",
+    "kind": "HorizontalPodAutoscaler",
+    "namespace": "app",
+    "name": "web",
+    "uid": "hpa-1"
+  },
+  "observedAt": "2026-11-11T10:00:00Z",
+  "symptoms": [
+    "hpa.target_unhealthy"
+  ],
+  "resources": [
+    {
+      "group": "autoscaling",
+      "kind": "HorizontalPodAutoscaler",
+      "namespace": "app",
+      "name": "web",
+      "uid": "hpa-1"
+    },
+    {
+      "group": "apps",
+      "kind": "Deployment",
+      "namespace": "app",
+      "name": "web"
+    }
+  ],
+  "facts": [
+    {
+      "kind": "fact",
+      "id": "f1",
+      "code": "hpa.target_degraded",
+      "resource": {
+        "group": "apps",
+        "kind": "Deployment",
+        "namespace": "app",
+        "name": "web"
+      },
+      "params": {
+        "hpa": "web",
+        "kind": "Deployment",
+        "target": "web"
+      },
+      "source": {
+        "kind": "derived",
+        "resource": {
+          "group": "apps",
+          "kind": "Deployment",
+          "namespace": "app",
+          "name": "web"
+        },
+        "field": "status"
+      },
+      "observedAt": "2026-11-11T10:00:00Z"
+    }
+  ],
+  "hypotheses": [
+    {
+      "kind": "hypothesis",
+      "id": "h1",
+      "code": "hpa.target_unhealthy",
+      "resource": {
+        "group": "autoscaling",
+        "kind": "HorizontalPodAutoscaler",
+        "namespace": "app",
+        "name": "web",
+        "uid": "hpa-1"
+      },
+      "params": {
+        "hpa": "web",
+        "kind": "Deployment",
+        "target": "web"
+      },
+      "confidence": "low",
+      "supporting": [
+        "f1"
+      ],
+      "contradicting": [],
+      "ruleId": "chain.hpa",
+      "ruleEpoch": 1
+    }
+  ],
+  "recommendations": [],
+  "steps": [
+    {
+      "kind": "step",
+      "id": "s1",
+      "code": "hpa.investigate_target",
+      "resource": {
+        "group": "apps",
+        "kind": "Deployment",
+        "namespace": "app",
+        "name": "web"
+      },
+      "params": {
+        "hpa": "web",
+        "kind": "Deployment",
+        "target": "web"
+      },
+      "hypotheses": [
+        "h1"
+      ]
+    }
+  ],
+  "missing": [],
+  "graph": {
+    "nodes": [
+      {
+        "group": "apps",
+        "kind": "Deployment",
+        "namespace": "app",
+        "name": "web",
+        "health": "Degraded",
+        "reason": "replicas_unavailable"
+      },
+      {
+        "group": "apps",
+        "kind": "ReplicaSet",
+        "namespace": "app",
+        "name": "web-7d",
+        "health": "Degraded",
+        "reason": "replicas_unavailable"
+      },
+      {
+        "group": "autoscaling",
+        "kind": "HorizontalPodAutoscaler",
+        "namespace": "app",
+        "name": "web",
+        "health": "Healthy"
+      },
+      {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "web-7d-a",
+        "health": "Degraded",
+        "reason": "crash_loop"
+      }
+    ],
+    "edges": [
+      {
+        "from": "apps/Deployment/app/web",
+        "to": "apps/ReplicaSet/app/web-7d",
+        "type": "owns",
+        "state": "ok"
+      },
+      {
+        "from": "apps/ReplicaSet/app/web-7d",
+        "to": "core/Pod/app/web-7d-a",
+        "type": "owns",
+        "state": "ok"
+      },
+      {
+        "from": "autoscaling/HorizontalPodAutoscaler/app/web",
+        "to": "apps/Deployment/app/web",
+        "type": "scales",
+        "state": "broken",
+        "reason": "replicas_unavailable"
+      }
+    ]
+  },
+  "chains": [
+    {
+      "path": [
+        {
+          "ref": {
+            "group": "autoscaling",
+            "kind": "HorizontalPodAutoscaler",
+            "namespace": "app",
+            "name": "web"
+          },
+          "health": "Healthy"
+        },
+        {
+          "ref": {
+            "group": "apps",
+            "kind": "Deployment",
+            "namespace": "app",
+            "name": "web"
+          },
+          "health": "Degraded",
+          "reason": "replicas_unavailable"
+        }
+      ],
+      "candidate": "h1"
+    }
+  ]
+}
