@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /**
- * Фикстуры Kubron Intelligence (JSON, формат — docs/prompts/contracts.md §3–7).
+ * Фикстуры Kubron Intelligence (JSON, формат — docs/intelligence-contracts.md §3–7).
  * Интерфейс работает на них до появления реальных RPC (D7); здесь они только получают типы.
  * Золотые файлы D3/D4/D6 при сверке кладутся рядом и подключаются так же.
  */

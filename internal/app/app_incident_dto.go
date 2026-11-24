@@ -12,7 +12,7 @@ import (
 	"github.com/24DSO-lab/kubron/internal/incident"
 )
 
-// DTO проблем и обратной связи (docs/prompts/contracts.md, раздел 7). JSON — camelCase; фронтенд (D8) зеркалит эти
+// DTO проблем и обратной связи (docs/intelligence-contracts.md, раздел 7). JSON — camelCase; фронтенд (D8) зеркалит эти
 // типы в frontend/src/types/incident.ts. Поля менять только вместе с контрактом.
 
 // IncidentProblemListQuery — страница проблем кластера.
