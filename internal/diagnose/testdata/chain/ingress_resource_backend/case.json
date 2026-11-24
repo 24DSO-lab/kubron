@@ -1,0 +1,17 @@
+{
+  "target": {
+    "kind": "Ingress",
+    "namespace": "app",
+    "name": "site"
+  },
+  "golden": true,
+  "expect": {
+    "symptoms": [
+      "none"
+    ],
+    "absent": [
+      "ingress.backend_service_missing",
+      "ingress.class_not_found"
+    ]
+  }
+}

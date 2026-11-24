@@ -1,0 +1,377 @@
+{
+  "ruleSetVersion": 2,
+  "target": {
+    "group": "networking.k8s.io",
+    "kind": "Ingress",
+    "namespace": "app",
+    "name": "site",
+    "uid": "i1"
+  },
+  "observedAt": "2026-11-11T10:00:00Z",
+  "symptoms": [
+    "pod.crash_loop",
+    "ingress.unreachable"
+  ],
+  "resources": [
+    {
+      "group": "networking.k8s.io",
+      "kind": "Ingress",
+      "namespace": "app",
+      "name": "site",
+      "uid": "i1"
+    },
+    {
+      "kind": "Pod",
+      "namespace": "app",
+      "name": "web-1",
+      "uid": "p1"
+    },
+    {
+      "group": "networking.k8s.io",
+      "kind": "Ingress",
+      "namespace": "app",
+      "name": "site"
+    }
+  ],
+  "facts": [
+    {
+      "kind": "fact",
+      "id": "f1",
+      "code": "container.restarts",
+      "resource": {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "web-1",
+        "uid": "p1"
+      },
+      "params": {
+        "container": "web",
+        "count": "7"
+      },
+      "source": {
+        "kind": "resource",
+        "resource": {
+          "kind": "Pod",
+          "namespace": "app",
+          "name": "web-1",
+          "uid": "p1"
+        },
+        "field": "status.containerStatuses[web].restartCount"
+      },
+      "observedAt": "2026-11-11T10:00:00Z"
+    },
+    {
+      "kind": "fact",
+      "id": "f2",
+      "code": "container.last_terminated",
+      "resource": {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "web-1",
+        "uid": "p1"
+      },
+      "params": {
+        "container": "web",
+        "exitCode": "1",
+        "finishedAt": "",
+        "reason": "Error"
+      },
+      "source": {
+        "kind": "resource",
+        "resource": {
+          "kind": "Pod",
+          "namespace": "app",
+          "name": "web-1",
+          "uid": "p1"
+        },
+        "field": "status.containerStatuses[web].lastState.terminated"
+      },
+      "observedAt": "2026-11-11T10:00:00Z"
+    },
+    {
+      "kind": "fact",
+      "id": "f3",
+      "code": "container.log_tail",
+      "resource": {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "web-1",
+        "uid": "p1"
+      },
+      "params": {
+        "container": "web"
+      },
+      "source": {
+        "kind": "log",
+        "resource": {
+          "kind": "Pod",
+          "namespace": "app",
+          "name": "web-1",
+          "uid": "p1"
+        },
+        "field": "log/web"
+      },
+      "observedAt": "2026-11-11T10:00:00Z",
+      "log": {
+        "container": "web",
+        "previous": true
+      }
+    },
+    {
+      "kind": "fact",
+      "id": "f4",
+      "code": "ingress.backend_endpoints",
+      "resource": {
+        "group": "networking.k8s.io",
+        "kind": "Ingress",
+        "namespace": "app",
+        "name": "site"
+      },
+      "params": {
+        "cause": "no_ready_endpoints",
+        "ingress": "site",
+        "service": "web"
+      },
+      "source": {
+        "kind": "derived",
+        "resource": {
+          "kind": "Service",
+          "namespace": "app",
+          "name": "web"
+        },
+        "field": "endpointslices"
+      },
+      "observedAt": "2026-11-11T10:00:00Z"
+    }
+  ],
+  "hypotheses": [
+    {
+      "kind": "hypothesis",
+      "id": "h1",
+      "code": "crash.application_error",
+      "resource": {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "web-1",
+        "uid": "p1"
+      },
+      "params": {
+        "container": "web",
+        "exitCode": "1"
+      },
+      "confidence": "medium",
+      "supporting": [
+        "f1",
+        "f2",
+        "f3"
+      ],
+      "contradicting": [],
+      "ruleId": "pod.crash_loop",
+      "ruleEpoch": 1,
+      "explains": [
+        "h2"
+      ]
+    },
+    {
+      "kind": "hypothesis",
+      "id": "h2",
+      "code": "ingress.backend_no_endpoints",
+      "resource": {
+        "group": "networking.k8s.io",
+        "kind": "Ingress",
+        "namespace": "app",
+        "name": "site"
+      },
+      "params": {
+        "ingress": "site",
+        "service": "web"
+      },
+      "confidence": "high",
+      "supporting": [
+        "f4"
+      ],
+      "contradicting": [],
+      "ruleId": "chain.ingress",
+      "ruleEpoch": 1
+    }
+  ],
+  "recommendations": [
+    {
+      "kind": "recommendation",
+      "id": "r1",
+      "code": "rec.fix_application_error",
+      "resource": {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "web-1",
+        "uid": "p1"
+      },
+      "params": {
+        "container": "web",
+        "exitCode": "1"
+      },
+      "hypotheses": [
+        "h1"
+      ],
+      "ruleId": "pod.crash_loop",
+      "ruleEpoch": 1
+    },
+    {
+      "kind": "recommendation",
+      "id": "r2",
+      "code": "rec.check_pods_behind_service",
+      "resource": {
+        "group": "networking.k8s.io",
+        "kind": "Ingress",
+        "namespace": "app",
+        "name": "site"
+      },
+      "params": {
+        "service": "web"
+      },
+      "hypotheses": [
+        "h2"
+      ],
+      "ruleId": "chain.ingress",
+      "ruleEpoch": 1
+    }
+  ],
+  "steps": [
+    {
+      "kind": "step",
+      "id": "s1",
+      "code": "step.read_previous_logs",
+      "resource": {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "web-1",
+        "uid": "p1"
+      },
+      "params": {
+        "container": "web"
+      },
+      "hypotheses": []
+    },
+    {
+      "kind": "step",
+      "id": "s2",
+      "code": "step.check_tls_secret",
+      "resource": {
+        "group": "networking.k8s.io",
+        "kind": "Ingress",
+        "namespace": "app",
+        "name": "site"
+      },
+      "params": {
+        "ingress": "site",
+        "secret": "site-tls"
+      },
+      "hypotheses": [
+        "h2"
+      ]
+    }
+  ],
+  "missing": [],
+  "graph": {
+    "nodes": [
+      {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "web-1",
+        "health": "Degraded",
+        "reason": "crash_loop"
+      },
+      {
+        "kind": "Service",
+        "namespace": "app",
+        "name": "web",
+        "health": "Degraded",
+        "reason": "no_ready_endpoints"
+      },
+      {
+        "group": "discovery.k8s.io",
+        "kind": "EndpointSlice",
+        "namespace": "app",
+        "name": "web-abc",
+        "health": "Degraded",
+        "reason": "no_ready_endpoints"
+      },
+      {
+        "group": "networking.k8s.io",
+        "kind": "Ingress",
+        "namespace": "app",
+        "name": "site",
+        "health": "Healthy"
+      },
+      {
+        "group": "networking.k8s.io",
+        "kind": "IngressClass",
+        "name": "nginx",
+        "health": "Healthy"
+      }
+    ],
+    "edges": [
+      {
+        "from": "core/Service/app/web",
+        "to": "core/Pod/app/web-1",
+        "type": "selects",
+        "state": "broken",
+        "reason": "crash_loop"
+      },
+      {
+        "from": "core/Service/app/web",
+        "to": "discovery.k8s.io/EndpointSlice/app/web-abc",
+        "type": "backed_by",
+        "state": "broken",
+        "reason": "no_ready_endpoints"
+      },
+      {
+        "from": "networking.k8s.io/Ingress/app/site",
+        "to": "core/Service/app/web",
+        "type": "routes",
+        "state": "broken",
+        "reason": "no_ready_endpoints"
+      },
+      {
+        "from": "networking.k8s.io/Ingress/app/site",
+        "to": "networking.k8s.io/IngressClass//nginx",
+        "type": "binds",
+        "state": "ok"
+      }
+    ]
+  },
+  "chains": [
+    {
+      "path": [
+        {
+          "ref": {
+            "group": "networking.k8s.io",
+            "kind": "Ingress",
+            "namespace": "app",
+            "name": "site"
+          },
+          "health": "Healthy"
+        },
+        {
+          "ref": {
+            "kind": "Service",
+            "namespace": "app",
+            "name": "web"
+          },
+          "health": "Degraded",
+          "reason": "no_ready_endpoints"
+        },
+        {
+          "ref": {
+            "kind": "Pod",
+            "namespace": "app",
+            "name": "web-1"
+          },
+          "health": "Degraded",
+          "reason": "crash_loop"
+        }
+      ],
+      "candidate": "h1"
+    }
+  ]
+}

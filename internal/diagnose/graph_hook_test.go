@@ -185,10 +185,12 @@ func TestGraphGapsBecomeMissingAndPartial(t *testing.T) {
 func TestGraphUnsupportedSeedIsMissingContext(t *testing.T) {
 	old := maps.Clone(targets)
 	t.Cleanup(func() { targets = old })
-	RegisterTarget("Ingress", func(_ context.Context, _ Reader, target ResourceRef, o CollectOptions) (*Context, error) {
+	// Secret никогда не станет видом графа (ADR-0031 §7), поэтому он годится в пример неподдерживаемой цели; Ingress с
+	// этапа 2 поддерживается.
+	RegisterTarget("Secret", func(_ context.Context, _ Reader, target ResourceRef, o CollectOptions) (*Context, error) {
 		return &Context{Target: target, ObservedAt: o.now()}, nil
 	})
-	c, err := Collect(t.Context(), newChain(t), ResourceRef{Kind: "Ingress", Namespace: "app", Name: "web"}, chainOpts())
+	c, err := Collect(t.Context(), newChain(t), ResourceRef{Kind: "Secret", Namespace: "app", Name: "web"}, chainOpts())
 	if err != nil {
 		t.Fatal(err)
 	}

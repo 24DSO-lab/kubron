@@ -1,0 +1,216 @@
+{
+  "ruleSetVersion": 2,
+  "target": {
+    "group": "networking.k8s.io",
+    "kind": "Ingress",
+    "namespace": "app",
+    "name": "site",
+    "uid": "i1"
+  },
+  "observedAt": "2026-11-11T10:00:00Z",
+  "symptoms": [
+    "ingress.unreachable"
+  ],
+  "resources": [
+    {
+      "group": "networking.k8s.io",
+      "kind": "Ingress",
+      "namespace": "app",
+      "name": "site",
+      "uid": "i1"
+    },
+    {
+      "group": "networking.k8s.io",
+      "kind": "Ingress",
+      "namespace": "app",
+      "name": "site"
+    }
+  ],
+  "facts": [
+    {
+      "kind": "fact",
+      "id": "f1",
+      "code": "ingress.class_missing",
+      "resource": {
+        "group": "networking.k8s.io",
+        "kind": "Ingress",
+        "namespace": "app",
+        "name": "site"
+      },
+      "params": {
+        "class": "gone",
+        "ingress": "site"
+      },
+      "source": {
+        "kind": "resource",
+        "resource": {
+          "group": "networking.k8s.io",
+          "kind": "Ingress",
+          "namespace": "app",
+          "name": "site"
+        },
+        "field": "spec.ingressClassName"
+      },
+      "observedAt": "2026-11-11T10:00:00Z"
+    }
+  ],
+  "hypotheses": [
+    {
+      "kind": "hypothesis",
+      "id": "h1",
+      "code": "ingress.class_not_found",
+      "resource": {
+        "group": "networking.k8s.io",
+        "kind": "Ingress",
+        "namespace": "app",
+        "name": "site"
+      },
+      "params": {
+        "class": "gone",
+        "ingress": "site"
+      },
+      "confidence": "high",
+      "supporting": [
+        "f1"
+      ],
+      "contradicting": [],
+      "ruleId": "chain.ingress",
+      "ruleEpoch": 1
+    }
+  ],
+  "recommendations": [
+    {
+      "kind": "recommendation",
+      "id": "r1",
+      "code": "rec.fix_ingress_class",
+      "resource": {
+        "group": "networking.k8s.io",
+        "kind": "Ingress",
+        "namespace": "app",
+        "name": "site"
+      },
+      "params": {
+        "class": "gone",
+        "ingress": "site"
+      },
+      "hypotheses": [
+        "h1"
+      ],
+      "ruleId": "chain.ingress",
+      "ruleEpoch": 1
+    }
+  ],
+  "steps": [
+    {
+      "kind": "step",
+      "id": "s1",
+      "code": "step.check_tls_secret",
+      "resource": {
+        "group": "networking.k8s.io",
+        "kind": "Ingress",
+        "namespace": "app",
+        "name": "site"
+      },
+      "params": {
+        "ingress": "site",
+        "secret": "site-tls"
+      },
+      "hypotheses": [
+        "h1"
+      ]
+    }
+  ],
+  "missing": [],
+  "graph": {
+    "nodes": [
+      {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "web-1",
+        "health": "Healthy"
+      },
+      {
+        "kind": "Service",
+        "namespace": "app",
+        "name": "web",
+        "health": "Healthy"
+      },
+      {
+        "group": "discovery.k8s.io",
+        "kind": "EndpointSlice",
+        "namespace": "app",
+        "name": "web-abc",
+        "health": "Healthy"
+      },
+      {
+        "group": "networking.k8s.io",
+        "kind": "Ingress",
+        "namespace": "app",
+        "name": "site",
+        "health": "Degraded",
+        "reason": "ingress_class_missing"
+      },
+      {
+        "group": "networking.k8s.io",
+        "kind": "IngressClass",
+        "name": "gone",
+        "health": "Missing",
+        "reason": "not_found",
+        "placeholder": true
+      }
+    ],
+    "edges": [
+      {
+        "from": "core/Service/app/web",
+        "to": "core/Pod/app/web-1",
+        "type": "selects",
+        "state": "ok"
+      },
+      {
+        "from": "core/Service/app/web",
+        "to": "discovery.k8s.io/EndpointSlice/app/web-abc",
+        "type": "backed_by",
+        "state": "ok"
+      },
+      {
+        "from": "networking.k8s.io/Ingress/app/site",
+        "to": "core/Service/app/web",
+        "type": "routes",
+        "state": "ok"
+      },
+      {
+        "from": "networking.k8s.io/Ingress/app/site",
+        "to": "networking.k8s.io/IngressClass//gone",
+        "type": "binds",
+        "state": "missing",
+        "reason": "not_found"
+      }
+    ]
+  },
+  "chains": [
+    {
+      "path": [
+        {
+          "ref": {
+            "group": "networking.k8s.io",
+            "kind": "Ingress",
+            "namespace": "app",
+            "name": "site"
+          },
+          "health": "Degraded",
+          "reason": "ingress_class_missing"
+        },
+        {
+          "ref": {
+            "group": "networking.k8s.io",
+            "kind": "IngressClass",
+            "name": "gone"
+          },
+          "health": "Missing",
+          "reason": "not_found"
+        }
+      ],
+      "candidate": "h1"
+    }
+  ]
+}

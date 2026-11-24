@@ -1,1 +1,33 @@
-{}
+{
+  "symptoms": {
+    "ingress_unreachable": "Ingress не доставляет трафик до своего backend."
+  },
+  "facts": {
+    "ingress_backend_missing": "Ingress {ingress} направляет трафик в Service {service}, которого не существует.",
+    "ingress_backend_endpoints": "Ingress {ingress} направляет трафик в Service {service}, у которого нет готовых endpoints.",
+    "ingress_backend_port_missing": "Ingress {ingress} направляет трафик на порт {port} Service {service}, но Service такой порт не объявляет.",
+    "ingress_class_missing": "Ingress {ingress} указывает IngressClass {class}, которого не существует.",
+    "ingress_class_unspecified": "Ingress {ingress} не указывает IngressClass, а класса по умолчанию в кластере нет.",
+    "ingress_resource_backend": "Ingress {ingress} направляет трафик в объект {kind} с именем {name}; Kubron не разбирает backend такого вида."
+  },
+  "hypotheses": {
+    "ingress_backend_service_missing": "Service {service}, backend Ingress {ingress}, не существует, поэтому контроллеру некуда отправлять запросы.",
+    "ingress_backend_no_endpoints": "У Service {service}, backend Ingress {ingress}, нет готовых endpoints, поэтому запросы остаются без ответа.",
+    "ingress_backend_port_mismatch": "Ingress {ingress} использует порт {port} Service {service}, которого у Service нет.",
+    "ingress_class_not_found": "Ingress {ingress} может не обслуживаться ни одним контроллером: его IngressClass отсутствует или не задан."
+  },
+  "recommendations": {
+    "rec_create_backend_service": "Создайте Service {service} или направьте Ingress {ingress} в существующий Service.",
+    "rec_fix_ingress_class": "Укажите в Ingress {ingress} существующий IngressClass вместо {class} или создайте этот класс.",
+    "rec_set_ingress_class": "Задайте spec.ingressClassName в Ingress {ingress} или назначьте один IngressClass классом по умолчанию.",
+    "rec_fix_ingress_backend_port": "Укажите в Ingress {ingress} порт, который объявляет Service {service} (по имени или номеру), вместо {port}."
+  },
+  "steps": {
+    "step_check_tls_secret": "Проверьте, что Secret {secret}, который использует Ingress {ingress}, существует, содержит действительные сертификат и ключ и лежит в том же namespace. Kubron Secret не читает."
+  },
+  "graphReasons": {
+    "ingress_backend_missing": "Service backend не существует",
+    "ingress_class_missing": "IngressClass не существует",
+    "ingress_backend_port_missing": "Service не объявляет порт backend"
+  }
+}
