@@ -1,0 +1,193 @@
+{
+  "ruleSetVersion": 2,
+  "target": {
+    "group": "autoscaling",
+    "kind": "HorizontalPodAutoscaler",
+    "namespace": "app",
+    "name": "web",
+    "uid": "hpa-1"
+  },
+  "observedAt": "2026-11-11T10:00:00Z",
+  "symptoms": [
+    "hpa.not_scaling"
+  ],
+  "resources": [
+    {
+      "group": "autoscaling",
+      "kind": "HorizontalPodAutoscaler",
+      "namespace": "app",
+      "name": "web",
+      "uid": "hpa-1"
+    }
+  ],
+  "facts": [
+    {
+      "kind": "fact",
+      "id": "f1",
+      "code": "hpa.target_ref",
+      "resource": {
+        "group": "autoscaling",
+        "kind": "HorizontalPodAutoscaler",
+        "namespace": "app",
+        "name": "web",
+        "uid": "hpa-1"
+      },
+      "params": {
+        "hpa": "web",
+        "kind": "Deployment",
+        "target": "gone"
+      },
+      "source": {
+        "kind": "resource",
+        "resource": {
+          "group": "autoscaling",
+          "kind": "HorizontalPodAutoscaler",
+          "namespace": "app",
+          "name": "web",
+          "uid": "hpa-1"
+        },
+        "field": "spec.scaleTargetRef"
+      },
+      "observedAt": "2026-11-11T10:00:00Z"
+    },
+    {
+      "kind": "fact",
+      "id": "f2",
+      "code": "hpa.target_not_found",
+      "resource": {
+        "group": "autoscaling",
+        "kind": "HorizontalPodAutoscaler",
+        "namespace": "app",
+        "name": "web",
+        "uid": "hpa-1"
+      },
+      "params": {
+        "hpa": "web",
+        "kind": "Deployment",
+        "target": "gone"
+      },
+      "source": {
+        "kind": "derived",
+        "resource": {
+          "group": "autoscaling",
+          "kind": "HorizontalPodAutoscaler",
+          "namespace": "app",
+          "name": "web",
+          "uid": "hpa-1"
+        },
+        "field": "spec.scaleTargetRef"
+      },
+      "observedAt": "2026-11-11T10:00:00Z"
+    }
+  ],
+  "hypotheses": [
+    {
+      "kind": "hypothesis",
+      "id": "h1",
+      "code": "hpa.target_missing",
+      "resource": {
+        "group": "autoscaling",
+        "kind": "HorizontalPodAutoscaler",
+        "namespace": "app",
+        "name": "web",
+        "uid": "hpa-1"
+      },
+      "params": {
+        "hpa": "web",
+        "kind": "Deployment",
+        "target": "gone"
+      },
+      "confidence": "high",
+      "supporting": [
+        "f1",
+        "f2"
+      ],
+      "contradicting": [],
+      "ruleId": "chain.hpa",
+      "ruleEpoch": 1
+    }
+  ],
+  "recommendations": [
+    {
+      "kind": "recommendation",
+      "id": "r1",
+      "code": "hpa.fix_scale_target",
+      "resource": {
+        "group": "autoscaling",
+        "kind": "HorizontalPodAutoscaler",
+        "namespace": "app",
+        "name": "web",
+        "uid": "hpa-1"
+      },
+      "params": {
+        "hpa": "web",
+        "kind": "Deployment",
+        "target": "gone"
+      },
+      "hypotheses": [
+        "h1"
+      ],
+      "ruleId": "chain.hpa",
+      "ruleEpoch": 1
+    }
+  ],
+  "steps": [],
+  "missing": [],
+  "graph": {
+    "nodes": [
+      {
+        "group": "apps",
+        "kind": "Deployment",
+        "namespace": "app",
+        "name": "gone",
+        "health": "Missing",
+        "reason": "not_found",
+        "placeholder": true
+      },
+      {
+        "group": "autoscaling",
+        "kind": "HorizontalPodAutoscaler",
+        "namespace": "app",
+        "name": "web",
+        "health": "Degraded",
+        "reason": "scaling_inactive"
+      }
+    ],
+    "edges": [
+      {
+        "from": "autoscaling/HorizontalPodAutoscaler/app/web",
+        "to": "apps/Deployment/app/gone",
+        "type": "scales",
+        "state": "missing",
+        "reason": "not_found"
+      }
+    ]
+  },
+  "chains": [
+    {
+      "path": [
+        {
+          "ref": {
+            "group": "autoscaling",
+            "kind": "HorizontalPodAutoscaler",
+            "namespace": "app",
+            "name": "web"
+          },
+          "health": "Degraded",
+          "reason": "scaling_inactive"
+        },
+        {
+          "ref": {
+            "group": "apps",
+            "kind": "Deployment",
+            "namespace": "app",
+            "name": "gone"
+          },
+          "health": "Missing",
+          "reason": "not_found"
+        }
+      ],
+      "candidate": "h1"
+    }
+  ]
+}

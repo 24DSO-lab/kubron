@@ -1,0 +1,211 @@
+{
+  "ruleSetVersion": 2,
+  "target": {
+    "group": "autoscaling",
+    "kind": "HorizontalPodAutoscaler",
+    "namespace": "app",
+    "name": "web",
+    "uid": "hpa-1"
+  },
+  "observedAt": "2026-11-11T10:00:00Z",
+  "symptoms": [
+    "hpa.not_scaling"
+  ],
+  "resources": [
+    {
+      "group": "autoscaling",
+      "kind": "HorizontalPodAutoscaler",
+      "namespace": "app",
+      "name": "web",
+      "uid": "hpa-1"
+    }
+  ],
+  "facts": [
+    {
+      "kind": "fact",
+      "id": "f1",
+      "code": "hpa.metrics_condition",
+      "resource": {
+        "group": "autoscaling",
+        "kind": "HorizontalPodAutoscaler",
+        "namespace": "app",
+        "name": "web",
+        "uid": "hpa-1"
+      },
+      "params": {
+        "hpa": "web",
+        "kind": "Deployment",
+        "metric": "resource",
+        "target": "web"
+      },
+      "source": {
+        "kind": "resource",
+        "resource": {
+          "group": "autoscaling",
+          "kind": "HorizontalPodAutoscaler",
+          "namespace": "app",
+          "name": "web",
+          "uid": "hpa-1"
+        },
+        "field": "status.conditions[ScalingActive]"
+      },
+      "observedAt": "2026-11-11T10:00:00Z"
+    },
+    {
+      "kind": "fact",
+      "id": "f2",
+      "code": "event",
+      "resource": {
+        "group": "autoscaling",
+        "kind": "HorizontalPodAutoscaler",
+        "namespace": "app",
+        "name": "web",
+        "uid": "hpa-1"
+      },
+      "params": {
+        "count": "4",
+        "message": "failed to get cpu utilization: unable to get metrics for resource cpu: no metrics returned from resource metrics API",
+        "reason": "FailedGetResourceMetric",
+        "type": "Warning"
+      },
+      "source": {
+        "kind": "event",
+        "resource": {
+          "kind": "HorizontalPodAutoscaler",
+          "namespace": "app",
+          "name": "web"
+        }
+      },
+      "observedAt": "2026-11-11T09:58:00Z"
+    }
+  ],
+  "hypotheses": [
+    {
+      "kind": "hypothesis",
+      "id": "h1",
+      "code": "hpa.metrics_unavailable",
+      "resource": {
+        "group": "autoscaling",
+        "kind": "HorizontalPodAutoscaler",
+        "namespace": "app",
+        "name": "web",
+        "uid": "hpa-1"
+      },
+      "params": {
+        "hpa": "web",
+        "kind": "Deployment",
+        "metric": "resource",
+        "target": "web"
+      },
+      "confidence": "high",
+      "supporting": [
+        "f1",
+        "f2"
+      ],
+      "contradicting": [],
+      "ruleId": "chain.hpa",
+      "ruleEpoch": 1
+    }
+  ],
+  "recommendations": [
+    {
+      "kind": "recommendation",
+      "id": "r1",
+      "code": "hpa.check_metrics_source",
+      "resource": {
+        "group": "autoscaling",
+        "kind": "HorizontalPodAutoscaler",
+        "namespace": "app",
+        "name": "web",
+        "uid": "hpa-1"
+      },
+      "params": {
+        "hpa": "web",
+        "kind": "Deployment",
+        "metric": "resource",
+        "target": "web"
+      },
+      "hypotheses": [
+        "h1"
+      ],
+      "ruleId": "chain.hpa",
+      "ruleEpoch": 1
+    }
+  ],
+  "steps": [
+    {
+      "kind": "step",
+      "id": "s1",
+      "code": "hpa.check_metrics_api",
+      "resource": {
+        "group": "autoscaling",
+        "kind": "HorizontalPodAutoscaler",
+        "namespace": "app",
+        "name": "web",
+        "uid": "hpa-1"
+      },
+      "params": {
+        "hpa": "web",
+        "kind": "Deployment",
+        "metric": "resource",
+        "target": "web"
+      },
+      "hypotheses": [
+        "h1"
+      ]
+    }
+  ],
+  "missing": [],
+  "graph": {
+    "nodes": [
+      {
+        "group": "apps",
+        "kind": "Deployment",
+        "namespace": "app",
+        "name": "web",
+        "health": "Healthy"
+      },
+      {
+        "group": "apps",
+        "kind": "ReplicaSet",
+        "namespace": "app",
+        "name": "web-7d",
+        "health": "Healthy"
+      },
+      {
+        "group": "autoscaling",
+        "kind": "HorizontalPodAutoscaler",
+        "namespace": "app",
+        "name": "web",
+        "health": "Degraded",
+        "reason": "scaling_inactive"
+      },
+      {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "web-7d-a",
+        "health": "Healthy"
+      }
+    ],
+    "edges": [
+      {
+        "from": "apps/Deployment/app/web",
+        "to": "apps/ReplicaSet/app/web-7d",
+        "type": "owns",
+        "state": "ok"
+      },
+      {
+        "from": "apps/ReplicaSet/app/web-7d",
+        "to": "core/Pod/app/web-7d-a",
+        "type": "owns",
+        "state": "ok"
+      },
+      {
+        "from": "autoscaling/HorizontalPodAutoscaler/app/web",
+        "to": "apps/Deployment/app/web",
+        "type": "scales",
+        "state": "ok"
+      }
+    ]
+  }
+}

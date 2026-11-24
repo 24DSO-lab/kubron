@@ -1,0 +1,21 @@
+{
+  "target": {
+    "kind": "HorizontalPodAutoscaler",
+    "namespace": "app",
+    "name": "web"
+  },
+  "limits": {
+    "maxNodes": 1,
+    "maxEdges": 600,
+    "maxDepth": 4,
+    "maxReads": 40
+  },
+  "expect": {
+    "partial": [
+      "Graph"
+    ],
+    "absent": [
+      "hpa.target_missing"
+    ]
+  }
+}

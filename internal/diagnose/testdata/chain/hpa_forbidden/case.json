@@ -1,0 +1,19 @@
+{
+  "target": {
+    "kind": "HorizontalPodAutoscaler",
+    "namespace": "app",
+    "name": "web"
+  },
+  "forbid": [
+    "apps/v1/Deployment"
+  ],
+  "expect": {
+    "missing": [
+      "source.unavailable"
+    ],
+    "absent": [
+      "hpa.target_missing",
+      "hpa.target_unhealthy"
+    ]
+  }
+}
