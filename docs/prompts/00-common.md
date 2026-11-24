@@ -72,7 +72,7 @@ cd frontend && npm ci && npm test && npm run build     # npm test читает �
 Signed-off-by: Vadim <vmilyash@mts.ru>
 ```
 
-`Co-Authored-By:` и `Claude-Session:` не добавлять. Ветка: `intel2/dN-<кратко>` от `refactor`, один PR на задачу, перед PR `git rebase origin/refactor`. В описании PR: что сделано (ADR и раздел), какие файлы затронуты, как проверить, что не вошло, **одна строка для CHANGELOG**, вопросы тимлиду.
+`Co-Authored-By:` и `Claude-Session:` не добавлять. Ветка: `intel2/dN-<кратко>` от `refactor`, перед push `git rebase origin/refactor`. В описании : что сделано (ADR и раздел), какие файлы затронуты, как проверить, что не вошло, **одна строка для CHANGELOG**, вопросы тимлиду.
 
 ## Definition of Done
 
