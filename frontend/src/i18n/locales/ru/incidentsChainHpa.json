@@ -1,1 +1,36 @@
-{}
+{
+  "symptoms": {
+    "hpa_not_scaling": "Автомасштабирование (HPA) не может изменить число реплик.",
+    "hpa_at_max_replicas": "Автомасштабирование (HPA) достигло верхнего предела числа реплик.",
+    "hpa_target_unhealthy": "Нагрузка, которую масштабирует HPA, нездорова."
+  },
+  "facts": {
+    "hpa_target_ref": "HPA {hpa} масштабирует {kind} {target}.",
+    "hpa_target_not_found": "{kind} {target}, цель масштабирования HPA {hpa}, не существует.",
+    "hpa_metrics_condition": "HPA {hpa} сообщает, что не может прочитать метрики (источник: {metric}).",
+    "hpa_scaling_limited": "HPA {hpa} держит {current} реплик, что равно его пределу {max}.",
+    "hpa_target_degraded": "{kind} {target}, которую масштабирует HPA {hpa}, нездорова: часть её реплик недоступна или сбоит."
+  },
+  "hypotheses": {
+    "hpa_target_missing": "Цель масштабирования {kind} {target} у HPA {hpa} не существует, поэтому HPA нечего масштабировать.",
+    "hpa_metrics_unavailable": "HPA {hpa} не может прочитать нужные метрики, поэтому не меняет число реплик.",
+    "hpa_max_replicas_reached": "HPA {hpa} достиг предела в {max} реплик и не может добавить новые.",
+    "hpa_target_unhealthy": "Нагрузка {kind} {target}, которую масштабирует HPA {hpa}, нездорова; возможно, поэтому масштабирование не помогает или нет метрик."
+  },
+  "recommendations": {
+    "hpa_fix_scale_target": "Создайте {kind} {target} или укажите в HPA {hpa} существующую нагрузку.",
+    "hpa_check_metrics_source": "Проверьте источник метрик для HPA {hpa}: metrics-server для CPU и памяти или адаптер метрик для пользовательских и внешних метрик.",
+    "hpa_raise_max_replicas": "Повысьте предел реплик у HPA {hpa} (сейчас {max}) или снизьте нагрузку либо стоимость каждого запроса."
+  },
+  "steps": {
+    "hpa_check_metrics_api": "Проверьте, что API метрик отвечает и отдаёт метрики для подов {kind} {target}; для целей по утилизации у контейнеров должны быть заданы requests.",
+    "hpa_investigate_target": "Откройте расследование для {kind} {target}, чтобы выяснить, почему её реплики нездоровы."
+  },
+  "missing": {
+    "hpa_target_unsupported": "HPA {hpa} масштабирует {kind} {target} — вид, который Kubron не читает, поэтому состояние цели неизвестно."
+  },
+  "graphReasons": {
+    "scaling_inactive": "Автомасштабирование не работает",
+    "scaling_disabled": "Автомасштабирование выключено (ноль реплик)"
+  }
+}

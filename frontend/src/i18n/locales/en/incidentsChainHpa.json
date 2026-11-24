@@ -1,1 +1,36 @@
-{}
+{
+  "symptoms": {
+    "hpa_not_scaling": "The autoscaler (HPA) cannot adjust the number of replicas.",
+    "hpa_at_max_replicas": "The autoscaler (HPA) has reached its upper replica limit.",
+    "hpa_target_unhealthy": "The workload scaled by the autoscaler (HPA) is unhealthy."
+  },
+  "facts": {
+    "hpa_target_ref": "Autoscaler {hpa} scales {kind} {target}.",
+    "hpa_target_not_found": "{kind} {target}, the scaling target of autoscaler {hpa}, does not exist.",
+    "hpa_metrics_condition": "Autoscaler {hpa} reports that it cannot read its metrics (source: {metric}).",
+    "hpa_scaling_limited": "Autoscaler {hpa} runs {current} replicas, which equals its limit of {max}.",
+    "hpa_target_degraded": "{kind} {target}, scaled by autoscaler {hpa}, is not healthy: some of its replicas are unavailable or failing."
+  },
+  "hypotheses": {
+    "hpa_target_missing": "The scaling target {kind} {target} of autoscaler {hpa} does not exist, so the autoscaler has nothing to scale.",
+    "hpa_metrics_unavailable": "Autoscaler {hpa} cannot read the metrics it needs, so it does not change the number of replicas.",
+    "hpa_max_replicas_reached": "Autoscaler {hpa} has reached its limit of {max} replicas and cannot add more.",
+    "hpa_target_unhealthy": "The workload {kind} {target} scaled by autoscaler {hpa} is unhealthy; this may be why scaling does not help or metrics are missing."
+  },
+  "recommendations": {
+    "hpa_fix_scale_target": "Create {kind} {target}, or point autoscaler {hpa} to an existing workload.",
+    "hpa_check_metrics_source": "Check the source that serves the metrics of autoscaler {hpa}: the metrics server for CPU and memory, or the metrics adapter for custom and external metrics.",
+    "hpa_raise_max_replicas": "Raise the replica limit of autoscaler {hpa} (now {max}), or reduce the load or the cost of each request."
+  },
+  "steps": {
+    "hpa_check_metrics_api": "Check that the metrics API answers and returns metrics for the Pods of {kind} {target}; for utilization targets, the containers must declare resource requests.",
+    "hpa_investigate_target": "Open an investigation of {kind} {target} to find out why its replicas are unhealthy."
+  },
+  "missing": {
+    "hpa_target_unsupported": "Autoscaler {hpa} scales {kind} {target}, a kind that Kubron does not read, so the state of the target is unknown."
+  },
+  "graphReasons": {
+    "scaling_inactive": "Autoscaling is not working",
+    "scaling_disabled": "Autoscaling is switched off (zero replicas)"
+  }
+}
