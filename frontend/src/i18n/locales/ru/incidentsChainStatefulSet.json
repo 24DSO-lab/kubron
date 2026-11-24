@@ -1,0 +1,26 @@
+{
+  "symptoms": {
+    "sts_start_stuck": "Запуск StatefulSet застрял на одном Pod."
+  },
+  "facts": {
+    "sts_ordered_start": "StatefulSet {sts} запускает Pod по одному и ждёт готовности каждого.",
+    "sts_pod_not_ready": "Pod {pod} (ordinal {ordinal}) не готов.",
+    "sts_pods_not_created": "Создано только {created} из {replicas} Pod.",
+    "sts_claim_not_bound": "Claim {pvc} из шаблона тома не связан (фаза: {phase}).",
+    "sts_update_partitioned": "Обновление ограничено partition {partition}: обновлено {updated} из {replicas} реплик.",
+    "sts_pods_on_old_revision": "Pod на прежней ревизии: {count}."
+  },
+  "hypotheses": {
+    "sts_stuck_ordered_start": "StatefulSet {sts} не создаёт следующие Pod, пока Pod {pod} не станет готов.",
+    "sts_pvc_pending": "Claim {pvc} StatefulSet {sts} не связан, поэтому его Pod не может запуститься.",
+    "sts_update_partitioned": "Обновление StatefulSet {sts} остановлено partition {partition}; это может быть намеренно (канареечное обновление)."
+  },
+  "recommendations": {
+    "rec_fix_blocking_pod": "Исправьте Pod {pod}: пока он не готов, StatefulSet {sts} не создаст остальные Pod.",
+    "rec_fix_statefulset_claim": "Исправьте claim {pvc} (класс хранилища, provisioner, ёмкость), чтобы StatefulSet {sts} смог запустить Pod.",
+    "rec_lower_statefulset_partition": "Если обновление должно продолжиться, уменьшите partition (сейчас {partition}) у StatefulSet {sts}."
+  },
+  "missing": {
+    "statefulset_selector_missing": "У StatefulSet нет селектора, поэтому его Pod найти нельзя."
+  }
+}
