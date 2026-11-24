@@ -1,1 +1,44 @@
-{}
+{
+  "symptoms": {
+    "job_failed": "Job завершился неудачей.",
+    "cronjob_not_scheduling": "CronJob не запускает задания по расписанию."
+  },
+  "facts": {
+    "job_backoff_limit_exceeded": "Job {job} помечен неудавшимся: {failed} Pod'ов завершились ошибкой, это исчерпало лимит повторов {limit}.",
+    "job_deadline_exceeded": "Job {job} помечен неудавшимся: он работал дольше своего лимита времени (spec.activeDeadlineSeconds).",
+    "job_failed": "Job {job} помечен неудавшимся.",
+    "job_suspended": "Job {job} приостановлен (spec.suspend): это заданное вами состояние, а не сбой.",
+    "cronjob_suspended": "CronJob {cronjob} приостановлен (spec.suspend).",
+    "cronjob_missed_runs": "CronJob {cronjob} должен был запуститься {missed} раз(а) с {since}, но Job не создавался.",
+    "cronjob_starting_deadline": "CronJob {cronjob} может начать запуск с опозданием не более {seconds} с (spec.startingDeadlineSeconds); более поздние запуски пропускаются.",
+    "cronjob_concurrency_forbid": "CronJob {cronjob} запрещает параллельные запуски (spec.concurrencyPolicy).",
+    "cronjob_active_job_blocking": "Job {job} CronJob {cronjob} выполняется с {since}, дольше интервала расписания; пропущено запусков: {skipped}."
+  },
+  "hypotheses": {
+    "job_backoff_limit_exceeded": "Job {job} исчерпал повторы: его Pod'ы продолжали падать, пока не был достигнут лимит, и Kubernetes остановил его.",
+    "job_deadline_exceeded": "Job {job} не уложился в лимит времени, и Kubernetes остановил его.",
+    "cronjob_suspended": "CronJob {cronjob} приостановлен, поэтому не запустились примерно {missed} плановых запуска(ов).",
+    "cronjob_missed_schedule": "CronJob {cronjob} пропустил плановые запуски: Job'ы не были созданы вовремя, и запуски пропущены.",
+    "cronjob_concurrency_blocked": "Job {job} всё ещё выполняется, а CronJob {cronjob} запрещает параллельные запуски, поэтому пропущено плановых запусков: {skipped}."
+  },
+  "recommendations": {
+    "rec_fix_job_pod_failures": "Выясните, почему падают Pod'ы Job {job} (см. их собственные находки), и сначала устраните эту причину.",
+    "rec_raise_job_backoff_limit": "Если сбои ожидаемы и временны, увеличьте spec.backoffLimit у Job {job} (сейчас {limit}).",
+    "rec_raise_job_deadline": "Если работе действительно нужно больше времени, увеличьте spec.activeDeadlineSeconds у Job {job}.",
+    "rec_resume_cronjob": "Возобновите CronJob {cronjob} (spec.suspend: false), если расписание должно работать, либо оставьте его приостановленным намеренно.",
+    "rec_fix_blocking_job": "Выясните, почему Job {job} не завершается, и исправьте или остановите его; либо смените spec.concurrencyPolicy у CronJob {cronjob} на Replace или Allow.",
+    "rec_check_cronjob_controller": "Проверьте, что менеджер контроллеров кластера исправен, а часы узлов синхронизированы; прочитайте события CronJob {cronjob}.",
+    "rec_review_starting_deadline": "Пересмотрите spec.startingDeadlineSeconds у CronJob {cronjob}: короткий срок приводит к пропуску любого запуска с опозданием."
+  },
+  "steps": {
+    "step_check_job_pods": "Откройте Pod'ы Job {job} и прочитайте их последнее состояние и события. Pod'ы могли быть удалены политикой хранения.",
+    "step_check_cronjob_events": "Прочитайте события CronJob {cronjob}: контроллер указывает в них причины пропущенных запусков."
+  },
+  "missing": {
+    "job_pods_not_retained": "Pod'ов Job {job} в кластере не осталось, поэтому причину их падения показать нельзя. Возможно, их удалила политика хранения.",
+    "job_history_truncated": "У Job {job} Pod'ов больше, чем хранит отчёт: показаны только самые новые, более старые сбои не разобраны.",
+    "job_failure_reason_unrecognized": "Job {job} завершился неудачей по причине, которую Kubron пока не разбирает.",
+    "cronjob_history_truncated": "У CronJob {cronjob} Job'ов больше, чем хранит отчёт: показаны только самые новые, более старые запуски не разобраны.",
+    "cronjob_schedule_unreadable": "Расписание или часовой пояс CronJob {cronjob} не удалось разобрать, поэтому пропущенные запуски не посчитать."
+  }
+}

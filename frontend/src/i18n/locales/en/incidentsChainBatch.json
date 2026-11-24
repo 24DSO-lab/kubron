@@ -1,1 +1,44 @@
-{}
+{
+  "symptoms": {
+    "job_failed": "The Job finished with a failure.",
+    "cronjob_not_scheduling": "The CronJob is not starting Jobs on its schedule."
+  },
+  "facts": {
+    "job_backoff_limit_exceeded": "Job {job} was marked failed after {failed} failed Pods, which reached its retry limit of {limit}.",
+    "job_deadline_exceeded": "Job {job} was marked failed because it ran longer than its time limit (spec.activeDeadlineSeconds).",
+    "job_failed": "Job {job} was marked failed.",
+    "job_suspended": "Job {job} is suspended (spec.suspend); this is a state you set, not a failure.",
+    "cronjob_suspended": "CronJob {cronjob} is suspended (spec.suspend).",
+    "cronjob_missed_runs": "CronJob {cronjob} should have started {missed} time(s) since {since}, but no Job was created.",
+    "cronjob_starting_deadline": "CronJob {cronjob} may start a run at most {seconds} s late (spec.startingDeadlineSeconds); later runs are skipped.",
+    "cronjob_concurrency_forbid": "CronJob {cronjob} forbids concurrent runs (spec.concurrencyPolicy).",
+    "cronjob_active_job_blocking": "Job {job} of CronJob {cronjob} has been running since {since}, longer than the schedule interval; {skipped} run(s) were skipped."
+  },
+  "hypotheses": {
+    "job_backoff_limit_exceeded": "Job {job} used up its retries: its Pods kept failing until the retry limit was reached, so Kubernetes stopped it.",
+    "job_deadline_exceeded": "Job {job} did not finish within its time limit, so Kubernetes stopped it.",
+    "cronjob_suspended": "CronJob {cronjob} is suspended, so about {missed} scheduled run(s) did not start.",
+    "cronjob_missed_schedule": "CronJob {cronjob} missed scheduled runs: Jobs were not created in time, so the runs were skipped.",
+    "cronjob_concurrency_blocked": "Job {job} is still running, and CronJob {cronjob} forbids concurrent runs, so {skipped} scheduled run(s) were skipped."
+  },
+  "recommendations": {
+    "rec_fix_job_pod_failures": "Find out why the Pods of Job {job} fail (see their own findings) and fix that cause first.",
+    "rec_raise_job_backoff_limit": "If the failures are expected and temporary, raise spec.backoffLimit of Job {job} (now {limit}).",
+    "rec_raise_job_deadline": "If the work legitimately needs more time, raise spec.activeDeadlineSeconds of Job {job}.",
+    "rec_resume_cronjob": "Resume CronJob {cronjob} (set spec.suspend to false) if the schedule should run, or leave it suspended on purpose.",
+    "rec_fix_blocking_job": "Find out why Job {job} does not finish and fix or stop it; or change spec.concurrencyPolicy of CronJob {cronjob} to Replace or Allow.",
+    "rec_check_cronjob_controller": "Check that the cluster's controller manager is healthy and that node clocks are in sync; read the events of CronJob {cronjob}.",
+    "rec_review_starting_deadline": "Review spec.startingDeadlineSeconds of CronJob {cronjob}: a short deadline makes every delayed run be skipped."
+  },
+  "steps": {
+    "step_check_job_pods": "Open the Pods of Job {job} and read their last state and events. Pods may already be deleted by the retention policy.",
+    "step_check_cronjob_events": "Read the events of CronJob {cronjob} for the reasons the controller gives for skipped runs."
+  },
+  "missing": {
+    "job_pods_not_retained": "No Pods of Job {job} remain in the cluster, so the reason they failed cannot be shown. They may have been deleted by the retention policy.",
+    "job_history_truncated": "Job {job} has more Pods than the report keeps; only the newest are shown, so older failures are not analyzed.",
+    "job_failure_reason_unrecognized": "Job {job} failed for a reason that Kubron does not analyze yet.",
+    "cronjob_history_truncated": "CronJob {cronjob} has more Jobs than the report keeps; only the newest are shown, so older runs are not analyzed.",
+    "cronjob_schedule_unreadable": "The schedule or time zone of CronJob {cronjob} could not be parsed, so missed runs cannot be counted."
+  }
+}

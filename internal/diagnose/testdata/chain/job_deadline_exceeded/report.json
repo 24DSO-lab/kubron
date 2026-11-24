@@ -1,0 +1,314 @@
+{
+  "ruleSetVersion": 2,
+  "target": {
+    "group": "batch",
+    "kind": "Job",
+    "namespace": "app",
+    "name": "report",
+    "uid": "j1"
+  },
+  "observedAt": "2026-11-11T10:00:00Z",
+  "symptoms": [
+    "pod.pending",
+    "job.failed"
+  ],
+  "resources": [
+    {
+      "group": "batch",
+      "kind": "Job",
+      "namespace": "app",
+      "name": "report",
+      "uid": "j1"
+    },
+    {
+      "kind": "Pod",
+      "namespace": "app",
+      "name": "report-a",
+      "uid": "p-report-a"
+    }
+  ],
+  "facts": [
+    {
+      "kind": "fact",
+      "id": "f1",
+      "code": "pod.pending",
+      "resource": {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "report-a",
+        "uid": "p-report-a"
+      },
+      "params": {
+        "phase": "Pending"
+      },
+      "source": {
+        "kind": "resource",
+        "resource": {
+          "kind": "Pod",
+          "namespace": "app",
+          "name": "report-a",
+          "uid": "p-report-a"
+        },
+        "field": "status.phase"
+      },
+      "observedAt": "2026-11-11T10:00:00Z"
+    },
+    {
+      "kind": "fact",
+      "id": "f2",
+      "code": "pod.unscheduled",
+      "resource": {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "report-a",
+        "uid": "p-report-a"
+      },
+      "params": {
+        "message": "0/3 nodes are available: 3 Insufficient cpu.",
+        "reason": "Unschedulable"
+      },
+      "source": {
+        "kind": "resource",
+        "resource": {
+          "kind": "Pod",
+          "namespace": "app",
+          "name": "report-a",
+          "uid": "p-report-a"
+        },
+        "field": "status.conditions[PodScheduled]"
+      },
+      "observedAt": "2026-11-11T10:00:00Z"
+    },
+    {
+      "kind": "fact",
+      "id": "f3",
+      "code": "job.deadline_exceeded",
+      "resource": {
+        "group": "batch",
+        "kind": "Job",
+        "namespace": "app",
+        "name": "report",
+        "uid": "j1"
+      },
+      "params": {
+        "job": "report",
+        "seconds": "600"
+      },
+      "source": {
+        "kind": "resource",
+        "resource": {
+          "group": "batch",
+          "kind": "Job",
+          "namespace": "app",
+          "name": "report",
+          "uid": "j1"
+        },
+        "field": "status.conditions[Failed]"
+      },
+      "observedAt": "2026-11-11T10:00:00Z"
+    }
+  ],
+  "hypotheses": [
+    {
+      "kind": "hypothesis",
+      "id": "h1",
+      "code": "pending.insufficient_resources",
+      "resource": {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "report-a",
+        "uid": "p-report-a"
+      },
+      "params": {
+        "resource": "cpu"
+      },
+      "confidence": "medium",
+      "supporting": [
+        "f1",
+        "f2"
+      ],
+      "contradicting": [],
+      "ruleId": "pod.pending",
+      "ruleEpoch": 1,
+      "explains": [
+        "h2"
+      ]
+    },
+    {
+      "kind": "hypothesis",
+      "id": "h2",
+      "code": "job.deadline_exceeded",
+      "resource": {
+        "group": "batch",
+        "kind": "Job",
+        "namespace": "app",
+        "name": "report",
+        "uid": "j1"
+      },
+      "params": {
+        "job": "report",
+        "seconds": "600"
+      },
+      "confidence": "high",
+      "supporting": [
+        "f3"
+      ],
+      "contradicting": [],
+      "ruleId": "chain.job",
+      "ruleEpoch": 1
+    }
+  ],
+  "recommendations": [
+    {
+      "kind": "recommendation",
+      "id": "r1",
+      "code": "rec.reduce_requests_or_add_capacity",
+      "resource": {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "report-a",
+        "uid": "p-report-a"
+      },
+      "params": {
+        "resource": "cpu"
+      },
+      "hypotheses": [
+        "h1"
+      ],
+      "ruleId": "pod.pending",
+      "ruleEpoch": 1
+    },
+    {
+      "kind": "recommendation",
+      "id": "r2",
+      "code": "rec.fix_job_pod_failures",
+      "resource": {
+        "group": "batch",
+        "kind": "Job",
+        "namespace": "app",
+        "name": "report",
+        "uid": "j1"
+      },
+      "params": {
+        "job": "report"
+      },
+      "hypotheses": [
+        "h2"
+      ],
+      "ruleId": "chain.job",
+      "ruleEpoch": 1
+    },
+    {
+      "kind": "recommendation",
+      "id": "r3",
+      "code": "rec.raise_job_deadline",
+      "resource": {
+        "group": "batch",
+        "kind": "Job",
+        "namespace": "app",
+        "name": "report",
+        "uid": "j1"
+      },
+      "params": {
+        "job": "report",
+        "seconds": "600"
+      },
+      "hypotheses": [
+        "h2"
+      ],
+      "ruleId": "chain.job",
+      "ruleEpoch": 1
+    }
+  ],
+  "steps": [
+    {
+      "kind": "step",
+      "id": "s1",
+      "code": "step.check_node_capacity",
+      "resource": {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "report-a",
+        "uid": "p-report-a"
+      },
+      "params": {
+        "resource": "cpu"
+      },
+      "hypotheses": [
+        "h1"
+      ]
+    },
+    {
+      "kind": "step",
+      "id": "s2",
+      "code": "step.check_job_pods",
+      "resource": {
+        "group": "batch",
+        "kind": "Job",
+        "namespace": "app",
+        "name": "report",
+        "uid": "j1"
+      },
+      "params": {
+        "job": "report"
+      },
+      "hypotheses": [
+        "h2"
+      ]
+    }
+  ],
+  "missing": [],
+  "graph": {
+    "nodes": [
+      {
+        "group": "batch",
+        "kind": "Job",
+        "namespace": "app",
+        "name": "report",
+        "health": "Degraded",
+        "reason": "job_failed"
+      },
+      {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "report-a",
+        "health": "Degraded",
+        "reason": "pending_unscheduled"
+      }
+    ],
+    "edges": [
+      {
+        "from": "batch/Job/app/report",
+        "to": "core/Pod/app/report-a",
+        "type": "owns",
+        "state": "ok"
+      }
+    ]
+  },
+  "chains": [
+    {
+      "path": [
+        {
+          "ref": {
+            "group": "batch",
+            "kind": "Job",
+            "namespace": "app",
+            "name": "report"
+          },
+          "health": "Degraded",
+          "reason": "job_failed"
+        },
+        {
+          "ref": {
+            "kind": "Pod",
+            "namespace": "app",
+            "name": "report-a"
+          },
+          "health": "Degraded",
+          "reason": "pending_unscheduled"
+        }
+      ],
+      "candidate": "h1"
+    }
+  ]
+}

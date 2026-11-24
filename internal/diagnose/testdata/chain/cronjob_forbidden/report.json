@@ -1,0 +1,111 @@
+{
+  "ruleSetVersion": 2,
+  "target": {
+    "group": "batch",
+    "kind": "CronJob",
+    "namespace": "app",
+    "name": "nightly",
+    "uid": "c1"
+  },
+  "observedAt": "2026-11-11T10:00:00Z",
+  "symptoms": [
+    "none"
+  ],
+  "resources": [
+    {
+      "group": "batch",
+      "kind": "CronJob",
+      "namespace": "app",
+      "name": "nightly",
+      "uid": "c1"
+    }
+  ],
+  "facts": [
+    {
+      "kind": "fact",
+      "id": "f1",
+      "code": "no_problem_detected",
+      "resource": {
+        "group": "batch",
+        "kind": "CronJob",
+        "namespace": "app",
+        "name": "nightly",
+        "uid": "c1"
+      },
+      "params": {
+        "pods": "0"
+      },
+      "source": {
+        "kind": "derived",
+        "resource": {
+          "group": "batch",
+          "kind": "CronJob",
+          "namespace": "app",
+          "name": "nightly",
+          "uid": "c1"
+        }
+      },
+      "observedAt": "2026-11-11T10:00:00Z"
+    }
+  ],
+  "hypotheses": [],
+  "recommendations": [],
+  "steps": [
+    {
+      "kind": "step",
+      "id": "s1",
+      "code": "step.check_events",
+      "resource": {
+        "group": "batch",
+        "kind": "CronJob",
+        "namespace": "app",
+        "name": "nightly",
+        "uid": "c1"
+      },
+      "hypotheses": []
+    }
+  ],
+  "missing": [
+    {
+      "code": "source.unavailable",
+      "resource": {
+        "group": "batch",
+        "kind": "Job",
+        "namespace": "app",
+        "name": ""
+      },
+      "params": {
+        "reason": "forbidden"
+      }
+    },
+    {
+      "code": "context.insufficient",
+      "resource": {
+        "group": "batch",
+        "kind": "CronJob",
+        "namespace": "app",
+        "name": "nightly",
+        "uid": "c1"
+      }
+    }
+  ],
+  "partial": [
+    "Graph"
+  ],
+  "graph": {
+    "nodes": [
+      {
+        "group": "batch",
+        "kind": "CronJob",
+        "namespace": "app",
+        "name": "nightly",
+        "health": "Healthy"
+      }
+    ],
+    "edges": [],
+    "truncated": true,
+    "warnings": [
+      "forbidden:Job"
+    ]
+  }
+}

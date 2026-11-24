@@ -1,0 +1,254 @@
+{
+  "ruleSetVersion": 2,
+  "target": {
+    "group": "batch",
+    "kind": "CronJob",
+    "namespace": "app",
+    "name": "nightly",
+    "uid": "c1"
+  },
+  "observedAt": "2026-11-11T10:00:00Z",
+  "symptoms": [
+    "none"
+  ],
+  "resources": [
+    {
+      "group": "batch",
+      "kind": "CronJob",
+      "namespace": "app",
+      "name": "nightly",
+      "uid": "c1"
+    }
+  ],
+  "facts": [
+    {
+      "kind": "fact",
+      "id": "f1",
+      "code": "no_problem_detected",
+      "resource": {
+        "group": "batch",
+        "kind": "CronJob",
+        "namespace": "app",
+        "name": "nightly",
+        "uid": "c1"
+      },
+      "params": {
+        "pods": "0"
+      },
+      "source": {
+        "kind": "derived",
+        "resource": {
+          "group": "batch",
+          "kind": "CronJob",
+          "namespace": "app",
+          "name": "nightly",
+          "uid": "c1"
+        }
+      },
+      "observedAt": "2026-11-11T10:00:00Z"
+    }
+  ],
+  "hypotheses": [],
+  "recommendations": [],
+  "steps": [
+    {
+      "kind": "step",
+      "id": "s1",
+      "code": "step.check_events",
+      "resource": {
+        "group": "batch",
+        "kind": "CronJob",
+        "namespace": "app",
+        "name": "nightly",
+        "uid": "c1"
+      },
+      "hypotheses": []
+    }
+  ],
+  "missing": [
+    {
+      "code": "cronjob.history_truncated",
+      "resource": {
+        "group": "batch",
+        "kind": "CronJob",
+        "namespace": "app",
+        "name": "nightly",
+        "uid": "c1"
+      },
+      "params": {
+        "cronjob": "nightly"
+      }
+    },
+    {
+      "code": "context.insufficient",
+      "resource": {
+        "group": "batch",
+        "kind": "CronJob",
+        "namespace": "app",
+        "name": "nightly",
+        "uid": "c1"
+      }
+    }
+  ],
+  "partial": [
+    "Job",
+    "Graph"
+  ],
+  "graph": {
+    "nodes": [
+      {
+        "group": "batch",
+        "kind": "CronJob",
+        "namespace": "app",
+        "name": "nightly",
+        "health": "Healthy"
+      },
+      {
+        "group": "batch",
+        "kind": "Job",
+        "namespace": "app",
+        "name": "nightly-02",
+        "health": "Healthy",
+        "reason": "completed"
+      },
+      {
+        "group": "batch",
+        "kind": "Job",
+        "namespace": "app",
+        "name": "nightly-03",
+        "health": "Healthy",
+        "reason": "completed"
+      },
+      {
+        "group": "batch",
+        "kind": "Job",
+        "namespace": "app",
+        "name": "nightly-04",
+        "health": "Healthy",
+        "reason": "completed"
+      },
+      {
+        "group": "batch",
+        "kind": "Job",
+        "namespace": "app",
+        "name": "nightly-05",
+        "health": "Healthy",
+        "reason": "completed"
+      },
+      {
+        "group": "batch",
+        "kind": "Job",
+        "namespace": "app",
+        "name": "nightly-06",
+        "health": "Healthy",
+        "reason": "completed"
+      },
+      {
+        "group": "batch",
+        "kind": "Job",
+        "namespace": "app",
+        "name": "nightly-07",
+        "health": "Healthy",
+        "reason": "completed"
+      },
+      {
+        "group": "batch",
+        "kind": "Job",
+        "namespace": "app",
+        "name": "nightly-08",
+        "health": "Healthy",
+        "reason": "completed"
+      },
+      {
+        "group": "batch",
+        "kind": "Job",
+        "namespace": "app",
+        "name": "nightly-09",
+        "health": "Healthy",
+        "reason": "completed"
+      },
+      {
+        "group": "batch",
+        "kind": "Job",
+        "namespace": "app",
+        "name": "nightly-10",
+        "health": "Healthy",
+        "reason": "completed"
+      },
+      {
+        "group": "batch",
+        "kind": "Job",
+        "namespace": "app",
+        "name": "nightly-11",
+        "health": "Healthy",
+        "reason": "completed"
+      }
+    ],
+    "edges": [
+      {
+        "from": "batch/CronJob/app/nightly",
+        "to": "batch/Job/app/nightly-02",
+        "type": "owns",
+        "state": "ok"
+      },
+      {
+        "from": "batch/CronJob/app/nightly",
+        "to": "batch/Job/app/nightly-03",
+        "type": "owns",
+        "state": "ok"
+      },
+      {
+        "from": "batch/CronJob/app/nightly",
+        "to": "batch/Job/app/nightly-04",
+        "type": "owns",
+        "state": "ok"
+      },
+      {
+        "from": "batch/CronJob/app/nightly",
+        "to": "batch/Job/app/nightly-05",
+        "type": "owns",
+        "state": "ok"
+      },
+      {
+        "from": "batch/CronJob/app/nightly",
+        "to": "batch/Job/app/nightly-06",
+        "type": "owns",
+        "state": "ok"
+      },
+      {
+        "from": "batch/CronJob/app/nightly",
+        "to": "batch/Job/app/nightly-07",
+        "type": "owns",
+        "state": "ok"
+      },
+      {
+        "from": "batch/CronJob/app/nightly",
+        "to": "batch/Job/app/nightly-08",
+        "type": "owns",
+        "state": "ok"
+      },
+      {
+        "from": "batch/CronJob/app/nightly",
+        "to": "batch/Job/app/nightly-09",
+        "type": "owns",
+        "state": "ok"
+      },
+      {
+        "from": "batch/CronJob/app/nightly",
+        "to": "batch/Job/app/nightly-10",
+        "type": "owns",
+        "state": "ok"
+      },
+      {
+        "from": "batch/CronJob/app/nightly",
+        "to": "batch/Job/app/nightly-11",
+        "type": "owns",
+        "state": "ok"
+      }
+    ],
+    "truncated": true,
+    "warnings": [
+      "limit.cronjob_jobs"
+    ]
+  }
+}

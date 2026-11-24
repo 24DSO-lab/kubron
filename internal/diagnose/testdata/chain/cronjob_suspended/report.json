@@ -1,0 +1,129 @@
+{
+  "ruleSetVersion": 2,
+  "target": {
+    "group": "batch",
+    "kind": "CronJob",
+    "namespace": "app",
+    "name": "nightly",
+    "uid": "c1"
+  },
+  "observedAt": "2026-11-11T10:00:00Z",
+  "symptoms": [
+    "cronjob.not_scheduling"
+  ],
+  "resources": [
+    {
+      "group": "batch",
+      "kind": "CronJob",
+      "namespace": "app",
+      "name": "nightly",
+      "uid": "c1"
+    }
+  ],
+  "facts": [
+    {
+      "kind": "fact",
+      "id": "f1",
+      "code": "cronjob.suspended",
+      "resource": {
+        "group": "batch",
+        "kind": "CronJob",
+        "namespace": "app",
+        "name": "nightly",
+        "uid": "c1"
+      },
+      "params": {
+        "cronjob": "nightly"
+      },
+      "source": {
+        "kind": "resource",
+        "resource": {
+          "group": "batch",
+          "kind": "CronJob",
+          "namespace": "app",
+          "name": "nightly",
+          "uid": "c1"
+        },
+        "field": "spec.suspend"
+      },
+      "observedAt": "2026-11-11T10:00:00Z"
+    }
+  ],
+  "hypotheses": [
+    {
+      "kind": "hypothesis",
+      "id": "h1",
+      "code": "cronjob.suspended",
+      "resource": {
+        "group": "batch",
+        "kind": "CronJob",
+        "namespace": "app",
+        "name": "nightly",
+        "uid": "c1"
+      },
+      "params": {
+        "cronjob": "nightly",
+        "missed": "2"
+      },
+      "confidence": "high",
+      "supporting": [
+        "f1"
+      ],
+      "contradicting": [],
+      "ruleId": "chain.cronjob",
+      "ruleEpoch": 1
+    }
+  ],
+  "recommendations": [
+    {
+      "kind": "recommendation",
+      "id": "r1",
+      "code": "rec.resume_cronjob",
+      "resource": {
+        "group": "batch",
+        "kind": "CronJob",
+        "namespace": "app",
+        "name": "nightly",
+        "uid": "c1"
+      },
+      "params": {
+        "cronjob": "nightly"
+      },
+      "hypotheses": [
+        "h1"
+      ],
+      "ruleId": "chain.cronjob",
+      "ruleEpoch": 1
+    }
+  ],
+  "steps": [],
+  "missing": [],
+  "graph": {
+    "nodes": [
+      {
+        "group": "batch",
+        "kind": "CronJob",
+        "namespace": "app",
+        "name": "nightly",
+        "health": "Suspended",
+        "reason": "suspended"
+      },
+      {
+        "group": "batch",
+        "kind": "Job",
+        "namespace": "app",
+        "name": "nightly-1",
+        "health": "Healthy",
+        "reason": "completed"
+      }
+    ],
+    "edges": [
+      {
+        "from": "batch/CronJob/app/nightly",
+        "to": "batch/Job/app/nightly-1",
+        "type": "owns",
+        "state": "ok"
+      }
+    ]
+  }
+}

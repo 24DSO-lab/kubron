@@ -1,0 +1,19 @@
+{
+  "target": {
+    "kind": "Job",
+    "namespace": "app",
+    "name": "report"
+  },
+  "golden": true,
+  "expect": {
+    "symptoms": [
+      "job.failed"
+    ],
+    "hypotheses": [
+      "job.backoff_limit_exceeded:high"
+    ],
+    "absent": [
+      "job.deadline_exceeded"
+    ]
+  }
+}

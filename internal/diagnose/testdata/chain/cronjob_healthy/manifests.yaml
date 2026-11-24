@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Namespace
+metadata: {name: app}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata: {name: nightly, namespace: app, uid: c1, creationTimestamp: "2026-10-01T00:00:00Z"}
+spec: {schedule: "0 3 * * *", jobTemplate: {spec: {}}}
+status: {lastScheduleTime: "2026-11-11T03:00:00Z"}
+---
+apiVersion: batch/v1
+kind: Job
+metadata: {name: nightly-1, namespace: app, uid: j1, creationTimestamp: "2026-11-11T03:00:00Z", ownerReferences: [{apiVersion: batch/v1, kind: CronJob, name: nightly, uid: c1, controller: true}]}
+spec: {selector: {matchLabels: {controller-uid: j1}}}
+status: {conditions: [{type: Complete, status: "True"}]}

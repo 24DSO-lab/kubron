@@ -1,0 +1,75 @@
+apiVersion: v1
+kind: Namespace
+metadata: {name: app}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata: {name: nightly, namespace: app, uid: c1, creationTimestamp: "2026-10-01T00:00:00Z"}
+spec: {schedule: "0 3 * * *", jobTemplate: {spec: {}}}
+status: {lastScheduleTime: "2026-11-11T03:00:00Z"}
+---
+apiVersion: batch/v1
+kind: Job
+metadata: {name: nightly-01, namespace: app, uid: j1, creationTimestamp: "2026-11-01T03:00:00Z", ownerReferences: [{apiVersion: batch/v1, kind: CronJob, name: nightly, uid: c1, controller: true}]}
+spec: {selector: {matchLabels: {controller-uid: j1}}}
+status: {conditions: [{type: Complete, status: "True"}]}
+---
+apiVersion: batch/v1
+kind: Job
+metadata: {name: nightly-02, namespace: app, uid: j2, creationTimestamp: "2026-11-02T03:00:00Z", ownerReferences: [{apiVersion: batch/v1, kind: CronJob, name: nightly, uid: c1, controller: true}]}
+spec: {selector: {matchLabels: {controller-uid: j2}}}
+status: {conditions: [{type: Complete, status: "True"}]}
+---
+apiVersion: batch/v1
+kind: Job
+metadata: {name: nightly-03, namespace: app, uid: j3, creationTimestamp: "2026-11-03T03:00:00Z", ownerReferences: [{apiVersion: batch/v1, kind: CronJob, name: nightly, uid: c1, controller: true}]}
+spec: {selector: {matchLabels: {controller-uid: j3}}}
+status: {conditions: [{type: Complete, status: "True"}]}
+---
+apiVersion: batch/v1
+kind: Job
+metadata: {name: nightly-04, namespace: app, uid: j4, creationTimestamp: "2026-11-04T03:00:00Z", ownerReferences: [{apiVersion: batch/v1, kind: CronJob, name: nightly, uid: c1, controller: true}]}
+spec: {selector: {matchLabels: {controller-uid: j4}}}
+status: {conditions: [{type: Complete, status: "True"}]}
+---
+apiVersion: batch/v1
+kind: Job
+metadata: {name: nightly-05, namespace: app, uid: j5, creationTimestamp: "2026-11-05T03:00:00Z", ownerReferences: [{apiVersion: batch/v1, kind: CronJob, name: nightly, uid: c1, controller: true}]}
+spec: {selector: {matchLabels: {controller-uid: j5}}}
+status: {conditions: [{type: Complete, status: "True"}]}
+---
+apiVersion: batch/v1
+kind: Job
+metadata: {name: nightly-06, namespace: app, uid: j6, creationTimestamp: "2026-11-06T03:00:00Z", ownerReferences: [{apiVersion: batch/v1, kind: CronJob, name: nightly, uid: c1, controller: true}]}
+spec: {selector: {matchLabels: {controller-uid: j6}}}
+status: {conditions: [{type: Complete, status: "True"}]}
+---
+apiVersion: batch/v1
+kind: Job
+metadata: {name: nightly-07, namespace: app, uid: j7, creationTimestamp: "2026-11-07T03:00:00Z", ownerReferences: [{apiVersion: batch/v1, kind: CronJob, name: nightly, uid: c1, controller: true}]}
+spec: {selector: {matchLabels: {controller-uid: j7}}}
+status: {conditions: [{type: Complete, status: "True"}]}
+---
+apiVersion: batch/v1
+kind: Job
+metadata: {name: nightly-08, namespace: app, uid: j8, creationTimestamp: "2026-11-08T03:00:00Z", ownerReferences: [{apiVersion: batch/v1, kind: CronJob, name: nightly, uid: c1, controller: true}]}
+spec: {selector: {matchLabels: {controller-uid: j8}}}
+status: {conditions: [{type: Complete, status: "True"}]}
+---
+apiVersion: batch/v1
+kind: Job
+metadata: {name: nightly-09, namespace: app, uid: j9, creationTimestamp: "2026-11-09T03:00:00Z", ownerReferences: [{apiVersion: batch/v1, kind: CronJob, name: nightly, uid: c1, controller: true}]}
+spec: {selector: {matchLabels: {controller-uid: j9}}}
+status: {conditions: [{type: Complete, status: "True"}]}
+---
+apiVersion: batch/v1
+kind: Job
+metadata: {name: nightly-10, namespace: app, uid: j10, creationTimestamp: "2026-11-10T03:00:00Z", ownerReferences: [{apiVersion: batch/v1, kind: CronJob, name: nightly, uid: c1, controller: true}]}
+spec: {selector: {matchLabels: {controller-uid: j10}}}
+status: {conditions: [{type: Complete, status: "True"}]}
+---
+apiVersion: batch/v1
+kind: Job
+metadata: {name: nightly-11, namespace: app, uid: j11, creationTimestamp: "2026-11-11T03:00:00Z", ownerReferences: [{apiVersion: batch/v1, kind: CronJob, name: nightly, uid: c1, controller: true}]}
+spec: {selector: {matchLabels: {controller-uid: j11}}}
+status: {conditions: [{type: Complete, status: "True"}]}

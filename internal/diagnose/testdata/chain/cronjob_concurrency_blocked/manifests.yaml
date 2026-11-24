@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: Namespace
+metadata: {name: app}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata: {name: nightly, namespace: app, uid: c1, creationTimestamp: "2026-10-01T00:00:00Z"}
+spec: {schedule: "0 3 * * *", jobTemplate: {spec: {}}, concurrencyPolicy: Forbid}
+status: {lastScheduleTime: "2026-11-10T03:00:00Z"}
+---
+apiVersion: batch/v1
+kind: Job
+metadata: {name: nightly-27, namespace: app, uid: j1, creationTimestamp: "2026-11-10T03:00:00Z", ownerReferences: [{apiVersion: batch/v1, kind: CronJob, name: nightly, uid: c1, controller: true}]}
+spec: {selector: {matchLabels: {controller-uid: j1}}}
+status: {}
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nightly-27-a
+  namespace: app
+  uid: p-nightly-27-a
+  creationTimestamp: "2026-11-10T03:00:05Z"
+  labels: {controller-uid: j1, batch.kubernetes.io/job-name: nightly-27}
+  ownerReferences: [{apiVersion: batch/v1, kind: Job, name: nightly-27, uid: j1, controller: true}]
+spec: {restartPolicy: Never, containers: [{name: main, image: example/report}]}
+status:
+  phase: Running
