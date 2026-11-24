@@ -40,6 +40,7 @@ func (b *builder) expand(ctx context.Context, it item) {
 	case "Node":
 		b.expandNode(ctx, it, n)
 	}
+	b.runExpanders(ctx, it, n)
 }
 
 // ownerRefs возвращает ownerReferences объекта в стабильном порядке.

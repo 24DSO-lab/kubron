@@ -237,15 +237,21 @@ func TestTargetRegistry(t *testing.T) {
 	}
 	t.Cleanup(func() { targets = oldTargets })
 
-	if got, want := targetKinds(), []string{"Deployment", "Node", "PersistentVolumeClaim", "Pod", "ReplicaSet", "Service"}; !slices.Equal(got, want) {
-		t.Fatalf("built-in targets = %v, want %v", got, want)
+	// Список целей растёт по мере подключения видов этапов 2–3 (RegisterTarget из init() их файлов): тест требует
+	// базовые виды, а не точное равенство, чтобы разработчики разных видов не правили одну строку.
+	kinds := targetKinds()
+	for _, want := range []string{"Deployment", "Node", "PersistentVolumeClaim", "Pod", "ReplicaSet", "Service"} {
+		if !slices.Contains(kinds, want) {
+			t.Fatalf("built-in targets = %v, want %s among them", kinds, want)
+		}
 	}
-	node := ResourceRef{Kind: "Ingress", Namespace: "shop", Name: "web"}
+	// Вымышленный вид остаётся неподдерживаемым при любом составе настоящих целей (а Secret не читается никогда).
+	node := ResourceRef{Kind: "TestOnlyKind", Namespace: "shop", Name: "web"}
 	if _, err := CollectWith(t.Context(), newFakeReader(nil, nil), node, CollectOptions{}); !errors.Is(err, ErrUnsupportedTarget) {
 		t.Fatalf("unregistered kind: err = %v", err)
 	}
 	var got ResourceRef
-	RegisterTarget("Ingress", func(_ context.Context, _ Reader, target ResourceRef, o CollectOptions) (*Context, error) {
+	RegisterTarget("TestOnlyKind", func(_ context.Context, _ Reader, target ResourceRef, o CollectOptions) (*Context, error) {
 		got = target
 		return &Context{Target: target, ObservedAt: o.now()}, nil
 	})
@@ -255,7 +261,7 @@ func TestTargetRegistry(t *testing.T) {
 	}
 	for name, call := range map[string]func(){
 		"duplicate": func() {
-			RegisterTarget("Ingress", func(context.Context, Reader, ResourceRef, CollectOptions) (*Context, error) { return nil, nil })
+			RegisterTarget("TestOnlyKind", func(context.Context, Reader, ResourceRef, CollectOptions) (*Context, error) { return nil, nil })
 		},
 		"empty": func() {
 			RegisterTarget("", func(context.Context, Reader, ResourceRef, CollectOptions) (*Context, error) { return nil, nil })

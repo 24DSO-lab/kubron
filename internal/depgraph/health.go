@@ -139,6 +139,9 @@ func HealthOf(obj *unstructured.Unstructured) (Health, string) {
 		}
 		return sliceHealth(&s)
 	}
+	if h, reason, ok := extHealth(obj); ok {
+		return h, reason
+	}
 	return Healthy, ""
 }
 

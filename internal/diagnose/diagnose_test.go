@@ -24,6 +24,7 @@ var allowedReads = []string{
 	"Pod", "Namespace", "Node", "Event", "ReplicaSet", "Deployment", "pods/log",
 	"Service", "EndpointSlice", "PersistentVolumeClaim", "PersistentVolume", "StorageClass",
 	"StatefulSet", "DaemonSet", "Job", "CronJob",
+	"Ingress", "IngressClass", "HorizontalPodAutoscaler", "ConfigMap", // этап 2 ADR-0031 §6
 }
 
 func errFor(kind string) error {

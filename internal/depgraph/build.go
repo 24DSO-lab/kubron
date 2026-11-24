@@ -17,11 +17,10 @@ type Limits struct{ MaxNodes, MaxEdges, MaxDepth, MaxReads int }
 // DefaultLimits — стартовые значения ADR-0031 §3: 200 вершин, 600 рёбер, глубина 4, 40 запросов чтения.
 var DefaultLimits = Limits{MaxNodes: 200, MaxEdges: 600, MaxDepth: 4, MaxReads: 40}
 
-// Options — параметры построения. Этап 1: все флаги расширений выключены (ADR-0031 §6).
+// Options — параметры построения. Виды этапов 2–3 подключаются реестром (kind_registry.go), а не флагами;
+// ExpandConfigMapRefs остаётся до переноса ссылок на ConfigMap в реестр.
 type Options struct {
 	Limits              Limits
-	ExpandIngress       bool
-	ExpandHPA           bool
 	ExpandConfigMapRefs bool
 }
 
@@ -96,7 +95,6 @@ func Build(ctx context.Context, r Reader, seed Ref, o Options) (*Graph, error) {
 		b.queue = b.queue[1:]
 		b.expand(ctx, it)
 	}
-	b.expandExtensions(ctx)
 	b.finalize()
 	return b.g, nil
 }

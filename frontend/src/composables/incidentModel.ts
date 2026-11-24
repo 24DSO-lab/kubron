@@ -90,7 +90,11 @@ export function normalizeIncident(i: Incident): Incident {
  * Пространства имён locale: имя файла = пространство (`incidentsMetrics.json` → `incidentsMetrics.*`).
  * Тексты кодов лежат у владельцев кодов (locales/README.md), поэтому код ищется во всех по порядку.
  */
-const CODE_NAMESPACES = ['incidents', 'incidentsMetrics', 'incidentsChain', 'incidentsCorrelation'] as const
+const CODE_NAMESPACES = [
+  'incidents', 'incidentsMetrics', 'incidentsChain', 'incidentsCorrelation',
+  // Коды правил этапов 2–3 ADR-0031: по файлу на вид, чтобы разработчики видов не правили один и тот же JSON.
+  'incidentsChainIngress', 'incidentsChainHpa', 'incidentsChainConfig', 'incidentsChainStatefulSet', 'incidentsChainBatch',
+] as const
 /** Префикс кода → пространство, где искать в первую очередь (у разных владельцев одинаковые причины значат разное). */
 const PREFERRED_NAMESPACE: Record<string, (typeof CODE_NAMESPACES)[number]> = {
   metric: 'incidentsMetrics', metrics: 'incidentsMetrics', correlation: 'incidentsCorrelation', graph: 'incidentsChain',

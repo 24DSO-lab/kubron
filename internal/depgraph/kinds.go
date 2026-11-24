@@ -40,8 +40,8 @@ var allSpecs = []kindSpec{
 	specStatefulSet, specDaemonSet, specJob, specCronJob, specStorageCls, specSlice,
 }
 
-// specFor ищет вид по группе и имени. Пустая группа у не-core вида допускается, если вид однозначен.
-func specFor(group, kind string) (kindSpec, bool) {
+// lookupBuiltin ищет вид среди встроенных. Пустая группа у не-core вида допускается, если вид однозначен.
+func lookupBuiltin(group, kind string) (kindSpec, bool) {
 	for _, s := range allSpecs {
 		if s.gvk.Kind == kind && s.gvk.Group == group {
 			return s, true
@@ -57,11 +57,23 @@ func specFor(group, kind string) (kindSpec, bool) {
 	return kindSpec{}, false
 }
 
+// specFor ищет вид среди встроенных, затем среди расширений (kind_registry.go).
+func specFor(group, kind string) (kindSpec, bool) {
+	if s, ok := lookupBuiltin(group, kind); ok {
+		return s, true
+	}
+	if e, ok := lookupExt(group, kind); ok {
+		return e.Spec, true
+	}
+	return kindSpec{}, false
+}
+
 // seedable — виды, от которых разрешено строить граф.
 func seedable(s kindSpec) bool {
 	switch s.gvk.Kind {
 	case "Pod", "Deployment", "ReplicaSet", "Service", "PersistentVolumeClaim", "Node":
 		return true
 	}
-	return false
+	e, ok := lookupExt(s.gvk.Group, s.gvk.Kind)
+	return ok && e.Seedable
 }

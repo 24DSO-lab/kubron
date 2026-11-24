@@ -27,5 +27,13 @@ Locale-файлы лежат в `locales/{en,ru,cn}/` и подхватываю�
 | `incidentsMetrics.json` | D1 | `facts.metric_*`, `hypotheses.metrics_*`, `missing.metrics_*`, `reasons.*`, `hints.*` |
 | `incidentsChain.json` | D3 | коды цепочечных правил, `missing.graph_*` |
 | `incidentsCorrelation.json` | D4 | `facts.correlation_*`, `missing.correlation_*`, `kinds.*`, `reasons.*` |
+| `incidentsChainIngress.json` | D1 (вторая итерация) | коды правил Ingress / IngressClass |
+| `incidentsChainHpa.json` | D2 | коды правил HPA |
+| `incidentsChainConfig.json` | D3 | ссылки на ConfigMap (`config.*`) |
+| `incidentsChainStatefulSet.json` | D3 | коды правил StatefulSet |
+| `incidentsChainBatch.json` | D4 | коды правил Job и CronJob |
+| `incidentsMetrics.json` | D5 (вторая итерация) | сигналы этапа B: PVC, HPA, недоступные реплики, Ingress |
+| `incidentsCorrelation.json` | D6 (вторая итерация) | `shared_dependency`, `shared_root`, `shared_symptom`, пересчёт |
+| `incidentsMap.json` | D7 | интерактивная карта зависимостей |
 
-Владельцы пишут только в свои файлы. Собственные новые ключи интерфейса — в `incidentsIntel.json` (цепочка, метрики, проблемы, отметка результата) и `incidentsInsights.json` (статистика, повторение). Конфликт решает D8.
+Владельцы пишут только в свои файлы (во второй итерации у каждого вида свой файл `incidentsChain<Вид>.json`: `Chain`-пространство первой итерации не правится). Собственные новые ключи интерфейса — в `incidentsIntel.json` (цепочка, метрики, проблемы, отметка результата) и `incidentsInsights.json` (статистика, повторение). Конфликт решает D8.

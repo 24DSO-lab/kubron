@@ -409,19 +409,6 @@ status: {phase: Running, conditions: [{type: Ready, status: "True"}]}
 	}
 }
 
-func TestExtensionFlagsAreScaffoldOnly(t *testing.T) {
-	f := world(t)
-	g := build(t, f, refPod, depgraph.Options{ExpandIngress: true, ExpandHPA: true})
-	for _, c := range f.CallLog() {
-		if strings.Contains(c, "Ingress") || strings.Contains(c, "HorizontalPodAutoscaler") {
-			t.Errorf("stage-2 kind read: %s", c)
-		}
-	}
-	if !contains(g.Warnings(), "not_implemented:ingress") || !contains(g.Warnings(), "not_implemented:hpa") {
-		t.Errorf("warnings = %v", g.Warnings())
-	}
-}
-
 func TestOwnerOfUnknownKindIsPolicyNode(t *testing.T) {
 	f := world(t, `
 apiVersion: v1

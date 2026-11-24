@@ -61,7 +61,8 @@ var (
 // AllowedKinds — виды, которые читает диагностика, включая граф зависимостей (для документации и тестов, сверяемых
 // с allowlist платформы). Состав: ADR-0024 §2 (шесть видов), этап 1 ADR-0031 §6 (Service, EndpointSlice, PVC, PV,
 // StorageClass) и владельцы Pod, которых граф читает по ownerReferences (StatefulSet, DaemonSet, Job, CronJob).
-// Secret здесь нет и быть не может; ConfigMap граф читает только при флаге этапа 2, выключенном по умолчанию.
+// Secret здесь нет и быть не может; ConfigMap читается ради существования, data и binaryData отбрасываются сразу
+// (depgraph.SanitizeConfigMap).
 func AllowedKinds() []schema.GroupKind {
 	return []schema.GroupKind{
 		gvkPod.GroupKind(), gvkNamespace.GroupKind(), gvkNode.GroupKind(),
@@ -71,5 +72,8 @@ func AllowedKinds() []schema.GroupKind {
 		{Group: "discovery.k8s.io", Kind: "EndpointSlice"},
 		{Group: "apps", Kind: "StatefulSet"}, {Group: "apps", Kind: "DaemonSet"},
 		{Group: "batch", Kind: "Job"}, {Group: "batch", Kind: "CronJob"},
+		// Этапы 2–3 ADR-0031 §6: Ingress и IngressClass, HPA, существование ConfigMap (без data и binaryData).
+		{Group: "networking.k8s.io", Kind: "Ingress"}, {Group: "networking.k8s.io", Kind: "IngressClass"},
+		{Group: "autoscaling", Kind: "HorizontalPodAutoscaler"}, {Kind: "ConfigMap"},
 	}
 }

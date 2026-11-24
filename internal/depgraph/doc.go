@@ -13,8 +13,9 @@
 // Вверх: Pod → ReplicaSet → Deployment (а также StatefulSet, DaemonSet, Job → CronJob) по ownerReferences и
 // Pod ← Service по селектору. Вниз и вбок: Pod → PVC → PV и StorageClass, Pod → Node, Node → Pod'ы на ней,
 // Service → EndpointSlice. Для цели добавляются дети и потребители: Deployment → ReplicaSet → Pod, Service → Pod,
-// PVC ← Pod. Расширения этапа 2 (Ingress, HPA) выключены; при включении флага граф только предупреждает
-// «not_implemented:…». Содержимое ConfigMap отбрасывается при чтении (SanitizeConfigMap).
+// PVC ← Pod. Виды этапов 2–3 (Ingress, HPA, ссылки на ConfigMap, StatefulSet, Job, CronJob) подключаются
+// реестром kind_registry.go из init() отдельных файлов kind_<вид>.go. Содержимое ConfigMap отбрасывается при чтении
+// (SanitizeConfigMap).
 //
 // # Пределы (ADR-0031 §3)
 //
@@ -28,7 +29,6 @@
 //	list_truncated:<Kind>     — выборка не уместилась в 100 объектов
 //	forbidden:<Kind>          — RBAC запретил чтение; unavailable:<Kind>, too_large:<Kind> — аналогично
 //	canceled                  — отмена контекста; граф частичный
-//	not_implemented:ingress|hpa — включён флаг расширения этапа 2
 //
 // # Коды причин состояния (Node.Reason, Edge.Reason)
 //

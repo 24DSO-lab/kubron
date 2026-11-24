@@ -49,6 +49,23 @@ var chainKindGVK = map[string]schema.GroupVersionKind{
 	"EndpointSlice": {Group: "discovery.k8s.io", Version: "v1", Kind: "EndpointSlice"},
 }
 
+// chainForbidGVK разбирает запись forbid из case.json: короткий вид из таблицы либо полная форма «группа/версия/Вид»
+// («networking.k8s.io/v1/Ingress», «batch/v1/CronJob», core — «v1/ConfigMap»). Полная форма нужна видам этапов 2–3:
+// каждый разработчик вида использует её и не правит общую таблицу.
+func chainForbidGVK(k string) (schema.GroupVersionKind, bool) {
+	if gvk, ok := chainKindGVK[k]; ok {
+		return gvk, true
+	}
+	parts := strings.Split(k, "/")
+	switch len(parts) {
+	case 2: // v1/ConfigMap
+		return schema.GroupVersionKind{Version: parts[0], Kind: parts[1]}, true
+	case 3:
+		return schema.GroupVersionKind{Group: parts[0], Version: parts[1], Kind: parts[2]}, true
+	}
+	return schema.GroupVersionKind{}, false
+}
+
 func loadChainCases(t *testing.T) map[string]chainCase {
 	t.Helper()
 	dirs, err := filepath.Glob(filepath.Join("testdata", "chain", "*", "case.json"))
@@ -81,7 +98,7 @@ func chainContext(t *testing.T, name string, c chainCase) *Context {
 	}
 	r := newChain(t, string(raw))
 	for _, k := range c.Forbid {
-		gvk, ok := chainKindGVK[k]
+		gvk, ok := chainForbidGVK(k)
 		if !ok {
 			t.Fatalf("%s: unknown kind %q in forbid", name, k)
 		}

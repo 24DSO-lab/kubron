@@ -15,13 +15,33 @@ import (
 
 var chainLangs = []string{"en", "ru", "cn"}
 
+// localesDir — каталог locale-файлов интерфейса относительно пакета.
+var localesDir = filepath.Join("..", "..", "frontend", "src", "i18n", "locales")
+
+// chainFiles — файлы переводов цепочечных правил: incidentsChain.json и по одному incidentsChain<Вид>.json на вид этапов
+// 2–3 (Ingress, Hpa, Config, StatefulSet, Batch). Состав берётся из английского каталога, остальные языки обязаны
+// иметь тот же набор файлов (его сверяет TestChainLocalesHaveTheSameKeys).
+func chainFiles(t *testing.T) []string {
+	t.Helper()
+	files, err := filepath.Glob(filepath.Join(localesDir, "en", "incidentsChain*.json"))
+	if err != nil || len(files) == 0 {
+		t.Fatalf("no incidentsChain*.json in the English locale: %v", err)
+	}
+	out := make([]string, len(files))
+	for i, f := range files {
+		out[i] = filepath.Base(f)
+	}
+	slices.Sort(out)
+	return out
+}
+
 // chainMessages — переводы языка из incidents.json и incidentsChain.json, слитые по разделам: цепочечные правила
 // делят часть кодов с прежними (source.unavailable, event, rec.fix_volume_claim), остальное лежит в incidentsChain.json.
 func chainMessages(t *testing.T, lang string) map[string]map[string]any {
 	t.Helper()
 	msgs := map[string]map[string]any{}
-	for _, file := range []string{"incidents.json", "incidentsChain.json"} {
-		raw, err := os.ReadFile(filepath.Join("..", "..", "frontend", "src", "i18n", "locales", lang, file))
+	for _, file := range append([]string{"incidents.json"}, chainFiles(t)...) {
+		raw, err := os.ReadFile(filepath.Join(localesDir, lang, file))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -167,23 +187,25 @@ func TestChainFixtureCodesAreTranslated(t *testing.T) {
 	}
 }
 
-// Наборы ключей и плейсхолдеров incidentsChain.json совпадают во всех языках: тест дублирует i18n-check для Go-стороны
+// Наборы ключей и плейсхолдеров файлов incidentsChain*.json совпадают во всех языках: тест дублирует i18n-check для Go-стороны
 // и ловит расхождение до сборки фронтенда.
 func TestChainLocalesHaveTheSameKeys(t *testing.T) {
 	t.Parallel()
 	load := func(lang string) map[string]string {
-		raw, err := os.ReadFile(filepath.Join("..", "..", "frontend", "src", "i18n", "locales", lang, "incidentsChain.json"))
-		if err != nil {
-			t.Fatal(err)
-		}
-		var m map[string]map[string]string
-		if err := json.Unmarshal(raw, &m); err != nil {
-			t.Fatalf("%s: %v (values must be plain strings)", lang, err)
-		}
 		out := map[string]string{}
-		for section, kv := range m {
-			for k, v := range kv {
-				out[section+"."+k] = v
+		for _, file := range chainFiles(t) {
+			raw, err := os.ReadFile(filepath.Join(localesDir, lang, file))
+			if err != nil {
+				t.Fatalf("%s/%s: %v (every language needs the same files)", lang, file, err)
+			}
+			var m map[string]map[string]string
+			if err := json.Unmarshal(raw, &m); err != nil {
+				t.Fatalf("%s/%s: %v (values must be plain strings)", lang, file, err)
+			}
+			for section, kv := range m {
+				for k, v := range kv {
+					out[file+"/"+section+"."+k] = v
+				}
 			}
 		}
 		return out
