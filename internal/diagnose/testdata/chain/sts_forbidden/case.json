@@ -1,0 +1,19 @@
+{
+  "target": {
+    "kind": "StatefulSet",
+    "namespace": "app",
+    "name": "db"
+  },
+  "forbid": [
+    "Pod"
+  ],
+  "expect": {
+    "missing": [
+      "source.unavailable"
+    ],
+    "absent": [
+      "sts.stuck_ordered_start",
+      "sts.pvc_pending"
+    ]
+  }
+}

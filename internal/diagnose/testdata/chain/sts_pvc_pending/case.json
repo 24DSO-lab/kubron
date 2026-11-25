@@ -1,0 +1,25 @@
+{
+  "target": {
+    "kind": "StatefulSet",
+    "namespace": "app",
+    "name": "db"
+  },
+  "expect": {
+    "symptoms": [
+      "sts.start_stuck",
+      "storage.claim_pending"
+    ],
+    "hypotheses": [
+      "sts.pvc_pending:medium"
+    ],
+    "explains": [
+      [
+        "storage.class_not_found",
+        "sts.pvc_pending"
+      ]
+    ],
+    "chains": [
+      "sts.pvc_pending: StatefulSet/db > PersistentVolumeClaim/data-db-0"
+    ]
+  }
+}
