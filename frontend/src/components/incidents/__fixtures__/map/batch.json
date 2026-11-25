@@ -1,0 +1,160 @@
+{
+  "ruleSetVersion": 2,
+  "target": {
+    "kind": "CronJob",
+    "name": "nightly",
+    "group": "batch",
+    "namespace": "ops"
+  },
+  "observedAt": "2026-11-20T10:00:00Z",
+  "symptoms": [],
+  "resources": [
+    {
+      "kind": "CronJob",
+      "name": "nightly",
+      "group": "batch",
+      "namespace": "ops"
+    }
+  ],
+  "facts": [],
+  "hypotheses": [
+    {
+      "kind": "hypothesis",
+      "id": "h1",
+      "code": "cronjob.suspended",
+      "resource": {
+        "kind": "CronJob",
+        "name": "nightly",
+        "group": "batch",
+        "namespace": "ops"
+      },
+      "params": {
+        "cronjob": "nightly",
+        "missed": "3"
+      },
+      "confidence": "high",
+      "supporting": [],
+      "contradicting": []
+    },
+    {
+      "kind": "hypothesis",
+      "id": "h2",
+      "code": "job.backoff_limit_exceeded",
+      "resource": {
+        "kind": "Job",
+        "name": "nightly-123",
+        "group": "batch",
+        "namespace": "ops"
+      },
+      "params": {
+        "job": "nightly-123",
+        "failed": "6",
+        "limit": "6"
+      },
+      "confidence": "high",
+      "supporting": [],
+      "contradicting": []
+    }
+  ],
+  "recommendations": [],
+  "steps": [],
+  "missing": [],
+  "graph": {
+    "nodes": [
+      {
+        "kind": "CronJob",
+        "name": "nightly",
+        "health": "Suspended",
+        "group": "batch",
+        "namespace": "ops"
+      },
+      {
+        "kind": "Job",
+        "name": "nightly-123",
+        "health": "Degraded",
+        "group": "batch",
+        "namespace": "ops"
+      },
+      {
+        "kind": "Job",
+        "name": "nightly-122",
+        "health": "Healthy",
+        "group": "batch",
+        "namespace": "ops"
+      },
+      {
+        "kind": "Pod",
+        "name": "nightly-123-abc",
+        "health": "Degraded",
+        "group": "core",
+        "namespace": "ops"
+      },
+      {
+        "kind": "Pod",
+        "name": "nightly-122-xyz",
+        "health": "Healthy",
+        "group": "core",
+        "namespace": "ops"
+      }
+    ],
+    "edges": [
+      {
+        "from": "batch/CronJob/ops/nightly",
+        "to": "batch/Job/ops/nightly-123",
+        "type": "owns",
+        "state": "ok"
+      },
+      {
+        "from": "batch/CronJob/ops/nightly",
+        "to": "batch/Job/ops/nightly-122",
+        "type": "owns",
+        "state": "ok"
+      },
+      {
+        "from": "batch/Job/ops/nightly-123",
+        "to": "core/Pod/ops/nightly-123-abc",
+        "type": "owns",
+        "state": "ok"
+      },
+      {
+        "from": "batch/Job/ops/nightly-122",
+        "to": "core/Pod/ops/nightly-122-xyz",
+        "type": "owns",
+        "state": "ok"
+      }
+    ]
+  },
+  "chains": [
+    {
+      "path": [
+        {
+          "ref": {
+            "kind": "CronJob",
+            "name": "nightly",
+            "group": "batch",
+            "namespace": "ops"
+          },
+          "health": "Suspended"
+        },
+        {
+          "ref": {
+            "kind": "Job",
+            "name": "nightly-123",
+            "group": "batch",
+            "namespace": "ops"
+          },
+          "health": "Degraded"
+        },
+        {
+          "ref": {
+            "kind": "Pod",
+            "name": "nightly-123-abc",
+            "namespace": "ops"
+          },
+          "health": "Degraded"
+        }
+      ],
+      "candidate": "h2"
+    }
+  ]
+}

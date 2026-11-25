@@ -1,0 +1,129 @@
+{
+  "ruleSetVersion": 2,
+  "target": {
+    "kind": "HorizontalPodAutoscaler",
+    "name": "web",
+    "group": "autoscaling",
+    "namespace": "shop"
+  },
+  "observedAt": "2026-11-20T10:00:00Z",
+  "symptoms": [],
+  "resources": [
+    {
+      "kind": "HorizontalPodAutoscaler",
+      "name": "web",
+      "group": "autoscaling",
+      "namespace": "shop"
+    }
+  ],
+  "facts": [
+    {
+      "kind": "fact",
+      "id": "f1",
+      "code": "hpa.target_not_found",
+      "resource": {
+        "kind": "HorizontalPodAutoscaler",
+        "name": "web",
+        "group": "autoscaling",
+        "namespace": "shop"
+      },
+      "params": {
+        "hpa": "web",
+        "kind": "Deployment",
+        "target": "web-old"
+      },
+      "source": {
+        "kind": "resource",
+        "resource": {
+          "kind": "HorizontalPodAutoscaler",
+          "name": "web",
+          "group": "autoscaling",
+          "namespace": "shop"
+        }
+      },
+      "observedAt": "2026-11-20T10:00:00Z"
+    }
+  ],
+  "hypotheses": [
+    {
+      "kind": "hypothesis",
+      "id": "h1",
+      "code": "hpa.target_missing",
+      "resource": {
+        "kind": "HorizontalPodAutoscaler",
+        "name": "web",
+        "group": "autoscaling",
+        "namespace": "shop"
+      },
+      "params": {
+        "hpa": "web",
+        "kind": "Deployment",
+        "target": "web-old"
+      },
+      "confidence": "high",
+      "supporting": [
+        "f1"
+      ],
+      "contradicting": [],
+      "explains": [
+        "h2"
+      ]
+    }
+  ],
+  "recommendations": [],
+  "steps": [],
+  "missing": [],
+  "graph": {
+    "nodes": [
+      {
+        "kind": "HorizontalPodAutoscaler",
+        "name": "web",
+        "health": "Degraded",
+        "group": "autoscaling",
+        "namespace": "shop",
+        "reason": "scaling_inactive"
+      },
+      {
+        "kind": "Deployment",
+        "name": "web-old",
+        "health": "Missing",
+        "group": "apps",
+        "namespace": "shop",
+        "placeholder": true
+      }
+    ],
+    "edges": [
+      {
+        "from": "autoscaling/HorizontalPodAutoscaler/shop/web",
+        "to": "apps/Deployment/shop/web-old",
+        "type": "scales",
+        "state": "missing"
+      }
+    ]
+  },
+  "chains": [
+    {
+      "path": [
+        {
+          "ref": {
+            "kind": "HorizontalPodAutoscaler",
+            "name": "web",
+            "group": "autoscaling",
+            "namespace": "shop"
+          },
+          "health": "Degraded"
+        },
+        {
+          "ref": {
+            "kind": "Deployment",
+            "name": "web-old",
+            "group": "apps",
+            "namespace": "shop"
+          },
+          "health": "Missing"
+        }
+      ],
+      "candidate": "h1"
+    }
+  ]
+}

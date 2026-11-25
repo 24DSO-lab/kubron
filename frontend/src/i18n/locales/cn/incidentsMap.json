@@ -1,0 +1,114 @@
+{
+  "title": "依赖关系图",
+  "aria": "交互式依赖关系图。方向键在资源间移动，Enter 选择，Escape 取消选择。",
+  "summary": "{nodes} 个资源，{edges} 条关联",
+  "incomplete": "依赖图不完整：部分资源或关联未能收集。",
+  "note": "该图显示受影响资源所依赖的内容。“候选”是用于解释其他假设的假设，并非已确认的原因。",
+  "health": {
+    "Healthy": "正常",
+    "Degraded": "降级",
+    "Progressing": "进行中",
+    "Suspended": "已暂停",
+    "Missing": "缺失",
+    "Unknown": "未知",
+    "other": "状态无法识别"
+  },
+  "variant": {
+    "normal": "资源",
+    "placeholder": "不存在",
+    "unknown": "未检查",
+    "secret": "按设计不读取",
+    "group": "正常，已分组"
+  },
+  "unknownReasons": {
+    "forbidden": "无读取权限",
+    "unavailable": "数据源无响应",
+    "too_large": "响应过大",
+    "limit": "已达到读取上限",
+    "policy": "被策略排除",
+    "other": "未说明原因"
+  },
+  "edge": {
+    "owns": "拥有",
+    "selects": "选择",
+    "backed_by": "依托于",
+    "routes": "路由到",
+    "mounts": "挂载",
+    "binds": "绑定到",
+    "runs_on": "运行于",
+    "scales": "伸缩",
+    "other": "关联到"
+  },
+  "edgeState": {
+    "ok": "正常",
+    "broken": "已中断",
+    "missing": "目标缺失",
+    "unknown": "未检查",
+    "other": "状态无法识别"
+  },
+  "direction": {
+    "in": "来自",
+    "out": "指向"
+  },
+  "reasons": {
+    "pending": "等待中",
+    "ingress_backend_missing": "后端 Service 不存在",
+    "ingress_class_missing": "IngressClass 不存在",
+    "ingress_backend_port_missing": "Service 未声明后端端口",
+    "scaling_inactive": "自动伸缩未工作",
+    "scaling_disabled": "自动伸缩已关闭（副本数为零）"
+  },
+  "confidence": {
+    "low": "低置信度",
+    "medium": "中置信度",
+    "high": "高置信度"
+  },
+  "candidate": "候选",
+  "target": "受影响",
+  "legend": {
+    "title": "图例",
+    "states": "资源状态",
+    "edges": "关联",
+    "marks": "标记",
+    "edgeSolid": "正常关联",
+    "edgeBroken": "已中断的关联",
+    "edgeMissing": "指向缺失资源的关联",
+    "edgeUnknown": "未检查的关联",
+    "chain": "通往候选的链路"
+  },
+  "filters": {
+    "title": "筛选",
+    "kind": "类型",
+    "health": "状态",
+    "reset": "显示全部"
+  },
+  "controls": {
+    "zoomIn": "放大",
+    "zoomOut": "缩小",
+    "fit": "适应窗口",
+    "highlight": "高亮通往候选的链路",
+    "expandAll": "显示所有资源"
+  },
+  "group": {
+    "label": "{count} × {kind}",
+    "expand": "显示全部 {kind}",
+    "collapse": "重新折叠 {kind}"
+  },
+  "details": {
+    "title": "资源详情",
+    "empty": "在图上选择资源以查看其事实和假设。",
+    "namespace": "命名空间",
+    "clusterScoped": "集群范围",
+    "state": "状态",
+    "facts": "事实",
+    "hypotheses": "假设",
+    "missing": "缺失的上下文",
+    "relations": "关联",
+    "none": "该资源没有记录。",
+    "close": "取消选择",
+    "members": "此类型的正常资源：{count} 个",
+    "secretNote": "Secret 从不被读取。这并不表示该 Secret 不存在。",
+    "placeholderNote": "该资源被引用，但在集群中不存在。",
+    "unknownNote": "无法检查该资源：{reason}。"
+  }
+}
