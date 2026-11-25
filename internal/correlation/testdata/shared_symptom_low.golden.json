@@ -1,0 +1,273 @@
+{
+  "version": 1,
+  "observedAt": "2026-11-17T12:00:00Z",
+  "candidates": [
+    {
+      "id": "cc-96eb939f77e5",
+      "kind": "shared_node",
+      "source": {
+        "kind": "Node",
+        "name": "n1",
+        "uid": "uid-n1"
+      },
+      "confidence": "low",
+      "since": "2026-11-17T11:40:00Z",
+      "affected": [
+        {
+          "kind": "Deployment",
+          "namespace": "prod",
+          "name": "api",
+          "problemPods": 1,
+          "symptoms": [
+            "pod.crash_loop",
+            "pod.not_ready"
+          ],
+          "since": "2026-11-17T11:40:00Z"
+        },
+        {
+          "kind": "Deployment",
+          "namespace": "prod",
+          "name": "cache",
+          "problemPods": 1,
+          "symptoms": [
+            "pod.crash_loop",
+            "pod.not_ready"
+          ],
+          "since": "2026-11-17T11:40:00Z"
+        },
+        {
+          "kind": "Deployment",
+          "namespace": "prod",
+          "name": "queue",
+          "problemPods": 1,
+          "symptoms": [
+            "pod.crash_loop",
+            "pod.not_ready"
+          ],
+          "since": "2026-11-17T11:40:00Z"
+        },
+        {
+          "kind": "Deployment",
+          "namespace": "prod",
+          "name": "search",
+          "problemPods": 1,
+          "symptoms": [
+            "pod.crash_loop",
+            "pod.not_ready"
+          ],
+          "since": "2026-11-17T11:40:00Z"
+        },
+        {
+          "kind": "Deployment",
+          "namespace": "prod",
+          "name": "web",
+          "problemPods": 1,
+          "symptoms": [
+            "pod.crash_loop",
+            "pod.not_ready"
+          ],
+          "since": "2026-11-17T11:40:00Z"
+        },
+        {
+          "kind": "Deployment",
+          "namespace": "prod",
+          "name": "worker",
+          "problemPods": 1,
+          "symptoms": [
+            "pod.crash_loop",
+            "pod.not_ready"
+          ],
+          "since": "2026-11-17T11:40:00Z"
+        }
+      ],
+      "total": 6,
+      "supporting": [
+        "cf1",
+        "cf2"
+      ]
+    },
+    {
+      "id": "cc-4f46d9c7740b",
+      "kind": "shared_symptom",
+      "source": {
+        "kind": "Namespace",
+        "name": "prod"
+      },
+      "confidence": "low",
+      "since": "2026-11-17T11:40:00Z",
+      "affected": [
+        {
+          "kind": "Deployment",
+          "namespace": "prod",
+          "name": "api",
+          "problemPods": 1,
+          "symptoms": [
+            "pod.crash_loop"
+          ],
+          "since": "2026-11-17T11:40:00Z"
+        },
+        {
+          "kind": "Deployment",
+          "namespace": "prod",
+          "name": "cache",
+          "problemPods": 1,
+          "symptoms": [
+            "pod.crash_loop"
+          ],
+          "since": "2026-11-17T11:40:00Z"
+        },
+        {
+          "kind": "Deployment",
+          "namespace": "prod",
+          "name": "queue",
+          "problemPods": 1,
+          "symptoms": [
+            "pod.crash_loop"
+          ],
+          "since": "2026-11-17T11:40:00Z"
+        },
+        {
+          "kind": "Deployment",
+          "namespace": "prod",
+          "name": "search",
+          "problemPods": 1,
+          "symptoms": [
+            "pod.crash_loop"
+          ],
+          "since": "2026-11-17T11:40:00Z"
+        },
+        {
+          "kind": "Deployment",
+          "namespace": "prod",
+          "name": "web",
+          "problemPods": 1,
+          "symptoms": [
+            "pod.crash_loop"
+          ],
+          "since": "2026-11-17T11:40:00Z"
+        },
+        {
+          "kind": "Deployment",
+          "namespace": "prod",
+          "name": "worker",
+          "problemPods": 1,
+          "symptoms": [
+            "pod.crash_loop"
+          ],
+          "since": "2026-11-17T11:40:00Z"
+        }
+      ],
+      "total": 6,
+      "supporting": [
+        "cf3",
+        "cf4",
+        "cf5"
+      ]
+    }
+  ],
+  "facts": [
+    {
+      "kind": "fact",
+      "id": "cf1",
+      "code": "correlation.shared_node.runs_on",
+      "resource": {
+        "kind": "Node",
+        "name": "n1",
+        "uid": "uid-n1"
+      },
+      "params": {
+        "pods": "6",
+        "workloads": "6"
+      },
+      "source": {
+        "kind": "derived",
+        "resource": {
+          "kind": "Node",
+          "name": "n1",
+          "uid": "uid-n1"
+        }
+      },
+      "observedAt": "2026-11-17T12:00:00Z"
+    },
+    {
+      "kind": "fact",
+      "id": "cf2",
+      "code": "correlation.shared_node.multi_workload",
+      "resource": {
+        "kind": "Node",
+        "name": "n1",
+        "uid": "uid-n1"
+      },
+      "params": {
+        "workloads": "6"
+      },
+      "source": {
+        "kind": "derived",
+        "resource": {
+          "kind": "Node",
+          "name": "n1",
+          "uid": "uid-n1"
+        }
+      },
+      "observedAt": "2026-11-17T12:00:00Z"
+    },
+    {
+      "kind": "fact",
+      "id": "cf3",
+      "code": "correlation.shared_symptom.workloads",
+      "resource": {
+        "kind": "Namespace",
+        "name": "prod"
+      },
+      "params": {
+        "pods": "6",
+        "workloads": "6"
+      },
+      "source": {
+        "kind": "derived",
+        "resource": {
+          "kind": "Namespace",
+          "name": "prod"
+        }
+      },
+      "observedAt": "2026-11-17T12:00:00Z"
+    },
+    {
+      "kind": "fact",
+      "id": "cf4",
+      "code": "correlation.shared_symptom.hypothesis",
+      "resource": {
+        "kind": "Namespace",
+        "name": "prod"
+      },
+      "source": {
+        "kind": "derived",
+        "resource": {
+          "kind": "Namespace",
+          "name": "prod"
+        }
+      },
+      "observedAt": "2026-11-17T12:00:00Z"
+    },
+    {
+      "kind": "fact",
+      "id": "cf5",
+      "code": "correlation.shared_symptom.temporal",
+      "resource": {
+        "kind": "Namespace",
+        "name": "prod"
+      },
+      "params": {
+        "spanSeconds": "0"
+      },
+      "source": {
+        "kind": "derived",
+        "resource": {
+          "kind": "Namespace",
+          "name": "prod"
+        }
+      },
+      "observedAt": "2026-11-17T12:00:00Z"
+    }
+  ]
+}

@@ -2,7 +2,10 @@
   "title": "Possible common source",
   "kinds": {
     "shared_node": "Possible common source: node",
-    "shared_storage": "Possible common source: storage class"
+    "shared_storage": "Possible common source: storage class",
+    "shared_dependency": "Possible common source: shared dependency",
+    "shared_root": "Possible common source: root workload of the chain",
+    "shared_symptom": "Possible common source: same symptom in the namespace"
   },
   "facts": {
     "correlation_shared_node_runs_on": "{workloads} workloads ({pods} pods) with failures run on this node.",
@@ -18,7 +21,19 @@
     "correlation_shared_storage_no_default_class": "The cluster has no default storage class, so volume claims without a class stay unbound.",
     "correlation_shared_storage_provision_failed": "Provisioning failed for {pvcs} volume claims of this storage class.",
     "correlation_shared_storage_temporal": "The provisioning failures happened within {spanSeconds} seconds of each other.",
-    "correlation_shared_storage_multi_workload": "{workloads} different workloads are affected."
+    "correlation_shared_storage_multi_workload": "{workloads} different workloads are affected.",
+    "correlation_shared_dependency_consumers": "{workloads} workloads ({pods} pods) with failures use this dependency.",
+    "correlation_shared_dependency_referrers": "{count} more resources route traffic through this dependency.",
+    "correlation_shared_dependency_missing": "The dependency does not exist.",
+    "correlation_shared_dependency_no_endpoints": "The service has no ready endpoints.",
+    "correlation_shared_dependency_temporal": "The failures of the dependent workloads started within {spanSeconds} seconds of each other.",
+    "correlation_shared_dependency_multi_workload": "{workloads} different workloads are affected.",
+    "correlation_shared_root_candidate": "This workload is the root candidate of the chain: the investigations of the layers above it lead to it.",
+    "correlation_shared_root_layers": "{layers} layers of the chain are affected: the workload and the resources above it.",
+    "correlation_shared_root_multi_workload": "{workloads} layers of the chain are affected.",
+    "correlation_shared_symptom_workloads": "{workloads} workloads ({pods} pods) in this namespace show the same symptom.",
+    "correlation_shared_symptom_hypothesis": "The report of the investigated workload offers a hypothesis for this symptom; for the other workloads only the symptom match is known.",
+    "correlation_shared_symptom_temporal": "The first failures happened within {spanSeconds} seconds of each other."
   },
   "missing": {
     "correlation_unavailable": "The search for a possible common source is incomplete: some cluster data could not be read."

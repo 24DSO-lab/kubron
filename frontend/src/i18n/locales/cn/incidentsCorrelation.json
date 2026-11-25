@@ -2,7 +2,10 @@
   "title": "可能的共同来源",
   "kinds": {
     "shared_node": "可能的共同来源：节点",
-    "shared_storage": "可能的共同来源：存储类"
+    "shared_storage": "可能的共同来源：存储类",
+    "shared_dependency": "可能的共同来源：共享依赖",
+    "shared_root": "可能的共同来源：调用链的根工作负载",
+    "shared_symptom": "可能的共同来源：命名空间内的相同症状"
   },
   "facts": {
     "correlation_shared_node_runs_on": "该节点上有 {workloads} 个出现故障的工作负载（{pods} 个 Pod）。",
@@ -18,7 +21,19 @@
     "correlation_shared_storage_no_default_class": "集群中没有默认存储类，因此未指定存储类的卷声明保持未绑定状态。",
     "correlation_shared_storage_provision_failed": "该存储类下有 {pvcs} 个卷声明供应失败。",
     "correlation_shared_storage_temporal": "这些供应失败发生在彼此 {spanSeconds} 秒之内。",
-    "correlation_shared_storage_multi_workload": "受影响的不同工作负载共 {workloads} 个。"
+    "correlation_shared_storage_multi_workload": "受影响的不同工作负载共 {workloads} 个。",
+    "correlation_shared_dependency_consumers": "{workloads} 个出现故障的工作负载（{pods} 个 Pod）使用了该依赖。",
+    "correlation_shared_dependency_referrers": "另有 {count} 个资源通过该依赖转发流量。",
+    "correlation_shared_dependency_missing": "该依赖不存在。",
+    "correlation_shared_dependency_no_endpoints": "该服务没有就绪的端点。",
+    "correlation_shared_dependency_temporal": "依赖它的工作负载的故障在彼此 {spanSeconds} 秒之内开始。",
+    "correlation_shared_dependency_multi_workload": "受影响的不同工作负载共 {workloads} 个。",
+    "correlation_shared_root_candidate": "该工作负载是调用链的根候选：其上层各环节的调查都指向它。",
+    "correlation_shared_root_layers": "调用链中有 {layers} 个环节受影响：该工作负载及其上层资源。",
+    "correlation_shared_root_multi_workload": "调用链中受影响的环节共 {workloads} 个。",
+    "correlation_shared_symptom_workloads": "该命名空间中有 {workloads} 个工作负载（{pods} 个 Pod）出现相同症状。",
+    "correlation_shared_symptom_hypothesis": "被调查工作负载的报告对该症状给出了假设；对其他工作负载只知道症状相同。",
+    "correlation_shared_symptom_temporal": "首次故障发生在彼此 {spanSeconds} 秒之内。"
   },
   "missing": {
     "correlation_unavailable": "对可能的共同来源的查找不完整：部分集群数据无法读取。"

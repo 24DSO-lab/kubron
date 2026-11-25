@@ -1,0 +1,111 @@
+{
+  "version": 1,
+  "observedAt": "2026-11-17T12:00:00Z",
+  "candidates": [
+    {
+      "id": "cc-b3aba10b9c34",
+      "kind": "shared_dependency",
+      "source": {
+        "kind": "ConfigMap",
+        "namespace": "prod",
+        "name": "app-cfg"
+      },
+      "confidence": "medium",
+      "since": "2026-11-17T11:48:00Z",
+      "affected": [
+        {
+          "kind": "Deployment",
+          "namespace": "prod",
+          "name": "a",
+          "problemPods": 2,
+          "symptoms": [
+            "pod.pending"
+          ],
+          "since": "2026-11-17T11:50:00Z"
+        },
+        {
+          "kind": "Deployment",
+          "namespace": "prod",
+          "name": "b",
+          "problemPods": 2,
+          "symptoms": [
+            "pod.pending"
+          ],
+          "since": "2026-11-17T11:48:00Z"
+        }
+      ],
+      "total": 2,
+      "supporting": [
+        "cf1",
+        "cf2",
+        "cf3"
+      ]
+    }
+  ],
+  "facts": [
+    {
+      "kind": "fact",
+      "id": "cf1",
+      "code": "correlation.shared_dependency.consumers",
+      "resource": {
+        "kind": "ConfigMap",
+        "namespace": "prod",
+        "name": "app-cfg"
+      },
+      "params": {
+        "pods": "4",
+        "workloads": "2"
+      },
+      "source": {
+        "kind": "derived",
+        "resource": {
+          "kind": "ConfigMap",
+          "namespace": "prod",
+          "name": "app-cfg"
+        }
+      },
+      "observedAt": "2026-11-17T12:00:00Z"
+    },
+    {
+      "kind": "fact",
+      "id": "cf2",
+      "code": "correlation.shared_dependency.missing",
+      "resource": {
+        "kind": "ConfigMap",
+        "namespace": "prod",
+        "name": "app-cfg"
+      },
+      "source": {
+        "kind": "derived",
+        "resource": {
+          "kind": "ConfigMap",
+          "namespace": "prod",
+          "name": "app-cfg"
+        }
+      },
+      "observedAt": "2026-11-17T12:00:00Z"
+    },
+    {
+      "kind": "fact",
+      "id": "cf3",
+      "code": "correlation.shared_dependency.temporal",
+      "resource": {
+        "kind": "ConfigMap",
+        "namespace": "prod",
+        "name": "app-cfg"
+      },
+      "params": {
+        "spanSeconds": "120"
+      },
+      "source": {
+        "kind": "derived",
+        "resource": {
+          "kind": "ConfigMap",
+          "namespace": "prod",
+          "name": "app-cfg"
+        }
+      },
+      "observedAt": "2026-11-17T12:00:00Z"
+    }
+  ]
+}
