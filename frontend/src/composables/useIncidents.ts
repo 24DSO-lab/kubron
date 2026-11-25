@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { computed, ref } from 'vue'
+import { t } from '../i18n'
 import { callApp } from '../platform/api'
 import { onEvent } from '../platform/events'
 import { downloadTextFile } from '../platform/files'
@@ -131,6 +132,25 @@ export function useIncidents(clusterId: () => string) {
     applyDetail(g, id, normalizeDetail((await callApp('IncidentRefresh', clusterId(), id)) as IncidentDetail))
   }
 
+  /**
+   * Пересчёт корреляции по живым данным кластера (IncidentCorrelationRecompute). Меняется только снимок корреляции;
+   * закрытое расследование бэкенд не пересчитывает. Если метод недоступен (старая сборка бэкенда) — понятная ошибка.
+   */
+  async function recomputeCorrelation(): Promise<void> {
+    if (!detail.value) return
+    const g = gen
+    const id = detail.value.incident.id
+    let d: IncidentDetail
+    try {
+      d = (await callApp('IncidentCorrelationRecompute', clusterId(), id)) as IncidentDetail
+    } catch (e) {
+      const text = e instanceof Error ? e.message : String(e)
+      if (/unknown method|not available|method_denied/i.test(text)) throw new Error(t('incidentsIntel.correlation.recomputeUnavailable'))
+      throw e
+    }
+    applyDetail(g, id, normalizeDetail(d))
+  }
+
   /** Отметка результата: в запрос уходят только заполненные поля (ADR-0034 §2), «не отмечено» — отсутствие поля. */
   async function markOutcome(input: OutcomeInput): Promise<void> {
     if (!detail.value) return
@@ -206,7 +226,7 @@ export function useIncidents(clusterId: () => string) {
 
   return {
     items, nextCursor, status, loading, detail, detailLoading, settings, canReadLogs,
-    reset, loadList, open, select, close, refreshEvents, markOutcome, saveFragment, deleteFragment, setLogCapture,
+    reset, loadList, open, select, close, refreshEvents, recomputeCorrelation, markOutcome, saveFragment, deleteFragment, setLogCapture,
     readFragment, remove, exportIncident, loadSettings, saveSettings, listen,
   }
 }

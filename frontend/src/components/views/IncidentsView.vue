@@ -19,7 +19,7 @@
 
     <template v-if="detail">
       <IncidentDetail :incident="detail.incident" :fragments="detail.fragments" :can-read-logs="canReadLogs"
-        :read="readFragment" :busy="busy" :stats="stats" :previous="previous" @back="close" @refresh="run(refreshEvents)" @export="(w) => run(() => exportIncident(w))" @delete="askDelete"
+        :read="readFragment" :busy="busy" :stats="stats" :previous="previous" :can-operate="canOperate" @back="close" @refresh="run(refreshEvents)" @recompute-correlation="run(recomputeCorrelation)" @export="(w) => run(() => exportIncident(w))" @delete="askDelete"
         @save-fragment="(ev) => run(() => saveFragment(ev.pod, ev.container, !!ev.previous), 'evidence.saveDone')"
         @delete-fragment="askDeleteFragment" @delete-all-fragments="askDeleteAll"
         @capture="(on) => run(() => setLogCapture(on, false))"
@@ -84,7 +84,7 @@ const { activeClusterId } = useClusters()
 const notifications = useNotifications()
 const {
   items, nextCursor, status, loading, detail, settings, canReadLogs,
-  reset, loadList, open, select: selectIncident, close, refreshEvents, markOutcome, saveFragment, deleteFragment, setLogCapture,
+  reset, loadList, open, select: selectIncident, close, refreshEvents, recomputeCorrelation, markOutcome, saveFragment, deleteFragment, setLogCapture,
   readFragment, remove, exportIncident, loadSettings, saveSettings: persistSettings, listen,
 } = useIncidents(() => activeClusterId.value)
 

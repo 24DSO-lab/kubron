@@ -70,7 +70,13 @@
     "pods": "{n} 个有问题的 Pod",
     "incompleteForbidden": "列表不完整：无权限读取部分数据。",
     "openProblem": "打开问题",
-    "kindOther": "可能的共同来源"
+    "kindOther": "可能的共同来源",
+    "recompute": "重新计算关联",
+    "recomputing": "正在重新计算…",
+    "recomputeHint": "重新读取集群；报告、事件和日志保持不变。",
+    "recomputeClosed": "已关闭的调查不会重新计算。",
+    "recomputeUnavailable": "当前后端版本不支持重新计算。",
+    "symptomHint": "低置信度：命名空间中出现相同症状，未发现结构性关联。"
   },
   "problem": {
     "title": "问题",

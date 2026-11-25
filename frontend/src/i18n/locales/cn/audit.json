@@ -145,6 +145,7 @@
     "IncidentDeleteFragment": "删除日志片段",
     "IncidentSetLogCapture": "更改调查的日志片段保存",
     "IncidentReadFragment": "读取日志片段",
+    "IncidentCorrelationRecompute": "重新计算调查关联",
     "IncidentExport": "导出调查",
     "IncidentDelete": "删除调查",
     "IncidentSaveSettings": "更改调查存储设置",

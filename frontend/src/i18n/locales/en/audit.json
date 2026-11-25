@@ -145,6 +145,7 @@
     "IncidentDeleteFragment": "Log fragment deleted",
     "IncidentSetLogCapture": "Log fragment saving changed for an investigation",
     "IncidentReadFragment": "Log fragment read",
+    "IncidentCorrelationRecompute": "Correlation recalculated for an investigation",
     "IncidentExport": "Investigation exported",
     "IncidentDelete": "Investigation deleted",
     "IncidentSaveSettings": "Incident storage settings changed",

@@ -145,6 +145,7 @@
     "IncidentDeleteFragment": "Фрагмент лога удалён",
     "IncidentSetLogCapture": "Изменено сохранение фрагментов логов расследования",
     "IncidentReadFragment": "Прочитан фрагмент лога",
+    "IncidentCorrelationRecompute": "Корреляция расследования пересчитана",
     "IncidentExport": "Расследование выгружено",
     "IncidentDelete": "Расследование удалено",
     "IncidentSaveSettings": "Изменены настройки хранения расследований",

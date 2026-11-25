@@ -1,7 +1,7 @@
 <!-- Copyright 2026 The Kubron Authors -->
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <template>
-  <section v-if="candidates.length || notes.length" class="corr" data-testid="correlation-block" :aria-label="$t('incidentsCorrelation.title')">
+  <section v-if="candidates.length || notes.length || showRecompute" class="corr" data-testid="correlation-block" :aria-label="$t('incidentsCorrelation.title')">
     <h3>{{ $t('incidentsCorrelation.title') }}</h3>
     <p v-if="candidates.length" class="note" data-testid="correlation-note">{{ $t('incidentsIntel.correlation.note') }}</p>
 
@@ -13,7 +13,8 @@
         </span>
         <span v-if="c.since"> · {{ $t('incidentsIntel.correlation.since', { time: c.since }) }}</span>
       </p>
-      <p v-if="c.confidence === 'low'" class="hint" data-testid="correlation-low">{{ $t('incidentsIntel.correlation.lowHint') }}</p>
+      <p v-if="c.kind === 'shared_symptom'" class="hint" data-testid="correlation-symptom-hint">{{ $t('incidentsIntel.correlation.symptomHint') }}</p>
+      <p v-else-if="c.confidence === 'low'" class="hint" data-testid="correlation-low">{{ $t('incidentsIntel.correlation.lowHint') }}</p>
 
       <div class="group" data-testid="correlation-affected">
         <h5>{{ $t('incidentsIntel.correlation.affected', { total: c.total }) }}</h5>
@@ -46,6 +47,16 @@
       <li v-for="(n, i) in notes" :key="i" class="warn" data-testid="correlation-incomplete">{{ n }}</li>
     </ul>
 
+    <div v-if="showRecompute" class="recompute" data-testid="correlation-recompute-box">
+      <button class="btn btn-secondary" type="button" :disabled="recomputeDisabled" :aria-busy="busy ? 'true' : 'false'"
+        data-testid="correlation-recompute" @click="emit('recompute')">
+        {{ busy ? $t('incidentsIntel.correlation.recomputing') : $t('incidentsIntel.correlation.recompute') }}
+      </button>
+      <span class="muted" data-testid="correlation-recompute-hint">
+        {{ status === 'closed' ? $t('incidentsIntel.correlation.recomputeClosed') : $t('incidentsIntel.correlation.recomputeHint') }}
+      </span>
+    </div>
+
     <button v-if="problemId" class="btn btn-secondary" type="button" data-testid="correlation-open-problem" @click="emit('openProblem', problemId)">
       {{ $t('incidentsIntel.correlation.openProblem') }}
     </button>
@@ -57,15 +68,28 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { te } from '../../i18n'
 import { codeText, confidenceLevel, factsByIds } from '../../composables/incidentModel'
-import type { CorrelationResult, ResourceRef, WorkloadRef } from '../../types/incident'
+import type { CorrelationResult, IncidentStatus, ResourceRef, WorkloadRef } from '../../types/incident'
 
 /**
  * «Возможный общий источник» (ADR-0033 §5): вероятный, а не установленный. Затронутые нагрузки и область
  * потенциального влияния показываются раздельно; усечение и нехватка прав названы явно.
  */
-const props = defineProps<{ correlation?: CorrelationResult; problemId?: string }>()
-const emit = defineEmits<{ (e: 'openProblem', id: string): void }>()
+const props = defineProps<{
+  correlation?: CorrelationResult
+  problemId?: string
+  /** Статус расследования: без него кнопка пересчёта не показывается (блок только для чтения). */
+  status?: IncidentStatus
+  /** Идёт запрос: кнопка заблокирована и показывает «Пересчитываю…». */
+  busy?: boolean
+  /** Подсказка интерфейсу: пересчёт требует права operate (сервер проверяет сам). */
+  canOperate?: boolean
+}>()
+const emit = defineEmits<{ (e: 'openProblem', id: string): void; (e: 'recompute'): void }>()
 const { t } = useI18n()
+
+const showRecompute = computed(() => props.status !== undefined)
+/** Закрытое расследование не пересчитывается; без права operate и во время запроса кнопка недоступна. */
+const recomputeDisabled = computed(() => !!props.busy || props.status === 'closed' || props.canOperate === false)
 
 const res = (r: ResourceRef) => [r.kind, r.namespace, r.name].filter(Boolean).join('/')
 const workload = (w: WorkloadRef) => ({
@@ -125,5 +149,6 @@ function when(iso: string): string {
 .warn { margin: 4px 0 0; color: #fab387; font-size: 12px; }
 .wl { margin: 0; padding-left: 18px; color: #cdd6f4; }
 .notes { margin: 0; padding-left: 18px; }
+.recompute { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .conf-low { color: #a6adc8; } .conf-medium { color: #f9e2af; } .conf-high { color: #fab387; }
 </style>
