@@ -22,7 +22,8 @@ import (
 // Пока ядро не влито, хуки не зарегистрированы, и поведение отчёта не меняется.
 
 // minSignalBudget — наименьший остаток времени операции, при котором метрики ещё запрашиваются (ADR-0032 §6):
-// запросы идут параллельно, но каждый может занять секунды, а диагностика без метрик важнее метрик без диагностики.
+// запросы идут параллельно, но каждый может занять секунды, а диагностика без метрик
+// важнее метрик без диагностики.
 const minSignalBudget = 5 * time.Second
 
 // Сколько контейнеров берётся на симптом: вместе с сигналами Node укладывается в бюджет MaxSignalQueries.
@@ -49,6 +50,11 @@ var signalWants = []struct {
 }{
 	{"pod.crash_loop", wantsCrashLoop},
 	{"pod.oom_killed", wantsOOMKilled},
+	// Этап B (metrics_stageb.go): после сигналов Pod, чтобы нехватка бюджета не отнимала у них запросы.
+	{"metrics.pvc_full", wantsPVC},
+	{"metrics.hpa_saturated", wantsHPA},
+	{"metrics.unavailable_replicas", wantsUnavailable},
+	{"metrics.ingress_errors", wantsIngress},
 }
 
 // collectWants объединяет сигналы всех сработавших правил без повторов и не больше MaxSignalQueries.
