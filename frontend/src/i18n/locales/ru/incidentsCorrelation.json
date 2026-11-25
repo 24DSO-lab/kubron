@@ -2,7 +2,10 @@
   "title": "Возможный общий источник",
   "kinds": {
     "shared_node": "Возможный общий источник: узел",
-    "shared_storage": "Возможный общий источник: класс хранилища"
+    "shared_storage": "Возможный общий источник: класс хранилища",
+    "shared_dependency": "Возможный общий источник: общая зависимость",
+    "shared_root": "Возможный общий источник: корневая нагрузка цепочки",
+    "shared_symptom": "Возможный общий источник: одинаковый симптом в namespace"
   },
   "facts": {
     "correlation_shared_node_runs_on": "Нагрузок со сбоями на этом узле: {workloads} (подов: {pods}).",
@@ -18,7 +21,19 @@
     "correlation_shared_storage_no_default_class": "В кластере нет класса хранилища по умолчанию, поэтому запросы тома без указанного класса остаются непривязанными.",
     "correlation_shared_storage_provision_failed": "Не удалось создать тома для запросов этого класса хранилища: {pvcs}.",
     "correlation_shared_storage_temporal": "Сбои создания томов произошли в пределах {spanSeconds} с друг от друга.",
-    "correlation_shared_storage_multi_workload": "Затронуто разных нагрузок: {workloads}."
+    "correlation_shared_storage_multi_workload": "Затронуто разных нагрузок: {workloads}.",
+    "correlation_shared_dependency_consumers": "Нагрузок со сбоями, использующих эту зависимость: {workloads} (подов: {pods}).",
+    "correlation_shared_dependency_referrers": "Ещё ресурсов, направляющих трафик через эту зависимость: {count}.",
+    "correlation_shared_dependency_missing": "Зависимость не существует.",
+    "correlation_shared_dependency_no_endpoints": "У сервиса нет готовых endpoints.",
+    "correlation_shared_dependency_temporal": "Сбои зависимых нагрузок начались в пределах {spanSeconds} с друг от друга.",
+    "correlation_shared_dependency_multi_workload": "Затронуто разных нагрузок: {workloads}.",
+    "correlation_shared_root_candidate": "Эта нагрузка — кандидат в корень цепочки: к ней приводят расследования слоёв над ней.",
+    "correlation_shared_root_layers": "Затронуто слоёв цепочки: {layers} (сама нагрузка и ресурсы над ней).",
+    "correlation_shared_root_multi_workload": "Затронуто слоёв цепочки: {workloads}.",
+    "correlation_shared_symptom_workloads": "Нагрузок этого namespace с тем же симптомом: {workloads} (подов: {pods}).",
+    "correlation_shared_symptom_hypothesis": "В отчёте исследуемой нагрузки есть гипотеза для этого симптома; у остальных нагрузок известно только совпадение симптома.",
+    "correlation_shared_symptom_temporal": "Первые сбои произошли в пределах {spanSeconds} с друг от друга."
   },
   "missing": {
     "correlation_unavailable": "Поиск возможного общего источника неполон: часть данных кластера прочитать не удалось."

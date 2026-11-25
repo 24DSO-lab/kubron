@@ -11,6 +11,7 @@ package server
 var allowedMethods = []string{
 	"IncidentOpen",
 	"IncidentRefresh",
+	"IncidentCorrelationRecompute",
 	"IncidentGet",
 	"IncidentList",
 	"IncidentMarkOutcome",
