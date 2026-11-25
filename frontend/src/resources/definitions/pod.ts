@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { defineResource } from '../types'
+import { investigateAction } from '../investigateAction'
 import { Perm } from '../../types/auth'
 import type { k8s as models } from '../../../wailsjs/go/models'
 import { callApp } from '../wails'
@@ -189,6 +190,7 @@ export const pod = defineResource<models.PodInfo, models.PodDetail>({
         )
       },
     },
+    investigateAction('Pod'),
   ],
 
   // Список показывается сразу, метрики подмешиваются, когда придут

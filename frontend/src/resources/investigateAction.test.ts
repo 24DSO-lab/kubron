@@ -10,11 +10,14 @@ import { pendingInvestigation, takeInvestigation } from '../composables/incident
 import { Perm } from '../types/auth'
 import { investigateAction } from './investigateAction'
 import { cronJob } from './definitions/cronjob'
+import { deployment } from './definitions/deployment'
 import { horizontalPodAutoscaler } from './definitions/hpa'
 import { ingress } from './definitions/ingress'
 import { job } from './definitions/job'
 import { node } from './definitions/node'
+import { pod } from './definitions/pod'
 import { persistentVolumeClaim } from './definitions/pvc'
+import { replicaSet } from './definitions/replicaset'
 import { service } from './definitions/service'
 import { statefulSet } from './definitions/statefulset'
 import type { ActionContext } from './types'
@@ -38,6 +41,9 @@ describe('кнопка «Расследовать»', () => {
     ['StatefulSet', statefulSet, 'StatefulSet'],
     ['Job', job, 'Job'],
     ['CronJob', cronJob, 'CronJob'],
+    ['Pod', pod, 'Pod'],
+    ['Deployment', deployment, 'Deployment'],
+    ['ReplicaSet', replicaSet, 'ReplicaSet'],
   ]
 
   it.each(cases)('%s: действие есть в карточке', (_n, def) => {
