@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { defineResource } from '../types'
+import { investigateAction } from '../investigateAction'
 import type { k8s } from '../../../wailsjs/go/models'
 import { callApp } from '../wails'
 import { flatNameCol, flatNsCol, ageCol, controlledByProp, managedByProp } from './common'
@@ -20,6 +21,7 @@ const scalingOk = (h: any) => (h.status ?? '').includes('ScalingActive')
 export const horizontalPodAutoscaler = defineResource<k8s.HPAInfo>({
   id: 'horizontalpodautoscaler',
   kind: 'HPA',
+  actions: [investigateAction('HorizontalPodAutoscaler')],
   view: 'hpa',
   title: 'HorizontalPodAutoscalers',
   namespaced: true,

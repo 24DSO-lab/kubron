@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { defineResource } from '../types'
+import { investigateAction } from '../investigateAction'
 import type { k8s } from '../../../wailsjs/go/models'
 import { callApp } from '../wails'
 import { flatNameCol, ageCol, controlledByProp, managedByProp } from './common'
@@ -143,6 +144,7 @@ export const node = defineResource<k8s.NodeInfo, k8s.NodeDetail>({
         return ctx.perform(() => callApp('DrainNode', n.name), t('defs.node.drained', { name: n.name }))
       },
     },
+    investigateAction('Node'),
   ],
 
   // Узлы удаляют осознанно и по одному

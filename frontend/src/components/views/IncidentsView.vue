@@ -74,6 +74,7 @@ import IncidentDetail from '../incidents/IncidentDetail.vue'
 import IncidentList from '../incidents/IncidentList.vue'
 import IncidentSettings from '../incidents/IncidentSettings.vue'
 import OpenIncidentForm from '../incidents/OpenIncidentForm.vue'
+import { pendingInvestigation, takeInvestigation } from '../../composables/incidentLaunch'
 import ProblemList from '../incidents/ProblemList.vue'
 import ProblemView from '../incidents/ProblemView.vue'
 import RuleStatsPanel from '../incidents/RuleStatsPanel.vue'
@@ -194,7 +195,16 @@ const askDelete = () => ask(t('incidents.detail.deleteConfirm'), () => void run(
 const askDeleteFragment = (id: string) => ask(t('incidents.evidence.deleteConfirm'), () => void run(() => deleteFragment(id)))
 const askDeleteAll = () => ask(t('incidents.evidence.deleteAllConfirm'), () => void run(() => setLogCapture(detail.value?.incident.saveLogs ?? true, true)))
 
+/** Цель из кнопки «Расследовать» на карточке ресурса: забирается однократно и сразу открывается. */
+function launchPending() {
+  if (!pendingInvestigation.value) return
+  const r = takeInvestigation()
+  if (r && activeClusterId.value) void openIncident(r)
+}
+watch(pendingInvestigation, launchPending)
+
 onMounted(() => {
+  launchPending()
   void reload()
   unlisten = listen()
   unlistenProblems = listenProblems()
