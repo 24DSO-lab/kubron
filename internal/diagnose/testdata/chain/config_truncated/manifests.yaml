@@ -1,0 +1,196 @@
+apiVersion: v1
+kind: Namespace
+metadata: {name: app}
+---
+apiVersion: v1
+kind: Pod
+metadata: {name: web-0, namespace: app, uid: p1, labels: {app: web}}
+spec:
+  containers:
+    - name: web
+      image: example/web
+      envFrom: [{configMapRef: {name: cm-00}}, {configMapRef: {name: cm-01}}, {configMapRef: {name: cm-02}}, {configMapRef: {name: cm-03}}, {configMapRef: {name: cm-04}}, {configMapRef: {name: cm-05}}, {configMapRef: {name: cm-06}}, {configMapRef: {name: cm-07}}, {configMapRef: {name: cm-08}}, {configMapRef: {name: cm-09}}, {configMapRef: {name: cm-10}}, {configMapRef: {name: cm-11}}, {configMapRef: {name: cm-12}}, {configMapRef: {name: cm-13}}, {configMapRef: {name: cm-14}}, {configMapRef: {name: cm-15}}, {configMapRef: {name: cm-16}}, {configMapRef: {name: cm-17}}, {configMapRef: {name: cm-18}}, {configMapRef: {name: cm-19}}, {configMapRef: {name: cm-20}}, {configMapRef: {name: cm-21}}, {configMapRef: {name: cm-22}}, {configMapRef: {name: cm-23}}, {configMapRef: {name: cm-24}}, {configMapRef: {name: cm-25}}, {configMapRef: {name: cm-26}}, {configMapRef: {name: cm-27}}, {configMapRef: {name: cm-28}}, {configMapRef: {name: cm-29}}, {configMapRef: {name: cm-30}}, {configMapRef: {name: cm-31}}, {configMapRef: {name: cm-32}}, {configMapRef: {name: cm-33}}, {configMapRef: {name: cm-34}}, {configMapRef: {name: cm-35}}, {configMapRef: {name: cm-36}}, {configMapRef: {name: cm-37}}, {configMapRef: {name: cm-38}}, {configMapRef: {name: cm-39}}, {configMapRef: {name: cm-40}}, {configMapRef: {name: cm-41}}, {configMapRef: {name: cm-42}}, {configMapRef: {name: cm-43}}, {configMapRef: {name: cm-44}}]
+status:
+  phase: Pending
+  conditions: [{type: PodScheduled, status: "True"}, {type: Ready, status: "False"}]
+  containerStatuses:
+    - name: web
+      ready: false
+      restartCount: 0
+      state: {waiting: {reason: CreateContainerConfigError, message: "configmap \"cm-44\" not found"}}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: cm-00, namespace: app}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: cm-01, namespace: app}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: cm-02, namespace: app}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: cm-03, namespace: app}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: cm-04, namespace: app}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: cm-05, namespace: app}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: cm-06, namespace: app}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: cm-07, namespace: app}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: cm-08, namespace: app}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: cm-09, namespace: app}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: cm-10, namespace: app}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: cm-11, namespace: app}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: cm-12, namespace: app}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: cm-13, namespace: app}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: cm-14, namespace: app}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: cm-15, namespace: app}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: cm-16, namespace: app}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: cm-17, namespace: app}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: cm-18, namespace: app}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: cm-19, namespace: app}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: cm-20, namespace: app}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: cm-21, namespace: app}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: cm-22, namespace: app}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: cm-23, namespace: app}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: cm-24, namespace: app}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: cm-25, namespace: app}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: cm-26, namespace: app}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: cm-27, namespace: app}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: cm-28, namespace: app}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: cm-29, namespace: app}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: cm-30, namespace: app}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: cm-31, namespace: app}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: cm-32, namespace: app}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: cm-33, namespace: app}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: cm-34, namespace: app}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: cm-35, namespace: app}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: cm-36, namespace: app}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: cm-37, namespace: app}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: cm-38, namespace: app}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: cm-39, namespace: app}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: cm-40, namespace: app}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: cm-41, namespace: app}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: cm-42, namespace: app}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: cm-43, namespace: app}
