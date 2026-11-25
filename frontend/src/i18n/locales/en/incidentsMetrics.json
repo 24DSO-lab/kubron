@@ -8,18 +8,30 @@
     "metric_node_memory_available_ratio": "Node {node}: available memory dropped to {percent}% over {window}.",
     "metric_node_cpu_utilization": "Node {node}: average CPU load was {percent}% over {window}.",
     "metric_node_disk_available_ratio": "Node {node}: {percent}% of the root filesystem was free over {window}.",
-    "metric_node_pressure_history": "Node {node}: resource pressure flag over {window} is {value} (1 means pressure was seen)."
+    "metric_node_pressure_history": "Node {node}: resource pressure flag over {window} is {value} (1 means pressure was seen).",
+    "metric_pvc_usage_ratio": "Volume of claim {pvc}: up to {percent}% of its space was used over {window}.",
+    "metric_hpa_at_max_replicas": "Autoscaler {hpa}: the replica count reached the configured maximum during {window} (1 means yes, 0 means no): {value}.",
+    "metric_deployment_unavailable_replicas": "Deployment {deployment}: up to {value} replicas were unavailable over {window}.",
+    "metric_ingress_5xx_ratio": "Ingress {ingress}: {percent}% of responses were server errors (5xx) over {window}.",
+    "metric_ingress_latency_p95": "Ingress {ingress}: 95% of requests finished within {value} s over {window}."
   },
   "hypotheses": {
     "metrics_cpu_limited": "Container {container} is slowed down by its CPU limit.",
     "metrics_memory_near_limit": "Container {container} runs close to its memory limit.",
     "metrics_restarts_growing": "Container {container} has been restarting recently, not only in the past.",
-    "metrics_node_pressure": "Node {node} was short of resources recently."
+    "metrics_node_pressure": "Node {node} was short of resources recently.",
+    "metrics_pvc_nearly_full": "The volume of claim {pvc} is almost full ({percent}% used).",
+    "metrics_hpa_saturated": "Autoscaler {hpa} cannot add replicas: it has reached its maximum.",
+    "metrics_deployment_unavailable": "Deployment {deployment} had {replicas} unavailable replicas over {window}.",
+    "metrics_ingress_degraded": "Ingress {ingress} is returning errors or answering slowly."
   },
   "recommendations": {
     "rec_review_cpu_limit": "Review the CPU limit of container {container}: raise it or remove it if throttling is not intended.",
     "rec_review_memory_limit": "Review the memory limit of container {container} against its real peak usage.",
-    "rec_relieve_node_pressure": "Move load off node {node} or add capacity to it."
+    "rec_relieve_node_pressure": "Move load off node {node} or add capacity to it.",
+    "rec_expand_pvc": "Free space on the volume of claim {pvc}, or expand the claim if its storage class allows it.",
+    "rec_review_hpa_max_replicas": "Review the maximum replica count of autoscaler {hpa}: raise it if the load is legitimate.",
+    "rec_review_ingress_backend": "Check the backends of ingress {ingress}: their readiness, capacity and application errors."
   },
   "missing": {
     "metrics_unavailable": "Metrics could not be used as evidence ({reason}). The report is complete without them.",

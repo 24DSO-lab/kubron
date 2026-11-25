@@ -17,6 +17,13 @@ const (
 
 	cpuRateWindow = 5 * time.Minute // окно rate() внутри пика использования CPU
 	cpuStep       = time.Minute     // шаг подзапроса пика CPU
+
+	// Этап B (ADR-0032 §4).
+	volumeStep       = time.Minute // шаг подзапроса пика занятости тома
+	hpaStep          = time.Minute // шаг подзапроса «упирался ли HPA в максимум»
+	ingressLatencyQ  = "0.95"      // квантиль задержки Ingress (p95)
+	ingressRateWin   = windowShort // окно rate() гистограммы задержки: совпадает с окном сигнала
+	ingress5xxStatus = "5.."       // статусы ответов, которые считаются ошибками сервера
 )
 
 // Задачи сбора и сервисы встроенного стека (internal/k8s/manifests/metrics-stack.yaml). Тест согласованности
@@ -24,6 +31,8 @@ const (
 const (
 	jobCAdvisor        = "kubernetes-cadvisor"
 	jobServiceEndpoint = "kubernetes-service-endpoints"
+	jobKubelet         = "kubelet"       // kubelet_volume_stats_* (метки namespace и persistentvolumeclaim сохраняются)
+	jobIngressNginx    = "ingress-nginx" // опциональная задача: подбирает только Pod'ы контроллера ingress-nginx
 
 	svcKubeState    = "kube-state-metrics"
 	svcNodeExporter = "node-exporter"
@@ -158,6 +167,67 @@ var catalog = map[Signal]*spec{
 		metrics:  []string{"kube_node_status_condition"},
 		ksmKinds: []string{"nodes"}, jobs: []string{jobServiceEndpoint}, services: []string{svcKubeState},
 	},
+
+	// Этап B (ADR-0032 §4).
+	PVCUsageRatio: {
+		signal: PVCUsageRatio, families: []Family{FamilyVolume},
+		fields: []field{fNamespace, fPVC}, window: windowMedium, unit: "ratio", agg: "max",
+		build: func(s Subject, w time.Duration) string {
+			sel := eq("namespace", s.Namespace) + "," + eq("persistentvolumeclaim", s.PVC)
+			return fmt.Sprintf(`max(max_over_time((kubelet_volume_stats_used_bytes{%[1]s} / kubelet_volume_stats_capacity_bytes{%[1]s})[%[2]s:%[3]s]))`,
+				sel, promDuration(w), promDuration(volumeStep))
+		},
+		metrics: []string{"kubelet_volume_stats_capacity_bytes", "kubelet_volume_stats_used_bytes"},
+		jobs:    []string{jobKubelet},
+	},
+	HPAAtMaxReplicas: {
+		signal: HPAAtMaxReplicas, families: []Family{FamilyKubeState},
+		fields: []field{fNamespace, fHPA}, window: windowShort, unit: "flag", agg: "max",
+		build: func(s Subject, w time.Duration) string {
+			sel := eq("namespace", s.Namespace) + "," + eq("horizontalpodautoscaler", s.HPA)
+			return fmt.Sprintf(`max(max_over_time((kube_horizontalpodautoscaler_status_current_replicas{%[1]s} >= bool on(namespace,horizontalpodautoscaler) `+
+				`kube_horizontalpodautoscaler_spec_max_replicas{%[1]s})[%[2]s:%[3]s]))`, sel, promDuration(w), promDuration(hpaStep))
+		},
+		metrics:  []string{"kube_horizontalpodautoscaler_spec_max_replicas", "kube_horizontalpodautoscaler_status_current_replicas"},
+		ksmKinds: []string{"horizontalpodautoscalers"}, jobs: []string{jobServiceEndpoint}, services: []string{svcKubeState},
+	},
+	DeploymentUnavailableReplicas: {
+		signal: DeploymentUnavailableReplicas, families: []Family{FamilyKubeState},
+		fields: []field{fNamespace, fDeployment}, window: windowShort, unit: "count", agg: "max",
+		build: func(s Subject, w time.Duration) string {
+			sel := eq("namespace", s.Namespace) + "," + eq("deployment", s.Deployment)
+			return fmt.Sprintf(`max(max_over_time(kube_deployment_status_replicas_unavailable{%s}[%s]))`, sel, promDuration(w))
+		},
+		metrics:  []string{"kube_deployment_status_replicas_unavailable"},
+		ksmKinds: []string{"deployments"}, jobs: []string{jobServiceEndpoint}, services: []string{svcKubeState},
+	},
+	Ingress5xxRatio: {
+		signal: Ingress5xxRatio, families: []Family{FamilyIngress},
+		fields: []field{fNamespace, fIngress}, window: windowShort, unit: "ratio", agg: "ratio",
+		build: func(s Subject, w time.Duration) string {
+			sel, d := ingressSel(s), promDuration(w)
+			return fmt.Sprintf(`sum(increase(nginx_ingress_controller_requests{%[1]s,status=~"`+ingress5xxStatus+`"}[%[2]s])) / `+
+				`sum(increase(nginx_ingress_controller_requests{%[1]s}[%[2]s]))`, sel, d)
+		},
+		metrics: []string{"nginx_ingress_controller_requests"},
+		jobs:    []string{jobIngressNginx},
+	},
+	IngressLatencyP95: {
+		signal: IngressLatencyP95, families: []Family{FamilyIngress},
+		fields: []field{fNamespace, fIngress}, window: windowShort, unit: "seconds", agg: "p95",
+		build: func(s Subject, w time.Duration) string {
+			return fmt.Sprintf(`histogram_quantile(`+ingressLatencyQ+`, sum by (le) (rate(nginx_ingress_controller_request_duration_seconds_bucket{%s}[%s])))`,
+				ingressSel(s), promDuration(ingressRateWin))
+		},
+		metrics: []string{"nginx_ingress_controller_request_duration_seconds_bucket"},
+		jobs:    []string{jobIngressNginx},
+	},
+}
+
+// ingressSel — сопоставление Ingress в метриках ingress-nginx: namespace и имя Ingress. Задача сбора не задаёт целевых
+// меток namespace и ingress, поэтому метки приходят от контроллера как есть (проверяет тест согласованности стека).
+func ingressSel(s Subject) string {
+	return eq("namespace", s.Namespace) + "," + eq("ingress", s.Ingress)
 }
 
 // Характерные метрики семейств для ленивой проверки наличия (ADR-0032 §5): один агрегат count, возвращающий только число.
@@ -166,10 +236,12 @@ var familyProbe = map[Family]string{
 	FamilyContainer: `count(container_memory_working_set_bytes{namespace!="",pod!="",container!=""})`,
 	FamilyKubeState: `count(kube_pod_container_status_restarts_total)`,
 	FamilyNode:      `count(node_memory_MemTotal_bytes{kubernetes_node!=""})`,
+	FamilyVolume:    `count(kubelet_volume_stats_capacity_bytes{namespace!="",persistentvolumeclaim!=""})`,
+	FamilyIngress:   `count(nginx_ingress_controller_requests{namespace!="",ingress!=""})`,
 }
 
 // probeFamilies — порядок опроса семейств: фиксирован, чтобы отчёт и тесты были детерминированы.
-var probeFamilies = []Family{FamilyContainer, FamilyKubeState, FamilyNode}
+var probeFamilies = []Family{FamilyContainer, FamilyKubeState, FamilyNode, FamilyVolume, FamilyIngress}
 
 // coverageProbe — начало истории Prometheus в секундах Unix. Prometheus отдаёт метрику в секундах
 // (prometheus_tsdb_lowest_timestamp_seconds) и в миллисекундах (prometheus_tsdb_lowest_timestamp); запрос принимает
@@ -179,10 +251,11 @@ const coverageProbe = `min(prometheus_tsdb_lowest_timestamp_seconds or (promethe
 // coverageSlack — допуск на выравнивание первого скрейпа: покрытие, короче окна не более чем на эту величину, достаточно.
 const coverageSlack = time.Minute
 
-// Пределы одной операции (ADR-0032 §6): не более 12 запросов сигналов и 5 проверок.
+// Пределы одной операции (ADR-0032 §6): не более 12 запросов сигналов и 6 проверок — пять семейств (этап B добавил
+// volume и ingress) и проверка покрытия истории. Каждая проверка — один count без привязки к цели.
 const (
 	MaxSignalQueries = 12
-	MaxProbeQueries  = 5
+	MaxProbeQueries  = 6
 )
 
 // Requirement — что сигнал требует от встроенного стека. Для теста согласованности с манифестом: каталог и манифест
@@ -221,5 +294,5 @@ func Requirements() []Requirement {
 	})
 }
 
-// Known сообщает, входит ли сигнал в каталог этапа A.
+// Known сообщает, входит ли сигнал в каталог (этапы A и B).
 func Known(s Signal) bool { _, ok := catalog[s]; return ok }

@@ -50,16 +50,18 @@ func TestGoldenQueries(t *testing.T) {
 	}
 }
 
-// Каталог закрыт и полон: каждая константа сигнала этапа A описана, лишнего нет.
+// Каталог закрыт и полон: каждая константа сигнала этапов A и B описана, лишнего нет.
 func TestCatalogCoversStageASignals(t *testing.T) {
-	stageA := []Signal{
+	stages := []Signal{
 		CPUThrottlingRatio, CPUUsageVsLimit, MemoryUsageVsLimit, ContainerRestarts, OOMEvents,
 		NodeMemoryAvailableRatio, NodeCPUUtilization, NodeDiskAvailableRatio, NodePressureHistory,
+		// Этап B (ADR-0032 §4).
+		PVCUsageRatio, HPAAtMaxReplicas, DeploymentUnavailableReplicas, Ingress5xxRatio, IngressLatencyP95,
 	}
-	if len(catalog) != len(stageA) {
-		t.Errorf("catalog has %d signals, want %d", len(catalog), len(stageA))
+	if len(catalog) != len(stages) {
+		t.Errorf("catalog has %d signals, want %d", len(catalog), len(stages))
 	}
-	for _, s := range stageA {
+	for _, s := range stages {
 		sp, ok := catalog[s]
 		if !ok || !Known(s) {
 			t.Errorf("%s is not in the catalog", s)
@@ -74,7 +76,7 @@ func TestCatalogCoversStageASignals(t *testing.T) {
 			}
 		}
 	}
-	if Known("pvc_usage_ratio") || Known("") {
+	if Known("nope") || Known("") {
 		t.Error("a signal outside the catalog must be unknown")
 	}
 	if len(probeFamilies)+1 > MaxProbeQueries {
@@ -88,7 +90,7 @@ var selectorRE = regexp.MustCompile(`([a-zA-Z_:][a-zA-Z0-9_:]*)\{`)
 // с запросом, поэтому запрос не может уйти от проверки.
 func TestDeclaredMetricsMatchQueries(t *testing.T) {
 	for sig, sp := range catalog {
-		q := sp.build(Subject{Namespace: "ns", Pod: "p", Container: "c", Node: "n"}, sp.window)
+		q := sp.build(Subject{Namespace: "ns", Pod: "p", Container: "c", Node: "n", PVC: "v", Deployment: "d", HPA: "h", Ingress: "i"}, sp.window)
 		var used []string
 		for _, m := range selectorRE.FindAllStringSubmatch(q, -1) {
 			used = append(used, m[1])
@@ -143,8 +145,8 @@ func FuzzBuildQueries(f *testing.F) {
 	f.Add("", "", "", "")
 	f.Add("ns", "p.*", "c|d", "n{")
 	f.Fuzz(func(t *testing.T, ns, pod, ctr, node string) {
-		sub := Subject{Namespace: ns, Pod: pod, Container: ctr, Node: node}
-		constants := []string{"cpu", "memory", "idle", "/", "tmpfs", "MemoryPressure|DiskPressure|PIDPressure", "true"}
+		sub := Subject{Namespace: ns, Pod: pod, Container: ctr, Node: node, PVC: pod, Deployment: ctr, HPA: node, Ingress: pod}
+		constants := []string{"cpu", "memory", "idle", "/", "tmpfs", "MemoryPressure|DiskPressure|PIDPressure", "true", "5.."}
 		for sig, sp := range catalog {
 			// Построитель, вызванный в обход проверки: значения всё равно остаются внутри литералов.
 			q := sp.build(sub, sp.window)

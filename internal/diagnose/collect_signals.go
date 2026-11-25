@@ -49,6 +49,11 @@ var signalWants = []struct {
 }{
 	{"pod.crash_loop", wantsCrashLoop},
 	{"pod.oom_killed", wantsOOMKilled},
+	// Этап B (metrics_stageb.go): после сигналов Pod, чтобы нехватка бюджета не отнимала у них запросы.
+	{"metrics.pvc_full", wantsPVC},
+	{"metrics.hpa_saturated", wantsHPA},
+	{"metrics.unavailable_replicas", wantsUnavailable},
+	{"metrics.ingress_errors", wantsIngress},
 }
 
 // collectWants объединяет сигналы всех сработавших правил без повторов и не больше MaxSignalQueries.

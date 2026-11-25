@@ -119,5 +119,8 @@ func compareKeys(as Signal, a Subject, bs Signal, b Subject) int {
 		cmp.Compare(a.Container, b.Container),
 		cmp.Compare(a.Node, b.Node),
 		cmp.Compare(a.PVC, b.PVC),
+		cmp.Compare(a.Deployment, b.Deployment),
+		cmp.Compare(a.HPA, b.HPA),
+		cmp.Compare(a.Ingress, b.Ingress),
 	)
 }
