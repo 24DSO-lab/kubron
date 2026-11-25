@@ -179,6 +179,7 @@ func (b *builder) expandPod(ctx context.Context, it item, n Node) {
 				}
 				b.edge(n.Ref, cn.Ref, EdgeMounts)
 			}
+			b.expandConfigMaps(ctx, n, refs.configMaps)
 		}
 	}
 }

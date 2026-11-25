@@ -1,1 +1,14 @@
-{}
+{
+  "facts": {
+    "config_reference_missing": "在命名空间中未找到 ConfigMap {configmap}。",
+    "config_referenced_by": "Pod {pod} 引用了 ConfigMap {configmap}。",
+    "config_reference_present": "ConfigMap {configmap} 存在（不读取其内容），因此问题更可能是缺少键。"
+  },
+  "steps": {
+    "step_check_configmap_key": "确认 ConfigMap {configmap} 中包含容器所需的键（Kubron 不读取 ConfigMap 的内容）。"
+  },
+  "missing": {
+    "config_unverified": "无法检查被引用的 ConfigMap 是否存在（{reason}）。"
+  }
+}
+

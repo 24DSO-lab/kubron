@@ -27,7 +27,8 @@ func init() {
 var graphWarnKinds = map[string]string{"forbidden": "forbidden", "unavailable": "unavailable", "too_large": "too_large"}
 
 func collectGraph(ctx context.Context, r Reader, c *Context) {
-	var o depgraph.Options
+	// ConfigMap-ссылки Pod включены по умолчанию (ADR-0031 §6, этап 2); явные параметры сбора решают сами.
+	o := depgraph.Options{ExpandConfigMapRefs: true}
 	if c.opts.Graph != nil {
 		o = *c.opts.Graph
 	}

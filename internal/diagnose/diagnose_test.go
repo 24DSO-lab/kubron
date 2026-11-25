@@ -309,6 +309,7 @@ func TestCollectErrors(t *testing.T) {
 	}{
 		{"secret kind is not supported", ResourceRef{Kind: "Secret", Namespace: "shop", Name: "x"}, ErrUnsupportedTarget},
 		{"statefulset is not in the MVP", ResourceRef{Kind: "StatefulSet", Namespace: "shop", Name: "x"}, ErrUnsupportedTarget},
+		{"daemonset is not a target", ResourceRef{Kind: "DaemonSet", Namespace: "shop", Name: "x"}, ErrUnsupportedTarget},
 		{"empty name", ResourceRef{Kind: "Pod", Namespace: "shop"}, ErrNotFound},
 		{"empty namespace", ResourceRef{Kind: "Pod", Name: "x"}, ErrNotFound},
 		{"missing pod", pod, ErrNotFound},

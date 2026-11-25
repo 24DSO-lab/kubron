@@ -1,0 +1,18 @@
+{
+  "target": {
+    "kind": "Pod",
+    "namespace": "app",
+    "name": "web-0"
+  },
+  "expect": {
+    "symptoms": [
+      "pod.startup_failure"
+    ],
+    "hypotheses": [
+      "config.missing_reference:high"
+    ],
+    "absent_steps": [
+      "step.check_referenced_object"
+    ]
+  }
+}

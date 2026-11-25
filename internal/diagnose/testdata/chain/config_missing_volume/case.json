@@ -1,0 +1,28 @@
+{
+  "target": {
+    "kind": "Pod",
+    "namespace": "app",
+    "name": "web-0"
+  },
+  "expect": {
+    "symptoms": [
+      "pod.startup_failure"
+    ],
+    "hypotheses": [
+      "config.missing_reference:high",
+      "startup.volume_mount_failed:medium"
+    ],
+    "explains": [
+      [
+        "config.missing_reference",
+        "startup.volume_mount_failed"
+      ]
+    ],
+    "chains": [
+      "config.missing_reference: Pod/web-0 > ConfigMap/app-config"
+    ],
+    "absent_steps": [
+      "step.check_pvc"
+    ]
+  }
+}

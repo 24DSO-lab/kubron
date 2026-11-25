@@ -1,0 +1,12 @@
+{
+  "target": {
+    "kind": "Pod",
+    "namespace": "app",
+    "name": "web-0"
+  },
+  "expect": {
+    "absent": [
+      "config.missing_reference"
+    ]
+  }
+}
