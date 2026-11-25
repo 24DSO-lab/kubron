@@ -72,6 +72,11 @@ func validContainer(s string) bool { return validation.IsDNS1123Label(s) == nil 
 func validNode(s string) bool      { return validation.IsDNS1123Subdomain(s) == nil }
 func validPVC(s string) bool       { return validation.IsDNS1123Subdomain(s) == nil }
 
+// Имена Deployment, HPA и Ingress — DNS-1123 subdomain, как у PVC.
+func validDeployment(s string) bool { return validation.IsDNS1123Subdomain(s) == nil }
+func validHPA(s string) bool        { return validation.IsDNS1123Subdomain(s) == nil }
+func validIngress(s string) bool    { return validation.IsDNS1123Subdomain(s) == nil }
+
 // field — поле Subject, которое нужно сигналу.
 type field uint8
 
@@ -81,6 +86,9 @@ const (
 	fContainer
 	fNode
 	fPVC
+	fDeployment
+	fHPA
+	fIngress
 )
 
 // validRefs проверяет, что нужные поля заполнены и допустимы.
@@ -99,6 +107,12 @@ func validRefs(s Subject, need ...field) bool {
 			v, ok = s.Node, validNode
 		case fPVC:
 			v, ok = s.PVC, validPVC
+		case fDeployment:
+			v, ok = s.Deployment, validDeployment
+		case fHPA:
+			v, ok = s.HPA, validHPA
+		case fIngress:
+			v, ok = s.Ingress, validIngress
 		}
 		if v == "" || !ok(v) {
 			return false
