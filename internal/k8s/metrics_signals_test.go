@@ -179,3 +179,45 @@ func TestKubeStateMetricsIsV2(t *testing.T) {
 		t.Errorf("kube-state-metrics image = %q: the catalog queries assume v2", img)
 	}
 }
+
+// Запросы этапа B (ADR-0032 §4) выбирают объект по меткам, которые ставит сам источник метрик: namespace и
+// persistentvolumeclaim у kubelet, namespace и ingress у ingress-nginx. Если задача сбора перезапишет такую метку
+// своей, Prometheus переименует её в exported_*, и запрос навсегда останется пустым.
+func TestStageBSourceLabelsAreNotShadowed(t *testing.T) {
+	m := loadStackManifest(t)
+	for job, labels := range map[string][]string{
+		"kubelet":       {"namespace", "persistentvolumeclaim", "exported_namespace"},
+		"ingress-nginx": {"namespace", "ingress", "exported_namespace", "exported_ingress"},
+	} {
+		j, ok := m.jobs[job]
+		if !ok {
+			t.Fatalf("the scrape job %q is not in the manifest", job)
+		}
+		for _, rc := range j.RelabelConfigs {
+			if rc.Action == "labelmap" || rc.Action == "keep" || rc.Action == "drop" {
+				continue
+			}
+			if slices.Contains(labels, rc.TargetLabel) {
+				t.Errorf("job %s sets the target label %q: stage B queries select on it", job, rc.TargetLabel)
+			}
+		}
+	}
+}
+
+// Задача ingress-nginx опциональна: она подбирает только Pod'ы контроллера и без него не даёт целей, поэтому
+// семейство ingress обнаруживается лениво, а не требует отдельной установки (ADR-0032 §5).
+func TestIngressNginxJobKeepsOnlyControllerPods(t *testing.T) {
+	j, ok := loadStackManifest(t).jobs["ingress-nginx"]
+	if !ok {
+		t.Fatal("the scrape job ingress-nginx is missing")
+	}
+	var keeps int
+	for _, rc := range j.RelabelConfigs {
+		if rc.Action == "keep" {
+			keeps++
+		}
+	}
+	if len(j.SD) != 1 || j.SD[0].Role != "pod" || keeps < 2 {
+		t.Errorf("ingress-nginx must keep only controller pods: role/keeps = %+v / %d", j.SD, keeps)
+	}
+}

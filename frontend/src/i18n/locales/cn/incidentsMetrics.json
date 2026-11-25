@@ -8,18 +8,30 @@
     "metric_node_memory_available_ratio": "Node {node}：{window} 内可用内存最低降至 {percent}%。",
     "metric_node_cpu_utilization": "Node {node}：{window} 内 CPU 平均负载为 {percent}%。",
     "metric_node_disk_available_ratio": "Node {node}：{window} 内根文件系统剩余 {percent}%。",
-    "metric_node_pressure_history": "Node {node}：{window} 内资源压力标志为 {value}（1 表示出现过压力）。"
+    "metric_node_pressure_history": "Node {node}：{window} 内资源压力标志为 {value}（1 表示出现过压力）。",
+    "metric_pvc_usage_ratio": "卷声明 {pvc}：在 {window} 内最高占用了 {percent}% 的空间。",
+    "metric_hpa_at_max_replicas": "自动扩缩容 {hpa}：在 {window} 内副本数达到了设定的上限（1 表示是，0 表示否）：{value}。",
+    "metric_deployment_unavailable_replicas": "Deployment {deployment}：在 {window} 内最多有 {value} 个副本不可用。",
+    "metric_ingress_5xx_ratio": "Ingress {ingress}：在 {window} 内 {percent}% 的响应是服务器错误（5xx）。",
+    "metric_ingress_latency_p95": "Ingress {ingress}：在 {window} 内 95% 的请求在 {value} 秒内完成。"
   },
   "hypotheses": {
     "metrics_cpu_limited": "容器 {container} 受 CPU 限制而变慢。",
     "metrics_memory_near_limit": "容器 {container} 的内存使用接近其限制。",
     "metrics_restarts_growing": "容器 {container} 最近仍在重启，而不只是过去重启过。",
-    "metrics_node_pressure": "Node {node} 最近出现过资源紧张。"
+    "metrics_node_pressure": "Node {node} 最近出现过资源紧张。",
+    "metrics_pvc_nearly_full": "卷声明 {pvc} 的存储卷快满了（已用 {percent}%）。",
+    "metrics_hpa_saturated": "自动扩缩容 {hpa} 无法再增加副本：已达到上限。",
+    "metrics_deployment_unavailable": "Deployment {deployment} 在 {window} 内有 {replicas} 个副本不可用。",
+    "metrics_ingress_degraded": "Ingress {ingress} 正在返回错误或响应缓慢。"
   },
   "recommendations": {
     "rec_review_cpu_limit": "检查容器 {container} 的 CPU 限制：如无需限流，请调高或移除。",
     "rec_review_memory_limit": "对照实际峰值使用量检查容器 {container} 的内存限制。",
-    "rec_relieve_node_pressure": "将负载迁离 Node {node}，或为其增加资源。"
+    "rec_relieve_node_pressure": "将负载迁离 Node {node}，或为其增加资源。",
+    "rec_expand_pvc": "释放卷声明 {pvc} 的存储卷空间；如果其存储类允许，也可以扩容该声明。",
+    "rec_review_hpa_max_replicas": "检查自动扩缩容 {hpa} 的最大副本数：如果负载合理，请调高上限。",
+    "rec_review_ingress_backend": "检查 ingress {ingress} 的后端：就绪状态、容量以及应用错误。"
   },
   "missing": {
     "metrics_unavailable": "指标无法用作证据（{reason}）。没有指标，报告依然完整。",
