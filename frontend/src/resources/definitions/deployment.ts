@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { defineResource } from '../types'
+import { investigateAction } from '../investigateAction'
 import { Perm } from '../../types/auth'
 import type { k8s } from '../../../wailsjs/go/models'
 import { callApp } from '../wails'
@@ -96,6 +97,7 @@ export const deployment = defineResource<k8s.DeploymentInfo>({
     },
     // Название "View logs", а не "Logs": список особо обрабатывает пункт с меткой "Logs" (подменю контейнеров pod)
     { id: 'logs', label: 'defs.menu.viewLogs', icon: 'logs', permission: Perm.Read, run: (d, ctx) => ctx.openResourceLogs('deployment', d.namespace, d.name) },
+    investigateAction('Deployment'),
   ],
 
   api: {

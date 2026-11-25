@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { defineResource } from '../types'
+import { investigateAction } from '../investigateAction'
 import { Perm } from '../../types/auth'
 import type { k8s } from '../../../wailsjs/go/models'
 import { callApp } from '../wails'
@@ -93,6 +94,7 @@ export const replicaSet = defineResource<k8s.ReplicaSetInfo>({
 
   actions: [
     { id: 'scale', permission: Perm.Operate, label: 'defs.menu.scale', icon: 'scale', run: (r, ctx) => ctx.requestScale(r, 'ReplicaSet') },
+    investigateAction('ReplicaSet'),
   ],
 
   api: {
