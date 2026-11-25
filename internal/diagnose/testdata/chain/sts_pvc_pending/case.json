@@ -4,7 +4,6 @@
     "namespace": "app",
     "name": "db"
   },
-  "golden": true,
   "expect": {
     "symptoms": [
       "sts.start_stuck",

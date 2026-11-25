@@ -4,7 +4,6 @@
     "namespace": "app",
     "name": "web-0"
   },
-  "golden": true,
   "expect": {
     "symptoms": [
       "pod.startup_failure"
