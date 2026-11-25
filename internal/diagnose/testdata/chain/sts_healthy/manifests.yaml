@@ -1,0 +1,93 @@
+apiVersion: v1
+kind: Namespace
+metadata: {name: app}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata: {name: db, namespace: app, uid: s1}
+spec:
+  replicas: 3
+  serviceName: db
+  selector: {matchLabels: {app: db}}
+  volumeClaimTemplates: [{metadata: {name: data}}]
+
+status: {replicas: 3, readyReplicas: 3, currentRevision: db-1, updateRevision: db-1, updatedReplicas: 3}
+---
+apiVersion: v1
+kind: Node
+metadata: {name: n1}
+status: {conditions: [{type: Ready, status: "True"}]}
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata: {name: fast}
+provisioner: example/csi
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: db-0
+  namespace: app
+  uid: p0
+  labels: {app: db, controller-revision-hash: db-1}
+  ownerReferences: [{apiVersion: apps/v1, kind: StatefulSet, name: db, uid: s1, controller: true}]
+spec:
+  nodeName: n1
+  containers: [{name: db, image: example/db}]
+  volumes: [{name: data, persistentVolumeClaim: {claimName: data-db-0}}]
+status:
+  phase: Running
+  conditions: [{type: PodScheduled, status: "True"}, {type: Ready, status: "True"}]
+  containerStatuses: [{name: db, ready: true, restartCount: 0, state: {running: {startedAt: "2026-11-11T09:00:00Z"}}}]
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata: {name: data-db-0, namespace: app}
+spec: {storageClassName: fast, volumeName: pv-0}
+status: {phase: Bound}
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: db-1
+  namespace: app
+  uid: p1
+  labels: {app: db, controller-revision-hash: db-1}
+  ownerReferences: [{apiVersion: apps/v1, kind: StatefulSet, name: db, uid: s1, controller: true}]
+spec:
+  nodeName: n1
+  containers: [{name: db, image: example/db}]
+  volumes: [{name: data, persistentVolumeClaim: {claimName: data-db-1}}]
+status:
+  phase: Running
+  conditions: [{type: PodScheduled, status: "True"}, {type: Ready, status: "True"}]
+  containerStatuses: [{name: db, ready: true, restartCount: 0, state: {running: {startedAt: "2026-11-11T09:00:00Z"}}}]
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata: {name: data-db-1, namespace: app}
+spec: {storageClassName: fast, volumeName: pv-1}
+status: {phase: Bound}
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: db-2
+  namespace: app
+  uid: p2
+  labels: {app: db, controller-revision-hash: db-1}
+  ownerReferences: [{apiVersion: apps/v1, kind: StatefulSet, name: db, uid: s1, controller: true}]
+spec:
+  nodeName: n1
+  containers: [{name: db, image: example/db}]
+  volumes: [{name: data, persistentVolumeClaim: {claimName: data-db-2}}]
+status:
+  phase: Running
+  conditions: [{type: PodScheduled, status: "True"}, {type: Ready, status: "True"}]
+  containerStatuses: [{name: db, ready: true, restartCount: 0, state: {running: {startedAt: "2026-11-11T09:00:00Z"}}}]
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata: {name: data-db-2, namespace: app}
+spec: {storageClassName: fast, volumeName: pv-2}
+status: {phase: Bound}
