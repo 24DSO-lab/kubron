@@ -1,1 +1,13 @@
-{}
+{
+  "facts": {
+    "config_reference_missing": "ConfigMap {configmap} was not found in the namespace.",
+    "config_referenced_by": "Pod {pod} references ConfigMap {configmap}.",
+    "config_reference_present": "ConfigMap {configmap} exists (its content is not read), so the problem is more likely a missing key."
+  },
+  "steps": {
+    "step_check_configmap_key": "Check that ConfigMap {configmap} has the key the container asks for (Kubron does not read ConfigMap content)."
+  },
+  "missing": {
+    "config_unverified": "Whether the referenced ConfigMap exists could not be checked ({reason})."
+  }
+}
