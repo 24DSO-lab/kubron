@@ -32,8 +32,13 @@
 
     <FindingsPanel :incident="incident" :stats="stats" />
 
-    <CorrelationBlock v-if="incident.correlation || incident.problemId" :correlation="incident.correlation" :problem-id="incident.problemId"
-      @open-problem="(id) => emit('openProblem', id)" />
+    <section v-if="incident.report.graph && DependencyMap" class="block" data-testid="dependency-map-block">
+      <h3>{{ $t('incidents.sections.map') }}</h3>
+      <DependencyMap :report="incident.report" :selected="selectedNode" @select="(k: string) => (selectedNode = k)" />
+    </section>
+
+    <CorrelationBlock v-if="incident.correlation || incident.problemId" :correlation="incident.correlation" :problem-id="incident.problemId" :status="incident.status" :busy="busy"
+      :can-operate="canOperate" @open-problem="(id) => emit('openProblem', id)" @recompute="emit('recomputeCorrelation')" />
 
     <section class="block">
       <h3>{{ $t('incidents.sections.events') }}</h3>
@@ -56,6 +61,7 @@
 </template>
 
 <script lang="ts" setup>
+import { defineAsyncComponent, ref } from 'vue'
 import CorrelationBlock from './CorrelationBlock.vue'
 import EventsTable from './EventsTable.vue'
 import EvidencePanel from './EvidencePanel.vue'
@@ -73,12 +79,15 @@ defineProps<{
   stats?: RuleStats | null
   /** предыдущее расследование при повторении (для баннера); null — недоступно */
   previous?: Incident | null
+  /** право operate: подсказка для кнопки пересчёта корреляции */
+  canOperate?: boolean
 }>()
 const emit = defineEmits<{
   (e: 'back'): void
   (e: 'openProblem', id: string): void
   (e: 'openIncident', id: string): void
   (e: 'refresh'): void
+  (e: 'recomputeCorrelation'): void
   (e: 'export', withFragments: boolean): void
   (e: 'delete'): void
   (e: 'saveFragment', ev: Evidence): void
@@ -87,6 +96,15 @@ const emit = defineEmits<{
   (e: 'capture', enabled: boolean): void
   (e: 'outcome', v: OutcomeInput): void
 }>()
+
+/**
+ * Карта зависимостей D7 подключается лениво и только если файл есть в сборке: пока карты нет, раздел не показывается,
+ * а сборка не падает. Выбранный узел хранится здесь, чтобы переживать перерисовку отчёта.
+ */
+const MAP_PATH = './map/DependencyMap.vue'
+const mapLoaders = import.meta.glob('./map/DependencyMap.vue')
+const DependencyMap = mapLoaders[MAP_PATH] ? defineAsyncComponent(mapLoaders[MAP_PATH] as () => Promise<never>) : null
+const selectedNode = ref('')
 
 function when(iso: string): string {
   const d = new Date(iso)

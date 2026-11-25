@@ -8,7 +8,7 @@
         <option v-for="k in KINDS" :key="k" :value="k">{{ $t(`incidents.kinds.${k}`) }}</option>
       </select>
     </label>
-    <label class="field">
+    <label v-if="!clusterScoped" class="field">
       <span>{{ $t('incidents.open.namespace') }}</span>
       <input v-model.trim="namespace" class="form-input" required data-testid="open-namespace" />
     </label>
@@ -20,28 +20,33 @@
       <input v-model="disableLogs" type="checkbox" data-testid="open-no-logs" />
       {{ $t('incidents.open.noLogs') }}
     </label>
-    <button class="btn" type="submit" :disabled="busy || !namespace || !name" data-testid="open-submit">
+    <button class="btn" type="submit" :disabled="busy || !canSubmit" data-testid="open-submit">
       {{ busy ? $t('incidents.open.opening') : $t('incidents.open.submit') }}
     </button>
   </form>
 </template>
 
 <script lang="ts" setup>
-import { ref } from 'vue'
-import type { OpenIncidentRequest, WorkloadKind } from '../../types/incident'
+import { computed, ref } from 'vue'
+import { TARGET_KINDS, isClusterScoped } from '../../types/incident'
+import type { OpenIncidentRequest, TargetKind } from '../../types/incident'
 
 const props = defineProps<{ busy?: boolean; initial?: Partial<OpenIncidentRequest> }>()
 const emit = defineEmits<{ (e: 'open', r: OpenIncidentRequest): void }>()
 
-const KINDS: WorkloadKind[] = ['Pod', 'Deployment', 'ReplicaSet']
-const kind = ref<WorkloadKind>(props.initial?.kind ?? 'Deployment')
+const KINDS = TARGET_KINDS
+const kind = ref<TargetKind>(props.initial?.kind ?? 'Deployment')
 const namespace = ref(props.initial?.namespace ?? '')
 const name = ref(props.initial?.name ?? '')
 const disableLogs = ref(props.initial?.disableLogs ?? false)
 
+/** Узел (и другие кластерные объекты) не имеет namespace: поле скрыто, в запрос уходит пустая строка. */
+const clusterScoped = computed(() => isClusterScoped(kind.value))
+const canSubmit = computed(() => !!name.value && (clusterScoped.value || !!namespace.value))
+
 function submit() {
-  if (!namespace.value || !name.value) return
-  emit('open', { kind: kind.value, namespace: namespace.value, name: name.value, disableLogs: disableLogs.value })
+  if (!canSubmit.value) return
+  emit('open', { kind: kind.value, namespace: clusterScoped.value ? '' : namespace.value, name: name.value, disableLogs: disableLogs.value })
 }
 </script>
 

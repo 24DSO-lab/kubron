@@ -13,7 +13,17 @@ export type SourceKind = 'resource' | 'event' | 'log' | 'derived' | 'metric'
 export type IncidentStatus = 'open' | 'closed'
 export type OutcomeResult = 'resolved' | 'unresolved' | 'inconclusive'
 export type EvidenceStatus = 'saved' | 'not_saved'
-export type WorkloadKind = 'Pod' | 'Deployment' | 'ReplicaSet'
+/** Виды объектов, с которых открывается расследование (internal/diagnose RegisterTarget). */
+export const TARGET_KINDS = [
+  'Pod', 'Deployment', 'ReplicaSet', 'StatefulSet', 'Job', 'CronJob',
+  'Service', 'Ingress', 'HorizontalPodAutoscaler', 'PersistentVolumeClaim', 'Node',
+] as const
+export type TargetKind = (typeof TARGET_KINDS)[number]
+/** Прежнее имя: оставлено для совместимости с кодом, который его ещё использует. */
+export type WorkloadKind = TargetKind
+/** Виды без namespace (кластерные объекты): поле namespace пустое и не показывается. */
+export const CLUSTER_SCOPED_KINDS: readonly TargetKind[] = ['Node']
+export const isClusterScoped = (k: string): boolean => (CLUSTER_SCOPED_KINDS as readonly string[]).includes(k)
 
 export type Params = Record<string, string>
 
@@ -343,7 +353,7 @@ export interface IncidentSettingsInfo {
 }
 
 export interface OpenIncidentRequest {
-  kind: WorkloadKind
+  kind: TargetKind
   namespace: string
   name: string
   disableLogs: boolean

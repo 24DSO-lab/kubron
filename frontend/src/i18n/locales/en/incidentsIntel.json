@@ -70,7 +70,13 @@
     "pods": "{n} pods with problems",
     "incompleteForbidden": "The list is incomplete: no permission to read some data.",
     "openProblem": "Open the problem",
-    "kindOther": "Possible common source"
+    "kindOther": "Possible common source",
+    "recompute": "Recalculate correlation",
+    "recomputing": "Recalculating\u2026",
+    "recomputeHint": "Re-reads the cluster; the report, events and logs stay unchanged.",
+    "recomputeClosed": "A closed investigation is not recalculated.",
+    "recomputeUnavailable": "Recalculation is not available in this version of the backend.",
+    "symptomHint": "Low confidence: the same symptom in the namespace, with no structural link found."
   },
   "problem": {
     "title": "Problems",

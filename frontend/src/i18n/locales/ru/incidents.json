@@ -16,7 +16,15 @@
   "kinds": {
     "Pod": "Pod",
     "Deployment": "Deployment",
-    "ReplicaSet": "ReplicaSet"
+    "ReplicaSet": "ReplicaSet",
+    "StatefulSet": "StatefulSet",
+    "Job": "Job",
+    "CronJob": "CronJob",
+    "Service": "Service",
+    "Ingress": "Ingress",
+    "HorizontalPodAutoscaler": "HorizontalPodAutoscaler",
+    "PersistentVolumeClaim": "PersistentVolumeClaim",
+    "Node": "Node"
   },
   "list": {
     "title": "История",
@@ -58,7 +66,8 @@
     "missing": "Недостающий контекст",
     "events": "Снимок событий",
     "evidence": "Логи как доказательства",
-    "outcome": "Результат"
+    "outcome": "Результат",
+    "map": "Карта зависимостей"
   },
   "kindLabels": {
     "fact": "Факт",
