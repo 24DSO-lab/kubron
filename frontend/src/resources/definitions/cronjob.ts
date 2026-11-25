@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { defineResource } from '../types'
+import { investigateAction } from '../investigateAction'
 import type { k8s } from '../../../wailsjs/go/models'
 import { callApp } from '../wails'
 import { flatNameCol, flatNsCol, ageCol, controlledByProp, managedByProp } from './common'
@@ -83,6 +84,7 @@ export const cronJob = defineResource<k8s.CronJobInfo>({
           t('defs.cronJob.resumed', { name: c.name }),
         ),
     },
+    investigateAction('CronJob'),
   ],
 
   api: {

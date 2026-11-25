@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { defineResource } from '../types'
+import { investigateAction } from '../investigateAction'
 import { Perm } from '../../types/auth'
 import type { k8s } from '../../../wailsjs/go/models'
 import { callApp } from '../wails'
@@ -81,6 +82,7 @@ export const statefulSet = defineResource<k8s.StatefulSetInfo>({
       icon: 'logs',
       run: (s, ctx) => ctx.openResourceLogs('statefulset', s.namespace, s.name),
     },
+    investigateAction('StatefulSet'),
   ],
 
   api: {

@@ -190,6 +190,7 @@
     "suspend": "Suspend",
     "resume": "Resume",
     "restart": "Restart",
+    "investigate": "Investigate",
     "viewLogs": "View logs",
     "scale": "Scale",
     "setDefault": "Set as default",

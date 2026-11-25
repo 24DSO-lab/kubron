@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { defineResource } from '../types'
+import { investigateAction } from '../investigateAction'
 import type { k8s } from '../../../wailsjs/go/models'
 import { callApp } from '../wails'
 import { flatNameCol, flatNsCol, ageCol, controlledByProp, managedByProp } from './common'
@@ -27,6 +28,7 @@ const scLink = (p: any) => (p.storageClass ? { id: 'storageclass', ns: '', name:
 export const persistentVolumeClaim = defineResource<k8s.PVCInfo>({
   id: 'persistentvolumeclaim',
   kind: 'PersistentVolumeClaim',
+  actions: [investigateAction('PersistentVolumeClaim')],
   view: 'pvc',
   title: 'PersistentVolumeClaims',
   namespaced: true,

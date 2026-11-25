@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { defineResource } from '../types'
+import { investigateAction } from '../investigateAction'
 import type { k8s } from '../../../wailsjs/go/models'
 import { callApp } from '../wails'
 import { flatNameCol, flatNsCol, ageCol, controlledByProp, managedByProp } from './common'
@@ -15,6 +16,7 @@ import ServiceNetworkPoliciesTab from '../../components/resource/sections/Servic
 export const service = defineResource<k8s.ServiceInfo, k8s.ServiceDetail>({
   id: 'service',
   kind: 'Service',
+  actions: [investigateAction('Service')],
   view: 'services',
   title: 'Services',
   namespaced: true,
