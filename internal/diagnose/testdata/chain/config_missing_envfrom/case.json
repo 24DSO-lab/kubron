@@ -1,0 +1,29 @@
+{
+  "target": {
+    "kind": "Pod",
+    "namespace": "app",
+    "name": "web-0"
+  },
+  "golden": true,
+  "expect": {
+    "symptoms": [
+      "pod.startup_failure"
+    ],
+    "hypotheses": [
+      "config.missing_reference:high",
+      "config.missing_reference:low"
+    ],
+    "explains": [
+      [
+        "config.missing_reference",
+        "config.missing_reference"
+      ]
+    ],
+    "chains": [
+      "config.missing_reference: Pod/web-0 > ConfigMap/app-env"
+    ],
+    "absent_steps": [
+      "step.check_referenced_object"
+    ]
+  }
+}
