@@ -62,6 +62,7 @@ func applyMetrics(b *builder, o *signalOutcome) {
 		e.addFacts()
 		e.adjustExisting()
 		e.addHypotheses()
+		e.applyStageB()
 		e.dropManualSteps()
 	}
 	addMetricsMissing(b, o)
@@ -114,6 +115,12 @@ func factParams(w signals.Want, v signals.Value) map[string]string {
 	if w.Subject.Node != "" {
 		p["node"] = w.Subject.Node
 	}
+	// Этап B: имя объекта нужно тексту факта («Ingress {ingress}: …»).
+	for k, v := range map[string]string{"pvc": w.Subject.PVC, "hpa": w.Subject.HPA, "deployment": w.Subject.Deployment, "ingress": w.Subject.Ingress} {
+		if v != "" {
+			p[k] = v
+		}
+	}
 	if v.Limit != nil {
 		p["limit"] = strconv.FormatFloat(*v.Limit, 'f', 3, 64)
 	}
@@ -138,8 +145,21 @@ func formatWindow(d time.Duration) string {
 	return strconv.Itoa(int(d/time.Second)) + "s"
 }
 
-// subjectRef — ресурс отчёта для цели сигнала: Pod из контекста (с UID) либо Node.
+// subjectRef — ресурс отчёта для цели сигнала: Pod из контекста (с UID), Node либо объект этапа B (PVC, HPA, Ingress, Deployment).
 func subjectRef(c *Context, s signals.Subject) ResourceRef {
+	switch { // этап B: объекты, найденные в графе
+	case s.PVC != "":
+		return graphResource(c, "", "PersistentVolumeClaim", s.Namespace, s.PVC)
+	case s.HPA != "":
+		return graphResource(c, groupAutoscaling, "HorizontalPodAutoscaler", s.Namespace, s.HPA)
+	case s.Ingress != "":
+		return graphResource(c, groupNetworking, "Ingress", s.Namespace, s.Ingress)
+	case s.Deployment != "":
+		if d := c.Deployment; d != nil && d.Namespace == s.Namespace && d.Name == s.Deployment {
+			return depRef(d)
+		}
+		return graphResource(c, "", "Deployment", s.Namespace, s.Deployment)
+	}
 	if s.Pod == "" && s.Node != "" {
 		r := ResourceRef{Kind: "Node", Name: s.Node}
 		if n := c.Nodes[s.Node]; n != nil {
