@@ -12,7 +12,7 @@ import (
 // Signal — идентификатор сигнала каталога (ADR-0032 §4). Закрытый набор: новый сигнал — изменение кода и тестов.
 type Signal string
 
-// Сигналы этапа A (ADR-0032 §4). Сигналы этапа B (PVC, HPA, Ingress) в каталог не входят.
+// Сигналы этапов A и B (ADR-0032 §4).
 const (
 	CPUThrottlingRatio       Signal = "cpu_throttling_ratio"        // доля периодов CFS с троттлингом
 	CPUUsageVsLimit          Signal = "cpu_usage_vs_limit"          // пик использования CPU к лимиту
@@ -25,6 +25,15 @@ const (
 	NodePressureHistory      Signal = "node_pressure_history"       // находилась ли Node под давлением
 )
 
+// Сигналы этапа B (ADR-0032 §4): хранилище, автомасштабирование, доступность реплик и входящий трафик.
+const (
+	PVCUsageRatio                 Signal = "pvc_usage_ratio"                 // доля занятого места тома PVC
+	HPAAtMaxReplicas              Signal = "hpa_at_max_replicas"             // HPA упирался в maxReplicas
+	DeploymentUnavailableReplicas Signal = "deployment_unavailable_replicas" // число недоступных реплик Deployment
+	Ingress5xxRatio               Signal = "ingress_5xx_ratio"               // доля ответов 5xx на Ingress
+	IngressLatencyP95             Signal = "ingress_latency_p95"             // 95-й процентиль задержки Ingress, секунды
+)
+
 // Family — семейство источников метрик; наличие семейства проверяется лениво перед запросами сигналов (ADR-0032 §5).
 type Family string
 
@@ -33,7 +42,7 @@ const (
 	FamilyKubeState Family = "kube_state" // kube-state-metrics v2
 	FamilyNode      Family = "node"       // node-exporter (метка kubernetes_node)
 	FamilyVolume    Family = "volume"     // kubelet_volume_stats_* (этап B)
-	FamilyIngress   Family = "ingress"    // ingress-nginx (этап B)
+	FamilyIngress   Family = "ingress"    // ingress-nginx (этап B); опционален: без контроллера — причина family_missing
 )
 
 // Reason — причина, по которой значения сигнала нет (ADR-0032 §7). Закрытый перечень.
@@ -49,9 +58,9 @@ const (
 	ReasonInvalidRef    Reason = "invalid_ref"    // параметр не прошёл проверку DNS-1123
 )
 
-// Subject — цель сигнала: параметры берутся только из ResourceRef цели и графа. Поля, не нужные сигналу, пусты.
-// Тип сравним: он служит ключом Set.
-type Subject struct{ Namespace, Pod, Container, Node, PVC string }
+// Subject — цель сигнала: параметры берутся только из ResourceRef цели и узлов графа. Поля, не нужные сигналу, пусты.
+// Deployment, HPA и Ingress — имена объектов в Namespace (ADR-0032 §4, этап B). Тип сравним: он служит ключом Set.
+type Subject struct{ Namespace, Pod, Container, Node, PVC, Deployment, HPA, Ingress string }
 
 // Want — запрос одного сигнала по одной цели.
 type Want struct {
@@ -70,9 +79,9 @@ type Value struct {
 	Signal     Signal
 	Subject    Subject
 	Value      float64
-	Unit       string        // ratio, count, flag
+	Unit       string        // ratio, count, flag, seconds
 	Window     time.Duration // 0 — мгновенное значение
-	Agg        string        // max, min, avg, ratio, increase, last
+	Agg        string        // max, min, avg, ratio, increase, last, p95
 	Limit      *float64      // лимит, если провайдер его знает; сигналы этапа A не заполняют
 	ObservedAt time.Time     // момент вычисления (Request.At)
 }
