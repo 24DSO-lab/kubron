@@ -1036,5 +1036,6 @@
   "problemRequestIsInvalid": "некорректный запрос к проблеме",
   "problemsAreNotAvailable": "группировка проблем недоступна",
   "corruptedProblem": "повреждённая проблема {p0}: {p1}",
-  "corruptedProblemRecord": "повреждённая запись проблемы: {p0}"
+  "corruptedProblemRecord": "повреждённая запись проблемы: {p0}",
+  "baselineActiveVersionChangedSincePreview": "активная версия baseline изменилась после предпросмотра"
 }
