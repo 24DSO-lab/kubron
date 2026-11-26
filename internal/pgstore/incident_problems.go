@@ -76,7 +76,6 @@ func (b problemBackend) PutProblem(ctx context.Context, p *incident.Problem) err
 	return nil
 }
 
-
 // FindOrCreateOpenProblem serializes lookup/create across all application replicas with a
 // transaction-scoped advisory lock derived from the complete tenant scope and correlation key.
 func (b problemBackend) FindOrCreateOpenProblem(ctx context.Context, candidate *incident.Problem, oldest time.Time) (*incident.Problem, error) {
