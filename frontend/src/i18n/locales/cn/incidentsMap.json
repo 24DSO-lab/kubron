@@ -56,7 +56,8 @@
     "ingress_class_missing": "IngressClass 不存在",
     "ingress_backend_port_missing": "Service 未声明后端端口",
     "scaling_inactive": "自动伸缩未工作",
-    "scaling_disabled": "自动伸缩已关闭（副本数为零）"
+    "scaling_disabled": "自动伸缩已关闭（副本数为零）",
+    "optional_absent": "@:incidentsChainConfig.graphReasons.optional_absent"
   },
   "confidence": {
     "low": "低置信度",
@@ -91,6 +92,7 @@
   },
   "group": {
     "label": "{count} × {kind}",
+    "labelNs": "{count} × {kind}（{namespace}）",
     "expand": "显示全部 {kind}",
     "collapse": "重新折叠 {kind}"
   },

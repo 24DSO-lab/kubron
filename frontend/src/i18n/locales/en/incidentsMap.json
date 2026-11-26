@@ -56,7 +56,8 @@
     "ingress_class_missing": "IngressClass does not exist",
     "ingress_backend_port_missing": "Backend port is not declared by the Service",
     "scaling_inactive": "Autoscaling is not working",
-    "scaling_disabled": "Autoscaling is switched off (zero replicas)"
+    "scaling_disabled": "Autoscaling is switched off (zero replicas)",
+    "optional_absent": "@:incidentsChainConfig.graphReasons.optional_absent"
   },
   "confidence": {
     "low": "low confidence",
@@ -91,6 +92,7 @@
   },
   "group": {
     "label": "{count} × {kind}",
+    "labelNs": "{count} × {kind} ({namespace})",
     "expand": "Show all {kind}",
     "collapse": "Group {kind} again"
   },

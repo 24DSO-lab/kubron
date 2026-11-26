@@ -56,7 +56,8 @@
     "ingress_class_missing": "IngressClass не существует",
     "ingress_backend_port_missing": "Порт бэкенда не объявлен в Service",
     "scaling_inactive": "Автомасштабирование не работает",
-    "scaling_disabled": "Автомасштабирование выключено (ноль реплик)"
+    "scaling_disabled": "Автомасштабирование выключено (ноль реплик)",
+    "optional_absent": "@:incidentsChainConfig.graphReasons.optional_absent"
   },
   "confidence": {
     "low": "низкая уверенность",
@@ -91,6 +92,7 @@
   },
   "group": {
     "label": "{count} × {kind}",
+    "labelNs": "{count} × {kind} ({namespace})",
     "expand": "Показать все: {kind}",
     "collapse": "Снова сгруппировать: {kind}"
   },
