@@ -70,10 +70,16 @@ func (s *Service) attachAuto(ctx context.Context, in *Incident, key, kind string
 		Members: []ProblemMember{{IncidentID: in.ID, AddedAt: now, AddedBy: AutoMember}},
 	}
 	p, err := s.problems.FindOrCreateOpenProblem(ctx, candidate, now.Add(-ProblemWindow))
-	if err != nil { return "", err }
+	if err != nil {
+		return "", err
+	}
 	for range maxConflictRetries {
-		if hasMember(p, in.ID) { return p.ID, nil }
-		if len(p.Members) >= MaxProblemMembers { return "", ErrProblemFull }
+		if hasMember(p, in.ID) {
+			return p.ID, nil
+		}
+		if len(p.Members) >= MaxProblemMembers {
+			return "", ErrProblemFull
+		}
 		now = s.clock()
 		p.Members = s.pruneDead(ctx, p, in.ID)
 		p.Members = append(p.Members, ProblemMember{IncidentID: in.ID, AddedAt: now, AddedBy: AutoMember})
@@ -83,7 +89,9 @@ func (s *Service) attachAuto(ctx context.Context, in *Incident, key, kind string
 			return p.ID, nil
 		case errors.Is(err, ErrConflict):
 			p, err = s.problems.GetProblem(ctx, in.Scope, p.ID)
-			if err != nil { return "", err }
+			if err != nil {
+				return "", err
+			}
 			if p.Status != ProblemOpen || p.UpdatedAt.Before(s.clock().Add(-ProblemWindow)) || slices.Contains(p.Detached, in.ID) {
 				candidate = &Problem{
 					ID: s.newID(), Scope: in.Scope, Key: key, Kind: kind, Source: source,
