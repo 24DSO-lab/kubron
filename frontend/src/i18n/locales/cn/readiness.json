@@ -75,7 +75,7 @@
     "lead": "请先阅读此处：报告仅覆盖标记为“已检查”的来源。其余内容未被检查，也不对其作出任何结论。",
     "mode": "模式",
     "modes": {
-      "generic_kubernetes": "通用 Kubernetes（无云服务商专项检查）"
+      "generic-kubernetes": "通用 Kubernetes（无云服务商专项检查）"
     },
     "evaluatedAgainst": "API 评估所依据的 Kubernetes 版本",
     "apiMatrix": "API 矩阵",
