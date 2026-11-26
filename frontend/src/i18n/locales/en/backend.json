@@ -1036,5 +1036,6 @@
   "problemRequestIsInvalid": "problem request is invalid",
   "problemsAreNotAvailable": "problems are not available",
   "corruptedProblem": "corrupted problem {p0}: {p1}",
-  "corruptedProblemRecord": "corrupted problem record: {p0}"
+  "corruptedProblemRecord": "corrupted problem record: {p0}",
+  "baselineActiveVersionChangedSincePreview": "baseline active version changed since preview"
 }
