@@ -66,7 +66,8 @@ type builder struct {
 	queued map[string]int
 	gets   map[string]error // кэш неудачных Get
 	lists  map[string]listEntry
-	pods   int // раскрыто Pod'ов из списков
+	pods   int               // раскрыто Pod'ов из списков
+	cmUse  map[string]*cmUse // отсутствующие ConfigMap → есть ли обязательная ссылка (configmap.go)
 }
 
 // Build строит граф от цели seed. Ошибка — только программная (неподдерживаемая цель); недоступность, запрет и
@@ -292,6 +293,7 @@ func (b *builder) takePod() bool {
 
 // finalize вычисляет состояния рёбер по итоговому здоровью вершин.
 func (b *builder) finalize() {
+	b.resolveAbsentConfigMaps() // до состояний рёбер: они читают итоговую вершину
 	for k, e := range b.g.edges {
 		e.State, e.Reason = edgeState(b.g, e)
 		b.g.edges[k] = e
@@ -308,7 +310,7 @@ func edgeState(g *Graph, e Edge) (EdgeState, string) {
 		return EdgeUnknown, string(UnknownLimit)
 	}
 	switch {
-	case n.Placeholder || n.Health == Missing:
+	case n.Placeholder || n.Health == Missing || n.Reason == ReasonOptionalAbsent && n.Object == nil: // объекта нет
 		if e.Optional {
 			return EdgeOK, ReasonOptionalAbsent
 		}
