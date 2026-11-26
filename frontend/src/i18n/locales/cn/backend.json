@@ -950,6 +950,7 @@
   "baselineClusterResourceKindIsUnavailable": "集群中没有此资源类型",
   "baselineClusterResourceNotFound": "未找到集群资源",
   "baselineClusterResponseIsTooLarge": "集群响应过大",
+  "baselineActiveVersionChangedSincePreview": "基线预览后活动版本已发生变化",
   "baselineClusterStateChangedSinceThePreview": "预览之后集群状态已变化",
   "baselineFailedToClearExceptions": "清除例外失败：{p0}",
   "baselineFailedToDecryptABaselineVersion": "解密基线版本失败：{p0}",
