@@ -400,8 +400,16 @@ status: {phase: Running, conditions: [{type: Ready, status: "True"}]}
 `)
 	seed := depgraph.Ref{Kind: "Pod", Namespace: "app", Name: "opt"}
 	g := build(t, f, seed, depgraph.Options{ExpandConfigMapRefs: true})
-	if hasNode(g, depgraph.Ref{Kind: "ConfigMap", Namespace: "app", Name: "maybe"}) {
-		t.Error("an optional missing ConfigMap must not be reported")
+	// optional: true и объекта нет — не поломка: ребро ok, вершина не заглушка и не Missing.
+	maybe := depgraph.Ref{Kind: "ConfigMap", Namespace: "app", Name: "maybe"}
+	if n := mustNode(t, g, maybe); n.Placeholder || n.Health != depgraph.Healthy || n.Reason != depgraph.ReasonOptionalAbsent {
+		t.Errorf("an optional missing ConfigMap must not be a failure: %+v", n)
+	}
+	if e := edgeOf(t, g, seed, maybe, depgraph.EdgeMounts); e.State != depgraph.EdgeOK || e.Reason != depgraph.ReasonOptionalAbsent {
+		t.Errorf("optional edge = %+v, want ok/optional_absent", e)
+	}
+	if e := edgeOf(t, g, seed, depgraph.Ref{Kind: "ConfigMap", Namespace: "app", Name: "required"}, depgraph.EdgeMounts); e.State != depgraph.EdgeMissing {
+		t.Errorf("required edge = %+v", e)
 	}
 	req := mustNode(t, g, depgraph.Ref{Kind: "ConfigMap", Namespace: "app", Name: "required"})
 	if !req.Placeholder {

@@ -179,7 +179,9 @@ func configTextFindings(b *builder, g *depgraph.Graph, i int) {
 					unknown = &e
 				}
 			case depgraph.EdgeOK:
-				present = append(present, e)
+				if !e.Optional { // optional-ссылка на отсутствующий ConfigMap — ребро ok, но объекта нет: ключ проверять не у кого
+					present = append(present, e)
+				}
 			}
 		}
 	}

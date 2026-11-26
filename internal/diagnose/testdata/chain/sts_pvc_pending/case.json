@@ -21,5 +21,6 @@
     "chains": [
       "sts.pvc_pending: StatefulSet/db > PersistentVolumeClaim/data-db-0"
     ]
-  }
+  },
+  "golden": true
 }

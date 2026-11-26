@@ -9,5 +9,8 @@
   },
   "missing": {
     "config_unverified": "无法检查被引用的 ConfigMap 是否存在（{reason}）。"
+  },
+  "graphReasons": {
+    "optional_absent": "对象不存在，这是正常的：该引用是可选的"
   }
 }

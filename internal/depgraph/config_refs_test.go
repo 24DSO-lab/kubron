@@ -137,7 +137,7 @@ status: {phase: Running, conditions: [{type: Ready, status: "True"}]}
 }
 
 // ReplicaSet с двумя Pod'ами, которые ссылаются на один отсутствующий ConfigMap: optional у одного и обязательная
-// ссылка у другого. Заглушка нужна обязательной ссылке в любом порядке обхода, висячих рёбер быть не должно.
+// ссылка у другого. Вершина — заглушка Missing в любом порядке обхода; ребро обязательной ссылки missing, optional — ok.
 func TestOptionalAndRequiredShareAMissingConfigMap(t *testing.T) {
 	for _, tc := range []struct{ optionalPod, requiredPod string }{{"a-opt", "b-req"}, {"b-opt", "a-req"}} {
 		t.Run(tc.optionalPod, func(t *testing.T) {
@@ -175,8 +175,9 @@ status: {phase: Running, conditions: [{type: Ready, status: "True"}]}
 			if e.State != depgraph.EdgeMissing {
 				t.Errorf("required edge = %+v", e)
 			}
-			if es := g.EdgesFrom(cfgPodRef(tc.optionalPod), depgraph.EdgeMounts); len(es) != 0 {
-				t.Errorf("optional reference must not become an edge: %+v", es)
+			// optional-ссылка видит то же отсутствие, но для неё это не поломка: ребро ok.
+			if e := edgeOf(t, g, cfgPodRef(tc.optionalPod), cmRef("shared"), depgraph.EdgeMounts); e.State != depgraph.EdgeOK || e.Reason != depgraph.ReasonOptionalAbsent {
+				t.Errorf("optional edge = %+v, want ok/optional_absent", e)
 			}
 			for _, e := range g.Edges() { // ни одно ребро не ведёт в никуда
 				if !hasNode(g, e.From) || !hasNode(g, e.To) {
@@ -349,5 +350,42 @@ status: {phase: Running, conditions: [{type: Ready, status: "True"}]}
 	}
 	if _, found, _ := nestedField(again.Object, "data"); !found {
 		t.Error("the sanitizer modified the reader's own copy")
+	}
+}
+
+// Только optional-ссылки на отсутствующий ConfigMap: вершина не заглушка и не Missing (иначе несколько Pod'ов выглядели бы
+// как общая сломанная зависимость), оба ребра ok.
+func TestOnlyOptionalReferencesLeaveNoMissingNode(t *testing.T) {
+	f := graphtest.NewFakeReader()
+	f.PutYAML(t, `
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata: {name: rs, namespace: app, uid: rs1}
+spec: {replicas: 2, selector: {matchLabels: {app: x}}}
+status: {replicas: 2}
+`)
+	for _, name := range []string{"p-a", "p-b"} {
+		f.PutYAML(t, fmt.Sprintf(`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: %s
+  namespace: app
+  labels: {app: x}
+  ownerReferences: [{apiVersion: apps/v1, kind: ReplicaSet, name: rs, uid: rs1, controller: true}]
+spec:
+  containers: [{name: c, image: x, envFrom: [{configMapRef: {name: maybe, optional: true}}]}]
+status: {phase: Running, conditions: [{type: Ready, status: "True"}]}
+`, name))
+	}
+	g := build(t, f, depgraph.Ref{Group: "apps", Kind: "ReplicaSet", Namespace: "app", Name: "rs"}, configOpts())
+	n := mustNode(t, g, cmRef("maybe"))
+	if n.Placeholder || n.Health == depgraph.Missing {
+		t.Errorf("node = %+v", n)
+	}
+	for _, p := range []string{"p-a", "p-b"} {
+		if e := edgeOf(t, g, cfgPodRef(p), cmRef("maybe"), depgraph.EdgeMounts); e.State != depgraph.EdgeOK {
+			t.Errorf("%s edge = %+v", p, e)
+		}
 	}
 }

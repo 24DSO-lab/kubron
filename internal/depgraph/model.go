@@ -82,4 +82,6 @@ type Edge struct {
 	Type     EdgeType
 	State    EdgeState
 	Reason   string
+	// Optional — ссылка с optional: true на отсутствующий объект: это не поломка, состояние ребра ok (ADR-0031 §6).
+	Optional bool
 }

@@ -9,5 +9,8 @@
   },
   "missing": {
     "config_unverified": "Whether the referenced ConfigMap exists could not be checked ({reason})."
+  },
+  "graphReasons": {
+    "optional_absent": "The object is absent, which is fine: the reference is optional"
   }
 }

@@ -309,6 +309,9 @@ func edgeState(g *Graph, e Edge) (EdgeState, string) {
 	}
 	switch {
 	case n.Placeholder || n.Health == Missing:
+		if e.Optional {
+			return EdgeOK, ReasonOptionalAbsent
+		}
 		return EdgeMissing, "not_found"
 	case n.Health == Unknown:
 		return EdgeUnknown, string(n.Unknown)

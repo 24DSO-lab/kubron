@@ -1,0 +1,253 @@
+{
+  "ruleSetVersion": 2,
+  "target": {
+    "kind": "Pod",
+    "namespace": "app",
+    "name": "web-0",
+    "uid": "p1"
+  },
+  "observedAt": "2026-11-11T10:00:00Z",
+  "symptoms": [
+    "pod.startup_failure"
+  ],
+  "resources": [
+    {
+      "kind": "Pod",
+      "namespace": "app",
+      "name": "web-0",
+      "uid": "p1"
+    },
+    {
+      "kind": "ConfigMap",
+      "namespace": "app",
+      "name": "app-env"
+    }
+  ],
+  "facts": [
+    {
+      "kind": "fact",
+      "id": "f1",
+      "code": "container.waiting",
+      "resource": {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "web-0",
+        "uid": "p1"
+      },
+      "params": {
+        "container": "web",
+        "image": "",
+        "message": "configmap \"app-env\" not found",
+        "reason": "CreateContainerConfigError"
+      },
+      "source": {
+        "kind": "resource",
+        "resource": {
+          "kind": "Pod",
+          "namespace": "app",
+          "name": "web-0",
+          "uid": "p1"
+        },
+        "field": "status.containerStatuses[web].state.waiting"
+      },
+      "observedAt": "2026-11-11T10:00:00Z"
+    },
+    {
+      "kind": "fact",
+      "id": "f2",
+      "code": "config.reference_missing",
+      "resource": {
+        "kind": "ConfigMap",
+        "namespace": "app",
+        "name": "app-env"
+      },
+      "params": {
+        "configmap": "app-env"
+      },
+      "source": {
+        "kind": "derived",
+        "resource": {
+          "kind": "Pod",
+          "namespace": "app",
+          "name": "web-0",
+          "uid": "p1"
+        },
+        "field": "spec.containers"
+      },
+      "observedAt": "2026-11-11T10:00:00Z"
+    },
+    {
+      "kind": "fact",
+      "id": "f3",
+      "code": "config.referenced_by",
+      "resource": {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "web-0",
+        "uid": "p1"
+      },
+      "params": {
+        "configmap": "app-env",
+        "pod": "web-0"
+      },
+      "source": {
+        "kind": "derived",
+        "resource": {
+          "kind": "Pod",
+          "namespace": "app",
+          "name": "web-0",
+          "uid": "p1"
+        },
+        "field": "spec.containers"
+      },
+      "observedAt": "2026-11-11T10:00:00Z"
+    }
+  ],
+  "hypotheses": [
+    {
+      "kind": "hypothesis",
+      "id": "h1",
+      "code": "config.missing_reference",
+      "resource": {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "web-0",
+        "uid": "p1"
+      },
+      "params": {
+        "container": "web",
+        "kind": "configmap"
+      },
+      "confidence": "low",
+      "supporting": [
+        "f1"
+      ],
+      "contradicting": [],
+      "ruleId": "pod.startup",
+      "ruleEpoch": 1
+    },
+    {
+      "kind": "hypothesis",
+      "id": "h2",
+      "code": "config.missing_reference",
+      "resource": {
+        "kind": "ConfigMap",
+        "namespace": "app",
+        "name": "app-env"
+      },
+      "params": {
+        "configmap": "app-env",
+        "container": "web",
+        "kind": "ConfigMap"
+      },
+      "confidence": "high",
+      "supporting": [
+        "f2",
+        "f3"
+      ],
+      "contradicting": [],
+      "ruleId": "chain.config_refs",
+      "ruleEpoch": 1,
+      "explains": [
+        "h1"
+      ]
+    }
+  ],
+  "recommendations": [
+    {
+      "kind": "recommendation",
+      "id": "r1",
+      "code": "rec.fix_config_reference",
+      "resource": {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "web-0",
+        "uid": "p1"
+      },
+      "params": {
+        "container": "web",
+        "kind": "configmap"
+      },
+      "hypotheses": [
+        "h1"
+      ],
+      "ruleId": "pod.startup",
+      "ruleEpoch": 1
+    },
+    {
+      "kind": "recommendation",
+      "id": "r2",
+      "code": "rec.fix_config_reference",
+      "resource": {
+        "kind": "ConfigMap",
+        "namespace": "app",
+        "name": "app-env"
+      },
+      "params": {
+        "configmap": "app-env",
+        "container": "web",
+        "kind": "ConfigMap"
+      },
+      "hypotheses": [
+        "h2"
+      ],
+      "ruleId": "chain.config_refs",
+      "ruleEpoch": 1
+    }
+  ],
+  "steps": [],
+  "missing": [],
+  "graph": {
+    "nodes": [
+      {
+        "kind": "ConfigMap",
+        "namespace": "app",
+        "name": "app-env",
+        "health": "Missing",
+        "reason": "not_found",
+        "placeholder": true
+      },
+      {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "web-0",
+        "health": "Degraded",
+        "reason": "config_error"
+      }
+    ],
+    "edges": [
+      {
+        "from": "core/Pod/app/web-0",
+        "to": "core/ConfigMap/app/app-env",
+        "type": "mounts",
+        "state": "missing",
+        "reason": "not_found"
+      }
+    ]
+  },
+  "chains": [
+    {
+      "path": [
+        {
+          "ref": {
+            "kind": "Pod",
+            "namespace": "app",
+            "name": "web-0"
+          },
+          "health": "Degraded",
+          "reason": "config_error"
+        },
+        {
+          "ref": {
+            "kind": "ConfigMap",
+            "namespace": "app",
+            "name": "app-env"
+          },
+          "health": "Missing",
+          "reason": "not_found"
+        }
+      ],
+      "candidate": "h2"
+    }
+  ]
+}

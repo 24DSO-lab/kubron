@@ -21,5 +21,6 @@
     "chains": [
       "sts.stuck_ordered_start: StatefulSet/db > Pod/db-1"
     ]
-  }
+  },
+  "golden": true
 }

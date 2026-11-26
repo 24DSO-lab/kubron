@@ -24,5 +24,6 @@
     "absent_steps": [
       "step.check_referenced_object"
     ]
-  }
+  },
+  "golden": true
 }

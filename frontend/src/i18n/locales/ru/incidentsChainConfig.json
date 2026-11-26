@@ -9,5 +9,8 @@
   },
   "missing": {
     "config_unverified": "Не удалось проверить, существует ли ConfigMap, на который есть ссылка ({reason})."
+  },
+  "graphReasons": {
+    "optional_absent": "Объекта нет, и это нормально: ссылка необязательная"
   }
 }

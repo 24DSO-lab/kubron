@@ -178,3 +178,24 @@ status:
 		t.Errorf("hypotheses = %+v", rep.Hypotheses)
 	}
 }
+
+// optional-ссылка на отсутствующий ConfigMap — ребро ok, но объекта нет: шаг «проверить ключ» даётся только для
+// существующего ConfigMap, а гипотез про отсутствие объекта нет.
+func TestConfigOptionalAbsentIsNotCheckedForKeys(t *testing.T) {
+	t.Parallel()
+	rep := fixtureReport(t, "config_optional_key_missing")
+	var keys []string
+	for _, s := range rep.Steps {
+		if s.Code == "step.check_configmap_key" {
+			keys = append(keys, s.Params["configmap"])
+		}
+	}
+	if !slices.Equal(keys, []string{"app-env"}) {
+		t.Errorf("key steps for %v, want only app-env", keys)
+	}
+	for _, h := range rep.Hypotheses {
+		if h.Resource.Kind == "ConfigMap" {
+			t.Errorf("hypothesis on a ConfigMap: %+v", h)
+		}
+	}
+}
