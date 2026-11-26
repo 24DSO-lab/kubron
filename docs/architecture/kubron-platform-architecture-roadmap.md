@@ -99,6 +99,80 @@
 
 Схема показывает логические зависимости, а не сетевые границы. В обозримой перспективе предпочтительна **модульная монолитная архитектура**: единый Go application с явными границами пакетов и интерфейсов. Выделение процессов/сервисов допустимо только при доказанной необходимости по масштабированию, изоляции отказов или безопасности.
 
+### 3.1. Два полноценных клиента: Desktop и Web
+
+Kubron поставляется в двух вариантах запуска, которые используют одну платформенную архитектуру, но имеют разные границы исполнения:
+
+- **Desktop** — Wails-оболочка запускает Go application на машине пользователя. UI работает в системном WebView. Локальный runtime имеет доступ к kubeconfig, системному keyring и локальным ресурсам в пределах прав пользователя.
+- **Web** — браузер подключается к HTTP-оболочке `kubron-server`. Go application работает на сервере; браузер не получает прямого доступа к файловой системе сервера, kubeconfig или Kubernetes credentials. Сервер обслуживает несколько пользовательских сессий и в HA-конфигурации может работать на нескольких репликах.
+
+Это не две реализации бизнес-функций. Это **два адаптера доставки и исполнения для одного Go application и одной Vue-кодовой базы**.
+
+#### Общая архитектура, уже существующая в репозитории
+
+Сохраняем и развиваем действующие границы:
+
+| Уровень | Общее | Desktop adapter | Web adapter |
+|---|---|---|---|
+| Domain/application core | `internal/app`, доменные пакеты, Store-контракты, authz, операции и policy decisions | Тот же Go core в локальном процессе | Тот же Go core в процессе `kubron-server` |
+| Go platform boundary | `pkg/ext.Platform`, `Capabilities` (ADR-0002) | Wails implementation | HTTP/Web implementation |
+| Frontend | Общая Vue 3 кодовая база, модели, composables, i18n и feature workflows | `VITE_TARGET=desktop`, Wails bindings/runtime | `VITE_TARGET=web`, RPC/HTTP и WebSocket |
+| Platform frontend adapter | `frontend/src/platform/` (ADR-0010) | Wails API, events и native dialogs | RPC, WebSocket events, browser file input/download |
+| Persistence | Доменные контракты и одинаковая семантика | Локальный Store | PostgreSQL в server/HA; поддерживаемый file mode для локальной разработки |
+| Cluster credentials | Общие provider contracts и правила доступа | Локальные kubeconfig и credentials пользователя | Серверное зашифрованное хранение credentials в пределах tenant/session |
+
+Новые домены должны использовать существующие application/platform seams, а не добавлять прямые импорты Wails в core или прямые вызовы Wails из Vue-компонентов. Новые browser/server-only и desktop-only возможности реализуются через соответствующие адаптеры и явно объявленные capabilities.
+
+#### Правило функционального паритета
+
+**Все доменные возможности A+B+C должны иметь одинаковую бизнес-семантику в Desktop и Web.** Это относится к:
+
+- Control Plane: cluster identity, target groups, scope resolution и проверке полномочий;
+- Operations: типизированным действиям, предварительным проверкам и результатам;
+- Intelligence: findings, evidence, confidence, coverage и рекомендациям;
+- Lifecycle: readiness, baseline, drift и их версиям;
+- Autonomy: policy evaluation, Observe/Assisted/Autonomous, планам, approval, audit и verification.
+
+Паритет не означает, что каждая низкоуровневая возможность оболочки обязана быть одинаковой. Например, выбор файла с диска в Desktop — нативный диалог, в Web — browser file input; локальный kubeconfig доступен Desktop runtime, а Web принимает credentials через защищённый серверный workflow. Такие различия допустимы только как явные platform capabilities с понятным UX, а не как скрытые расхождения бизнес-логики.
+
+#### Разделение capabilities
+
+Не смешивать три независимых вопроса:
+
+1. **Platform capabilities** — что поддерживает оболочка/среда запуска: native file dialog, local kubeconfig, локальный или proxy port-forward, системный браузер и т. п. Текущий `GetCapabilities` остаётся подсказкой UI о возможностях среды, а не механизмом авторизации.
+2. **Cluster capabilities** — что поддерживают конкретный Kubernetes cluster и его API: версии, ресурсы, provider integrations, доступность metrics и т. п.
+3. **Effective permissions and policy** — что разрешено текущему actor для конкретного tenant, cluster, resource и action с учётом app-RBAC, Kubernetes RBAC и autonomy policies.
+
+UI может скрывать недоступную функцию, но backend обязан повторно проверять полномочия при каждом вызове. Нельзя считать capability flag, выбранный клиентом, доказательством доступа.
+
+#### Где исполняются операции
+
+- В Desktop операция исполняется локальным Go runtime и использует локальные cluster connections/credentials. Закрытие приложения или остановка процесса прерывает возможность продолжать работу; долговременное состояние запуска должно позволять безопасно определить результат и восстановиться при следующем старте, но не обещает выполнение при выключенном приложении.
+- В Web операция исполняется серверным Go runtime. После потери браузерной сессии выполнение не должно терять владельца или состояние; в HA оно должно быть доступно через любой экземпляр сервера и восстанавливаться по durable state.
+- В обоих случаях UI — инициатор и наблюдатель, но не исполнитель policy, не источник истины о статусе и не место хранения approval.
+- Никакая операция не должна продолжаться на основании одного лишь локального состояния Vue или события WebSocket. Источник истины — backend и durable Store соответствующего режима.
+
+Для Desktop и Web используются одинаковые state transitions, idempotency semantics, approval binding, audit events и postcondition checks. Различаться могут механизмы persistence/locking, но они обязаны проходить общий доменный contract suite. HA-specific coordination применяется к server deployment; Desktop обязан иметь корректную single-process семантику и безопасное восстановление после перезапуска.
+
+#### Безопасность и доверие
+
+- Desktop не получает дополнительных доменных полномочий только потому, что процесс запущен на машине пользователя. Локальные credentials определяют доступ к Kubernetes, а Kubron authz/policy и подтверждения продолжают действовать.
+- Web backend не должен пытаться читать локальные пути браузера или выполнять локальные `exec` plugins пользователя. Передача kubeconfig/credentials выполняется отдельным защищённым workflow, а хранение — с действующими encryption, tenant isolation и redaction guarantees.
+- Frontend никогда не принимает окончательное решение о разрешении операции. Проверка повторяется в backend непосредственно перед исполнением.
+- Approval, выданный в одном клиенте, может быть использован в другом только если actor, tenant, policy version, immutable plan digest, target set и срок действия совпадают и backend повторно подтверждает полномочия.
+- Локальные файлы, системный keyring, browser storage и клиентские события не являются заменой серверному audit trail или durable operation state.
+
+#### Обязательные проверки кроссплатформенности
+
+- Один и тот же набор доменных contract tests выполняется для file Store и PostgreSQL Store; платформенные adapters отдельно проверяются на соответствие `Platform` contract.
+- Общие сценарии API проверяются через Wails bindings и Web RPC: одинаковые входы дают одинаковую доменную семантику и ошибки, кроме документированных transport/platform errors.
+- Frontend builds `desktop` и `web` проходят typecheck, unit tests и e2e для общих критичных workflows.
+- Для критичных действий проверяются эквивалентные policy, approval, audit и verification результаты в обоих клиентах.
+- Проверяются сценарии закрытия Desktop во время операции, переподключения WebSocket, потери браузерной сессии, смены server replica и восстановления из durable state.
+- Каждая новая функция в roadmap обязана указывать: shared domain contract, desktop adapter behavior, web adapter behavior, persistence implications и platform-specific limitations.
+
+**Нельзя считать capability готовой, если она реализована только в одном клиенте или её семантика различается без явно принятого архитектурного решения.**
+
 ## 4. Ответственность слоёв
 
 ### 4.1. Control Plane
@@ -613,7 +687,9 @@ AI может быть необязательным помощником для 
 - [ ] Долговременное состояние запуска, lease/fencing и idempotency.
 - [ ] Семантика verification, partial success и recovery.
 - [ ] Модель аудита, retention, privacy и redaction.
-- [ ] Совместимость desktop, single-replica и HA server.
+- [ ] Cross-platform contract: общая доменная семантика и Platform adapters для Desktop (Wails) и Web (HTTP/RPC), включая capability discovery.
+- [ ] Проверка функционального паритета критичных workflows в desktop и web builds; документированные platform-specific capabilities и ограничения.
+- [ ] Совместимость desktop single-process, server single-replica и HA server, включая восстановление незавершённых операций.
 - [ ] Набор fault-injection и concurrency tests для критических переходов.
 
 ## 15. Архитектурные инварианты Kubron
@@ -628,8 +704,10 @@ AI может быть необязательным помощником для 
 8. Межкластерная операция не маскирует частичный успех под атомарный.
 9. Неопределённость всегда уменьшает автономность, а не увеличивает её.
 10. Существующие домены сохраняют собственные модели и хранилища.
-11. Архитектура остаётся пригодной для desktop и server/HA.
-12. Развитие идёт от Observe к Assisted и затем к ограниченному Autonomous, без скачка сразу к полной автоматизации.
+11. Desktop (Wails) и Web (HTTP) — равноправные клиенты общей платформы с общей доменной семантикой; platform differences явны и ограничены адаптерами.
+12. Backend остаётся единственным местом policy enforcement, approval validation и истины о состоянии операций.
+13. Архитектура остаётся пригодной для desktop single-process, server single-replica и HA server.
+14. Развитие идёт от Observe к Assisted и затем к ограниченному Autonomous, без скачка сразу к полной автоматизации.
 
 ---
 
