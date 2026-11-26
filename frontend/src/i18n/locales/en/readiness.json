@@ -75,7 +75,7 @@
     "lead": "Read this first: the report covers only the sources listed as checked. Anything else was not examined, and no conclusion about it is made.",
     "mode": "Mode",
     "modes": {
-      "generic_kubernetes": "Generic Kubernetes (no provider-specific checks)"
+      "generic-kubernetes": "Generic Kubernetes (no provider-specific checks)"
     },
     "evaluatedAgainst": "APIs evaluated against Kubernetes",
     "apiMatrix": "API matrix",
