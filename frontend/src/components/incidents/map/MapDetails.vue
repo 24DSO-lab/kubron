@@ -5,10 +5,10 @@
     <p v-if="!node" class="empty" data-testid="map-details-empty">{{ $t('incidentsMap.details.empty') }}</p>
     <template v-else>
       <header>
-        <h4 data-testid="map-details-title">{{ node.variant === 'group' ? $t('incidentsMap.group.label', { count: node.members?.length ?? 0, kind: node.kind }) : `${node.kind}/${node.name}` }}</h4>
+        <h4 data-testid="map-details-title">{{ node.variant === 'group' ? groupLabel : `${node.kind}/${node.name}` }}</h4>
         <button type="button" class="link" data-testid="map-details-close" @click="emit('clear')">{{ $t('incidentsMap.details.close') }}</button>
       </header>
-      <p v-if="node.variant !== 'group'" class="meta">
+      <p class="meta">
         {{ $t('incidentsMap.details.namespace') }}: {{ node.namespace || $t('incidentsMap.details.clusterScoped') }}
       </p>
       <p class="state" :class="`h-${node.health}`" data-testid="map-details-state">
@@ -25,7 +25,7 @@
 
       <template v-if="node.variant === 'group'">
         <p class="note">{{ $t('incidentsMap.details.members', { count: node.members?.length ?? 0 }) }}</p>
-        <button type="button" class="btn" data-testid="map-expand" @click="emit('expand', node.kind)">{{ $t('incidentsMap.group.expand', { kind: node.kind }) }}</button>
+        <button type="button" class="btn" data-testid="map-expand" @click="emit('expand', node.key)">{{ $t('incidentsMap.group.expand', { kind: node.kind }) }}</button>
       </template>
       <template v-else>
         <section v-if="relations.length" data-testid="map-relations">
@@ -34,6 +34,8 @@
             <li v-for="(r, i) in relations" :key="i" :data-state="r.state">
               {{ $t(`incidentsMap.edge.${r.type}`) }} · {{ $t(`incidentsMap.direction.${r.direction}`) }} {{ r.other.kind }}/{{ r.other.name }}
               <span class="faint">({{ $t(`incidentsMap.edgeState.${r.state}`) }})</span>
+              <!-- Причина связи (например, необязательная ссылка на отсутствующий объект) — пояснение, а не ошибка: состояние связи не меняется -->
+              <span v-if="reasonLabel(r.reason)" class="faint" data-testid="map-relation-reason"> — {{ reasonLabel(r.reason) }}</span>
             </li>
           </ul>
         </section>
@@ -74,7 +76,7 @@ const props = defineProps<{
   model: MapModel
   node: MapNode | null
 }>()
-const emit = defineEmits<{ (e: 'clear'): void; (e: 'expand', kind: string): void }>()
+const emit = defineEmits<{ (e: 'clear'): void; (e: 'expand', groupKey: string): void }>()
 const { t } = useI18n()
 
 const findings = computed(() => findingsFor(props.report, props.node?.key ?? ''))
@@ -82,10 +84,16 @@ const relations = computed(() => (props.node && props.node.variant !== 'group' ?
 const hasFindings = computed(() => findings.value.facts.length + findings.value.hypotheses.length + findings.value.missing.length + relations.value.length > 0)
 const unknownText = computed(() => t(`incidentsMap.unknownReasons.${props.node?.unknown ?? 'other'}`))
 /** Причина состояния словами; неизвестная причина не показывается «сырой» — просто опускается. */
-const reasonText = computed(() => {
-  const r = props.node?.reason
-  const key = `incidentsMap.reasons.${r ?? ''}`
-  return r && te(key) ? t(key) : ''
+function reasonLabel(reason: string | undefined): string {
+  const key = `incidentsMap.reasons.${reason ?? ''}`
+  return reason && te(key) ? t(key) : ''
+}
+const reasonText = computed(() => reasonLabel(props.node?.reason))
+const groupLabel = computed(() => {
+  const n = props.node
+  if (!n) return ''
+  const count = n.members?.length ?? 0
+  return n.namespace ? t('incidentsMap.group.labelNs', { count, kind: n.kind, namespace: n.namespace }) : t('incidentsMap.group.label', { count, kind: n.kind })
 })
 </script>
 

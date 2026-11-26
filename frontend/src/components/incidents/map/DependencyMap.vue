@@ -55,7 +55,7 @@
           </g>
         </svg>
       </div>
-      <MapDetails :report="report" :model="model" :node="selectedNode" @clear="clearSelection" @expand="expandKind" />
+      <MapDetails :report="report" :model="model" :node="selectedNode" @clear="clearSelection" @expand="expandGroup" />
     </div>
     <MapLegend />
   </section>
@@ -64,7 +64,7 @@
 <script lang="ts" setup>
 import { computed, nextTick, ref, useId, watch } from 'vue'
 import {
-  MAP_EDGE_TYPES, buildMapModel, collapseModel, filterModel, highlightChains, isFilterActive, isGroupKey, isNavKey, navigate,
+  MAP_EDGE_TYPES, buildMapModel, collapseModel, filterModel, highlightChains, isFilterActive, groupKeysOf, isGroupKey, isNavKey, navigate,
   refKey, type MapEdge as MapEdgeModel, type MapHealth, type MapNode as MapNodeModel,
 } from '../../../composables/dependencyMap'
 import { edgePath, layoutMap } from '../../../composables/dependencyMapLayout'
@@ -100,7 +100,8 @@ const hasChain = computed(() => model.value.candidateKeys.length > 0 || (props.r
 const highlightOn = ref(true)
 const shownKinds = ref<ReadonlySet<string> | null>(null)
 const shownHealths = ref<ReadonlySet<MapHealth> | null>(null)
-const expandedKinds = ref<ReadonlySet<string>>(new Set())
+/** Раскрытые группы — по ключам групп («вид + namespace»), а не по виду: раскрытие одной не трогает другие */
+const expandedGroups = ref<ReadonlySet<string>>(new Set())
 const selectedKey = ref('')
 const focusKey = ref('')
 const scale = ref(1)
@@ -112,13 +113,13 @@ const svg = ref<SVGSVGElement | null>(null)
 const propKey = (s: ResourceRef | string | null | undefined) => (typeof s === 'string' ? s : s ? refKey(s) : '')
 watch(() => props.selected, (s) => { selectedKey.value = propKey(s) }, { immediate: true })
 // Новый отчёт — чистый вид: фильтры и приближение сбрасываются, выбор остаётся по ключу.
-watch(() => props.report, () => { shownKinds.value = null; shownHealths.value = null; expandedKinds.value = new Set(); fit() })
+watch(() => props.report, () => { shownKinds.value = null; shownHealths.value = null; expandedGroups.value = new Set(); fit() })
 
 const highlight = computed(() => (highlightOn.value ? highlightChains(model.value, props.report) : { nodes: new Set<string>(), edges: new Set<string>() }))
 const keep = computed(() => new Set([...highlight.value.nodes, ...(selectedKey.value ? [selectedKey.value] : [])]))
 const filter = computed(() => ({ kinds: shownKinds.value, healths: shownHealths.value }))
 const filterActive = computed(() => isFilterActive(filter.value))
-const visible = computed(() => collapseModel(filterModel(model.value, filter.value, keep.value), expandedKinds.value, keep.value))
+const visible = computed(() => collapseModel(filterModel(model.value, filter.value, keep.value), expandedGroups.value, keep.value))
 const layout = computed(() => layoutMap(visible.value.nodes, visible.value.edges))
 const hasGroups = computed(() => visible.value.nodes.some((n) => n.variant === 'group'))
 
@@ -155,8 +156,8 @@ function toggle<T>(current: ReadonlySet<T> | null, all: T[], item: T): ReadonlyS
 const toggleKind = (k: string) => { shownKinds.value = toggle(shownKinds.value, model.value.kinds, k) }
 const toggleHealth = (h: MapHealth) => { shownHealths.value = toggle(shownHealths.value, model.value.healths, h) }
 const resetFilters = () => { shownKinds.value = null; shownHealths.value = null }
-const expandKind = (kind: string) => { expandedKinds.value = new Set([...expandedKinds.value, kind]); selectedKey.value = '' }
-const expandAll = () => { expandedKinds.value = new Set(model.value.kinds); selectedKey.value = '' }
+const expandGroup = (key: string) => { expandedGroups.value = new Set([...expandedGroups.value, key]); selectedKey.value = '' }
+const expandAll = () => { expandedGroups.value = new Set(groupKeysOf(model.value)); selectedKey.value = '' }
 
 // ---- Выбор ----
 function onSelect(key: string) {

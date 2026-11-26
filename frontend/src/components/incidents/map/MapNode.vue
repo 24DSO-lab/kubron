@@ -17,7 +17,7 @@
     <rect v-if="node.candidate" class="ring" :x="-4" :y="-4" :width="NODE_W + 8" :height="NODE_H + 8" rx="11" />
     <text class="kind" x="10" y="17">{{ kindLabel }}</text>
     <text v-if="badge" class="badge" :x="NODE_W - 10" y="17" text-anchor="end">{{ badge }}</text>
-    <text class="name" x="10" y="35">{{ node.variant === 'group' ? $t('incidentsMap.group.label', { count: node.members?.length ?? 0, kind: node.kind }) : shortName(node.name) }}</text>
+    <text class="name" x="10" y="35">{{ node.variant === 'group' ? groupLabel : shortName(node.name) }}</text>
     <text class="state" x="10" y="51"><tspan class="icon">{{ icon }}</tspan> {{ stateLabel }}</text>
   </g>
 </template>
@@ -54,8 +54,14 @@ const stateLabel = computed(() => {
 })
 const badge = computed(() => (props.node.candidate ? t('incidentsMap.candidate') : props.node.target ? t('incidentsMap.target') : ''))
 const fullText = computed(() => `${props.node.kind}${props.node.name ? `/${props.node.name}` : ''}${props.node.namespace ? ` (${props.node.namespace})` : ''}`)
+/** Подпись группы: у namespaced-группы — с namespace, у cluster-scoped — без него */
+const groupLabel = computed(() => {
+  const { members, kind, namespace } = props.node
+  const count = members?.length ?? 0
+  return namespace ? t('incidentsMap.group.labelNs', { count, kind, namespace }) : t('incidentsMap.group.label', { count, kind })
+})
 const aria = computed(() =>
-  [props.node.variant === 'group' ? t('incidentsMap.group.label', { count: props.node.members?.length ?? 0, kind: props.node.kind }) : fullText.value, stateLabel.value, badge.value]
+  [props.node.variant === 'group' ? groupLabel.value : fullText.value, stateLabel.value, badge.value]
     .filter(Boolean).join(', '),
 )
 </script>
