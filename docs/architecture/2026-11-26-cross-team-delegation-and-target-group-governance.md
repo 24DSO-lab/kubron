@@ -142,7 +142,7 @@ Organization Group может содержать targets разных Teams. П�
 - Target Snapshot содержит конкретные Cluster ID, GVK, namespace/name, UID, observed ResourceVersion, group revision, selector provenance и action-specific preconditions.
 - Plan digest включает identity binding, Operation/Action, exact target snapshot, group revision, policy revision и параметры, влияющие на безопасность/результат.
 - Approval относится только к этому digest и expiry.
-- Изменение Group revision после snapshot не мутирует старый Plan. Оно не обязательно аннулирует уже разрешённый snapshot само по себе, но любые изменения актуального доступа, ownership, identity, policy, UID или action preconditions блокируют side effect. Для использования новой группы требуется новый Plan.
+- Изменение Group revision после создания Plan не мутирует старый Plan и не меняет его snapshot. Однако согласно принятому Scope/Target Groups decision, любая смена revision требует новой resolution, нового Plan и нового applicable Approval; старый Plan не может исполняться после обнаружения несовпадения revision. Любые изменения актуального доступа, ownership, identity, policy, UID или action preconditions также блокируют side effect.
 - При UID mismatch, неизвестном результате предыдущего side effect или нарушенных preconditions требуется fresh read/reconciliation; blind retry запрещён.
 - Для каждого cluster sub-run создаётся отдельный snapshot, Plan, identity binding и authorization context.
 
