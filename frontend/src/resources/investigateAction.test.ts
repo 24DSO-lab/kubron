@@ -8,10 +8,9 @@ vi.mock('monaco-editor', () => ({ editor: {} }))
 vi.mock('monaco-editor/editor/editor.api', () => ({ editor: {}, KeyMod: {}, KeyCode: {} }))
 vi.mock('monaco-editor/editor/editor.worker?worker', () => ({ default: class {} }))
 
-const { switchView } = vi.hoisted(() => ({ switchView: vi.fn() }))
-vi.mock('../composables/useK8s', () => ({ useK8s: () => ({ switchView }) }))
+const { investigate } = vi.hoisted(() => ({ investigate: vi.fn() }))
+vi.mock('../composables/incidentLaunch', () => ({ investigate }))
 
-import { pendingInvestigation, takeInvestigation } from '../composables/incidentLaunch'
 import { Perm } from '../types/auth'
 import { investigateAction } from './investigateAction'
 import { cronJob } from './definitions/cronjob'
@@ -31,9 +30,8 @@ const closeDetail = vi.fn()
 const ctx = { closeDetail } as unknown as ActionContext
 
 beforeEach(() => {
-  switchView.mockClear()
   closeDetail.mockClear()
-  pendingInvestigation.value = null
+  investigate.mockClear()
 })
 
 describe('кнопка «Расследовать»', () => {
@@ -62,18 +60,16 @@ describe('кнопка «Расследовать»', () => {
   it('кладёт цель, закрывает панель и переключает экран на расследования', () => {
     investigateAction('Service').run({ name: 'web', namespace: 'shop' }, ctx)
     expect(closeDetail).toHaveBeenCalledOnce()
-    expect(switchView).toHaveBeenCalledWith('incidents')
-    expect(takeInvestigation()).toEqual({ kind: 'Service', namespace: 'shop', name: 'web' })
-    expect(takeInvestigation()).toBeNull() // цель забирается один раз
+    expect(investigate).toHaveBeenCalledWith('Service', 'shop', 'web')
   })
 
   it('Node: namespace пустой, даже если у объекта он случайно задан', () => {
     investigateAction('Node').run({ name: 'worker-1', namespace: 'x' }, ctx)
-    expect(takeInvestigation()).toEqual({ kind: 'Node', namespace: '', name: 'worker-1' })
+    expect(investigate).toHaveBeenCalledWith('Node', '', 'worker-1')
   })
 
   it('HPA: в расследование уходит вид из diagnose, а не def.kind', () => {
     investigateAction('HorizontalPodAutoscaler').run({ name: 'web', namespace: 'shop' }, ctx)
-    expect(takeInvestigation()?.kind).toBe('HorizontalPodAutoscaler')
+    expect(investigate).toHaveBeenCalledWith('HorizontalPodAutoscaler', 'shop', 'web')
   })
 })
