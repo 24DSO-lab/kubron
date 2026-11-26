@@ -95,9 +95,11 @@ Credential binding содержит как минимум:
 - политику поведения при отзыве/ротации;
 - provenance: кто и каким правилом назначил identity.
 
-Секреты остаются в существующей подсистеме credentials/secret storage (ADR-0008, ADR-0018). Они не копируются в Plan, Run payload, события, логи или audit.
+Секреты остаются в существующей подсистеме credentials/secret storage (ADR-0008, ADR-0018). Они не копируются в Plan, Run payload, события, логи или audit. Все новые credential records для Service Identity обязаны использовать envelope encryption и key lifecycle ADR-0008; должны входить в rekey/keycheck, backup/restore и проверки отсутствия plaintext. Общая подсистема означает общие механизмы защиты и выдачи, а не смешение владельцев или credential scope.
 
-Перед каждым side effect Kubron повторно разрешает identity и получает актуальную конфигурацию подключения через существующий credential path. Новая система не должна строить `rest.Config` в обход `ConfigFor`/утверждённой точки выдачи credentials. Для фоновых запусков потребуется спроектировать session-independent вариант этого контракта, а не имитировать пользовательскую сессию.
+Перед каждым side effect Kubron повторно разрешает identity и получает актуальную конфигурацию подключения через существующий credential path.
+
+ADR-0018 устанавливает единственную точку получения Kubernetes config — `ConfigFor(session, cluster)` — и запрещает обходить её. Фоновая модель должна сохранить этот инвариант: требуется расширить credential-resolution boundary явным типизированным subject/context для User, Team и Service identity (либо эквивалентным узким интерфейсом), чтобы resolver мог безопасно работать без интерактивной user session. Нельзя создавать фиктивную пользовательскую Session, напрямую читать расшифрованные credentials из Store или строить `rest.Config` в обход credential providers, token refresh, subject isolation и security checks ADR-0018. Конкретное имя/сигнатура нового метода фиксируется отдельным ADR после анализа текущего `ConfigFor` и его вызовов.
 
 ### 2.5. Отзыв и изменение прав
 
@@ -255,7 +257,7 @@ Step должен различать как минимум:
 
 Перед каждым side effect worker обязан повторно проверить:
 1. tenant и принадлежность кластера;
-2. app-RBAC для текущего actor при интерактивном запросе; для фонового/автоматического исполнения полномочия инициатора не являются источником execution authorization. Проверяются актуальные tenant policy, grants и permissions назначенной Execution Identity, а также доступ к каждому target;
+2. app-RBAC текущего пользователя для интерактивного действия. Для фонового/автоматического исполнения полномочия инициатора не являются источником execution authorization: проверяются отдельные Kubron permissions/grants назначенной Execution Identity, актуальная tenant policy и доступ к каждому target. Это требует явной модели authorization principal для Team/Service identity; Kubernetes credentials сами по себе не предоставляют права в Kubron;
 3. актуальность execution identity и credential binding;
 4. Kubernetes RBAC/фактическую возможность действия;
 5. текущий autonomy mode и policy revision;
@@ -311,7 +313,7 @@ Operation, Run, Step, Plan, Approval и lease state — разные логич�
 
 - История Run/Step должна быть доступна после перезапуска и из любой Web replica.
 - Для Run/Step history применяется настраиваемая retention policy на уровне Organization. Конкретные сроки и классы данных задаются политикой, а не зашиваются в доменные обработчики.
-- Audit остаётся отдельным потоком согласно ADR-0022 и подчиняется отдельным обязательным правилам хранения/retention. Очистка Run history или Evidence не должна удалять обязательный audit trail.
+- Audit остаётся отдельным потоком существующей audit subsystem/Store согласно ADR-0007 и ADR-0022 (stdout mirror не является источником истины) и подчиняется отдельным обязательным правилам хранения/retention. Очистка Run history или Evidence не должна удалять обязательный audit trail.
 - Evidence хранится по правилам домена-владельца; Run содержит ссылки и метаданные происхождения. Retention Evidence согласуется с организационной политикой и требованиями домена.
 - Retention не удаляет незавершённые Run, активные approvals или записи, необходимые для reconciliation.
 - Удаление/архивация завершённых Run не должно удалять обязательный audit trail.
@@ -502,6 +504,7 @@ Exactly-once для side effects во внешнем Kubernetes API не обе�
 - Organization Admin управляет организационными Service Identity.
 - Team Admin управляет Team Identity своей команды.
 - Team и Service — логически разные типы identity, но используют общую подсистему хранения и выдачи credentials.
+- Это расширяет текущую модель ADR-0018 (`user` / `team`) новым логическим типом Service; это не повод вводить отдельный secrets subsystem или обходить credential providers.
 - Все операции создания, изменения, ротации, отзыва и назначения identity подлежат app-RBAC checks и audit.
 - Это решение не создаёт вторую независимую систему secret/credential management.
 
@@ -536,7 +539,53 @@ Exactly-once для side effects во внешнем Kubernetes API не обе�
 - Различия типов выражаются в назначении, владельце, scope, допустимых trigger types и правилах управления, а не в дублировании secret subsystem.
 
 
-## 15. Что этот документ не утверждает
+## 15. Проверка согласованности с действующими ADR
+
+Этот раздел фиксирует обязательные границы интеграции. Он не заменяет и не переписывает принятые ADR.
+
+### 15.1. ADR-0007 и ADR-0026 — Store и доменная атомарность
+
+- Run/Step/Plan/Approval/Lease должны получить собственные узкие domain Backend interfaces и методы доступа через существующий Store composition. Универсальный CRUD Store или общий API транзакций для всех доменов не вводится.
+- Атомарные переходы (claim, fencing, approval binding, state transition) реализуются как специализированные атомарные операции соответствующего backend. PostgreSQL использует транзакции/conditional updates; Desktop File Store — сериализованный доступ и атомарную запись в одном процессе.
+- Оба backend проходят один набор domain contract/concurrency tests. Поддержка HA и межрепличного claim относится к PostgreSQL/server; Desktop не получает межпроцессную конкуренцию.
+- Новые таблицы/записи с чувствительными credential/evidence payloads должны учитывать правила шифрования и rekey ADR-0008.
+
+### 15.2. ADR-0008 и ADR-0018 — Credentials и ConfigFor
+
+- Существующие credential providers, subject isolation, token refresh, challenge flow и secret encryption остаются единственным путём работы с Kubernetes credentials.
+- Текущий `ConfigFor(session, cluster)` — security boundary, а не просто helper. Background execution требует явного subject-aware расширения credential resolver, а не прямого доступа к Store и не фиктивной пользовательской Session.
+- Service Identity добавляет логический тип к существующим User/Team credential scopes. Формат хранения/каталог может быть расширен, но envelope encryption, keyring/KMS, rekey, rotation, revocation и redaction остаются общими.
+- Статические team credentials и интерактивные user credentials сохраняют текущую семантику ADR-0018. Автоматический Run использует только заранее назначенную Team/Service identity; User identity автоматически не подставляется.
+- Успешная выдача Kubernetes config не заменяет Kubron app authorization. И наоборот, Kubron permission не доказывает Kubernetes RBAC.
+
+### 15.3. ADR-0012 — Tenant isolation и cross-team targets
+
+- Organization Admin, Service Identity или Target Group не получают доступ к кластеру автоматически.
+- Каждый cluster sub-run разрешается в контексте команды-владельца кластера и собственной Execution Identity, имеющей допустимый scope для этого кластера.
+- Существующее правило «один кластер — одна команда», отсутствие ClusterGrant и отдельная операция переноса кластера сохраняются.
+- Межкомандный parent Run допустим только как оркестрация независимых sub-runs, каждый из которых отдельно проходит tenant membership/policy, identity grants, app authorization и Kubernetes RBAC. Группа целей не расширяет права.
+
+### 15.4. ADR-0016 и ADR-0026 — HA и фоновые задачи
+
+- Существующий `internal/jobs` и PostgreSQL advisory locks можно использовать для периодических служебных циклов (например, проверки расписаний, retention cleanup), но не как хранилище Run/Step и не как durable user-operation queue.
+- Durable Run ownership, claim, lease и fencing — отдельный доменный механизм с состоянием в PostgreSQL. `LISTEN/NOTIFY` и Event Hub остаются уведомлениями, не источником истины.
+- Desktop runner остаётся внутри процесса приложения; локальный File Store не притворяется распределённым lease backend.
+- Web schedule trigger должен быть HA-safe: повторный опрос/запуск scheduler tick не может создать дублирующий Run для одного occurrence. Для этого нужны durable schedule occurrence identity/idempotency и атомарное создание Run.
+- Правила missed schedule occurrences (catch-up, skip, coalesce) должны быть явно определены до реализации; нельзя автоматически воспроизводить пропущенные write actions без policy/approval revalidation.
+
+### 15.5. ADR-0022 — Audit, logs и metrics
+
+- Audit остаётся отдельной долговременной audit subsystem и Store domain; stdout mirror — только дополнительная доставка, не retention backend.
+- Run/Step history, Evidence и Audit имеют разные retention policies и права чтения. Удаление истории выполнения не удаляет audit.
+- Audit фиксирует actor/trigger, execution identity reference, cluster/team scope, policy decision, approval, plan digest, action/step outcome и correlation IDs без секретов и полных диагностических payloads.
+- Метрики не получают user IDs, cluster names, namespace, resource names, credential IDs или иные высококардинальные/чувствительные значения в labels. Для диагностики используются агрегированные фиксированные категории.
+
+### 15.6. Итог проверки
+
+Архитектурная модель совместима с указанными ADR при соблюдении границ выше. Это расширение существующих контрактов, а не замена Store, credential providers, tenancy, audit или HA foundation. Перед runtime implementation остаются обязательными отдельные решения по subject-aware credential resolver, authorization principal для Team/Service identity, durable schedule semantics и domain-specific atomic Store contracts.
+
+
+## 16. Что этот документ не утверждает
 
 - Это design proposal, не утверждённый ADR и не разрешение начать write-action implementation.
 - Он не вводит отдельный daemon для Desktop.
