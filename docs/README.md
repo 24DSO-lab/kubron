@@ -34,6 +34,7 @@
 | [architecture/execution-identity-durable-operations-design.md](architecture/execution-identity-durable-operations-design.md) | Проектирование Execution Identity, Operation/Run/Step, durable execution, Desktop/Web lifecycle, HA и recovery |
 | [architecture/2026-11-26-schedule-ownership-decision.md](architecture/2026-11-26-schedule-ownership-decision.md) | Принятое решение: расписания принадлежат Organization/Team, creator — только provenance; правила Desktop/Web и управления |
 | [architecture/2026-11-26-missed-schedule-occurrences-decision.md](architecture/2026-11-26-missed-schedule-occurrences-decision.md) | Принятая политика пропущенных запусков: Observe — Coalesce, Assisted/Autonomous — Skip, Catch-up — явный opt-in с ограничениями |
+| [architecture/2026-11-26-schedule-timezones-dst-decision.md](architecture/2026-11-26-schedule-timezones-dst-decision.md) | Принятые правила timezone расписаний: IANA zones, UTC timestamps, DST gap/fold и одинаковая семантика Desktop/Web |
 | [e2e.md](e2e.md) | Smoke-e2e |
 | [authentication-lab.md](authentication-lab.md) | Ручной стенд входа в облачные кластеры (EKS, GKE, AKS) без создания кластеров |
 | [releasing.md](releasing.md) | Как выпускается релиз |
