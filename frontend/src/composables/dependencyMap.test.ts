@@ -104,7 +104,8 @@ describe('buildMapModel: устойчивость', () => {
   })
 
   it('результат не зависит от порядка входных вершин и рёбер', () => {
-    const shuffled = rep({ ...(ingress as object), graph: { nodes: [...(ingress as Report).graph!.nodes!].reverse(), edges: [...(ingress as Report).graph!.edges!].reverse() } })
+    const source = rep(ingress)
+    const shuffled = rep({ ...(ingress as object), graph: { nodes: [...source.graph!.nodes!].reverse(), edges: [...source.graph!.edges!].reverse() } })
     expect(buildMapModel(shuffled)).toEqual(buildMapModel(rep(ingress)))
   })
 })
