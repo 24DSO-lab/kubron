@@ -12,6 +12,7 @@
   "groups": {
     "workloads": "工作负载",
     "config": "配置",
+    "auditCompliance": "集群生命周期",
     "network": "网络",
     "storage": "存储",
     "helm": "Helm",
