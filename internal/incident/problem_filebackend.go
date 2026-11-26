@@ -69,7 +69,6 @@ func (b *FileBackend) PutProblem(ctx context.Context, p *Problem) error {
 	return nil
 }
 
-
 // FindOrCreateOpenProblem implements ProblemBackend. Lookup and creation share the backend mutex,
 // so concurrent services using this FileBackend cannot create duplicate open problems.
 func (b *FileBackend) FindOrCreateOpenProblem(ctx context.Context, candidate *Problem, oldest time.Time) (*Problem, error) {
