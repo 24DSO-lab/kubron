@@ -12,7 +12,7 @@
   "groups": {
     "workloads": "Workloads",
     "config": "Config",
-    "auditCompliance": "Проверки",
+    "auditCompliance": "Жизненный цикл кластера",
     "network": "Network",
     "storage": "Storage",
     "helm": "Helm",
