@@ -379,7 +379,7 @@ func problemFindOrCreateAtomic(t *testing.T, b incident.ProblemBackend) {
 		must(t, err)
 		if got.ID != candidate.ID {
 			t.Fatalf("scope %+v unexpectedly reused problem %q", sc, got.ID)
-	}
+		}
 	}
 
 	closed := results[0]
