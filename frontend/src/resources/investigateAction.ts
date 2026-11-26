@@ -18,6 +18,8 @@ export const investigateAction = (kind: TargetKind): ActionDef => ({
   label: 'defs.menu.investigate',
   run: (item, ctx) => {
     ctx.closeDetail()
-    investigate(kind, itemNs(item), itemName(item))
+    // Nodes are cluster-scoped; ignore any accidental namespace on the supplied object.
+    const namespace = kind === 'Node' ? '' : itemNs(item)
+    investigate(kind, namespace, itemName(item))
   },
 })

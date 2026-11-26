@@ -62,7 +62,7 @@ func newestFirst(items []unstructured.Unstructured) []unstructured.Unstructured 
 	out := slices.Clone(items)
 	slices.SortStableFunc(out, func(a, b unstructured.Unstructured) int {
 		return cmp.Or(
-			b.GetCreationTimestamp().Time.Compare(a.GetCreationTimestamp().Time),
+			b.GetCreationTimestamp().Compare(a.GetCreationTimestamp().Time),
 			strings.Compare(a.GetName(), b.GetName()))
 	})
 	return out

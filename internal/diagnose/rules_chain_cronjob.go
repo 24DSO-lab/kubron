@@ -88,7 +88,7 @@ func cronJobs(g *depgraph.Graph, cron depgraph.Ref) []cronJobNode {
 		}
 	}
 	slices.SortStableFunc(out, func(a, b cronJobNode) int {
-		if c := b.job.CreationTimestamp.Time.Compare(a.job.CreationTimestamp.Time); c != 0 {
+		if c := b.job.CreationTimestamp.Compare(a.job.CreationTimestamp.Time); c != 0 {
 			return c
 		}
 		return strings.Compare(a.job.Name, b.job.Name)
