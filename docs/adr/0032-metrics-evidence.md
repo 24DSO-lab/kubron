@@ -1,6 +1,7 @@
 # ADR-0032: Метрики как необязательный источник доказательств Kubron Intelligence
 
 - Статус: предложено
+- Реализовано: этап A; этап B (сигналы `pvc_usage_ratio`, `hpa_at_max_replicas`, `deployment_unavailable_replicas`, `ingress_5xx_ratio`, `ingress_latency_p95` и правила на них) — вторая итерация. Приёмка (E2E) и `RuleSetVersion = 3` — на интеграции (`docs/prompts/README.md`).
 - Дата: 2026-11-14
 - Связано: ADR-0006, 0018, 0022, 0024, 0026, 0031; `internal/k8s/metrics_stack.go`, `internal/k8s/manifests/metrics-stack.yaml`; дополняет ADR-0024 (§2 «Сбор данных», «Не входит: корреляция метрик»)
 
@@ -136,7 +137,7 @@
 
 Этап A не зависит от ADR-0031: он использует цели, которые диагностика уже умеет разбирать.
 
-**Этап B: хранилище, масштабирование и вход**
+**Этап B: хранилище, масштабирование и вход** (реализован)
 
 - сигналы `pvc_usage_ratio`, `hpa_at_max_replicas`, `deployment_unavailable_replicas`, `ingress_5xx_ratio`, `ingress_latency_p95`;
 - правила для PVC, HPA, Service и Ingress из ADR-0031 (этапы 1–2) используют их как дополнительные доказательства.

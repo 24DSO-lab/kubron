@@ -8,7 +8,7 @@ Four things make the answer better, and **none of them is required**: the depend
 
 ## Open an investigation
 
-Choose a kind (Pod, Deployment, ReplicaSet, Service, PersistentVolumeClaim or Node), a namespace and a name. A Node has no namespace. Kubron reads the object, its owners (Pod → ReplicaSet → Deployment), its Pods, Events, Namespace and Nodes, and then the objects it depends on (see [Dependency chain](#dependency-chain)). Everything is read-only. **Secrets are never read.**
+Choose a kind (Pod, Deployment, ReplicaSet, StatefulSet, Job, CronJob, Ingress, HorizontalPodAutoscaler, Service, PersistentVolumeClaim or Node), a namespace and a name. A Node has no namespace. A ConfigMap is not a target: it appears as a link in the chain of a Pod that refers to it. Kubron reads the object, its owners (Pod → ReplicaSet → Deployment), its Pods, Events, Namespace and Nodes, and then the objects it depends on (see [Dependency chain](#dependency-chain)). Everything is read-only. **Secrets are never read.**
 
 The report separates four kinds of entries, and the interface shows them differently:
 
@@ -40,7 +40,12 @@ What the graph connects:
 - owners and their children (Deployment → ReplicaSet → Pod);
 - a Service and the Pods its selector matches, and the Service's endpoints;
 - a Pod and its PersistentVolumeClaims, a claim and its PersistentVolume and StorageClass;
-- a Pod and the Node it runs on.
+- a Pod and the Node it runs on;
+- an Ingress and the Services of its rules and default backend, and the IngressClass it uses;
+- a HorizontalPodAutoscaler and the workload it scales (Deployment, StatefulSet or ReplicaSet);
+- a Pod and the ConfigMaps it refers to (volumes, `envFrom`, `env.valueFrom`). Kubron checks **only that the ConfigMap exists**: its contents (`data`, `binaryData`) are dropped as soon as they are read and never reach the report, the history, the audit log or an export;
+- a StatefulSet, its Pods and the claims made from its `volumeClaimTemplates`;
+- a Job and its Pods, a CronJob and its Jobs.
 
 The graph is a **snapshot at the moment of the investigation**, not a live model. Open the investigation again to rebuild it.
 
@@ -67,6 +72,12 @@ A hypothesis can **explain** other hypotheses of the same report. "The claim is 
 | Service | The selector matches no Pod, the Pods are not Ready (so the endpoints are empty), the port or `targetPort` does not match the container ports |
 | PersistentVolumeClaim | Pending and Lost; attach and mount errors in the Events of the Pods that use it |
 | Node | Not ready, memory, disk and PID pressure, unschedulable, the Pods affected on the Node |
+| Ingress | The backend Service does not exist, or it has no ready endpoints; the IngressClass is not found. A class that is not set and has no default is reported as a fact. A TLS Secret is not read: checking it stays a step for you |
+| HorizontalPodAutoscaler | The target does not exist; metrics are unavailable (taken from the `ScalingActive` condition); the `maxReplicas` limit is reached |
+| Pod and ConfigMap references | A referenced ConfigMap does not exist: the graph confirms what the kubelet reported as `CreateContainerConfigError`. A reference marked `optional: true` is not an error |
+| StatefulSet | Ordered start is stuck on Pod N; a claim of the template is not bound; an update is stopped by `partition` |
+| Job | `BackoffLimitExceeded`, `DeadlineExceeded`. Why a Pod of the Job failed is explained by the Pod rules |
+| CronJob | The schedule is suspended; runs were missed (`startingDeadlineSeconds`); `concurrencyPolicy: Forbid` blocks the next run |
 
 For a Node the Pods are listed across namespaces. If your RBAC is limited to some namespaces, that list is marked incomplete and the report says why.
 
@@ -77,6 +88,12 @@ The graph is built from the target and not for the whole cluster. The limits are
 Only identifiers of resources, state codes and reason codes are saved in the investigation. Field values, hosts and paths of Ingresses, labels and annotations are not. ConfigMap contents are never kept.
 
 An investigation saved by an earlier version opens as before, without the chain.
+
+### Dependency map
+
+An investigation with a graph has a **map of dependencies**: the objects of the chain as nodes and the links between them. The color and marker of a node show its state, and **missing** and **unknown** nodes look different. Choose a node to see the facts about that object; you can move between nodes with the keyboard. A graph that is empty or was cut at a limit is shown with a note, without an error.
+
+The map is a picture of the **same snapshot** as the chain. It is not live and does not refresh by itself: open the investigation again to rebuild it.
 
 ## Metrics as evidence
 
@@ -102,6 +119,13 @@ The signals Kubron can read are a fixed list. Nothing you or the interface type 
 | Average CPU load of a Node | 15 minutes |
 | Free space of a Node's root disk | now |
 | Whether a Node was under memory, disk or PID pressure | 6 hours |
+| Share of a PersistentVolumeClaim that is used | 1 hour |
+| Whether a HorizontalPodAutoscaler is at its `maxReplicas` | 15 minutes |
+| Unavailable replicas of a Deployment | 15 minutes |
+| Share of 5xx responses of an Ingress | 15 minutes |
+| 95th percentile of the response time of an Ingress | 15 minutes |
+
+The Ingress signals are read **only when `ingress-nginx` metrics are found** in the stack; without them the report is complete and the hint appears only if the symptom needs them. A signal can strengthen an existing hypothesis (for example `hpa.max_replicas_reached` or `ingress.backend_no_endpoints`) by one level, and when there is no such hypothesis the metric rules can offer their own with the prefix `metrics.`, never above medium.
 
 Signals are requested only for the objects of the investigation and for the Node, never for the whole cluster. Metrics are collected last and only if at least 5 seconds remain of the operation's time; otherwise they are skipped and the report is still complete.
 
@@ -136,6 +160,9 @@ When twelve Pods fail on one Node, you do not want twelve unrelated investigatio
 |---|---|---|
 | Shared Node | A Node | Workloads that have a Pod with a symptom (crash loop, OOM, not ready, evicted) on that Node |
 | Shared storage | A StorageClass or its provisioner | Claims of that class that are Pending or Lost, and the workloads that use them |
+| Shared dependency | An object that several investigations refer to and that is missing (for example a ConfigMap) or a Service without ready endpoints | At least two workloads whose graphs contain it |
+| Shared root | A workload that owns the objects of the root-cause candidates of investigations at different layers of one chain (Ingress → Service → Deployment → Pod) | At least two investigations |
+| Shared symptom | One namespace | At least five workloads with the same symptom code and the same hypothesis code |
 
 A Node is abnormal if it is not ready, under memory, disk or PID pressure, unschedulable, has a `NoExecute` taint or has warning Events. The failures must start no more than 30 minutes after the Node's condition changed. The start of a failure is taken from the timestamps of the objects, not from the time you opened the investigation.
 
@@ -148,6 +175,12 @@ The block in the investigation shows the source, the confidence, the start time,
 | **High** | A shared source, an abnormal condition, a matching time and at least three workloads |
 
 The wording is "possible" and "likely", never "cause". The shared source is confirmed by you.
+
+A **shared symptom** has no structural link between the workloads, so its confidence is **always low** and it never creates a problem on its own.
+
+### Recalculate the correlation
+
+An open investigation keeps the correlation snapshot taken when it was opened. **Recalculate correlation** builds it again from live data. It changes only the correlation block: the saved Events, the report and the mark stay as they are (use **Update Events** for Events). It needs the `operate` permission, is written to the audit log (`incident.correlation_recompute`) and is not available for a resolved or closed investigation.
 
 If your RBAC allows reading only some namespaces, the list of affected workloads is incomplete, and the block says so. It never shows more than your session may read. The check reads at most 10 additional objects and is skipped if less than 5 seconds remain.
 
@@ -242,6 +275,10 @@ Kubron reads the cluster with the same credentials as the rest of the applicatio
 - `services`, `endpoints` and `discovery.k8s.io` `endpointslices`;
 - `persistentvolumeclaims`, `persistentvolumes`;
 - `storage.k8s.io` `storageclasses`;
+- `networking.k8s.io` `ingresses` and `ingressclasses`;
+- `autoscaling` `horizontalpodautoscalers`;
+- `configmaps` (to check that they exist; the contents are dropped on reading);
+- `apps` `statefulsets` and `daemonsets`, and `batch` `jobs` and `cronjobs`;
 
 in addition to what the investigations already read (Pods, ReplicaSets, Deployments, Events, Namespaces and Nodes). Kubron needs **no access to Secrets and no write access** for any of this.
 
@@ -261,7 +298,7 @@ The limits are fixed in the code and are not settings.
 
 | Area | Limit |
 |---|---|
-| Dependency graph | 200 objects, 600 links, 4 steps from the target, 40 additional reads |
+| Dependency graph | 200 objects, 600 links, 4 steps from the target, 40 additional reads. The new kinds do not raise the limits |
 | Metrics | Windows up to 24 hours; one query up to 10 s, 1 MiB and 500 series; up to 12 signal queries and 5 capability checks per operation |
 | Shared-source check | A 30-minute correlation window, up to 10 additional reads, up to 5 candidates, up to 50 workloads per candidate |
 | Problems | A 6-hour window, up to 100 members, 100 open problems searched |
@@ -274,10 +311,8 @@ Metrics and the shared-source check run after the diagnosis and are skipped if l
 
 These are not part of the current version, and the pages above do not describe them as available:
 
-- Diagnosis of Ingress, HPA, StatefulSet, Job and CronJob as targets, and the check that a referenced ConfigMap exists.
-- An interactive dependency map. Today the report shows the chain as a compact path.
-- Signals for volume usage, HPA and Ingress traffic, and charts of metrics inside the report.
+- Charts of metrics inside the report, and a live dependency map: the map shows the snapshot taken when the investigation was opened.
+- Diagnosis of DaemonSet as a target (it is read only as an owner of Pods), and the contents of a ConfigMap or a Secret: Kubron checks only that a ConfigMap exists and never reads a Secret.
 - An external Prometheus or your own kube-prometheus as a source of metrics.
-- More shared-source kinds (a shared missing dependency, a shared root cause, a shared symptom) and recalculating the shared source of an open investigation.
 - Background detection of incidents. Everything happens when you open an investigation.
 - Statistics for a whole organization, and any automatic sending of data.

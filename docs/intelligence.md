@@ -4,7 +4,7 @@
 
 ## Что делает расследование
 
-Расследование открывается для Pod, Deployment или ReplicaSet. Kubron читает только чтением (`get`/`list`) Pod, `pods/log`, Events, ReplicaSet, Deployment, Namespace и Node; для графа зависимостей и корреляции дополнительно Service, EndpointSlice, PVC, PV, StorageClass, Job и CronJob. **Secret не читается и в allowlist платформы его нет.** Правила версионируются (`RuleSetVersion`, сейчас 2) и покрывают:
+Расследование открывается для Pod, Deployment, ReplicaSet, StatefulSet, Job, CronJob, Ingress, HorizontalPodAutoscaler, Service, PVC или Node (`TargetKind`); ConfigMap целью не является, это звено цепочки Pod. Kubron читает только чтением (`get`/`list`) Pod, `pods/log`, Events, ReplicaSet, Deployment, Namespace и Node; для графа зависимостей и корреляции дополнительно Service, EndpointSlice, PVC, PV, StorageClass, StatefulSet, DaemonSet, Job, CronJob, Ingress, IngressClass, HorizontalPodAutoscaler и существование ConfigMap. **Secret не читается и в allowlist платформы его нет; содержимое ConfigMap (`data`, `binaryData`) отбрасывается при чтении и нигде не сохраняется.** Правила версионируются (`RuleSetVersion`: 2 в первой итерации, 3 после слияния второй) и покрывают:
 
 | Симптом | Что проверяется |
 |---|---|
@@ -13,6 +13,12 @@
 | OOMKilled | лимит памяти контейнера, давление памяти на узле |
 | Ошибки запуска | ImagePullBackOff, ErrImagePull, InvalidImageName, CreateContainerConfigError, RunContainerError, тома |
 | Выкат Deployment/ReplicaSet | ProgressDeadlineExceeded, ReplicaFailure, квота, отказ admission, пауза, неготовые Pod нового ReplicaSet |
+| Ingress | backend Service нет (`ingress.backend_service_missing`) или у него нет готовых endpoints (`ingress.backend_no_endpoints`); IngressClass не найден (`ingress.class_not_found`); класс не указан и нет класса по умолчанию — факт `ingress.class_unspecified`; TLS Secret не читается, проверка остаётся шагом для человека |
+| HorizontalPodAutoscaler | цель `scaleTargetRef` отсутствует (`hpa.target_missing`); метрики недоступны по условию `ScalingActive=False` (`hpa.metrics_unavailable`); достигнут `maxReplicas` (`hpa.max_replicas_reached`) |
+| Ссылки Pod на ConfigMap | ConfigMap нет в кластере: `config.missing_reference` подтверждается графом, а не только сообщением kubelet; `optional: true` ошибкой не считается |
+| StatefulSet | упорядоченный запуск застрял на Pod N (`sts.stuck_ordered_start`); PVC шаблона не связан (`sts.pvc_pending`); обновление остановлено `partition` (`sts.update_partitioned`) |
+| Job | `job.backoff_limit_exceeded`, `job.deadline_exceeded`; причину падения Pod разбирают правила Pod |
+| CronJob | `cronjob.suspended`, `cronjob.missed_schedule` (`startingDeadlineSeconds`), `cronjob.concurrency_blocked` (`concurrencyPolicy: Forbid`) |
 
 Отчёт состоит из **разных типов записей**, их нельзя спутать ни в данных, ни в интерфейсе:
 
@@ -21,6 +27,20 @@
 - **рекомендация** — предлагаемое изменение. Kubron его не выполняет;
 - **диагностический шаг** — что ещё проверить (только чтение);
 - **недостающий контекст** — чего не хватило правилу (недоступный источник, усечённый список событий, нет данных). Правила защитные: нехватка данных — это запись в отчёте, а не ошибка и не паника.
+
+## Цепочка и карта зависимостей
+
+Для каждого вида цели Kubron строит граф зависимостей и показывает его в отчёте двумя способами: компактной цепочкой (путь от затронутого ресурса до кандидата первопричины) и **картой зависимостей** (`DependencyMap`, ADR-0031 §8). Вершины карты окрашены по состоянию; `Missing` («кластер ответил „не найдено“») и `Unknown` («не смогли прочитать», с причиной `forbidden`, `unavailable`, `too_large`, `limit` или `policy`) различаются. Выбор вершины показывает факты об объекте, по карте можно перемещаться с клавиатуры, пустой или усечённый граф не ломает экран.
+
+Карта **не живая**: она рисует снимок графа, сохранённый в отчёте (`Report.graph`), и обновляется только при новом открытии расследования. Кандидат первопричины — гипотеза, которую объясняют другие гипотезы отчёта; это кандидат, а не вывод.
+
+Пределы графа прежние (ADR-0031 §3): 200 вершин, 600 рёбер, 4 шага от цели, 40 дополнительных запросов чтения; новые виды их не повышают. При достижении предела отчёт помечается неполным (`Partial`), а выводы вида «нет endpoints» делаются только по полностью прочитанному графу.
+
+В отчёте и истории сохраняются только идентификаторы ресурсов, коды состояний и причин. Значения полей, хосты и пути Ingress, метки, аннотации и содержимое ConfigMap не сохраняются; Secret не читается. Отказ в праве на вид — это `Unknown/forbidden` и `MissingContext`, а не ошибка расследования.
+
+## Пересчёт корреляции
+
+Снимок корреляции снимается при открытии расследования (виды кандидатов: `shared_node`, `shared_storage`, `shared_dependency`, `shared_root`, `shared_symptom`, см. [intelligence-operations.md](intelligence-operations.md)). Действие **«Пересчитать корреляцию»** (`IncidentCorrelationRecompute`) строит снимок заново по живым данным. Оно **не обновляет Events** (для этого есть «Обновить события»), не меняет отчёт и отметку результата, требует право `operate`, пишется в аудит как `incident.correlation_recompute` и недоступно для расследования в состоянии `resolved` или `closed`.
 
 ## События и логи как доказательства
 
