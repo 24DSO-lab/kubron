@@ -8,7 +8,7 @@ vi.mock('monaco-editor', () => ({ editor: {} }))
 vi.mock('monaco-editor/editor/editor.api', () => ({ editor: {}, KeyMod: {}, KeyCode: {} }))
 vi.mock('monaco-editor/editor/editor.worker?worker', () => ({ default: class {} }))
 
-const switchView = vi.fn()
+const { switchView } = vi.hoisted(() => ({ switchView: vi.fn() }))
 vi.mock('../composables/useK8s', () => ({ useK8s: () => ({ switchView }) }))
 
 import { pendingInvestigation, takeInvestigation } from '../composables/incidentLaunch'
