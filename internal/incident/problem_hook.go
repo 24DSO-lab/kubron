@@ -61,30 +61,20 @@ func (s *Service) autoAttach(ctx context.Context, in *Incident) []string {
 	return nil
 }
 
-// attachAuto находит подходящую открытую проблему и добавляет участника или создаёт проблему; возвращает её
-// идентификатор.
+// attachAuto атомарно находит открытую проблему по correlation key или создаёт её, затем добавляет участника.
 func (s *Service) attachAuto(ctx context.Context, in *Incident, key, kind string, source diagnose.ResourceRef) (string, error) {
+	now := s.clock()
+	candidate := &Problem{
+		ID: s.newID(), Scope: in.Scope, Key: key, Kind: kind, Source: source,
+		Status: ProblemOpen, Origin: ProblemAuto, CreatedAt: now, UpdatedAt: now,
+		Members: []ProblemMember{{IncidentID: in.ID, AddedAt: now, AddedBy: AutoMember}},
+	}
+	p, err := s.problems.FindOrCreateOpenProblem(ctx, candidate, now.Add(-ProblemWindow))
+	if err != nil { return "", err }
 	for range maxConflictRetries {
-		p, err := s.findOpenProblem(ctx, in, key)
-		if err != nil {
-			return "", err
-		}
-		now := s.clock()
-		if p == nil {
-			np := &Problem{ID: s.newID(), Scope: in.Scope, Key: key, Kind: kind, Source: source,
-				Status: ProblemOpen, Origin: ProblemAuto, CreatedAt: now, UpdatedAt: now,
-				Members: []ProblemMember{{IncidentID: in.ID, AddedAt: now, AddedBy: AutoMember}}}
-			if err := s.problems.PutProblem(ctx, np); err != nil {
-				return "", err
-			}
-			return np.ID, nil
-		}
-		if slices.ContainsFunc(p.Members, func(m ProblemMember) bool { return m.IncidentID == in.ID }) {
-			return p.ID, nil
-		}
-		if len(p.Members) >= MaxProblemMembers {
-			return "", ErrProblemFull
-		}
+		if hasMember(p, in.ID) { return p.ID, nil }
+		if len(p.Members) >= MaxProblemMembers { return "", ErrProblemFull }
+		now = s.clock()
 		p.Members = s.pruneDead(ctx, p, in.ID)
 		p.Members = append(p.Members, ProblemMember{IncidentID: in.ID, AddedAt: now, AddedBy: AutoMember})
 		p.UpdatedAt = now
@@ -92,42 +82,22 @@ func (s *Service) attachAuto(ctx context.Context, in *Incident, key, kind string
 		case err == nil:
 			return p.ID, nil
 		case errors.Is(err, ErrConflict):
-			continue // кто-то изменил проблему: заново выбрать и проверить условия
+			p, err = s.problems.GetProblem(ctx, in.Scope, p.ID)
+			if err != nil { return "", err }
+			if p.Status != ProblemOpen || p.UpdatedAt.Before(s.clock().Add(-ProblemWindow)) || slices.Contains(p.Detached, in.ID) {
+				candidate = &Problem{
+					ID: s.newID(), Scope: in.Scope, Key: key, Kind: kind, Source: source,
+					Status: ProblemOpen, Origin: ProblemAuto, CreatedAt: s.clock(), UpdatedAt: s.clock(),
+					Members: []ProblemMember{{IncidentID: in.ID, AddedAt: s.clock(), AddedBy: AutoMember}},
+				}
+				p, err = s.problems.FindOrCreateOpenProblem(ctx, candidate, s.clock().Add(-ProblemWindow))
+				if err != nil { return "", err }
+			}
 		default:
 			return "", err
 		}
 	}
 	return "", ErrConflict
-}
-
-// findOpenProblem возвращает самую свежую открытую проблему с этим ключом, обновлённую в пределах окна и без
-// этого расследования в Detached, либо nil. Просматривает не более MaxProblemScan открытых проблем кластера,
-// новые первыми; индекса по расследованиям нет.
-func (s *Service) findOpenProblem(ctx context.Context, in *Incident, key string) (*Problem, error) {
-	oldest := s.clock().Add(-ProblemWindow)
-	cursor := ""
-	for scanned := 0; scanned < MaxProblemScan; {
-		page, err := s.problems.ListProblems(ctx, in.Scope,
-			ProblemQuery{Status: ProblemOpen, Limit: min(MaxProblemScan-scanned, MaxPageSize), Cursor: cursor})
-		if err != nil {
-			return nil, err
-		}
-		for i := range page.Items {
-			p := &page.Items[i]
-			scanned++
-			if p.UpdatedAt.Before(oldest) {
-				return nil, nil // дальше только более старые
-			}
-			if p.Key == key && !slices.Contains(p.Detached, in.ID) {
-				return p, nil
-			}
-		}
-		if page.NextCursor == "" || len(page.Items) == 0 {
-			break
-		}
-		cursor = page.NextCursor
-	}
-	return nil, nil
 }
 
 // onOutcomeSaved закрывает проблему, когда закрыт её последний открытый участник (ADR-0033 §6). Вызывается из

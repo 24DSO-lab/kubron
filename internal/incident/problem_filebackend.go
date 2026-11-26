@@ -69,6 +69,66 @@ func (b *FileBackend) PutProblem(ctx context.Context, p *Problem) error {
 	return nil
 }
 
+
+// FindOrCreateOpenProblem implements ProblemBackend. Lookup and creation share the backend mutex,
+// so concurrent services using this FileBackend cannot create duplicate open problems.
+func (b *FileBackend) FindOrCreateOpenProblem(ctx context.Context, candidate *Problem, oldest time.Time) (*Problem, error) {
+	if err := ctxErr(ctx); err != nil {
+		return nil, err
+	}
+	if err := CheckScope(candidate.Scope); err != nil {
+		return nil, err
+	}
+	if err := checkIDs(candidate.ID); err != nil {
+		return nil, err
+	}
+	if candidate.Status != ProblemOpen || candidate.Key == "" || len(candidate.Members) == 0 || candidate.Version != 0 {
+		return nil, ErrInvalidProblem
+	}
+	NormalizeProblem(candidate)
+
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	dir := filepath.Join(b.clusterDir(candidate.Scope), "problems")
+	entries, err := os.ReadDir(dir)
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return nil, err
+	}
+	var matches []Problem
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
+			continue
+		}
+		var p Problem
+		if err := readJSON(filepath.Join(dir, entry.Name()), &p); err != nil {
+			continue
+		}
+		if p.Status != ProblemOpen || p.Key != candidate.Key || p.UpdatedAt.Before(oldest) ||
+			slices.Contains(p.Detached, candidate.Members[0].IncidentID) {
+			continue
+		}
+		matches = append(matches, p)
+	}
+	if len(matches) > 0 {
+		slices.SortFunc(matches, func(a, c Problem) int {
+			return cmp.Or(c.UpdatedAt.Compare(a.UpdatedAt), cmp.Compare(c.ID, a.ID))
+		})
+		return &matches[0], nil
+	}
+
+	next := *candidate
+	next.Version = 1
+	data, err := marshal(&next)
+	if err != nil {
+		return nil, err
+	}
+	if err := writeFile(b.problemPath(next.Scope, next.ID), data); err != nil {
+		return nil, err
+	}
+	candidate.Version = next.Version
+	return &next, nil
+}
+
 // GetProblem implements ProblemBackend.
 func (b *FileBackend) GetProblem(ctx context.Context, scope tenant.Scope, id string) (*Problem, error) {
 	if err := ctxErr(ctx); err != nil {

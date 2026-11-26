@@ -20,6 +20,10 @@ import (
 //   - PutProblem защищён версией (ErrConflict); транзакций между записями нет;
 //   - время хранится с точностью до микросекунды в UTC.
 type ProblemBackend interface {
+	// FindOrCreateOpenProblem атомарно находит самую свежую открытую проблему с таким же ключом в пределах
+	// oldest (включительно), не отсоединённую от первого участника candidate, либо создаёт candidate.
+	// Возвращает запись с версией; операция сериализуется между экземплярами backend.
+	FindOrCreateOpenProblem(ctx context.Context, candidate *Problem, oldest time.Time) (*Problem, error)
 	// PutProblem создаёт (Version == 0; ErrConflict, если запись уже есть) или заменяет запись: замена удаётся,
 	// только если хранимая версия равна p.Version, иначе ErrConflict. При успехе p.Version увеличен.
 	PutProblem(ctx context.Context, p *Problem) error

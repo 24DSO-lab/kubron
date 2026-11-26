@@ -33,7 +33,8 @@ const (
 	ProblemWindow = 6 * time.Hour
 	// MaxProblemMembers — участников в одной проблеме (ADR-0033 §6).
 	MaxProblemMembers = 100
-	// MaxProblemScan — сколько открытых проблем кластера просматривает автоприсоединение (ADR-0033 §6).
+	// MaxProblemScan сохранён для совместимости; адресный FindOrCreateOpenProblem его не использует.
+	// Deprecated: автоприсоединение больше не ограничивает поиск количеством записей.
 	MaxProblemScan = 100
 	// AutoAttachConfidence — минимальная уверенность лучшего кандидата корреляции для автоприсоединения
 	// (ADR-0033 §6).

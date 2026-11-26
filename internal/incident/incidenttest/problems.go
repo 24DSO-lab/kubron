@@ -47,6 +47,7 @@ func RunProblems(t *testing.T, newBackend func(t *testing.T) incident.ProblemBac
 		{"problem delete", problemDelete},
 		{"problem purge by retention", problemPurge},
 		{"problem concurrent puts", problemConcurrent},
+		{"find or create open problem is atomic", problemFindOrCreateAtomic},
 		{"problem with the maximum number of members", problemMaxMembers},
 	}
 	for _, c := range cases {
@@ -325,6 +326,70 @@ func problemConcurrent(t *testing.T, b incident.ProblemBackend) {
 	if got, _ := b.GetProblem(ctx, Scope, "p1"); got.Version != 2 || len(got.Members) != 3 {
 		t.Errorf("stored = version %d, %d members", got.Version, len(got.Members))
 	}
+}
+
+
+func problemFindOrCreateAtomic(t *testing.T, b incident.ProblemBackend) {
+	ctx := t.Context()
+	const n = 12
+	start := make(chan struct{})
+	var wg sync.WaitGroup
+	results := make([]*incident.Problem, n)
+	errs := make([]error, n)
+	for i := range n {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			candidate := NewProblem(Scope, fmt.Sprintf("candidate-%02d", i), base)
+			candidate.Members = []incident.ProblemMember{{IncidentID: fmt.Sprintf("incident-%02d", i), AddedAt: base, AddedBy: incident.AutoMember}}
+			<-start
+			results[i], errs[i] = b.FindOrCreateOpenProblem(ctx, candidate, base.Add(-time.Hour))
+		}(i)
+	}
+	close(start)
+	wg.Wait()
+	var id string
+	for i, err := range errs {
+		if err != nil { t.Fatalf("find or create %d: %v", i, err) }
+		if results[i] == nil { t.Fatalf("find or create %d returned nil", i) }
+		if id == "" { id = results[i].ID }
+		if results[i].ID != id { t.Fatalf("concurrent IDs differ: %q and %q", id, results[i].ID) }
+	}
+	page, err := b.ListProblems(ctx, Scope, incident.ProblemQuery{Status: incident.ProblemOpen, Limit: incident.MaxPageSize})
+	must(t, err)
+	if len(page.Items) != 1 { t.Fatalf("open problems = %d, want exactly one", len(page.Items)) }
+
+	for _, sc := range []tenant.Scope{
+		{OrgID: "org1", TeamID: "team2", ClusterID: "cl1"},
+		{OrgID: "org1", TeamID: "team1", ClusterID: "cl2"},
+		{OrgID: "org2", TeamID: "team1", ClusterID: "cl1"},
+	} {
+		candidate := NewProblem(sc, "other-"+sc.TeamID+"-"+sc.ClusterID+"-"+sc.OrgID, base)
+		candidate.Members = []incident.ProblemMember{{IncidentID: "isolated", AddedAt: base, AddedBy: incident.AutoMember}}
+		got, err := b.FindOrCreateOpenProblem(ctx, candidate, base.Add(-time.Hour))
+		must(t, err)
+		if got.ID != candidate.ID { t.Fatalf("scope %+v unexpectedly reused problem %q", sc, got.ID) }
+	}
+
+	closed := results[0]
+	closed.Status = incident.ProblemClosed
+	must(t, b.PutProblem(ctx, closed))
+	candidate := NewProblem(Scope, "after-close", base.Add(time.Minute))
+	candidate.Members = []incident.ProblemMember{{IncidentID: "after-close-incident", AddedAt: base, AddedBy: incident.AutoMember}}
+	got, err := b.FindOrCreateOpenProblem(ctx, candidate, base.Add(-time.Hour))
+	must(t, err)
+	if got.ID != candidate.ID { t.Fatalf("closed problem was reused: got %q", got.ID) }
+
+	detached := NewProblem(Scope, "detached-problem", base)
+	detached.Key = "detached:test"
+	detached.Detached = []string{"detached-incident"}
+	must(t, b.PutProblem(ctx, detached))
+	rejoin := NewProblem(Scope, "detached-rejoin", base.Add(time.Minute))
+	rejoin.Key = detached.Key
+	rejoin.Members = []incident.ProblemMember{{IncidentID: "detached-incident", AddedAt: base, AddedBy: incident.AutoMember}}
+	got, err = b.FindOrCreateOpenProblem(ctx, rejoin, base.Add(-time.Hour))
+	must(t, err)
+	if got.ID != rejoin.ID { t.Fatalf("detached incident reused old problem %q", got.ID) }
 }
 
 // problemMaxMembers: документ с MaxProblemMembers участниками и списком отсоединённых пишется и читается целиком.

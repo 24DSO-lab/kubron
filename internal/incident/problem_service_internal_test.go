@@ -62,6 +62,13 @@ type failProblems struct {
 	puts        atomic.Int32
 }
 
+func (f *failProblems) FindOrCreateOpenProblem(ctx context.Context, candidate *Problem, oldest time.Time) (*Problem, error) {
+	if f.failPut != nil {
+		return nil, f.failPut
+	}
+	return f.ProblemBackend.FindOrCreateOpenProblem(ctx, candidate, oldest)
+}
+
 func (f *failProblems) PutProblem(ctx context.Context, p *Problem) error {
 	f.puts.Add(1)
 	if f.failPut != nil {
@@ -363,13 +370,13 @@ func TestAutoAttachFullProblemIsSkipped(t *testing.T) {
 	}
 }
 
-func TestAutoAttachScansAtMostMaxProblemScan(t *testing.T) {
+func TestAutoAttachFindsProblemBeyondOldScanLimit(t *testing.T) {
 	fx := newFixture(t)
 	c := corr(correlation.KindSharedNode, "target", diagnose.ConfidenceHigh)
 	first := fx.add("t0", c)
 	fx.attach(first)
-	// MaxProblemScan более свежих проблем с другими ключами вытесняют искомую за предел просмотра.
-	for i := 0; i < MaxProblemScan; i++ {
+	// More than the former scan limit of newer, unrelated problems must not hide this exact key.
+	for i := 0; i < MaxProblemScan+1; i++ {
 		fx.clock.add(time.Second)
 		in := fx.add(fmt.Sprintf("o%d", i), corr(correlation.KindSharedNode, fmt.Sprintf("other%d", i), diagnose.ConfidenceHigh))
 		fx.attach(in)
@@ -377,8 +384,8 @@ func TestAutoAttachScansAtMostMaxProblemScan(t *testing.T) {
 	fx.clock.add(time.Second)
 	in := fx.add("t1", c)
 	fx.attach(in)
-	if in.ProblemID == first.ProblemID || in.ProblemID == "" {
-		t.Errorf("a problem beyond the scan limit was found: %q", in.ProblemID)
+	if in.ProblemID != first.ProblemID {
+		t.Errorf("problem beyond the old scan limit was not found: got %q, want %q", in.ProblemID, first.ProblemID)
 	}
 }
 
@@ -457,36 +464,69 @@ func TestAutoAttachConcurrentJoin(t *testing.T) {
 	}
 }
 
-// Известное ограничение (ADR-0033 §6): два одновременных открытия по одному ключу без существующей проблемы
-// создают две проблемы. Исправляется ручным объединением.
-func TestKnownLimitationDuplicateProblemOnRace(t *testing.T) {
+// barrierProblems aligns independent service instances immediately before the backend operation.
+type barrierProblems struct {
+	ProblemBackend
+	ready   chan struct{}
+	release chan struct{}
+}
+
+func (b *barrierProblems) FindOrCreateOpenProblem(ctx context.Context, candidate *Problem, oldest time.Time) (*Problem, error) {
+	b.ready <- struct{}{}
+	<-b.release
+	return b.ProblemBackend.FindOrCreateOpenProblem(ctx, candidate, oldest)
+}
+
+func TestAutoAttachConcurrentCreateAcrossServices(t *testing.T) {
 	fx := newFixture(t)
-	fx.svc.WithProblems(&failProblems{ProblemBackend: fx.fb, listWaiters: 2})
+	barrier := &barrierProblems{
+		ProblemBackend: fx.fb,
+		ready:          make(chan struct{}, 2),
+		release:        make(chan struct{}),
+	}
+	ids := func() string { return fmt.Sprintf("p%d", fx.ids.Add(1)) }
+	serviceA := NewService(fx.fb, identity(), WithClock(fx.clock.now), WithIDs(ids)).WithProblems(barrier)
+	serviceB := NewService(fx.fb, identity(), WithClock(fx.clock.now), WithIDs(ids)).WithProblems(barrier)
 	c := corr(correlation.KindSharedNode, "n1", diagnose.ConfidenceHigh)
 	a, b := fx.add("i1", c), fx.add("i2", c)
-	var wg sync.WaitGroup
-	for _, in := range []*Incident{a, b} {
-		wg.Add(1)
-		go func() { defer wg.Done(); fx.attach(in) }()
+	start := make(chan struct{})
+	errs := make(chan []string, 2)
+	for _, call := range []struct {
+		svc *Service
+		in  *Incident
+	}{{serviceA, a}, {serviceB, b}} {
+		go func(svc *Service, in *Incident) {
+			<-start
+			errs <- svc.autoAttach(context.Background(), in)
+		}(call.svc, call.in)
 	}
-	wg.Wait()
-	if a.ProblemID == "" || b.ProblemID == "" || a.ProblemID == b.ProblemID || len(fx.problems()) != 2 {
-		t.Fatalf("expected two problems from the race, got %q and %q (%d)", a.ProblemID, b.ProblemID, len(fx.problems()))
+	close(start)
+	<-barrier.ready
+	<-barrier.ready
+	close(barrier.release)
+	for range 2 {
+		if partial := <-errs; len(partial) != 0 {
+			t.Errorf("automatic attach returned partial failure: %v", partial)
+		}
 	}
-	fx.svc.WithProblems(fx.fb)
-	to, err := fx.svc.MergeProblems(context.Background(), fx.caller(), a.ProblemID, b.ProblemID)
+
+	ia, err := fx.fb.GetIncident(context.Background(), tScope, "i1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if fmt.Sprint(memberIDs(to)) != "[i2 i1]" || fx.incident("i1").ProblemID != b.ProblemID {
-		t.Errorf("merged = %v, i1 problem %q", memberIDs(to), fx.incident("i1").ProblemID)
+	ib, err := fx.fb.GetIncident(context.Background(), tScope, "i2")
+	if err != nil {
+		t.Fatal(err)
 	}
-	// При поиске выбирается последняя обновлённая: новое открытие идёт в объединённую.
-	fx.clock.add(time.Minute)
-	c3 := fx.add("i3", c)
-	fx.attach(c3)
-	if c3.ProblemID != b.ProblemID {
-		t.Errorf("new investigation went to %q, want %q", c3.ProblemID, b.ProblemID)
+	if ia.ProblemID == "" || ia.ProblemID != ib.ProblemID {
+		t.Fatalf("incident ProblemIDs = %q and %q", ia.ProblemID, ib.ProblemID)
+	}
+	page, err := fx.fb.ListProblems(context.Background(), tScope, ProblemQuery{Limit: MaxPageSize})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(page.Items) != 1 || !hasMember(&page.Items[0], "i1") || !hasMember(&page.Items[0], "i2") {
+		t.Fatalf("expected one shared open problem with both incidents, got %+v", page.Items)
 	}
 }
 
