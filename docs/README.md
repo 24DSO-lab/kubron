@@ -30,7 +30,9 @@
 | [adr/](adr/README.md) | Архитектурные решения (ADR-0001…0034): почему устроено так |
 | [intelligence-rule-improvement.md](intelligence-rule-improvement.md) | Как мантейнеры улучшают правила Intelligence по выгруженной статистике (ADR-0034 §9) |
 | [architecture-reviews/2026-11-26-intelligence-lifecycle-stabilization.md](architecture-reviews/2026-11-26-intelligence-lifecycle-stabilization.md) | Техническая фиксация исправлений LIFE-01 и INT-01 |
-| [architecture-reviews/2026-11-26-stage-closure.md](architecture-reviews/2026-11-26-stage-closure.md) | Итог этапа: стабилизация Intelligence и Lifecycle, закрытие замечаний и очистка устаревших промптов |\n| [architecture/execution-identity-durable-operations-design.md](architecture/execution-identity-durable-operations-design.md) | Проектирование Execution Identity, Operation/Run/Step, durable execution, Desktop/Web lifecycle, HA и recovery |
+| [architecture-reviews/2026-11-26-stage-closure.md](architecture-reviews/2026-11-26-stage-closure.md) | Итог этапа: стабилизация Intelligence и Lifecycle, закрытие замечаний и очистка устаревших промптов |
+| [architecture/execution-identity-durable-operations-design.md](architecture/execution-identity-durable-operations-design.md) | Проектирование Execution Identity, Operation/Run/Step, durable execution, Desktop/Web lifecycle, HA и recovery |
+| [architecture/2026-11-26-schedule-ownership-decision.md](architecture/2026-11-26-schedule-ownership-decision.md) | Принятое решение: расписания принадлежат Organization/Team, creator — только provenance; правила Desktop/Web и управления |
 | [e2e.md](e2e.md) | Smoke-e2e |
 | [authentication-lab.md](authentication-lab.md) | Ручной стенд входа в облачные кластеры (EKS, GKE, AKS) без создания кластеров |
 | [releasing.md](releasing.md) | Как выпускается релиз |
