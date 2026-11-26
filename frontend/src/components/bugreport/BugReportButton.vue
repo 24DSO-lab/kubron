@@ -25,10 +25,10 @@ const report = useBugReport()
 <style scoped>
 .bug-report { margin-right: 10px; }
 .bug-btn {
-  display: flex; align-items: center; gap: 6px; background: #1e1e2e; border: 1px solid #313244;
-  border-radius: 999px; padding: 5px 12px; color: #cdd6f4; cursor: pointer; font-size: 13px;
+  display: flex; align-items: center; gap: 6px; background: var(--bg); border: 1px solid var(--surface-0);
+  border-radius: 999px; padding: 5px 12px; color: var(--text); cursor: pointer; font-size: 13px;
 }
-.bug-btn:hover:not(:disabled) { border-color: #45475a; }
+.bug-btn:hover:not(:disabled) { border-color: var(--surface-1); }
 .bug-btn:disabled { opacity: 0.6; cursor: progress; }
 @media (max-width: 1100px) { .bug-label { display: none; } }
 </style>

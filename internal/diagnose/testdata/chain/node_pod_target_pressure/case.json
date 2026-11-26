@@ -1,0 +1,7 @@
+{
+  "target": {"kind": "Pod", "namespace": "app", "name": "api-0"},
+  "golden": true,
+  "expect": {
+    "hypotheses": ["node.pressure_disk:high"]
+  }
+}

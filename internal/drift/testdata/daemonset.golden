@@ -1,0 +1,24 @@
+# apps/v1 DaemonSet monitoring/node-exporter
+metadata.labels["app.kubernetes.io/name"] = "node-exporter"
+spec.selector.matchLabels["app.kubernetes.io/name"] = "node-exporter"
+spec.template.metadata.labels["app.kubernetes.io/name"] = "node-exporter"
+spec.template.spec.containers[name=node-exporter].args[0] = "--path.rootfs=/host"
+spec.template.spec.containers[name=node-exporter].args[1] = "--web.listen-address=:9100"
+spec.template.spec.containers[name=node-exporter].image = "quay.io/prometheus/node-exporter:v1.8.2"
+spec.template.spec.containers[name=node-exporter].name = "node-exporter"
+spec.template.spec.containers[name=node-exporter].ports[containerPort=9100].containerPort = 9100
+spec.template.spec.containers[name=node-exporter].ports[containerPort=9100].hostPort = 9100
+spec.template.spec.containers[name=node-exporter].ports[containerPort=9100].name = "metrics"
+spec.template.spec.containers[name=node-exporter].resources.limits.cpu = "200m"
+spec.template.spec.containers[name=node-exporter].resources.limits.memory = "100Mi"
+spec.template.spec.containers[name=node-exporter].volumeMounts[mountPath=/host].mountPath = "/host"
+spec.template.spec.containers[name=node-exporter].volumeMounts[mountPath=/host].name = "root"
+spec.template.spec.containers[name=node-exporter].volumeMounts[mountPath=/host].readOnly = true
+spec.template.spec.hostNetwork = true
+spec.template.spec.hostPID = true
+spec.template.spec.securityContext.runAsNonRoot = true
+spec.template.spec.securityContext.runAsUser = 65534
+spec.template.spec.tolerations[0].operator = "Exists"
+spec.template.spec.volumes[name=root].hostPath.path = "/"
+spec.template.spec.volumes[name=root].hostPath.type = ""
+spec.template.spec.volumes[name=root].name = "root"

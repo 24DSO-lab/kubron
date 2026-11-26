@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { defineResource } from '../types'
+import { investigateAction } from '../investigateAction'
 import { Perm } from '../../types/auth'
 import type { k8s } from '../../../wailsjs/go/models'
 import { callApp } from '../wails'
@@ -51,7 +52,7 @@ export const deployment = defineResource<k8s.DeploymentInfo>({
       key: 'pods',
       label: 'defs.columns.pods',
       formatter: d => `${d.readyReplicas}/${d.replicas}`,
-      colorFn: d => (d.readyReplicas === d.replicas ? '#4ade80' : '#facc15'),
+      colorFn: d => (d.readyReplicas === d.replicas ? 'var(--green)' : 'var(--yellow)'),
     },
     { key: 'updatedReplicas', label: 'defs.columns.replicas' },
     ageCol,
@@ -96,6 +97,7 @@ export const deployment = defineResource<k8s.DeploymentInfo>({
     },
     // Название "View logs", а не "Logs": список особо обрабатывает пункт с меткой "Logs" (подменю контейнеров pod)
     { id: 'logs', label: 'defs.menu.viewLogs', icon: 'logs', permission: Perm.Read, run: (d, ctx) => ctx.openResourceLogs('deployment', d.namespace, d.name) },
+    investigateAction('Deployment'),
   ],
 
   api: {

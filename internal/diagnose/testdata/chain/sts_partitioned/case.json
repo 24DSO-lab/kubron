@@ -1,0 +1,18 @@
+{
+  "target": {
+    "kind": "StatefulSet",
+    "namespace": "app",
+    "name": "db"
+  },
+  "expect": {
+    "symptoms": [
+      "workload.rollout"
+    ],
+    "hypotheses": [
+      "sts.update_partitioned:medium"
+    ],
+    "absent": [
+      "sts.stuck_ordered_start"
+    ]
+  }
+}

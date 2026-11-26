@@ -10,7 +10,7 @@ You need a way to reach the cluster:
 - network access from your computer to the cluster's API server (VPN, bastion rules and so on are up to you);
 - if the kubeconfig uses an `exec` credential plugin that Kubron does not handle itself, that command installed and on your `PATH`. Kubron signs in to Azure AKS, AWS EKS and Google GKE on its own; for any other plugin it shows the command and asks you to confirm before running it. See [Connecting to Kubernetes](/features/cluster-auth).
 
-Check that it works with any tool you have. If `kubectl get nodes` works, Kubron will too. Kubron itself does not need `kubectl`.
+Check the basics with any tool you have. If `kubectl` connects to the cluster with this kubeconfig, the network path and the credentials work. Which Kubron sections you can use then depends on Kubernetes RBAC (for example, you may be allowed to read some namespaces but not nodes) and on a supported sign-in method ([Connecting to Kubernetes](/features/cluster-auth)). Kubron itself does not need `kubectl`.
 
 ## Add the cluster
 

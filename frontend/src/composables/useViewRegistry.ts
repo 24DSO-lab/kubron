@@ -15,7 +15,9 @@ const lazy = (path: string) => defineAsyncComponent(() => import(`../components/
  *  - overview — дашборд кластера с графиками
  *  - argo-dashboard — сводка по Argo CD Application
  *  - flux-dashboard — сводка по объектам Flux CD
+ *  - readiness — готовность к обновлению Kubernetes
  *  - settings — форма настроек кластера
+ *  - baseline — baseline конфигурации и проверка дрейфа
  *  - teams — команды, участники и кластеры по командам (только сервисный режим)
  *  - users — управление пользователями и ролями (только для users.manage)
  *  - audit — журнал аудита (только для audit.read)
@@ -33,11 +35,15 @@ export const viewRegistry: Record<string, ViewConfig> = {
   'flux-dashboard': {
     component: lazy('FluxDashboardView'),
   },
+  // Готовность кластера к обновлению Kubernetes (ADR-0025)
+  readiness: { component: lazy('ReadinessView') },
   'helm-repos': { component: lazy('HelmReposView') },
 'helm-catalog': { component: lazy('HelmCatalogView') },
   'helm-ops': {
     component: lazy('HelmOperationsView'),
   },
+  // Baseline конфигурации и дрейф (ADR-0027); бэкенд проверяет права read и baseline.manage
+  baseline: { component: lazy('BaselineView') },
   settings: {
     component: lazy('ClusterSettings'),
   },
@@ -49,6 +55,8 @@ export const viewRegistry: Record<string, ViewConfig> = {
   teams: {
     component: lazy('TeamsView'),
   },
+  // Расследования Kubron Intelligence (ADR-0024): диагностика workload, факты, гипотезы, рекомендации
+  incidents: { component: lazy('IncidentsView') },
   // Журнал аудита; бэкенд всё равно требует право audit.read
   audit: {
     component: lazy('AuditView'),

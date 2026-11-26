@@ -12,6 +12,7 @@
   "groups": {
     "workloads": "Workloads",
     "config": "Config",
+    "auditCompliance": "Cluster Lifecycle",
     "network": "Network",
     "storage": "Storage",
     "helm": "Helm",
@@ -28,7 +29,10 @@
     "helmRepos": "Repositories",
     "helmCatalog": "Catalog",
     "helmOps": "Operations",
-    "fluxDashboard": "Dashboard"
+    "fluxDashboard": "Dashboard",
+    "readiness": "Upgrade readiness",
+    "baseline": "Configuration baseline"
   },
-  "teams": "Teams"
+  "teams": "Teams",
+  "incidents": "Incidents"
 }

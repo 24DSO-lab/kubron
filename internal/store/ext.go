@@ -5,10 +5,14 @@ package store
 
 import (
 	"errors"
+	"path/filepath"
 
 	"github.com/24DSO-lab/kubron/internal/audit"
 	"github.com/24DSO-lab/kubron/internal/auth"
+	"github.com/24DSO-lab/kubron/internal/baseline"
+	"github.com/24DSO-lab/kubron/internal/incident"
 	"github.com/24DSO-lab/kubron/internal/k8s"
+	"github.com/24DSO-lab/kubron/internal/readiness"
 	"github.com/24DSO-lab/kubron/pkg/ext"
 )
 
@@ -18,9 +22,29 @@ func FromExt(s ext.Store) Store { return extStore{s} }
 
 type extStore struct{ s ext.Store }
 
-func (e extStore) Users() auth.Backend        { return auth.FromExt(e.s.Users()) }
-func (e extStore) Audit() audit.Backend       { return e.s.Audit() }
+func (e extStore) Users() auth.Backend  { return auth.FromExt(e.s.Users()) }
+func (e extStore) Audit() audit.Backend { return e.s.Audit() }
+
+// Readiness: публичное хранилище (pkg/ext) отчётов не знает, они лежат в каталоге данных (файловая реализация).
+func (e extStore) Readiness() readiness.Backend {
+	return fileStore{dir: k8s.GetKubronDir()}.Readiness()
+}
+
+// Baselines: публичный интерфейс хранилища (pkg/ext) их не знает, поэтому baseline лежат в каталоге данных,
+// как и прочие локальные настройки внешнего хранилища.
+func (e extStore) Baselines() baseline.Backend {
+	return baseline.NewFileBackend(filepath.Join(k8s.GetKubronDir(), "baselines"))
+}
 func (e extStore) ArgoTokens() k8s.TokenStore { return e.s.ArgoTokens() }
+
+// Incidents использует хранилище расследований внешнего хранилища, если оно его предоставляет (необязательная
+// возможность, как WebOIDC); иначе история лежит в файлах каталога данных приложения.
+func (e extStore) Incidents() incident.Backend {
+	if c, ok := e.s.(interface{ Incidents() incident.Backend }); ok {
+		return c.Incidents()
+	}
+	return incident.NewFileBackend(filepath.Join(k8s.GetKubronDir(), "incidents"))
+}
 
 // webOIDCSettingsStore is an optional extension for public stores that persist application-wide web settings.
 // It uses plain types only, so that a store of another module can implement it.

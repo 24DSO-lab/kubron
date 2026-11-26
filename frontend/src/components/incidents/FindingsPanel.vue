@@ -1,0 +1,223 @@
+<!-- Copyright 2026 The Kubron Authors -->
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<template>
+  <div class="findings" data-testid="findings">
+    <section v-if="report.symptoms.length" class="block">
+      <h3>{{ $t('incidents.sections.symptoms') }}</h3>
+      <div class="chips">
+        <span v-for="s in report.symptoms" :key="s" class="chip" data-testid="symptom" :data-code="s">{{ codeText('symptoms', s) }}</span>
+      </div>
+    </section>
+
+    <p v-if="report.partial?.length" class="note warn" data-testid="partial">
+      {{ $t('incidents.partial', { sources: report.partial.join(', ') }) }}
+    </p>
+
+    <ChainView v-if="report.chains?.length" :chains="report.chains" :hypotheses="report.hypotheses" />
+
+    <section class="block">
+      <h3>{{ $t('incidents.sections.facts') }}</h3>
+      <ul class="items">
+        <li v-for="f in report.facts" :key="f.id" class="item item-fact" data-testid="fact" data-kind="fact" :data-code="f.code">
+          <span class="tag tag-fact">{{ $t('incidents.kindLabels.fact') }}</span>
+          <span class="text">{{ codeText('facts', f.code, f.params) }}</span>
+          <MetricFacts v-if="isMetricFact(f)" :facts="[f]" />
+          <div class="meta">
+            {{ $t('incidents.source.label', { source: sourceText(f) }) }} · {{ $t('incidents.observedAt', { time: when(f.observedAt) }) }}
+          </div>
+          <div v-if="f.log" class="evidence-state" data-testid="fact-evidence">
+            <template v-if="evidenceFor(incident, f)?.status === 'saved'">
+              <span class="ev-ok" data-testid="evidence-saved">{{ $t('incidents.evidence.saved') }}</span>
+            </template>
+            <template v-else>
+              <span class="ev-no" data-testid="evidence-not-saved">
+                {{ $t('incidents.evidence.notSaved', { reason: reasonText(evidenceFor(incident, f)?.reason ?? 'log_unavailable') }) }}
+              </span>
+            </template>
+          </div>
+        </li>
+      </ul>
+    </section>
+
+    <section v-if="report.hypotheses.length" class="block">
+      <h3>{{ $t('incidents.sections.hypotheses') }}</h3>
+      <p class="note" data-testid="hypothesis-note">{{ $t('incidents.hypothesisNote') }}</p>
+      <ul class="items">
+        <li v-for="{ h, role } in orderedHypotheses" :key="h.id" class="item item-hyp" data-testid="hypothesis" data-kind="hypothesis"
+          :data-code="h.code" :data-confidence="confidenceLevel(h.confidence)" :data-role="role"
+          :class="{ confirmed: incident.outcome?.confirmedHypothesisId === h.id, explained: role === 'explained', candidate: role === 'candidate' }">
+          <span class="tag tag-hyp">{{ $t('incidents.kindLabels.hypothesis') }}</span>
+          <span class="text">{{ codeText('hypotheses', h.code, h.params) }}</span>
+          <span v-if="role === 'candidate'" class="tag tag-cand" data-testid="hypothesis-candidate">{{ $t('incidentsIntel.chain.candidate') }}</span>
+          <span v-else-if="role === 'explained'" class="explained-by" data-testid="hypothesis-explained">{{ $t('incidentsIntel.chain.explainedByCandidate') }}</span>
+          <span v-if="incident.outcome?.rejectedHypothesisIds?.includes(h.id)" class="outcome-mark" data-testid="hypothesis-rejected">
+            {{ $t('incidentsIntel.outcome.markRejected') }}
+          </span>
+          <span v-for="(n, ni) in hypothesisNotes(hypothesisStatFor(stats, h))" :key="ni" class="stat-note" data-testid="hypothesis-stat">{{ n }}</span>
+          <span class="conf" :class="`conf-${confidenceLevel(h.confidence)}`" data-testid="confidence">
+            {{ $t('incidents.confidence.label', { level: $t(`incidents.confidence.${confidenceLevel(h.confidence)}`) }) }}
+          </span>
+          <span v-if="incident.outcome?.confirmedHypothesisId === h.id" class="confirmed-by" data-testid="hypothesis-confirmed">
+            {{ $t('incidents.outcome.confirmedBy', { hypothesis: codeText('hypotheses', h.code, h.params) }) }}
+          </span>
+          <div class="refs" data-testid="supporting">
+            <strong>{{ $t('incidents.supporting') }}:</strong>
+            <template v-if="support(h).length">
+              <span v-for="f in support(h)" :key="f.id" class="ref">{{ codeText('facts', f.code, f.params) }}</span>
+            </template>
+            <span v-else class="muted">{{ $t('incidents.none') }}</span>
+          </div>
+          <div class="refs" data-testid="contradicting">
+            <strong>{{ $t('incidents.contradicting') }}:</strong>
+            <template v-if="contra(h).length">
+              <span v-for="f in contra(h)" :key="f.id" class="ref">{{ codeText('facts', f.code, f.params) }}</span>
+            </template>
+            <span v-else class="muted">{{ $t('incidents.none') }}</span>
+          </div>
+        </li>
+      </ul>
+    </section>
+
+    <section v-if="report.recommendations.length" class="block">
+      <h3>{{ $t('incidents.sections.recommendations') }}</h3>
+      <ul class="items">
+        <li v-for="r in report.recommendations" :key="r.id" class="item item-rec" data-testid="recommendation" data-kind="recommendation"
+          :class="{ helpful: incident.outcome?.helpfulRecommendationIds?.includes(r.id), useless: incident.outcome?.uselessRecommendationIds?.includes(r.id) }">
+          <span class="tag tag-rec">{{ $t('incidents.kindLabels.recommendation') }}</span>
+          <span class="text">{{ codeText('recommendations', r.code, r.params) }}</span>
+          <span v-if="incident.outcome?.helpfulRecommendationIds?.includes(r.id)" class="outcome-mark ok" data-testid="recommendation-helpful">
+            {{ $t('incidentsIntel.outcome.markHelpful') }}
+          </span>
+          <span v-else-if="incident.outcome?.uselessRecommendationIds?.includes(r.id)" class="outcome-mark" data-testid="recommendation-useless">
+            {{ $t('incidentsIntel.outcome.markUseless') }}
+          </span>
+          <span v-if="recNote(r)" class="stat-note" :class="{ warn: recNote(r)!.warn }" data-testid="recommendation-stat">{{ recNote(r)!.text }}</span>
+        </li>
+      </ul>
+    </section>
+
+    <section v-if="report.steps.length" class="block">
+      <h3>{{ $t('incidents.sections.steps') }}</h3>
+      <ul class="items">
+        <li v-for="s in report.steps" :key="s.id" class="item item-step" data-testid="step" data-kind="step" :data-code="s.code">
+          <span class="tag tag-step">{{ $t('incidents.kindLabels.step') }}</span>
+          <span class="text">{{ codeText('steps', s.code, s.params) }}</span>
+        </li>
+      </ul>
+    </section>
+
+    <section v-if="report.missing.length" class="block" data-testid="missing-context">
+      <h3>{{ $t('incidents.sections.missing') }}</h3>
+      <ul class="items">
+        <li v-for="(m, i) in report.missing" :key="i" class="item item-missing" data-testid="missing" :data-code="m.code">
+          {{ codeText('missing', m.code, m.params) }}
+        </li>
+      </ul>
+    </section>
+
+    <MonitoringHint :missing="report.missing" />
+  </div>
+</template>
+
+<script lang="ts" setup>
+import { computed } from 'vue'
+import ChainView from './ChainView.vue'
+import MetricFacts from './MetricFacts.vue'
+import MonitoringHint from './MonitoringHint.vue'
+import { useI18n } from 'vue-i18n'
+import { te } from '../../i18n'
+import { isMetricFact } from '../../composables/metricFormat'
+import { codeText, confidenceLevel, evidenceFor, factsByIds, reasonText } from '../../composables/incidentModel'
+import { hypothesisNotes, hypothesisStatFor, rankWithinConfidence, recommendationNote, recommendationStatFor } from '../../composables/ruleStatsView'
+import type { Fact, Hypothesis, Incident, Recommendation, RuleStats } from '../../types/incident'
+
+const props = defineProps<{ incident: Incident; stats?: RuleStats | null }>()
+const { t } = useI18n()
+const report = computed(() => props.incident.report)
+
+/**
+ * Гипотезы без потери данных: кандидат первопричины (объясняет другие и сам не объясняется) идёт первым,
+ * за ним — объяснённые им гипотезы; остальные — в исходном порядке. Показываются все гипотезы.
+ */
+type Role = 'candidate' | 'explained' | 'plain'
+const orderedHypotheses = computed<{ h: Hypothesis; role: Role }[]>(() => {
+  const all = report.value.hypotheses
+  const byId = new Map(all.map((h) => [h.id, h]))
+  const explainedIds = new Set(all.flatMap((h) => (h.explains ?? []).filter((id) => byId.has(id) && id !== h.id)))
+  const isCandidate = (h: Hypothesis) => (h.explains ?? []).some((id) => byId.has(id) && id !== h.id) && !explainedIds.has(h.id)
+  const placed = new Set<string>()
+  const out: { h: Hypothesis; role: Role }[] = []
+  for (const h of all) {
+    if (placed.has(h.id) || !isCandidate(h)) continue
+    placed.add(h.id)
+    out.push({ h, role: 'candidate' })
+    for (const id of h.explains ?? []) {
+      const e = byId.get(id)
+      if (e && !placed.has(id)) { placed.add(id); out.push({ h: e, role: 'explained' }) }
+    }
+  }
+  const plain: { h: Hypothesis; role: Role }[] = []
+  for (const h of all) if (!placed.has(h.id)) plain.push({ h, role: 'plain' })
+  // Статистика кластера переставляет гипотезы только внутри одного уровня уверенности (ADR-0034 §7).
+  return [...out, ...rankWithinConfidence(plain, props.stats)]
+})
+
+/** Пометка рекомендации по статистике; рекомендации не скрываются никогда. */
+const recNote = (r: Recommendation) => recommendationNote(recommendationStatFor(props.stats, r))
+
+const support = (h: Hypothesis) => factsByIds(report.value.facts, h.supporting)
+const contra = (h: Hypothesis) => factsByIds(report.value.facts, h.contradicting)
+
+function when(iso: string): string {
+  const d = new Date(iso)
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleString()
+}
+
+function sourceText(f: Fact): string {
+  const kindKey = `incidents.source.kinds.${f.source.kind}`
+  const kind = te(kindKey) ? t(kindKey) : t(f.source.kind === 'metric' ? 'incidentsIntel.sourceKinds.metric' : 'incidentsIntel.sourceKinds.other')
+  const where = f.source.field ? `${f.source.resource.kind}/${f.source.resource.name} ${f.source.field}` : `${f.source.resource.kind}/${f.source.resource.name}`
+  return `${kind}: ${where}`
+}
+</script>
+
+<style scoped>
+.findings { display: flex; flex-direction: column; gap: 18px; }
+.block h3 { margin: 0 0 8px; font-size: 15px; color: #cdd6f4; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { padding: 3px 10px; border-radius: 999px; background: #313244; color: #cdd6f4; font-size: 12px; }
+.items { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.item { padding: 10px 12px; border-radius: 8px; border-left: 3px solid #45475a; background: #1e1e2e; font-size: 13px; }
+.item-fact { border-left-color: #89b4fa; }
+.item-hyp { border-left-style: dashed; border-left-color: #f9e2af; background: rgba(249, 226, 175, 0.05); }
+.item-hyp.confirmed { border-left-style: solid; border-left-color: #a6e3a1; }
+.item-rec { border-left-color: #a6e3a1; }
+.item-step { border-left-color: #94e2d5; }
+.item-missing { border-left-color: #fab387; color: #fab387; }
+.tag { display: inline-block; margin-right: 8px; padding: 1px 7px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+.tag-fact { background: rgba(137, 180, 250, 0.18); color: #89b4fa; }
+.tag-cand { margin: 0 0 0 8px; background: rgba(249, 226, 175, 0.18); color: #f9e2af; }
+.item-hyp.explained { margin-left: 18px; }
+.stat-note { display: inline-block; margin-left: 8px; color: #a6adc8; font-size: 12px; }
+.stat-note.warn { color: #fab387; }
+.outcome-mark { margin-left: 8px; font-size: 12px; color: #fab387; }
+.outcome-mark.ok { color: #a6e3a1; }
+.explained-by { margin-left: 8px; color: #a6adc8; font-size: 12px; }
+.tag-hyp { background: rgba(249, 226, 175, 0.18); color: #f9e2af; }
+.tag-rec { background: rgba(166, 227, 161, 0.18); color: #a6e3a1; }
+.tag-step { background: rgba(148, 226, 213, 0.18); color: #94e2d5; }
+.text { color: #cdd6f4; }
+.meta, .refs { margin-top: 4px; color: #a6adc8; font-size: 12px; }
+.refs .ref { display: inline-block; margin: 0 6px 2px 0; padding: 0 6px; border-radius: 4px; background: #313244; }
+.conf { margin-left: 8px; font-size: 12px; }
+.conf-low { color: #a6adc8; } .conf-medium { color: #f9e2af; } .conf-high { color: #fab387; }
+.confirmed-by { display: block; margin-top: 4px; color: #a6e3a1; font-size: 12px; }
+.rec-mark { margin-left: 8px; font-size: 12px; color: #a6adc8; }
+.item-rec.helpful .rec-mark { color: #a6e3a1; }
+.item-rec.useless .rec-mark { color: #f38ba8; }
+.note { margin: 0 0 8px; color: #a6adc8; font-size: 12px; }
+.note.warn { color: #f9e2af; }
+.muted { color: #6c7086; }
+.evidence-state { margin-top: 4px; font-size: 12px; }
+.ev-ok { color: #a6e3a1; } .ev-no { color: #fab387; }
+</style>

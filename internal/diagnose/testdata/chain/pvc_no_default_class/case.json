@@ -1,0 +1,8 @@
+{
+  "target": {"kind": "Pod", "namespace": "app", "name": "db-0"},
+  "expect": {
+    "symptoms": ["pod.pending", "storage.claim_pending"],
+    "hypotheses": ["pending.unbound_pvc:low", "storage.no_default_class:medium"],
+    "explains": [["storage.no_default_class", "pending.unbound_pvc"]]
+  }
+}

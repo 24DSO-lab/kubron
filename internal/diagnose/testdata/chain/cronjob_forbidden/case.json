@@ -1,0 +1,20 @@
+{
+  "target": {
+    "kind": "CronJob",
+    "namespace": "app",
+    "name": "nightly"
+  },
+  "forbid": [
+    "batch/v1/Job"
+  ],
+  "golden": true,
+  "expect": {
+    "missing": [
+      "source.unavailable"
+    ],
+    "absent": [
+      "job.backoff_limit_exceeded",
+      "cronjob.missed_schedule"
+    ]
+  }
+}

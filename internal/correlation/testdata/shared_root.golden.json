@@ -1,0 +1,89 @@
+{
+  "version": 2,
+  "observedAt": "2026-11-17T12:00:00Z",
+  "candidates": [
+    {
+      "id": "cc-633786263a80",
+      "kind": "shared_root",
+      "source": {
+        "group": "apps",
+        "kind": "Deployment",
+        "namespace": "prod",
+        "name": "api"
+      },
+      "confidence": "medium",
+      "since": "2026-11-17T11:40:00Z",
+      "affected": [
+        {
+          "kind": "Deployment",
+          "namespace": "prod",
+          "name": "api",
+          "problemPods": 1,
+          "symptoms": [
+            "pod.crash_loop",
+            "pod.not_ready"
+          ],
+          "since": "2026-11-17T11:40:00Z"
+        },
+        {
+          "kind": "Service",
+          "namespace": "prod",
+          "name": "api",
+          "problemPods": 0
+        }
+      ],
+      "total": 2,
+      "supporting": [
+        "cf1",
+        "cf2"
+      ]
+    }
+  ],
+  "facts": [
+    {
+      "kind": "fact",
+      "id": "cf1",
+      "code": "correlation.shared_root.candidate",
+      "resource": {
+        "group": "apps",
+        "kind": "Deployment",
+        "namespace": "prod",
+        "name": "api"
+      },
+      "source": {
+        "kind": "derived",
+        "resource": {
+          "group": "apps",
+          "kind": "Deployment",
+          "namespace": "prod",
+          "name": "api"
+        }
+      },
+      "observedAt": "2026-11-17T12:00:00Z"
+    },
+    {
+      "kind": "fact",
+      "id": "cf2",
+      "code": "correlation.shared_root.layers",
+      "resource": {
+        "group": "apps",
+        "kind": "Deployment",
+        "namespace": "prod",
+        "name": "api"
+      },
+      "params": {
+        "layers": "2"
+      },
+      "source": {
+        "kind": "derived",
+        "resource": {
+          "group": "apps",
+          "kind": "Deployment",
+          "namespace": "prod",
+          "name": "api"
+        }
+      },
+      "observedAt": "2026-11-17T12:00:00Z"
+    }
+  ]
+}

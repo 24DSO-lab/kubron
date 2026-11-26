@@ -47,5 +47,5 @@ function formatSize(gib: number): string {
 </script>
 
 <style scoped>
-.pvc-metrics { background: #1a1b2e; border: 1px solid #2a2b40; border-radius: 6px; padding: 12px; }
+.pvc-metrics { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 12px; }
 </style>

@@ -1,0 +1,15 @@
+# Планировщик назвал причину, которую правила не знают: гипотез нет, отчёт просит больше контекста.
+kind: Expect
+target: {kind: Pod, namespace: shop, name: web-1}
+symptoms: [pod.pending]
+missing: [pending.reason_unrecognized]
+absent: [pending.insufficient_resources, pending.node_selector_mismatch, pending.untolerated_taint, pending.unbound_pvc, pending.no_nodes]
+---
+apiVersion: v1
+kind: Pod
+metadata: {name: web-1, namespace: shop}
+spec: {containers: [{name: app, image: "app:1"}]}
+status:
+  phase: Pending
+  conditions:
+    - {type: PodScheduled, status: "False", reason: Unschedulable, message: "0/3 nodes are available: 3 node(s) failed a custom scheduler plugin."}

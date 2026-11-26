@@ -1,0 +1,5 @@
+secret blob ⟦q3Vw7ZkT9xLm2RnB8sYc4HdJ6fGa1Pe5UoXi0WtNzKvA⟧ read
+%%%
+key ⟦Xk2P9vLq0RtYb7Nw3HsMc5JdUe8FaGo1ZiTn4VuOy6BxA9Cz2QlWr7Ep⟧ loaded
+%%%
+cert-data ⟦Qm9u7Lx2Vt4Zp8Hk1Rd6Sc3Wn5Fy0Ge9AaTj2UiOb4MxEv7Ph1Kl⟧== end

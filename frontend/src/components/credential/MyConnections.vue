@@ -99,12 +99,12 @@ onMounted(load)
 
 <style scoped>
 .mc-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-.mc-table th, .mc-table td { padding: 6px 8px; text-align: left; border-bottom: 1px solid #313244; }
-.mc-principal { color: #a6adc8; }
-.mc-error { color: #f38ba8; }
-.mc-empty { color: #a6adc8; }
-.mc-btn { padding: 4px 10px; color: #cdd6f4; background: #313244; border: 1px solid #45475a; border-radius: 6px; cursor: pointer; }
-.mc-btn:focus-visible { outline: 2px solid #89b4fa; outline-offset: 2px; }
+.mc-table th, .mc-table td { padding: 6px 8px; text-align: left; border-bottom: 1px solid var(--surface-0); }
+.mc-principal { color: var(--text-muted); }
+.mc-error { color: var(--danger); }
+.mc-empty { color: var(--text-muted); }
+.mc-btn { padding: 4px 10px; color: var(--text); background: var(--surface-0); border: 1px solid var(--surface-1); border-radius: 6px; cursor: pointer; }
+.mc-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .mc-btn:disabled { opacity: 0.5; }
 .mc-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 </style>

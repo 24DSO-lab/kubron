@@ -1,0 +1,14 @@
+{
+  "target": {
+    "kind": "Job",
+    "namespace": "app",
+    "name": "report"
+  },
+  "golden": true,
+  "expect": {
+    "absent": [
+      "job.backoff_limit_exceeded",
+      "job.deadline_exceeded"
+    ]
+  }
+}

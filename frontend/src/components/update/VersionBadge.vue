@@ -26,10 +26,10 @@ const title = computed(() =>
 <style scoped>
 .version-badge {
   display: inline-flex; align-items: center; gap: 6px; margin-right: 12px;
-  background: transparent; border: 1px solid #313244; border-radius: 999px;
-  padding: 3px 10px; color: #a6adc8; font-size: 12px; cursor: pointer;
+  background: transparent; border: 1px solid var(--surface-0); border-radius: 999px;
+  padding: 3px 10px; color: var(--text-muted); font-size: 12px; cursor: pointer;
 }
-.version-badge:hover { border-color: #45475a; color: #cdd6f4; }
-.version-badge.has-update { border-color: #a6e3a1; color: #a6e3a1; }
-.version-dot { width: 7px; height: 7px; border-radius: 50%; background: #a6e3a1; }
+.version-badge:hover { border-color: var(--surface-1); color: var(--text); }
+.version-badge.has-update { border-color: var(--ok); color: var(--ok); }
+.version-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); }
 </style>

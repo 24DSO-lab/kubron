@@ -1,0 +1,9 @@
+{
+  "target": {"kind": "Pod", "namespace": "app", "name": "api-0"},
+  "limits": {"maxNodes": 1, "maxEdges": 600, "maxDepth": 4, "maxReads": 40},
+  "golden": true,
+  "expect": {
+    "partial": ["Graph"],
+    "absent": ["node.not_ready"]
+  }
+}

@@ -190,6 +190,7 @@
     "suspend": "暂停",
     "resume": "恢复",
     "restart": "重启",
+    "investigate": "调查",
     "viewLogs": "查看日志",
     "scale": "扩缩",
     "setDefault": "设为默认",

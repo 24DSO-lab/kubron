@@ -12,8 +12,10 @@ import (
 	"github.com/24DSO-lab/kubron/internal/auth"
 	"github.com/24DSO-lab/kubron/internal/clusterhealth"
 	"github.com/24DSO-lab/kubron/internal/credential"
+	"github.com/24DSO-lab/kubron/internal/incident"
 	"github.com/24DSO-lab/kubron/internal/k8s"
 	"github.com/24DSO-lab/kubron/internal/pfproxy"
+	"github.com/24DSO-lab/kubron/internal/readiness"
 	"github.com/24DSO-lab/kubron/internal/replicaevents"
 	"github.com/24DSO-lab/kubron/internal/signin"
 	"github.com/24DSO-lab/kubron/internal/store"
@@ -33,6 +35,9 @@ type App struct {
 	// updates — проверка новых версий (ADR-0028). Один на процесс: виды веб-сессий копируют указатель с корневого
 	// экземпляра. nil — оболочка проверку не подключала (тесты).
 	updates *update.Checker
+	// incidents — сервис расследований Kubron Intelligence (ADR-0024); один на процесс, виды веб-сессий копируют
+	// указатель. nil — оболочка сервис не подключала (тесты): методы Incident* отвечают ошибкой.
+	incidents *incident.Service
 	// sessionID — веб-сессия владельца вида (пусто у корневого экземпляра и в десктопе).
 	sessionID string
 	// Port-forward в вебе (ADR-0017): режим и прокси; задаются до создания видов (SetPortForwardMode/Proxy).
@@ -51,6 +56,9 @@ type App struct {
 	broker credential.Broker
 	// gkeOAuth — хранилище настройки OAuth-клиента Google (только десктоп); gkeOAuthActive — клиент, с которым
 	// собран запущенный broker.
+	// readiness — Upgrade Readiness (ADR-0025); readinessErr — почему сервис не создан. Виды веб-сессий делят сервис.
+	readiness      *readiness.Service
+	readinessErr   error
 	gkeOAuth       *GKEOAuthStore
 	gkeOAuthActive string
 	conn           *signin.State
@@ -114,6 +122,7 @@ func (a *App) startup(ctx context.Context) {
 	if a.auth != nil {
 		go a.auth.RunIdleWatcher(ctx, 10*time.Second)
 	}
+	a.initReadiness(a.store)
 	go a.runBugReportRetry(ctx) // reports that could not be delivered wait in the outbox (desktop only)
 }
 

@@ -1,0 +1,23 @@
+kind: Expect
+target: {kind: Pod, namespace: shop, name: web-1}
+symptoms: [pod.pending]
+hypotheses: ["pending.untolerated_taint:high"]
+absent: [pending.insufficient_resources]
+---
+apiVersion: v1
+kind: Pod
+metadata: {name: web-1, namespace: shop}
+spec: {containers: [{name: app, image: "app:1"}]}
+status:
+  phase: Pending
+  conditions:
+    - {type: PodScheduled, status: "False", reason: Unschedulable, message: "0/2 nodes are available: 2 node(s) had untolerated taint {dedicated: gpu}."}
+---
+apiVersion: v1
+kind: Event
+metadata: {name: e1, namespace: shop}
+involvedObject: {kind: Pod, name: web-1, namespace: shop}
+type: Warning
+reason: FailedScheduling
+message: "0/2 nodes are available: 2 node(s) had untolerated taint {dedicated: gpu}."
+lastTimestamp: "2026-11-11T09:59:00Z"

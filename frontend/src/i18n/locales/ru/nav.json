@@ -12,6 +12,7 @@
   "groups": {
     "workloads": "Workloads",
     "config": "Config",
+    "auditCompliance": "Жизненный цикл кластера",
     "network": "Network",
     "storage": "Storage",
     "helm": "Helm",
@@ -28,7 +29,10 @@
     "helmRepos": "Репозитории",
     "helmCatalog": "Каталог",
     "helmOps": "Операции",
-    "fluxDashboard": "Dashboard"
+    "fluxDashboard": "Dashboard",
+    "readiness": "Готовность к обновлению",
+    "baseline": "Baseline конфигурации"
   },
-  "teams": "Команды"
+  "teams": "Команды",
+  "incidents": "Инциденты"
 }

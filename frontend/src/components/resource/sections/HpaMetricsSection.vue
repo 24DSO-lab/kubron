@@ -30,5 +30,5 @@ const metrics = computed<any[]>(() => (Array.isArray(props.resource?.metrics) ? 
 </script>
 
 <style scoped>
-.hm-title { font-weight: 700; color: #fff; padding: 12px 0 8px; text-align: left; }
+.hm-title { font-weight: 700; color: var(--text-strong); padding: 12px 0 8px; text-align: left; }
 </style>

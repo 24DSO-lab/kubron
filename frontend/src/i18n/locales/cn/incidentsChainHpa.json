@@ -1,0 +1,36 @@
+{
+  "symptoms": {
+    "hpa_not_scaling": "自动扩缩器（HPA）无法调整副本数。",
+    "hpa_at_max_replicas": "自动扩缩器（HPA）已达到副本数上限。",
+    "hpa_target_unhealthy": "自动扩缩器（HPA）所扩缩的工作负载不健康。"
+  },
+  "facts": {
+    "hpa_target_ref": "自动扩缩器 {hpa} 扩缩 {kind} {target}。",
+    "hpa_target_not_found": "自动扩缩器 {hpa} 的扩缩目标 {kind} {target} 不存在。",
+    "hpa_metrics_condition": "自动扩缩器 {hpa} 报告无法读取其指标（来源：{metric}）。",
+    "hpa_scaling_limited": "自动扩缩器 {hpa} 运行 {current} 个副本，已等于其上限 {max}。",
+    "hpa_target_degraded": "自动扩缩器 {hpa} 所扩缩的 {kind} {target} 不健康：部分副本不可用或出错。"
+  },
+  "hypotheses": {
+    "hpa_target_missing": "自动扩缩器 {hpa} 的扩缩目标 {kind} {target} 不存在，因此无物可扩缩。",
+    "hpa_metrics_unavailable": "自动扩缩器 {hpa} 无法读取所需指标，因此不会改变副本数。",
+    "hpa_max_replicas_reached": "自动扩缩器 {hpa} 已达到 {max} 个副本的上限，无法继续增加。",
+    "hpa_target_unhealthy": "自动扩缩器 {hpa} 所扩缩的工作负载 {kind} {target} 不健康；这可能是扩缩无效或缺少指标的原因。"
+  },
+  "recommendations": {
+    "hpa_fix_scale_target": "创建 {kind} {target}，或让自动扩缩器 {hpa} 指向已存在的工作负载。",
+    "hpa_check_metrics_source": "检查为自动扩缩器 {hpa} 提供指标的来源：CPU 和内存使用 metrics-server，自定义和外部指标使用指标适配器。",
+    "hpa_raise_max_replicas": "提高自动扩缩器 {hpa} 的副本上限（当前 {max}），或降低负载或单个请求的开销。"
+  },
+  "steps": {
+    "hpa_check_metrics_api": "检查指标 API 是否响应，并能返回 {kind} {target} 的 Pod 指标；对于按利用率扩缩的目标，容器必须声明资源请求。",
+    "hpa_investigate_target": "对 {kind} {target} 发起调查，找出其副本不健康的原因。"
+  },
+  "missing": {
+    "hpa_target_unsupported": "自动扩缩器 {hpa} 扩缩 {kind} {target}，Kubron 不读取该类型，因此目标状态未知。"
+  },
+  "graphReasons": {
+    "scaling_inactive": "自动扩缩未工作",
+    "scaling_disabled": "自动扩缩已关闭（副本数为零）"
+  }
+}

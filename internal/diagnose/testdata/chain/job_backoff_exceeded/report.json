@@ -1,0 +1,185 @@
+{
+  "ruleSetVersion": 3,
+  "target": {
+    "group": "batch",
+    "kind": "Job",
+    "namespace": "app",
+    "name": "report",
+    "uid": "j1"
+  },
+  "observedAt": "2026-11-11T10:00:00Z",
+  "symptoms": [
+    "job.failed"
+  ],
+  "resources": [
+    {
+      "group": "batch",
+      "kind": "Job",
+      "namespace": "app",
+      "name": "report",
+      "uid": "j1"
+    }
+  ],
+  "facts": [
+    {
+      "kind": "fact",
+      "id": "f1",
+      "code": "job.backoff_limit_exceeded",
+      "resource": {
+        "group": "batch",
+        "kind": "Job",
+        "namespace": "app",
+        "name": "report",
+        "uid": "j1"
+      },
+      "params": {
+        "failed": "3",
+        "job": "report",
+        "limit": "2"
+      },
+      "source": {
+        "kind": "resource",
+        "resource": {
+          "group": "batch",
+          "kind": "Job",
+          "namespace": "app",
+          "name": "report",
+          "uid": "j1"
+        },
+        "field": "status.conditions[Failed]"
+      },
+      "observedAt": "2026-11-11T10:00:00Z"
+    }
+  ],
+  "hypotheses": [
+    {
+      "kind": "hypothesis",
+      "id": "h1",
+      "code": "job.backoff_limit_exceeded",
+      "resource": {
+        "group": "batch",
+        "kind": "Job",
+        "namespace": "app",
+        "name": "report",
+        "uid": "j1"
+      },
+      "params": {
+        "failed": "3",
+        "job": "report",
+        "limit": "2"
+      },
+      "confidence": "high",
+      "supporting": [
+        "f1"
+      ],
+      "contradicting": [],
+      "ruleId": "chain.job",
+      "ruleEpoch": 1
+    }
+  ],
+  "recommendations": [
+    {
+      "kind": "recommendation",
+      "id": "r1",
+      "code": "rec.fix_job_pod_failures",
+      "resource": {
+        "group": "batch",
+        "kind": "Job",
+        "namespace": "app",
+        "name": "report",
+        "uid": "j1"
+      },
+      "params": {
+        "job": "report"
+      },
+      "hypotheses": [
+        "h1"
+      ],
+      "ruleId": "chain.job",
+      "ruleEpoch": 1
+    },
+    {
+      "kind": "recommendation",
+      "id": "r2",
+      "code": "rec.raise_job_backoff_limit",
+      "resource": {
+        "group": "batch",
+        "kind": "Job",
+        "namespace": "app",
+        "name": "report",
+        "uid": "j1"
+      },
+      "params": {
+        "failed": "3",
+        "job": "report",
+        "limit": "2"
+      },
+      "hypotheses": [
+        "h1"
+      ],
+      "ruleId": "chain.job",
+      "ruleEpoch": 1
+    }
+  ],
+  "steps": [
+    {
+      "kind": "step",
+      "id": "s1",
+      "code": "step.check_job_pods",
+      "resource": {
+        "group": "batch",
+        "kind": "Job",
+        "namespace": "app",
+        "name": "report",
+        "uid": "j1"
+      },
+      "params": {
+        "job": "report"
+      },
+      "hypotheses": [
+        "h1"
+      ]
+    }
+  ],
+  "missing": [],
+  "graph": {
+    "nodes": [
+      {
+        "group": "batch",
+        "kind": "Job",
+        "namespace": "app",
+        "name": "report",
+        "health": "Degraded",
+        "reason": "job_failed"
+      },
+      {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "report-a",
+        "health": "Degraded",
+        "reason": "failed"
+      },
+      {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "report-b",
+        "health": "Degraded",
+        "reason": "failed"
+      }
+    ],
+    "edges": [
+      {
+        "from": "batch/Job/app/report",
+        "to": "core/Pod/app/report-a",
+        "type": "owns",
+        "state": "ok"
+      },
+      {
+        "from": "batch/Job/app/report",
+        "to": "core/Pod/app/report-b",
+        "type": "owns",
+        "state": "ok"
+      }
+    ]
+  }
+}

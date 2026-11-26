@@ -4,9 +4,15 @@
 package k8s
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"path/filepath"
 )
+
+// ErrClusterUnknown — в хранилище нет записи о кластере. Вызывающий отличает её от сбоя чтения и отвечает как на
+// несуществующий кластер, а не как на недоступный.
+var ErrClusterUnknown = errors.New("cluster metadata not found")
 
 // ClusterAuthSource is what the sign-in broker needs to work out how a stored cluster signs in: the stored
 // kubeconfig and the selected context. For clusters with their own connection mode (in-cluster) Kubeconfig is
@@ -23,6 +29,9 @@ type ClusterAuthSource struct {
 func LoadClusterAuthSource(clusterID string) (ClusterAuthSource, error) {
 	meta, err := LoadClusterMeta(clusterID)
 	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return ClusterAuthSource{}, fmt.Errorf("%w: %w", ErrClusterUnknown, err)
+		}
 		return ClusterAuthSource{}, fmt.Errorf("cluster metadata not found: %w", err)
 	}
 	src := ClusterAuthSource{ContextName: meta.ContextName, Mode: meta.Mode, TeamID: meta.TeamID}

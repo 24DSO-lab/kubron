@@ -1,0 +1,39 @@
+kind: Expect
+target: {kind: Deployment, namespace: shop, name: web}
+symptoms: [workload.rollout]
+hypotheses: ["rollout.quota_exceeded:high"]
+recommendations: [rec.raise_quota_or_reduce_requests]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: web, namespace: shop, uid: d1, generation: 2}
+spec: {replicas: 3, selector: {matchLabels: {app: web}}}
+status:
+  observedGeneration: 2
+  replicas: 2
+  updatedReplicas: 0
+  readyReplicas: 2
+  unavailableReplicas: 1
+  conditions:
+    - {type: ReplicaFailure, status: "True", reason: FailedCreate, message: "pods are forbidden: exceeded quota"}
+---
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: web-2
+  namespace: shop
+  uid: rs2
+  labels: {app: web}
+  creationTimestamp: "2026-11-11T09:50:00Z"
+  ownerReferences: [{kind: Deployment, name: web, uid: d1, controller: true}]
+spec: {replicas: 3, selector: {matchLabels: {app: web}}}
+status: {replicas: 0, readyReplicas: 0}
+---
+apiVersion: v1
+kind: Event
+metadata: {name: e1, namespace: shop}
+involvedObject: {kind: ReplicaSet, name: web-2, namespace: shop}
+type: Warning
+reason: FailedCreate
+message: "Error creating: pods \"web-2-x\" is forbidden: exceeded quota: compute, requested: requests.cpu=2"
+lastTimestamp: "2026-11-11T09:55:00Z"

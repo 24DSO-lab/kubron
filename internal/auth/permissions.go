@@ -40,6 +40,13 @@ const (
 	PermUsersManage Permission = "users.manage"
 	// PermAuditRead — просмотр журнала аудита.
 	PermAuditRead Permission = "audit.read"
+	// PermDiagnosticsLogs — просмотр сохранённых фрагментов логов в истории расследований (ADR-0024, ADR-0026 §5).
+	// Живой просмотр логов по-прежнему требует только read: сохранённые фрагменты живут дольше сессии и видны другим
+	// пользователям. По умолчанию у admin и operator, у user нет.
+	PermDiagnosticsLogs Permission = "diagnostics.logs"
+	// PermBaselineManage — создание и принятие baseline конфигурации (ADR-0027, ADR-0026 §5). По умолчанию только
+	// у admin; чтение результатов drift требует read.
+	PermBaselineManage Permission = "baseline.manage"
 )
 
 // allPermissions — полный список прав. Администратор получает все.
@@ -55,6 +62,8 @@ var allPermissions = []Permission{
 	PermClusterManage,
 	PermUsersManage,
 	PermAuditRead,
+	PermDiagnosticsLogs,
+	PermBaselineManage,
 }
 
 // Role — роль пользователя.
@@ -78,8 +87,8 @@ var roles = map[Role]roleDef{
 	RoleAdmin: {label: "Administrator", permissions: allPermissions},
 	// Оператор: всё, что может пользователь, плюс scale / restart / rollback / повтор Job.
 	// Не может удалять ресурсы, менять YAML, открывать терминал, пробрасывать порты и управлять
-	// кластерами и пользователями.
-	RoleOperator: {label: "Operator", permissions: []Permission{PermRead, PermSecretsRead, PermOperate}},
+	// кластерами и пользователями. diagnostics.logs выдан явной записью (ADR-0026 §5); baseline.manage — нет.
+	RoleOperator: {label: "Operator", permissions: []Permission{PermRead, PermSecretsRead, PermOperate, PermDiagnosticsLogs}},
 	// Пользователь: только чтение. Значения Secret, содержимое релизов Helm (values, манифест, diff ревизий) и сроки
 	// сертификатов требуют отдельного права secrets.read, которого у пользователя нет (оно у оператора и администратора).
 	RoleUser: {label: "User", permissions: []Permission{PermRead}},

@@ -1,0 +1,15 @@
+{
+  "target": {
+    "kind": "Pod",
+    "namespace": "app",
+    "name": "web-0"
+  },
+  "expect": {
+    "hypotheses": [
+      "config.missing_reference:high"
+    ],
+    "absent_steps": [
+      "step.check_referenced_object"
+    ]
+  }
+}

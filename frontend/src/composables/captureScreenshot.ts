@@ -20,10 +20,19 @@ export async function captureScreenshot(): Promise<string> {
       width,
       height,
       scale,
-      backgroundColor: '#1e1e2e',
+      backgroundColor: pageBackground(),
       timeout: 15000,
       filter: (node) => !(node instanceof Element && node.hasAttribute(SCREENSHOT_IGNORE_ATTR)),
     }),
     screenshotScale(width, height, window.devicePixelRatio),
   )
+}
+
+/** Фон снимка = фон страницы в текущей теме (canvas не понимает var(--bg), нужен готовый цвет) */
+function pageBackground(): string {
+  try {
+    return getComputedStyle(document.documentElement).getPropertyValue('--bg').trim() || '#1e1e2e'
+  } catch {
+    return '#1e1e2e'
+  }
 }

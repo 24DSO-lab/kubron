@@ -1,0 +1,26 @@
+kind: Expect
+target: {kind: Pod, namespace: shop, name: web-1}
+symptoms: [pod.startup_failure]
+hypotheses: ["image.not_found:high"]
+absent: [image.registry_auth]
+recommendations: [rec.fix_image_reference]
+---
+apiVersion: v1
+kind: Pod
+metadata: {name: web-1, namespace: shop}
+spec: {nodeName: n1, containers: [{name: app, image: "reg.example/app:nope"}]}
+status:
+  phase: Pending
+  containerStatuses:
+    - name: app
+      image: reg.example/app:nope
+      state: {waiting: {reason: ImagePullBackOff, message: "Back-off pulling image \"reg.example/app:nope\""}}
+---
+apiVersion: v1
+kind: Event
+metadata: {name: e1, namespace: shop}
+involvedObject: {kind: Pod, name: web-1, namespace: shop}
+type: Warning
+reason: Failed
+message: "Failed to pull image \"reg.example/app:nope\": manifest unknown: manifest unknown"
+lastTimestamp: "2026-11-11T09:59:00Z"

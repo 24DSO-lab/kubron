@@ -1,0 +1,58 @@
+{
+  "facts": {
+    "metric_cpu_throttling_ratio": "容器 {container}：{window} 内有 {percent}% 的周期受到 CPU 限流。",
+    "metric_cpu_usage_vs_limit": "容器 {container}：{window} 内 CPU 使用峰值为其限制的 {percent}%。",
+    "metric_memory_usage_vs_limit": "容器 {container}：{window} 内内存使用峰值为其限制的 {percent}%。",
+    "metric_container_restarts": "容器 {container}：{window} 内重启 {value} 次。",
+    "metric_oom_events": "容器 {container}：{window} 内因内存不足被终止 {value} 次。",
+    "metric_node_memory_available_ratio": "Node {node}：{window} 内可用内存最低降至 {percent}%。",
+    "metric_node_cpu_utilization": "Node {node}：{window} 内 CPU 平均负载为 {percent}%。",
+    "metric_node_disk_available_ratio": "Node {node}：{window} 内根文件系统剩余 {percent}%。",
+    "metric_node_pressure_history": "Node {node}：{window} 内资源压力标志为 {value}（1 表示出现过压力）。",
+    "metric_pvc_usage_ratio": "卷声明 {pvc}：在 {window} 内最高占用了 {percent}% 的空间。",
+    "metric_hpa_at_max_replicas": "自动扩缩容 {hpa}：在 {window} 内副本数达到了设定的上限（1 表示是，0 表示否）：{value}。",
+    "metric_deployment_unavailable_replicas": "Deployment {deployment}：在 {window} 内最多有 {value} 个副本不可用。",
+    "metric_ingress_5xx_ratio": "Ingress {ingress}：在 {window} 内 {percent}% 的响应是服务器错误（5xx）。",
+    "metric_ingress_latency_p95": "Ingress {ingress}：在 {window} 内 95% 的请求在 {value} 秒内完成。"
+  },
+  "hypotheses": {
+    "metrics_cpu_limited": "容器 {container} 受 CPU 限制而变慢。",
+    "metrics_memory_near_limit": "容器 {container} 的内存使用接近其限制。",
+    "metrics_restarts_growing": "容器 {container} 最近仍在重启，而不只是过去重启过。",
+    "metrics_node_pressure": "Node {node} 最近出现过资源紧张。",
+    "metrics_pvc_nearly_full": "卷声明 {pvc} 的存储卷快满了（已用 {percent}%）。",
+    "metrics_hpa_saturated": "自动扩缩容 {hpa} 无法再增加副本：已达到上限。",
+    "metrics_deployment_unavailable": "Deployment {deployment} 在 {window} 内有 {replicas} 个副本不可用。",
+    "metrics_ingress_degraded": "Ingress {ingress} 正在返回错误或响应缓慢。"
+  },
+  "recommendations": {
+    "rec_review_cpu_limit": "检查容器 {container} 的 CPU 限制：如无需限流，请调高或移除。",
+    "rec_review_memory_limit": "对照实际峰值使用量检查容器 {container} 的内存限制。",
+    "rec_relieve_node_pressure": "将负载迁离 Node {node}，或为其增加资源。",
+    "rec_expand_pvc": "释放卷声明 {pvc} 的存储卷空间；如果其存储类允许，也可以扩容该声明。",
+    "rec_review_hpa_max_replicas": "检查自动扩缩容 {hpa} 的最大副本数：如果负载合理，请调高上限。",
+    "rec_review_ingress_backend": "检查 ingress {ingress} 的后端：就绪状态、容量以及应用错误。"
+  },
+  "missing": {
+    "metrics_unavailable": "指标无法用作证据（{reason}）。没有指标，报告依然完整。",
+    "metrics_signal_unavailable": "指标 {signal} 不可用（{reason}）。"
+  },
+  "reasons": {
+    "not_installed": "未安装监控",
+    "forbidden": "无权访问监控服务",
+    "unavailable": "监控未及时响应",
+    "family_missing": "未采集所需指标",
+    "no_series": "该对象没有数据",
+    "history_short": "监控尚未积累足够的历史数据",
+    "invalid_ref": "对象名称不能用于查询"
+  },
+  "hints": {
+    "not_installed": "此集群未安装 Kubron 监控。在集群设置中启用后，诊断会纳入资源使用情况；其他功能不受影响。",
+    "forbidden": "当前会话无权访问监控服务。集群管理员需要将角色 prometheus-proxy-access 绑定到您的用户或组。",
+    "unavailable": "监控未及时响应。诊断仅基于 Kubernetes 数据；请稍后重试。",
+    "family_missing": "监控正在运行，但未采集此处所需的指标。",
+    "no_series": "监控中没有该对象的数据。",
+    "history_short": "监控运行时间不足以覆盖该时间段。",
+    "invalid_ref": "对象名称无法安全用于监控查询，因此未发送查询。"
+  }
+}

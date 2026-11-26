@@ -44,6 +44,10 @@
         @click="emit('navigate', 'teams')">
         <span class="nav-icon">🧩</span> {{ $t('nav.teams') }}
       </div>
+      <div :class="['nav-item', { active: currentView === 'incidents' }]" data-testid="nav-incidents"
+        @click="emit('navigate', 'incidents')">
+        <span class="nav-icon">🩺</span> {{ $t('nav.incidents') }}
+      </div>
       <div v-if="can(Perm.UsersManage)" :class="['nav-item', { active: currentView === 'users' }]"
         @click="emit('navigate', 'users')">
         <span class="nav-icon">👥</span> {{ $t('nav.users') }}
@@ -52,6 +56,15 @@
         @click="emit('navigate', 'audit')">
         <span class="nav-icon">📜</span> {{ $t('nav.audit') }}
       </div>
+      <NavGroupNode
+        v-if="lifecycleGroup"
+        :group="lifecycleGroup"
+        :expanded="expanded"
+        :current-view="currentView"
+        :available="available"
+        @toggle="toggle"
+        @navigate="emit('navigate', $event)"
+      />
     </nav>
 
     <!-- Namespace selector -->
@@ -153,6 +166,10 @@ const emit = defineEmits<{
 const { failedNamespaces } = useListFailures()
 
 const navEntries = buildNav()
+const lifecycleGroup = navEntries.find(
+  (entry): entry is Extract<NavEntry, { type: 'group' }> =>
+    entry.type === 'group' && entry.id === 'audit-compliance',
+)
 
 // Условия `requires` у групп меню: наличие Argo CD и Flux в кластере
 const { argoInstalled } = useArgo()
@@ -183,7 +200,7 @@ const withFluxControllers = (entry: NavEntry): NavEntry =>
 
 const visibleEntries = computed(() =>
   navEntries
-    .filter(e => e.type === 'item' || !e.requires || available.value.has(e.requires))
+    .filter(e => e.type === 'item' || (e.id !== 'audit-compliance' && (!e.requires || available.value.has(e.requires))))
     .map(withFluxControllers),
 )
 

@@ -1,0 +1,30 @@
+{
+  "target": {
+    "kind": "Job",
+    "namespace": "app",
+    "name": "report"
+  },
+  "golden": true,
+  "expect": {
+    "symptoms": [
+      "job.failed",
+      "pod.pending"
+    ],
+    "hypotheses": [
+      "job.deadline_exceeded:high",
+      "pending.insufficient_resources:medium"
+    ],
+    "explains": [
+      [
+        "pending.insufficient_resources",
+        "job.deadline_exceeded"
+      ]
+    ],
+    "chains": [
+      "pending.insufficient_resources: Job/report > Pod/report-a"
+    ],
+    "absent": [
+      "job.backoff_limit_exceeded"
+    ]
+  }
+}

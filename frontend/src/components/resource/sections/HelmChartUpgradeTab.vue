@@ -252,13 +252,13 @@ async function apply() {
 .hc-hint { font-size: 0.85rem; margin: 0 0 8px; }
 .hc-form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; margin-bottom: 10px; }
 .hc-installed { grid-column: 1 / -1; display: flex; gap: 8px; align-items: baseline; font-size: 0.9rem; }
-.hc-field { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; color: #a6adc8; min-width: 0; }
+.hc-field { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; color: var(--text-muted); min-width: 0; }
 .hc-field .form-input { padding: 6px 8px; }
-.hc-check { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: #cdd6f4; }
-.hc-warn { color: #f9e2af; font-size: 0.85rem; margin: 0 0 8px; }
+.hc-check { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--text); }
+.hc-warn { color: var(--warn); font-size: 0.85rem; margin: 0 0 8px; }
 .hc-summary { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; margin-bottom: 6px; }
-.hc-stale { padding: 8px 10px; border: 1px solid #f9e2af; border-radius: 6px; color: #f9e2af; font-size: 0.85rem; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
+.hc-stale { padding: 8px 10px; border: 1px solid var(--warn); border-radius: 6px; color: var(--warn); font-size: 0.85rem; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
 .hc-actions { display: flex; gap: 8px; margin-top: 10px; }
 .hc-actions .rd-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.hc-error { color: #f87171; font-size: 0.85rem; margin: 8px 0 0; white-space: pre-wrap; }
+.hc-error { color: var(--red-soft); font-size: 0.85rem; margin: 8px 0 0; white-space: pre-wrap; }
 </style>

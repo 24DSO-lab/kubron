@@ -11,13 +11,16 @@ import (
 
 // RekeyReport — итог перешифрования.
 type RekeyReport struct {
-	Clusters int // kubeconfig'и кластеров, перешифрованные текущим ключом
-	Tokens   int // токены Argo CD
-	Secrets  int // секреты подключения кластеров (пароль oidc-password)
-	Helm     int // пароли репозиториев и OCI-реестров Helm
+	Clusters  int // kubeconfig'и кластеров, перешифрованные текущим ключом
+	Tokens    int // токены Argo CD
+	Secrets   int // секреты подключения кластеров (пароль oidc-password)
+	Helm      int // пароли репозиториев и OCI-реестров Helm
+	Baselines int // версии baseline конфигурации (ADR-0027)
 
 	Credentials       int // записи входа в кластеры (cluster_credentials), перешифрованные или переведённые в envelope-v1
 	LegacyCredentials int // записей legacy-v1, оставшихся после перешифрования (должно быть 0)
+
+	IncidentFragments int // фрагменты логов расследований (incident_fragments), перешифрованные текущим ключом
 }
 
 // Rekey перешифровывает текущим ключом все секреты, зашифрованные другим ключом (ротация, задача 3.1c).
@@ -118,6 +121,13 @@ func (s *Store) Rekey(ctx context.Context) (RekeyReport, error) {
 	cr, err := s.Credentials().RekeyCredentials(ctx)
 	rep.Credentials, rep.LegacyCredentials = cr.Changed, cr.LegacyRemaining
 	if err != nil {
+		return rep, err
+	}
+	if rep.IncidentFragments, err = s.RekeyIncidentFragments(ctx); err != nil {
+		return rep, err
+	}
+
+	if rep.Baselines, err = s.rekeyBaselines(ctx, cur); err != nil {
 		return rep, err
 	}
 	return rep, nil

@@ -1,31 +1,31 @@
 /* Общие стили форм входа, первичной настройки и смены пароля */
 .auth-form { display: flex; flex-direction: column; gap: 14px; text-align: left; }
 
-.auth-field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #a6adc8; }
+.auth-field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--text-muted); }
 .auth-field input {
-  background: #11111b;
-  border: 1px solid #313244;
+  background: var(--bg-crust);
+  border: 1px solid var(--surface-0);
   border-radius: 8px;
   padding: 10px 12px;
   font-size: 14px;
-  color: #cdd6f4;
+  color: var(--text);
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 .auth-field input:focus {
   outline: none;
-  border-color: #89b4fa;
-  box-shadow: 0 0 0 3px rgba(137, 180, 250, 0.18);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.18);
 }
 .auth-field input:disabled { opacity: 0.6; }
-.auth-field small { color: #6c7086; font-size: 12px; }
+.auth-field small { color: var(--text-subtle); font-size: 12px; }
 
 .auth-error {
   margin: 0;
   padding: 10px 12px;
   border-radius: 8px;
-  background: rgba(243, 139, 168, 0.12);
-  border: 1px solid rgba(243, 139, 168, 0.35);
-  color: #f38ba8;
+  background: rgba(var(--danger-rgb), 0.12);
+  border: 1px solid rgba(var(--danger-rgb), 0.35);
+  color: var(--danger);
   font-size: 13px;
   line-height: 1.4;
 }
@@ -34,9 +34,9 @@
   margin: 0 0 14px;
   padding: 10px 12px;
   border-radius: 8px;
-  background: rgba(137, 180, 250, 0.10);
-  border: 1px solid rgba(137, 180, 250, 0.30);
-  color: #89b4fa;
+  background: rgba(var(--accent-rgb), 0.10);
+  border: 1px solid rgba(var(--accent-rgb), 0.30);
+  color: var(--accent);
   font-size: 13px;
   line-height: 1.4;
   text-align: left;
@@ -45,8 +45,8 @@
 .auth-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin-top: 4px; }
 
 .auth-submit {
-  background: #89b4fa;
-  color: #1e1e2e;
+  background: var(--accent);
+  color: var(--bg);
   border: none;
   border-radius: 8px;
   padding: 10px 20px;
@@ -61,9 +61,9 @@
 .auth-link {
   background: none;
   border: none;
-  color: #a6adc8;
+  color: var(--text-muted);
   font-size: 13px;
   cursor: pointer;
   padding: 6px 8px;
 }
-.auth-link:hover { color: #cdd6f4; text-decoration: underline; }
+.auth-link:hover { color: var(--text); text-decoration: underline; }

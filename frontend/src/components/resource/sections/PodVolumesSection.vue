@@ -59,5 +59,5 @@ const groups = computed(() => {
 
 <style scoped>
 .vol-group { margin-bottom: 12px; }
-.vol-type { font-weight: 600; font-size: 0.85rem; color: #868d8a; margin-bottom: 6px; text-transform: capitalize; }
+.vol-type { font-weight: 600; font-size: 0.85rem; color: var(--text-gray); margin-bottom: 6px; text-transform: capitalize; }
 </style>

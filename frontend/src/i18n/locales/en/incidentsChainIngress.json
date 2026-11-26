@@ -1,0 +1,33 @@
+{
+  "symptoms": {
+    "ingress_unreachable": "The Ingress does not deliver traffic to its backend."
+  },
+  "facts": {
+    "ingress_backend_missing": "Ingress {ingress} routes to Service {service}, which does not exist.",
+    "ingress_backend_endpoints": "Ingress {ingress} routes to Service {service}, which has no ready endpoints.",
+    "ingress_backend_port_missing": "Ingress {ingress} sends traffic to port {port} of Service {service}, but the Service does not declare it.",
+    "ingress_class_missing": "Ingress {ingress} names IngressClass {class}, which does not exist.",
+    "ingress_class_unspecified": "Ingress {ingress} names no IngressClass, and the cluster has no default IngressClass.",
+    "ingress_resource_backend": "Ingress {ingress} routes to a {kind} named {name}; Kubron does not inspect backends of this kind."
+  },
+  "hypotheses": {
+    "ingress_backend_service_missing": "Service {service}, the backend of Ingress {ingress}, does not exist, so the controller has nowhere to send requests.",
+    "ingress_backend_no_endpoints": "Service {service}, the backend of Ingress {ingress}, has no ready endpoints, so requests get no answer.",
+    "ingress_backend_port_mismatch": "Ingress {ingress} uses port {port} of Service {service}, which the Service does not declare.",
+    "ingress_class_not_found": "No ingress controller may serve Ingress {ingress}: its IngressClass is missing or not set."
+  },
+  "recommendations": {
+    "rec_create_backend_service": "Create Service {service} or point Ingress {ingress} to an existing Service.",
+    "rec_fix_ingress_class": "Set an existing IngressClass instead of {class} in Ingress {ingress}, or create that class.",
+    "rec_set_ingress_class": "Set spec.ingressClassName in Ingress {ingress}, or mark one IngressClass as the default.",
+    "rec_fix_ingress_backend_port": "Use a port that Service {service} declares (by name or number) instead of {port} in Ingress {ingress}."
+  },
+  "steps": {
+    "step_check_tls_secret": "Check that Secret {secret} used by Ingress {ingress} exists, holds a valid certificate and key, and is in the same namespace. Kubron does not read Secrets."
+  },
+  "graphReasons": {
+    "ingress_backend_missing": "Backend Service does not exist",
+    "ingress_class_missing": "IngressClass does not exist",
+    "ingress_backend_port_missing": "Backend port is not declared by the Service"
+  }
+}

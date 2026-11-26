@@ -1,0 +1,17 @@
+{
+  "target": {
+    "kind": "StatefulSet",
+    "namespace": "app",
+    "name": "db"
+  },
+  "expect": {
+    "symptoms": [
+      "none"
+    ],
+    "absent": [
+      "sts.stuck_ordered_start",
+      "sts.pvc_pending",
+      "sts.update_partitioned"
+    ]
+  }
+}

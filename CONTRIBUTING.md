@@ -67,11 +67,22 @@ CI checks dependency licenses: Go — `go-licenses`, frontend — `license-check
 Apache-2.0, MIT, BSD-2/3-Clause, ISC are allowed (for Go also MPL-2.0). A dependency with a
 different license (including GPL/AGPL/SSPL) cannot be added without discussion.
 
+## Local development
+
+- Go: the version in `go.mod`; the desktop shell needs the Wails prerequisites for your OS (`wails doctor`).
+- `main.go` embeds `frontend/dist`. For Go checks without building the frontend, create a stub:
+  `mkdir -p frontend/dist && touch frontend/dist/.keep`.
+- Frontend: `cd frontend && npm ci && npm run dev` (or `wails dev` from the root for the desktop app).
+- Tests that need PostgreSQL (`internal/pgstore`, migrations) are skipped without a database; point them at a
+  PostgreSQL 16 instance via `KUBRON_TEST_DATABASE_URL` to run them.
+- Concurrency-sensitive packages: `go test -race ./internal/...`. Fuzz targets run nightly in CI; locally:
+  `go test -run '^$' -fuzz FuzzName -fuzztime 30s ./internal/<package>`.
+
 ## Checks before pull request
 
 ```
 gofmt -l .
-go vet ./... && go test ./...
+go vet ./... && go test -race ./internal/...
 cd frontend && npm test && npm run i18n:check
 ```
 
@@ -91,8 +102,7 @@ Write a short ADR in [`docs/adr/`](docs/adr/README.md) before or together with t
 4. changes or replaces an earlier ADR.
 
 An ADR is a few lines: context, the choice, and what was rejected and why. Do not edit an accepted ADR; write a new
-one that supersedes it. Smaller implementation choices go to the pull request description, or to
-[`docs/decisions/`](docs/decisions/README.md) when a person has to review them.
+one that supersedes it. Smaller implementation choices go to the pull request description.
 
 ## Releases
 

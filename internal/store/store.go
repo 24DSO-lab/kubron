@@ -14,7 +14,10 @@ package store
 import (
 	"github.com/24DSO-lab/kubron/internal/audit"
 	"github.com/24DSO-lab/kubron/internal/auth"
+	"github.com/24DSO-lab/kubron/internal/baseline"
+	"github.com/24DSO-lab/kubron/internal/incident"
 	"github.com/24DSO-lab/kubron/internal/k8s"
+	"github.com/24DSO-lab/kubron/internal/readiness"
 )
 
 // Store — всё, что приложение хранит постоянно.
@@ -23,10 +26,16 @@ type Store interface {
 	Users() auth.Backend
 	// Audit — журнал аудита.
 	Audit() audit.Backend
+	// Readiness — история отчётов Upgrade Readiness (ADR-0025).
+	Readiness() readiness.Backend
+	// Baselines — baseline конфигурации, версии, исключения и результаты проверок (ADR-0027).
+	Baselines() baseline.Backend
 	// ArgoTokens — токены Argo CD API по кластерам.
 	ArgoTokens() k8s.TokenStore
 	// Clusters — кластеры: метаданные и kubeconfig (владение командой добавит этап 3).
 	Clusters() k8s.ClusterStore
+	// Incidents — история расследований Kubron Intelligence (ADR-0024, ADR-0026 §4).
+	Incidents() incident.Backend
 	// WebOIDC — публичный клиент веб-версии для входа через браузер и провайдер, для которого он зарегистрирован.
 	WebOIDC() (WebOIDC, error)
 	SetWebOIDC(WebOIDC) error

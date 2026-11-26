@@ -1,0 +1,11 @@
+{
+  "target": {"kind": "Pod", "namespace": "app", "name": "db-0"},
+  "forbid": ["PersistentVolumeClaim"],
+  "golden": true,
+  "expect": {
+    "symptoms": ["pod.pending"],
+    "hypotheses": ["pending.unbound_pvc:high"],
+    "missing": ["source.unavailable"],
+    "absent": ["storage.class_not_found", "pvc.unbound", "pvc.missing"]
+  }
+}

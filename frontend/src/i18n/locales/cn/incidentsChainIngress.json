@@ -1,0 +1,33 @@
+{
+  "symptoms": {
+    "ingress_unreachable": "Ingress 没有把流量送达其后端。"
+  },
+  "facts": {
+    "ingress_backend_missing": "Ingress {ingress} 把流量转发到不存在的 Service {service}。",
+    "ingress_backend_endpoints": "Ingress {ingress} 转发到的 Service {service} 没有就绪的端点。",
+    "ingress_backend_port_missing": "Ingress {ingress} 把流量发往 Service {service} 的端口 {port}，但该 Service 没有声明此端口。",
+    "ingress_class_missing": "Ingress {ingress} 指定的 IngressClass {class} 不存在。",
+    "ingress_class_unspecified": "Ingress {ingress} 没有指定 IngressClass，且集群中没有默认的 IngressClass。",
+    "ingress_resource_backend": "Ingress {ingress} 把流量转发到名为 {name} 的 {kind} 对象；Kubron 不检查此类后端。"
+  },
+  "hypotheses": {
+    "ingress_backend_service_missing": "Ingress {ingress} 的后端 Service {service} 不存在，控制器无处转发请求。",
+    "ingress_backend_no_endpoints": "Ingress {ingress} 的后端 Service {service} 没有就绪的端点，请求得不到响应。",
+    "ingress_backend_port_mismatch": "Ingress {ingress} 使用了 Service {service} 的端口 {port}，而该 Service 并未声明它。",
+    "ingress_class_not_found": "Ingress {ingress} 可能没有任何控制器为其服务：其 IngressClass 不存在或未设置。"
+  },
+  "recommendations": {
+    "rec_create_backend_service": "创建 Service {service}，或让 Ingress {ingress} 指向已有的 Service。",
+    "rec_fix_ingress_class": "在 Ingress {ingress} 中改用已有的 IngressClass 代替 {class}，或创建该类。",
+    "rec_set_ingress_class": "在 Ingress {ingress} 中设置 spec.ingressClassName，或把某个 IngressClass 设为默认。",
+    "rec_fix_ingress_backend_port": "在 Ingress {ingress} 中改用 Service {service} 声明的端口（按名称或编号）代替 {port}。"
+  },
+  "steps": {
+    "step_check_tls_secret": "检查 Ingress {ingress} 使用的 Secret {secret} 是否存在、证书和密钥是否有效，且位于同一命名空间。Kubron 不读取 Secret。"
+  },
+  "graphReasons": {
+    "ingress_backend_missing": "后端 Service 不存在",
+    "ingress_class_missing": "IngressClass 不存在",
+    "ingress_backend_port_missing": "Service 未声明后端端口"
+  }
+}

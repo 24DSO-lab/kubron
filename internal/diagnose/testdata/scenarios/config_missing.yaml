@@ -1,0 +1,14 @@
+kind: Expect
+target: {kind: Pod, namespace: shop, name: web-1}
+symptoms: [pod.startup_failure]
+hypotheses: ["config.missing_reference:high"]
+---
+apiVersion: v1
+kind: Pod
+metadata: {name: web-1, namespace: shop}
+spec: {nodeName: n1, containers: [{name: app, image: "app:1"}]}
+status:
+  phase: Pending
+  containerStatuses:
+    - name: app
+      state: {waiting: {reason: CreateContainerConfigError, message: "configmap \"app-config\" not found"}}

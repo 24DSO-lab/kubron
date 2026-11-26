@@ -19,6 +19,14 @@ export interface NavGroupMeta {
 export const NAV_GROUPS: Record<NavGroupId, NavGroupMeta> = {
   workloads: { title: 'nav.groups.workloads', expanded: true },
   config: { title: 'nav.groups.config', expanded: false },
+  'audit-compliance': {
+    title: 'nav.groups.auditCompliance',
+    expanded: true,
+    views: [
+      { view: 'readiness', label: 'nav.views.readiness' },
+      { view: 'baseline', label: 'nav.views.baseline' },
+    ],
+  },
   network: { title: 'nav.groups.network', expanded: true },
   storage: { title: 'nav.groups.storage', expanded: false },
   helm: {
@@ -59,8 +67,7 @@ const NAV_ORDER: string[] = [
   'nodes', 'events',
   'namespaces',
   'workloads', 'config', 'network', 'storage',
-  
-  'helm', 'access', 'argocd', 'flux',
+  'helm', 'access', 'argocd', 'flux', 'audit-compliance',
 ]
 
 export interface NavItem { view: string; label: string; icon?: string }
@@ -123,6 +130,7 @@ function groupIcon(id: NavGroupId): string {
   switch (id) {
     case 'workloads': return 'service'
     case 'config': return 'configmap'
+    case 'audit-compliance': return 'documentation'
     case 'network': return 'ingress'
     case 'storage': return 'pvc'
     case 'helm': return 'documentation'

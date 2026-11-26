@@ -1,0 +1,9 @@
+-----BEGIN CERTIFICATE-----
+MIIDdzCCAl+gAwIBAgIE
+-----END CERTIFICATE-----
+%%%
+-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE
+-----END PUBLIC KEY-----
+%%%
+rotating the private key will begin after the maintenance window

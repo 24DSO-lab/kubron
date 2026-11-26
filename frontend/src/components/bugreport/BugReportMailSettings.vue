@@ -116,13 +116,13 @@ onBeforeUnmount(() => { password.value = '' })
 </script>
 
 <style scoped>
-.ms { margin-top: 8px; padding: 10px; border: 1px solid #313244; border-radius: 8px; }
-.ms-hint { margin: 0 0 8px; color: #a6adc8; font-size: 12px; }
-.ms-grid { display: grid; grid-template-columns: 110px 1fr; gap: 6px 10px; align-items: center; font-size: 13px; color: #cdd6f4; }
+.ms { margin-top: 8px; padding: 10px; border: 1px solid var(--surface-0); border-radius: 8px; }
+.ms-hint { margin: 0 0 8px; color: var(--text-muted); font-size: 12px; }
+.ms-grid { display: grid; grid-template-columns: 110px 1fr; gap: 6px 10px; align-items: center; font-size: 13px; color: var(--text); }
 .ms-grid input, .ms-grid select {
-  width: 100%; box-sizing: border-box; background: #1e1e2e; color: #cdd6f4; border: 1px solid #313244;
+  width: 100%; box-sizing: border-box; background: var(--bg); color: var(--text); border: 1px solid var(--surface-0);
   border-radius: 6px; padding: 5px 8px; font: inherit;
 }
-.ms-error { margin: 8px 0 0; color: #f38ba8; font-size: 13px; }
+.ms-error { margin: 8px 0 0; color: var(--danger); font-size: 13px; }
 .ms-actions { display: flex; gap: 8px; margin-top: 10px; }
 </style>

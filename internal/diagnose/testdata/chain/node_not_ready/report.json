@@ -1,0 +1,166 @@
+{
+  "ruleSetVersion": 3,
+  "target": {
+    "kind": "Node",
+    "name": "n1",
+    "uid": "n-1"
+  },
+  "observedAt": "2026-11-11T10:00:00Z",
+  "symptoms": [
+    "node.unhealthy"
+  ],
+  "resources": [
+    {
+      "kind": "Node",
+      "name": "n1",
+      "uid": "n-1"
+    },
+    {
+      "kind": "Node",
+      "name": "n1"
+    }
+  ],
+  "facts": [
+    {
+      "kind": "fact",
+      "id": "f1",
+      "code": "node.pods_unready",
+      "resource": {
+        "kind": "Node",
+        "name": "n1"
+      },
+      "params": {
+        "node": "n1",
+        "total": "1",
+        "unready": "1"
+      },
+      "source": {
+        "kind": "derived",
+        "resource": {
+          "kind": "Node",
+          "name": "n1"
+        },
+        "field": "pods"
+      },
+      "observedAt": "2026-11-11T10:00:00Z"
+    },
+    {
+      "kind": "fact",
+      "id": "f2",
+      "code": "node.condition",
+      "resource": {
+        "kind": "Node",
+        "name": "n1"
+      },
+      "params": {
+        "condition": "Ready",
+        "node": "n1",
+        "status": "False"
+      },
+      "source": {
+        "kind": "resource",
+        "resource": {
+          "kind": "Node",
+          "name": "n1"
+        },
+        "field": "status.conditions[Ready]"
+      },
+      "observedAt": "2026-11-11T10:00:00Z"
+    }
+  ],
+  "hypotheses": [
+    {
+      "kind": "hypothesis",
+      "id": "h1",
+      "code": "node.not_ready",
+      "resource": {
+        "kind": "Node",
+        "name": "n1"
+      },
+      "params": {
+        "node": "n1",
+        "reason": "KubeletNotReady",
+        "status": "False"
+      },
+      "confidence": "high",
+      "supporting": [
+        "f2",
+        "f1"
+      ],
+      "contradicting": [],
+      "ruleId": "node.chain",
+      "ruleEpoch": 1
+    }
+  ],
+  "recommendations": [
+    {
+      "kind": "recommendation",
+      "id": "r1",
+      "code": "rec.check_node",
+      "resource": {
+        "kind": "Node",
+        "name": "n1"
+      },
+      "params": {
+        "node": "n1"
+      },
+      "hypotheses": [
+        "h1"
+      ],
+      "ruleId": "node.chain",
+      "ruleEpoch": 1
+    }
+  ],
+  "steps": [],
+  "missing": [],
+  "graph": {
+    "nodes": [
+      {
+        "kind": "Node",
+        "name": "n1",
+        "health": "Degraded",
+        "reason": "node_not_ready"
+      },
+      {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "api-0",
+        "health": "Degraded",
+        "reason": "not_ready"
+      }
+    ],
+    "edges": [
+      {
+        "from": "core/Pod/app/api-0",
+        "to": "core/Node//n1",
+        "type": "runs_on",
+        "state": "broken",
+        "reason": "node_not_ready"
+      }
+    ]
+  },
+  "chains": [
+    {
+      "path": [
+        {
+          "ref": {
+            "kind": "Pod",
+            "namespace": "app",
+            "name": "api-0"
+          },
+          "health": "Degraded",
+          "reason": "not_ready"
+        },
+        {
+          "ref": {
+            "kind": "Node",
+            "name": "n1"
+          },
+          "health": "Degraded",
+          "reason": "node_not_ready"
+        }
+      ],
+      "candidate": "h1"
+    }
+  ]
+}

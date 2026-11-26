@@ -1,0 +1,81 @@
+{
+  "ruleSetVersion": 2,
+  "target": {
+    "kind": "Pod",
+    "name": "p1",
+    "namespace": "shop"
+  },
+  "observedAt": "2026-11-20T10:00:00Z",
+  "symptoms": [],
+  "resources": [
+    {
+      "kind": "Pod",
+      "name": "p1",
+      "namespace": "shop"
+    }
+  ],
+  "facts": [],
+  "hypotheses": [],
+  "recommendations": [],
+  "steps": [],
+  "missing": [],
+  "graph": {
+    "nodes": [
+      {
+        "kind": "Pod",
+        "name": "p1",
+        "health": "Degraded",
+        "group": "core",
+        "namespace": "shop"
+      },
+      {
+        "kind": "Pod",
+        "name": "p2",
+        "health": "Weird",
+        "group": "core",
+        "namespace": "shop"
+      },
+      {
+        "kind": "Widget",
+        "name": "w1",
+        "health": "Healthy",
+        "group": "example.com",
+        "namespace": "shop"
+      },
+      {
+        "kind": "Gadget",
+        "name": "g1",
+        "health": "Unknown",
+        "group": "example.com",
+        "unknown": "mystery"
+      }
+    ],
+    "edges": [
+      {
+        "from": "core/Pod/shop/p1",
+        "to": "example.com/Widget/shop/w1",
+        "type": "frobnicates",
+        "state": "ok"
+      },
+      {
+        "from": "core/Pod/shop/p1",
+        "to": "core/Pod/shop/p2",
+        "type": "owns",
+        "state": "ok"
+      },
+      {
+        "from": "core/Pod/shop/p1",
+        "to": "core/Pod/shop/ghost",
+        "type": "owns",
+        "state": "ok"
+      }
+    ],
+    "truncated": true,
+    "warnings": [
+      "limit"
+    ]
+  },
+  "partial": [
+    "Graph"
+  ]
+}

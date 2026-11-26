@@ -89,6 +89,19 @@
 | Объект сам снова становится приостановленным или активным | `spec.suspend` задан в Git, и родительская Kustomization возвращает значение. Меняйте его в Git |
 | Удалённый объект вернулся | Он описан в Git, и родительская Kustomization создала его снова. Удалите его из Git |
 
+## Debug-контейнеры, обновления и отчёты о проблемах
+
+| Сообщение или симптом | Причина и решение |
+|---|---|
+| **debug containers are disabled by the administrator** | Задан `KUBRON_DISABLE_DEBUG` или `KUBRON_DISABLE_EXEC`. См. [Debug-контейнеры](/ru/features/debug-containers) |
+| Учётной записи кластера нельзя добавлять ephemeral-контейнеры | Добавьте `patch` на `pods/ephemeralcontainers` через `rbac.extraRules`. См. [Debug-контейнеры](/ru/features/debug-containers#what-you-need) |
+| **the cluster rejected the debug container (image, profile or Pod Security policy)** | Попробуйте профиль **Restricted** или другой образ |
+| **Could not reach GitHub. Check the network connection.** | Проверка обновлений не достаёт до `api.github.com`. Исправьте прокси, файрвол или `NetworkPolicy` либо отключите проверку. См. [Версия и обновления](/ru/features/updates#network-access) |
+| Баннера обновления нет, хотя новая версия вышла | Его видят только администраторы, его можно скрыть до следующей версии, сборка для разработки не проверяет, а проверка может быть отключена (`KUBRON_UPDATE_CHECK=off`) |
+| **The mail server is not set up yet** или **The mail server for reports is not set up** | Нет доступного канала доставки. В Web администратор задаёт `KUBRON_BUGREPORT_SMTP_*` или `KUBRON_BUGREPORT_RELAY_URL`. См. [Сообщить о проблеме](/ru/features/bug-reports) |
+| **No connection: the report is saved on this computer and will be sent automatically.** | Desktop поставил отчёт в очередь и повторяет отправку; **Save as archive** позволяет передать его другим способом |
+| Нет кнопки Report a problem (Web) | На сервере не настроены ни почтовый сервер, ни приёмник |
+
 ## Запуск Web-сервера
 
 | Сообщение или симптом | Причина и решение |
@@ -106,7 +119,7 @@
 
 **Нужен ли `kubectl`?** Нет. Kubron сам обращается к API Kubernetes. Плагины в стиле `kubectl` (например, `aws` или `kubelogin`) нужны, только когда kubeconfig использует `exec`-плагин, который Kubron не обрабатывает сам.
 
-**Отправляет ли Kubron данные куда-либо?** Телеметрии нет. Desktop подключается только к вашим кластерам (и к провайдерам идентификации, через которые вы входите). Web-версия подключается с вашего сервера.
+**Отправляет ли Kubron данные куда-либо?** Телеметрии нет. Kubron подключается к вашим кластерам (в Desktop — с вашего компьютера, в Web — с вашего сервера) и к провайдерам идентификации, через которые вы входите. Раз в сутки он также спрашивает GitHub, не вышла ли новая версия; это можно отключить ([Версия и обновления](/ru/features/updates)). Отчёт о проблеме покидает ваш компьютер, только когда вы нажмёте **Send** в **Report a problem** ([подробнее](/ru/features/bug-reports)).
 
 **Где мои данные?** Desktop и однопользовательский сервер: `~/.kubron` (`%USERPROFILE%\.kubron` в Windows). Web с PostgreSQL: в базе, а секреты зашифрованы `KUBRON_SECRET_KEY`. См. [Резервное копирование, восстановление и ротация ключа](/ru/server/backup).
 

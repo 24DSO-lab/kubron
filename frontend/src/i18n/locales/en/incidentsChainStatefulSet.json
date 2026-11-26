@@ -1,0 +1,26 @@
+{
+  "symptoms": {
+    "sts_start_stuck": "The StatefulSet start is stuck on one Pod."
+  },
+  "facts": {
+    "sts_ordered_start": "StatefulSet {sts} starts its Pods one by one and waits for each to be ready.",
+    "sts_pod_not_ready": "Pod {pod} (ordinal {ordinal}) is not ready.",
+    "sts_pods_not_created": "Only {created} of {replicas} Pods have been created.",
+    "sts_claim_not_bound": "Claim {pvc} from the volume template is not bound (phase: {phase}).",
+    "sts_update_partitioned": "The update is limited by partition {partition}: {updated} of {replicas} replicas are updated.",
+    "sts_pods_on_old_revision": "{count} Pod(s) still run the previous revision."
+  },
+  "hypotheses": {
+    "sts_stuck_ordered_start": "StatefulSet {sts} does not create the next Pods until Pod {pod} is ready.",
+    "sts_pvc_pending": "Claim {pvc} of StatefulSet {sts} is not bound, so its Pod cannot start.",
+    "sts_update_partitioned": "The update of StatefulSet {sts} is stopped by partition {partition}; this may be intentional (a canary rollout)."
+  },
+  "recommendations": {
+    "rec_fix_blocking_pod": "Fix Pod {pod}: until it is ready, StatefulSet {sts} will not create the remaining Pods.",
+    "rec_fix_statefulset_claim": "Fix claim {pvc} (storage class, provisioner, capacity) so that StatefulSet {sts} can start its Pod.",
+    "rec_lower_statefulset_partition": "If the update should continue, lower the partition (now {partition}) of StatefulSet {sts}."
+  },
+  "missing": {
+    "statefulset_selector_missing": "The StatefulSet has no selector, so its Pods cannot be found."
+  }
+}

@@ -25,6 +25,40 @@
       </div>
     </div>
 
+    <!-- Theme -->
+    <div class="settings-card">
+      <div class="settings-card-header">
+        <div class="settings-card-header-row">
+          <div class="settings-card-header-left">
+            <div class="settings-card-icon-wrap purple">
+              <svg class="settings-card-icon purple" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+              </svg>
+            </div>
+            <div>
+              <h2 class="settings-card-heading">{{ $t('settings.theme.title') }}</h2>
+              <p class="settings-card-description">{{ $t('settings.theme.description') }}</p>
+            </div>
+          </div>
+          <div class="theme-switch" role="radiogroup" :aria-label="$t('settings.theme.title')">
+            <button
+              v-for="m in THEME_MODES"
+              :key="m"
+              type="button"
+              role="radio"
+              :aria-checked="themeMode === m"
+              class="theme-switch-option"
+              :class="{ active: themeMode === m }"
+              @click="setThemeMode(m)"
+            >
+              {{ $t(`settings.theme.${m}`) }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <MyConnections />
 
     <!-- OAuth-клиент Google для GKE: настройка десктопа, в вебе его задаёт администратор сервера -->
@@ -282,6 +316,7 @@ import LanguageSwitcher from '../LanguageSwitcher.vue'
 import MetricsStatusBadge from '../metrics/MetricsStatusBadge.vue'
 import { useMetricsStatus } from '../../composables/useMetrics'
 import { useAppSettings } from '../../composables/useAppSettings'
+import { THEME_MODES, useTheme } from '../../composables/useTheme'
 import { can } from '../../composables/useAuth'
 import { Perm } from '../../types/auth'
 import MyConnections from '../credential/MyConnections.vue'
@@ -308,6 +343,7 @@ const {
 } = useMetricsStatus(props.clusterName)
 
 const appSettings = useAppSettings()
+const { mode: themeMode, setMode: setThemeMode } = useTheme()
 const refreshInterval = ref(10)
 const settingsLoaded = ref(false)
 
@@ -357,3 +393,28 @@ onMounted(async () => {
   settingsLoaded.value = true
 })
 </script>
+
+<style scoped>
+.theme-switch {
+  display: inline-flex;
+  padding: 3px;
+  gap: 2px;
+  background: var(--panel-deep);
+  border: 1px solid var(--line-strong);
+  border-radius: 9px;
+}
+.theme-switch-option {
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-soft);
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.theme-switch-option:hover { color: var(--text); }
+.theme-switch-option:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.theme-switch-option.active { background: var(--blue-strong); color: #fff; }
+</style>

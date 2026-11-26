@@ -1,0 +1,9 @@
+{
+  "target": {"kind": "Pod", "namespace": "app", "name": "api-0"},
+  "forbid": ["Node"],
+  "golden": true,
+  "expect": {
+    "missing": ["source.unavailable"],
+    "absent": ["node.not_ready", "node.pressure_memory"]
+  }
+}

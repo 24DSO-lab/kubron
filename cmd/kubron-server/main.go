@@ -131,9 +131,19 @@ func main() {
 		notifier = pg.NewNotifier(listenURL, logf)
 		st := store.FromPostgres(pg)
 		app.SetStore(core, st)
+		// Ключ токенов предпросмотра baseline выводится из общего мастер-ключа: предпросмотр и подтверждение
+		// могут прийти на разные реплики (ADR-0016).
+		if err := app.SetBaselinePreviewKey(cfg.SecretKey); err != nil {
+			fatal("configuration", err)
+		}
 		if p, ok := st.(websession.Provider); ok {
 			sessionBackend = p.Sessions()
 		}
+	}
+	// Расследования Kubron Intelligence (ADR-0024): до первых видов сессий, потому что виды копируют сервис.
+	incidentJob, err := app.SetupIncidents(core, os.Getenv)
+	if err != nil {
+		fatal("incidents", err)
 	}
 	if err := setupBroker(ctx, cfg, pgStore, core); err != nil {
 		fatal("sign-in", err)
@@ -192,9 +202,24 @@ func main() {
 	go terminals.Run(ctx.Done(), 5*time.Second)
 	app.StartHealthMonitor(ctx, core, cfg.ClusterCheckInterval)
 	startEvents() // слушатель стартует после монитора: первая сверка читает результаты проверок
+	readinessJob, err := app.ReadinessRetentionJob(core, nil)
+	if err != nil {
+		slog.Error("readiness retention is off", "error", err)
+		readinessJob = nil
+	}
 	if pgStore != nil {
 		// Очистка просроченных строк и хранение аудита: исполняет одна реплика (pg_try_advisory_lock).
-		go jobs.Run(ctx, maintenanceJobs(pgStore, sessionBackend, cfg.AuditRetention)...)
+		blRetention, err := loadBaselineRetention()
+		if err != nil {
+			fatal("configuration", err)
+		}
+		go jobs.Run(ctx, maintenanceJobs(pgStore, sessionBackend, cfg.AuditRetention, blRetention, readinessJob, incidentJob)...)
+	} else {
+		for _, j := range []*jobs.Job{readinessJob, incidentJob} {
+			if j != nil {
+				go jobs.Run(ctx, j) // файловое хранилище: одна реплика, блокировка не нужна
+			}
+		}
 	}
 	// Фоновая уборка веб-сессий: закрывает те, у которых ядро уже завершило пользовательскую сессию
 	// (простой, отключение пользователя) или истёк срок, и освобождает их ресурсы и ссылки пула.

@@ -1,0 +1,415 @@
+{
+  "ruleSetVersion": 3,
+  "target": {
+    "kind": "StatefulSet",
+    "namespace": "app",
+    "name": "db",
+    "uid": "s1"
+  },
+  "observedAt": "2026-11-11T10:00:00Z",
+  "symptoms": [
+    "pod.startup_failure",
+    "sts.start_stuck"
+  ],
+  "resources": [
+    {
+      "kind": "StatefulSet",
+      "namespace": "app",
+      "name": "db",
+      "uid": "s1"
+    },
+    {
+      "kind": "Pod",
+      "namespace": "app",
+      "name": "db-6",
+      "uid": "p6"
+    }
+  ],
+  "facts": [
+    {
+      "kind": "fact",
+      "id": "f1",
+      "code": "container.waiting",
+      "resource": {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "db-6",
+        "uid": "p6"
+      },
+      "params": {
+        "container": "db",
+        "image": "",
+        "message": "Back-off pulling image: manifest unknown",
+        "reason": "ImagePullBackOff"
+      },
+      "source": {
+        "kind": "resource",
+        "resource": {
+          "kind": "Pod",
+          "namespace": "app",
+          "name": "db-6",
+          "uid": "p6"
+        },
+        "field": "status.containerStatuses[db].state.waiting"
+      },
+      "observedAt": "2026-11-11T10:00:00Z"
+    },
+    {
+      "kind": "fact",
+      "id": "f2",
+      "code": "sts.ordered_start",
+      "resource": {
+        "kind": "StatefulSet",
+        "namespace": "app",
+        "name": "db",
+        "uid": "s1"
+      },
+      "params": {
+        "sts": "db"
+      },
+      "source": {
+        "kind": "resource",
+        "resource": {
+          "kind": "StatefulSet",
+          "namespace": "app",
+          "name": "db",
+          "uid": "s1"
+        },
+        "field": "spec.podManagementPolicy"
+      },
+      "observedAt": "2026-11-11T10:00:00Z"
+    },
+    {
+      "kind": "fact",
+      "id": "f3",
+      "code": "sts.pod_not_ready",
+      "resource": {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "db-6",
+        "uid": "p6"
+      },
+      "params": {
+        "ordinal": "6",
+        "pod": "db-6"
+      },
+      "source": {
+        "kind": "derived",
+        "resource": {
+          "kind": "Pod",
+          "namespace": "app",
+          "name": "db-6",
+          "uid": "p6"
+        },
+        "field": "status.conditions"
+      },
+      "observedAt": "2026-11-11T10:00:00Z"
+    },
+    {
+      "kind": "fact",
+      "id": "f4",
+      "code": "sts.pods_not_created",
+      "resource": {
+        "kind": "StatefulSet",
+        "namespace": "app",
+        "name": "db",
+        "uid": "s1"
+      },
+      "params": {
+        "created": "2",
+        "replicas": "3"
+      },
+      "source": {
+        "kind": "derived",
+        "resource": {
+          "kind": "StatefulSet",
+          "namespace": "app",
+          "name": "db",
+          "uid": "s1"
+        },
+        "field": "status.replicas"
+      },
+      "observedAt": "2026-11-11T10:00:00Z"
+    }
+  ],
+  "hypotheses": [
+    {
+      "kind": "hypothesis",
+      "id": "h1",
+      "code": "image.not_found",
+      "resource": {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "db-6",
+        "uid": "p6"
+      },
+      "params": {
+        "container": "db",
+        "image": ""
+      },
+      "confidence": "high",
+      "supporting": [
+        "f1"
+      ],
+      "contradicting": [],
+      "ruleId": "pod.startup",
+      "ruleEpoch": 1,
+      "explains": [
+        "h2"
+      ]
+    },
+    {
+      "kind": "hypothesis",
+      "id": "h2",
+      "code": "sts.stuck_ordered_start",
+      "resource": {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "db-6",
+        "uid": "p6"
+      },
+      "params": {
+        "ordinal": "6",
+        "pod": "db-6",
+        "sts": "db"
+      },
+      "confidence": "high",
+      "supporting": [
+        "f2",
+        "f3",
+        "f4"
+      ],
+      "contradicting": [],
+      "ruleId": "chain.statefulset",
+      "ruleEpoch": 1
+    }
+  ],
+  "recommendations": [
+    {
+      "kind": "recommendation",
+      "id": "r1",
+      "code": "rec.fix_image_reference",
+      "resource": {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "db-6",
+        "uid": "p6"
+      },
+      "params": {
+        "container": "db",
+        "image": ""
+      },
+      "hypotheses": [
+        "h1"
+      ],
+      "ruleId": "pod.startup",
+      "ruleEpoch": 1
+    },
+    {
+      "kind": "recommendation",
+      "id": "r2",
+      "code": "rec.fix_blocking_pod",
+      "resource": {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "db-6",
+        "uid": "p6"
+      },
+      "params": {
+        "ordinal": "6",
+        "pod": "db-6",
+        "sts": "db"
+      },
+      "hypotheses": [
+        "h2"
+      ],
+      "ruleId": "chain.statefulset",
+      "ruleEpoch": 1
+    }
+  ],
+  "steps": [
+    {
+      "kind": "step",
+      "id": "s1",
+      "code": "step.check_image_exists",
+      "resource": {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "db-6",
+        "uid": "p6"
+      },
+      "params": {
+        "container": "db",
+        "image": ""
+      },
+      "hypotheses": [
+        "h1"
+      ]
+    }
+  ],
+  "missing": [],
+  "graph": {
+    "nodes": [
+      {
+        "group": "apps",
+        "kind": "StatefulSet",
+        "namespace": "app",
+        "name": "db",
+        "health": "Degraded",
+        "reason": "replicas_unavailable"
+      },
+      {
+        "kind": "Node",
+        "name": "n1",
+        "health": "Healthy"
+      },
+      {
+        "kind": "PersistentVolume",
+        "name": "pv-5",
+        "health": "Missing",
+        "reason": "not_found",
+        "placeholder": true
+      },
+      {
+        "kind": "PersistentVolume",
+        "name": "pv-6",
+        "health": "Missing",
+        "reason": "not_found",
+        "placeholder": true
+      },
+      {
+        "kind": "PersistentVolumeClaim",
+        "namespace": "app",
+        "name": "data-db-5",
+        "health": "Healthy"
+      },
+      {
+        "kind": "PersistentVolumeClaim",
+        "namespace": "app",
+        "name": "data-db-6",
+        "health": "Healthy"
+      },
+      {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "db-5",
+        "health": "Healthy"
+      },
+      {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "db-6",
+        "health": "Degraded",
+        "reason": "image_pull_failed"
+      },
+      {
+        "group": "storage.k8s.io",
+        "kind": "StorageClass",
+        "name": "fast",
+        "health": "Healthy"
+      }
+    ],
+    "edges": [
+      {
+        "from": "apps/StatefulSet/app/db",
+        "to": "core/PersistentVolumeClaim/app/data-db-5",
+        "type": "owns",
+        "state": "ok"
+      },
+      {
+        "from": "apps/StatefulSet/app/db",
+        "to": "core/PersistentVolumeClaim/app/data-db-6",
+        "type": "owns",
+        "state": "ok"
+      },
+      {
+        "from": "apps/StatefulSet/app/db",
+        "to": "core/Pod/app/db-5",
+        "type": "owns",
+        "state": "ok"
+      },
+      {
+        "from": "apps/StatefulSet/app/db",
+        "to": "core/Pod/app/db-6",
+        "type": "owns",
+        "state": "ok"
+      },
+      {
+        "from": "core/PersistentVolumeClaim/app/data-db-5",
+        "to": "core/PersistentVolume//pv-5",
+        "type": "binds",
+        "state": "missing",
+        "reason": "not_found"
+      },
+      {
+        "from": "core/PersistentVolumeClaim/app/data-db-5",
+        "to": "storage.k8s.io/StorageClass//fast",
+        "type": "binds",
+        "state": "ok"
+      },
+      {
+        "from": "core/PersistentVolumeClaim/app/data-db-6",
+        "to": "core/PersistentVolume//pv-6",
+        "type": "binds",
+        "state": "missing",
+        "reason": "not_found"
+      },
+      {
+        "from": "core/PersistentVolumeClaim/app/data-db-6",
+        "to": "storage.k8s.io/StorageClass//fast",
+        "type": "binds",
+        "state": "ok"
+      },
+      {
+        "from": "core/Pod/app/db-5",
+        "to": "core/Node//n1",
+        "type": "runs_on",
+        "state": "ok"
+      },
+      {
+        "from": "core/Pod/app/db-5",
+        "to": "core/PersistentVolumeClaim/app/data-db-5",
+        "type": "mounts",
+        "state": "ok"
+      },
+      {
+        "from": "core/Pod/app/db-6",
+        "to": "core/Node//n1",
+        "type": "runs_on",
+        "state": "ok"
+      },
+      {
+        "from": "core/Pod/app/db-6",
+        "to": "core/PersistentVolumeClaim/app/data-db-6",
+        "type": "mounts",
+        "state": "ok"
+      }
+    ]
+  },
+  "chains": [
+    {
+      "path": [
+        {
+          "ref": {
+            "group": "apps",
+            "kind": "StatefulSet",
+            "namespace": "app",
+            "name": "db"
+          },
+          "health": "Degraded",
+          "reason": "replicas_unavailable"
+        },
+        {
+          "ref": {
+            "kind": "Pod",
+            "namespace": "app",
+            "name": "db-6"
+          },
+          "health": "Degraded",
+          "reason": "image_pull_failed"
+        }
+      ],
+      "candidate": "h2"
+    }
+  ]
+}

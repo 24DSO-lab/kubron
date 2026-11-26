@@ -22,14 +22,14 @@ function onChange(event: Event) {
 </script>
 
 <style scoped>
-.lang-switcher { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: #a6adc8; }
+.lang-switcher { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-muted); }
 .lang-switcher-select {
-  background: #11111b;
-  border: 1px solid #313244;
+  background: var(--bg-crust);
+  border: 1px solid var(--surface-0);
   border-radius: 8px;
   padding: 6px 10px;
   font-size: 13px;
-  color: #cdd6f4;
+  color: var(--text);
 }
-.lang-switcher-select:focus { outline: none; border-color: #89b4fa; box-shadow: 0 0 0 3px rgba(137, 180, 250, 0.18); }
+.lang-switcher-select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.18); }
 </style>

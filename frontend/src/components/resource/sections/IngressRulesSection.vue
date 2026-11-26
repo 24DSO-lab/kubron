@@ -62,5 +62,5 @@ const openService = (name: string) => emit('open', { id: 'service', ns: props.re
 </script>
 
 <style scoped>
-.ing-title { font-weight: 700; color: #fff; padding: 12px 0 8px; text-align: left; }
+.ing-title { font-weight: 700; color: var(--text-strong); padding: 12px 0 8px; text-align: left; }
 </style>

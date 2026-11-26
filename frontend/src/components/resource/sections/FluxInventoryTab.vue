@@ -230,14 +230,14 @@ async function openNode(n: FluxGraphNode) {
 <style scoped>
 .flux-toolbar { display: flex; align-items: center; gap: 12px; padding: 8px 0; flex-wrap: wrap; font-size: 0.85rem; }
 .flux-search, .flux-kind {
-  padding: 6px 10px; background: #1a1b2e; color: #d4d4d4; border: 1px solid #3b3d5c; border-radius: 4px; font: inherit;
+  padding: 6px 10px; background: var(--panel); color: var(--text-code); border: 1px solid var(--line-strong); border-radius: 4px; font: inherit;
 }
 .flux-search { flex: 1; min-width: 180px; }
 .flux-group { margin-top: 12px; }
-.flux-group-title { margin: 0 0 6px; font-size: 0.95rem; color: #d4d4d4; }
+.flux-group-title { margin: 0 0 6px; font-size: 0.95rem; color: var(--text-code); }
 .flux-more { padding: 10px 0; text-align: center; }
 .flux-linkbtn {
-  background: none; border: 0; padding: 0; font: inherit; color: #60a5fa; cursor: pointer; text-decoration: underline;
+  background: none; border: 0; padding: 0; font: inherit; color: var(--blue); cursor: pointer; text-decoration: underline;
 }
-.flux-linkbtn:focus-visible { outline: 2px solid #60a5fa; outline-offset: 2px; border-radius: 2px; }
+.flux-linkbtn:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; border-radius: 2px; }
 </style>

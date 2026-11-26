@@ -1,0 +1,25 @@
+kind: Expect
+target: {kind: Pod, namespace: shop, name: api-1}
+symptoms: [pod.crash_loop]
+hypotheses: ["crash.liveness_probe_failed:high", "crash.killed:low"]
+---
+apiVersion: v1
+kind: Pod
+metadata: {name: api-1, namespace: shop}
+spec: {nodeName: n1, containers: [{name: app, image: "app:2"}]}
+status:
+  phase: Running
+  containerStatuses:
+    - name: app
+      restartCount: 4
+      state: {waiting: {reason: CrashLoopBackOff}}
+      lastState: {terminated: {exitCode: 137, reason: Error}}
+---
+apiVersion: v1
+kind: Event
+metadata: {name: e1, namespace: shop}
+involvedObject: {kind: Pod, name: api-1, namespace: shop}
+type: Warning
+reason: Unhealthy
+message: "Liveness probe failed: HTTP probe failed with statuscode: 500"
+lastTimestamp: "2026-11-11T09:59:00Z"

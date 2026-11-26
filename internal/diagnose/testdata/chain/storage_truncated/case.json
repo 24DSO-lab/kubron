@@ -1,0 +1,10 @@
+{
+  "target": {"kind": "Pod", "namespace": "app", "name": "db-0"},
+  "limits": {"maxNodes": 1, "maxEdges": 600, "maxDepth": 4, "maxReads": 40},
+  "golden": true,
+  "expect": {
+    "hypotheses": ["pending.unbound_pvc:high"],
+    "partial": ["Graph"],
+    "absent": ["storage.class_not_found"]
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "target": {
+    "kind": "StatefulSet",
+    "namespace": "app",
+    "name": "db"
+  },
+  "limits": {
+    "maxNodes": 4,
+    "maxEdges": 600,
+    "maxDepth": 4,
+    "maxReads": 40
+  },
+  "expect": {
+    "partial": [
+      "Graph"
+    ],
+    "absent": [
+      "sts.stuck_ordered_start"
+    ]
+  }
+}

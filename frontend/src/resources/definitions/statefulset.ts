@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { defineResource } from '../types'
+import { investigateAction } from '../investigateAction'
 import { Perm } from '../../types/auth'
 import type { k8s } from '../../../wailsjs/go/models'
 import { callApp } from '../wails'
@@ -41,7 +42,7 @@ export const statefulSet = defineResource<k8s.StatefulSetInfo>({
       key: 'pods',
       label: 'defs.columns.pods',
       formatter: s => `${s.readyReplicas ?? 0}/${s.replicas ?? 0}`,
-      colorFn: s => stsStatus(s) === 'Scaled to 0' ? '#888' : (s.readyReplicas === s.replicas ? '#4ade80' : '#facc15'),
+      colorFn: s => stsStatus(s) === 'Scaled to 0' ? '#888' : (s.readyReplicas === s.replicas ? 'var(--green)' : 'var(--yellow)'),
     },
     ageCol,
   ],
@@ -81,6 +82,7 @@ export const statefulSet = defineResource<k8s.StatefulSetInfo>({
       icon: 'logs',
       run: (s, ctx) => ctx.openResourceLogs('statefulset', s.namespace, s.name),
     },
+    investigateAction('StatefulSet'),
   ],
 
   api: {

@@ -1,0 +1,266 @@
+{
+  "ruleSetVersion": 3,
+  "target": {
+    "kind": "Pod",
+    "namespace": "app",
+    "name": "db-0",
+    "uid": "p1"
+  },
+  "observedAt": "2026-11-11T10:00:00Z",
+  "symptoms": [
+    "pod.startup_failure",
+    "storage.claim_pending"
+  ],
+  "resources": [
+    {
+      "kind": "Pod",
+      "namespace": "app",
+      "name": "db-0",
+      "uid": "p1"
+    },
+    {
+      "kind": "PersistentVolumeClaim",
+      "namespace": "app",
+      "name": "data"
+    }
+  ],
+  "facts": [
+    {
+      "kind": "fact",
+      "id": "f1",
+      "code": "event",
+      "resource": {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "db-0",
+        "uid": "p1"
+      },
+      "params": {
+        "count": "4",
+        "message": "persistentvolumeclaim \"data\" not found",
+        "reason": "FailedMount",
+        "type": "Warning"
+      },
+      "source": {
+        "kind": "event",
+        "resource": {
+          "kind": "Pod",
+          "namespace": "app",
+          "name": "db-0"
+        }
+      },
+      "observedAt": "2026-11-11T09:58:00Z"
+    },
+    {
+      "kind": "fact",
+      "id": "f2",
+      "code": "pvc.missing",
+      "resource": {
+        "kind": "PersistentVolumeClaim",
+        "namespace": "app",
+        "name": "data"
+      },
+      "params": {
+        "pvc": "data"
+      },
+      "source": {
+        "kind": "derived",
+        "resource": {
+          "kind": "Pod",
+          "namespace": "app",
+          "name": "db-0",
+          "uid": "p1"
+        },
+        "field": "spec.volumes"
+      },
+      "observedAt": "2026-11-11T10:00:00Z"
+    },
+    {
+      "kind": "fact",
+      "id": "f3",
+      "code": "pvc.mounted",
+      "resource": {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "db-0",
+        "uid": "p1"
+      },
+      "params": {
+        "pod": "db-0",
+        "pvc": "data"
+      },
+      "source": {
+        "kind": "derived",
+        "resource": {
+          "kind": "Pod",
+          "namespace": "app",
+          "name": "db-0",
+          "uid": "p1"
+        },
+        "field": "spec.volumes"
+      },
+      "observedAt": "2026-11-11T10:00:00Z"
+    }
+  ],
+  "hypotheses": [
+    {
+      "kind": "hypothesis",
+      "id": "h1",
+      "code": "startup.volume_mount_failed",
+      "resource": {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "db-0",
+        "uid": "p1"
+      },
+      "confidence": "medium",
+      "supporting": [
+        "f1"
+      ],
+      "contradicting": [],
+      "ruleId": "pod.startup",
+      "ruleEpoch": 1
+    },
+    {
+      "kind": "hypothesis",
+      "id": "h2",
+      "code": "pvc.missing",
+      "resource": {
+        "kind": "PersistentVolumeClaim",
+        "namespace": "app",
+        "name": "data"
+      },
+      "params": {
+        "pvc": "data"
+      },
+      "confidence": "high",
+      "supporting": [
+        "f2",
+        "f3"
+      ],
+      "contradicting": [],
+      "ruleId": "pvc.chain",
+      "ruleEpoch": 1,
+      "explains": [
+        "h1"
+      ]
+    }
+  ],
+  "recommendations": [
+    {
+      "kind": "recommendation",
+      "id": "r1",
+      "code": "rec.fix_volume_claim",
+      "resource": {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "db-0",
+        "uid": "p1"
+      },
+      "hypotheses": [
+        "h1"
+      ],
+      "ruleId": "pod.startup",
+      "ruleEpoch": 1
+    },
+    {
+      "kind": "recommendation",
+      "id": "r2",
+      "code": "rec.create_missing_claim",
+      "resource": {
+        "kind": "PersistentVolumeClaim",
+        "namespace": "app",
+        "name": "data"
+      },
+      "params": {
+        "pvc": "data"
+      },
+      "hypotheses": [
+        "h2"
+      ],
+      "ruleId": "pvc.chain",
+      "ruleEpoch": 1
+    }
+  ],
+  "steps": [
+    {
+      "kind": "step",
+      "id": "s1",
+      "code": "step.check_pvc",
+      "resource": {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "db-0",
+        "uid": "p1"
+      },
+      "hypotheses": [
+        "h1"
+      ]
+    }
+  ],
+  "missing": [],
+  "graph": {
+    "nodes": [
+      {
+        "kind": "Node",
+        "name": "n1",
+        "health": "Healthy"
+      },
+      {
+        "kind": "PersistentVolumeClaim",
+        "namespace": "app",
+        "name": "data",
+        "health": "Missing",
+        "reason": "not_found",
+        "placeholder": true
+      },
+      {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "db-0",
+        "health": "Progressing",
+        "reason": "container_creating"
+      }
+    ],
+    "edges": [
+      {
+        "from": "core/Pod/app/db-0",
+        "to": "core/Node//n1",
+        "type": "runs_on",
+        "state": "ok"
+      },
+      {
+        "from": "core/Pod/app/db-0",
+        "to": "core/PersistentVolumeClaim/app/data",
+        "type": "mounts",
+        "state": "missing",
+        "reason": "not_found"
+      }
+    ]
+  },
+  "chains": [
+    {
+      "path": [
+        {
+          "ref": {
+            "kind": "Pod",
+            "namespace": "app",
+            "name": "db-0"
+          },
+          "health": "Progressing",
+          "reason": "container_creating"
+        },
+        {
+          "ref": {
+            "kind": "PersistentVolumeClaim",
+            "namespace": "app",
+            "name": "data"
+          },
+          "health": "Missing",
+          "reason": "not_found"
+        }
+      ],
+      "candidate": "h2"
+    }
+  ]
+}

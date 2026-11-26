@@ -1,0 +1,191 @@
+{
+  "ruleSetVersion": 3,
+  "target": {
+    "group": "networking.k8s.io",
+    "kind": "Ingress",
+    "namespace": "app",
+    "name": "site",
+    "uid": "i1"
+  },
+  "observedAt": "2026-11-11T10:00:00Z",
+  "symptoms": [
+    "ingress.unreachable"
+  ],
+  "resources": [
+    {
+      "group": "networking.k8s.io",
+      "kind": "Ingress",
+      "namespace": "app",
+      "name": "site",
+      "uid": "i1"
+    },
+    {
+      "group": "networking.k8s.io",
+      "kind": "Ingress",
+      "namespace": "app",
+      "name": "site"
+    }
+  ],
+  "facts": [
+    {
+      "kind": "fact",
+      "id": "f1",
+      "code": "ingress.backend_missing",
+      "resource": {
+        "group": "networking.k8s.io",
+        "kind": "Ingress",
+        "namespace": "app",
+        "name": "site"
+      },
+      "params": {
+        "ingress": "site",
+        "service": "ghost"
+      },
+      "source": {
+        "kind": "resource",
+        "resource": {
+          "group": "networking.k8s.io",
+          "kind": "Ingress",
+          "namespace": "app",
+          "name": "site"
+        },
+        "field": "spec.rules[].http.paths[].backend.service"
+      },
+      "observedAt": "2026-11-11T10:00:00Z"
+    }
+  ],
+  "hypotheses": [
+    {
+      "kind": "hypothesis",
+      "id": "h1",
+      "code": "ingress.backend_service_missing",
+      "resource": {
+        "group": "networking.k8s.io",
+        "kind": "Ingress",
+        "namespace": "app",
+        "name": "site"
+      },
+      "params": {
+        "ingress": "site",
+        "service": "ghost"
+      },
+      "confidence": "high",
+      "supporting": [
+        "f1"
+      ],
+      "contradicting": [],
+      "ruleId": "chain.ingress",
+      "ruleEpoch": 1
+    }
+  ],
+  "recommendations": [
+    {
+      "kind": "recommendation",
+      "id": "r1",
+      "code": "rec.create_backend_service",
+      "resource": {
+        "group": "networking.k8s.io",
+        "kind": "Ingress",
+        "namespace": "app",
+        "name": "site"
+      },
+      "params": {
+        "ingress": "site",
+        "service": "ghost"
+      },
+      "hypotheses": [
+        "h1"
+      ],
+      "ruleId": "chain.ingress",
+      "ruleEpoch": 1
+    }
+  ],
+  "steps": [
+    {
+      "kind": "step",
+      "id": "s1",
+      "code": "step.check_tls_secret",
+      "resource": {
+        "group": "networking.k8s.io",
+        "kind": "Ingress",
+        "namespace": "app",
+        "name": "site"
+      },
+      "params": {
+        "ingress": "site",
+        "secret": "site-tls"
+      },
+      "hypotheses": [
+        "h1"
+      ]
+    }
+  ],
+  "missing": [],
+  "graph": {
+    "nodes": [
+      {
+        "kind": "Service",
+        "namespace": "app",
+        "name": "ghost",
+        "health": "Missing",
+        "reason": "not_found",
+        "placeholder": true
+      },
+      {
+        "group": "networking.k8s.io",
+        "kind": "Ingress",
+        "namespace": "app",
+        "name": "site",
+        "health": "Degraded",
+        "reason": "ingress_backend_missing"
+      },
+      {
+        "group": "networking.k8s.io",
+        "kind": "IngressClass",
+        "name": "nginx",
+        "health": "Healthy"
+      }
+    ],
+    "edges": [
+      {
+        "from": "networking.k8s.io/Ingress/app/site",
+        "to": "core/Service/app/ghost",
+        "type": "routes",
+        "state": "missing",
+        "reason": "not_found"
+      },
+      {
+        "from": "networking.k8s.io/Ingress/app/site",
+        "to": "networking.k8s.io/IngressClass//nginx",
+        "type": "binds",
+        "state": "ok"
+      }
+    ]
+  },
+  "chains": [
+    {
+      "path": [
+        {
+          "ref": {
+            "group": "networking.k8s.io",
+            "kind": "Ingress",
+            "namespace": "app",
+            "name": "site"
+          },
+          "health": "Degraded",
+          "reason": "ingress_backend_missing"
+        },
+        {
+          "ref": {
+            "kind": "Service",
+            "namespace": "app",
+            "name": "ghost"
+          },
+          "health": "Missing",
+          "reason": "not_found"
+        }
+      ],
+      "candidate": "h1"
+    }
+  ]
+}

@@ -28,17 +28,17 @@ defineEmits<{ (e: 'refresh'): void; (e: 'search', val: string): void }>()
 <style scoped>
 .content-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
 .content-header-left { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-.content-header h2 { font-size: 18px; color: #89b4fa; margin: 0; }
+.content-header h2 { font-size: 18px; color: var(--accent); margin: 0; }
 .header-icon {
   margin-right: 6px;
   vertical-align: middle;
 }
-.count { font-size: 13px; color: #a6adc8; white-space: nowrap; }
+.count { font-size: 13px; color: var(--text-muted); white-space: nowrap; }
 .search-input {
-  padding: 6px 12px; background: #26283a; color: #cdd6f4;
-  border: 1px solid #3b3d5c; border-radius: 6px; font-size: 13px; width: 200px;
+  padding: 6px 12px; background: #26283a; color: var(--text);
+  border: 1px solid var(--line-strong); border-radius: 6px; font-size: 13px; width: 200px;
 }
-.search-input:focus { outline: none; border-color: #89b4fa; }
+.search-input:focus { outline: none; border-color: var(--accent); }
 .content-updated { font-size: 12px; color: #8b91ad; margin-left: auto; }
 .ov-btn {
   padding: 7px 14px;

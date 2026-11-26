@@ -81,8 +81,20 @@ Jobs that exactly one replica must run are held under a PostgreSQL advisory lock
 | Expired web sessions | 1 min | Deletes expired `web_sessions` rows |
 | Sign-in counters | 1 min | Deletes unlocked `login_failures` rows older than 15 minutes, and rows beyond 10,000 |
 | Audit retention | 5 min | Only with `KUBRON_AUDIT_RETENTION` (for example `2160h`): deletes entries older than the period, up to 10,000 per tick |
+| Baseline retention | 1 h | Deletes check results older than `KUBRON_BASELINE_RESULTS_RETENTION_DAYS` and versions beyond the latest `KUBRON_BASELINE_MIN_VERSIONS` of each baseline (never the active one) |
 
 - **The audit log is kept forever by default.** `KUBRON_AUDIT_RETENTION` takes a Go duration (`720h`; days are not supported). `0` or empty keeps everything; values under `24h` are rejected so a typo cannot wipe the log.
+
+## What high availability does not cover
+
+Several replicas remove the Kubron server as a single point of failure. They do not make the whole system fault-tolerant. You also need:
+
+- **A highly available PostgreSQL.** The replicas keep no state of their own. If the database is down, nobody can sign in, and existing sessions are served from a cache for at most 30 seconds.
+- **The same encryption key on every replica**, kept in a secret manager and backed up separately from the database.
+- **A correctly configured reverse proxy or ingress:** TLS, WebSocket timeouts, trusted-proxy settings and allowed hosts.
+- **Backups** of the database and the key, and a restore you have actually tried. See [Backup, restore and key rotation](/server/backup).
+
+Open terminals, log streams and port-forwards end when the replica that holds them stops. They reopen on another replica, but the shell and the stream start again.
 
 ## Operating checklist
 

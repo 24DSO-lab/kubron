@@ -1,0 +1,16 @@
+{
+  "target": {
+    "kind": "Ingress",
+    "namespace": "app",
+    "name": "site"
+  },
+  "golden": false,
+  "expect": {
+    "hypotheses": [
+      "ingress.backend_no_endpoints:high"
+    ],
+    "chains": [
+      "crash.application_error: Ingress/site > Service/web > Pod/web-1"
+    ]
+  }
+}

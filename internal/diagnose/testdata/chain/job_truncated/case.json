@@ -1,0 +1,20 @@
+{
+  "target": {
+    "kind": "Job",
+    "namespace": "app",
+    "name": "report"
+  },
+  "golden": true,
+  "expect": {
+    "missing": [
+      "job.history_truncated"
+    ],
+    "partial": [
+      "Graph",
+      "Pod"
+    ],
+    "hypotheses": [
+      "job.backoff_limit_exceeded:high"
+    ]
+  }
+}

@@ -1,0 +1,153 @@
+{
+  "ruleSetVersion": 3,
+  "target": {
+    "group": "networking.k8s.io",
+    "kind": "Ingress",
+    "namespace": "app",
+    "name": "site",
+    "uid": "i1"
+  },
+  "observedAt": "2026-11-11T10:00:00Z",
+  "symptoms": [
+    "none"
+  ],
+  "resources": [
+    {
+      "group": "networking.k8s.io",
+      "kind": "Ingress",
+      "namespace": "app",
+      "name": "site",
+      "uid": "i1"
+    },
+    {
+      "group": "networking.k8s.io",
+      "kind": "Ingress",
+      "namespace": "app",
+      "name": "site"
+    }
+  ],
+  "facts": [
+    {
+      "kind": "fact",
+      "id": "f1",
+      "code": "ingress.resource_backend",
+      "resource": {
+        "group": "networking.k8s.io",
+        "kind": "Ingress",
+        "namespace": "app",
+        "name": "site"
+      },
+      "params": {
+        "ingress": "site",
+        "kind": "Bucket",
+        "name": "static"
+      },
+      "source": {
+        "kind": "resource",
+        "resource": {
+          "group": "networking.k8s.io",
+          "kind": "Ingress",
+          "namespace": "app",
+          "name": "site"
+        },
+        "field": "spec.rules[].http.paths[].backend.resource"
+      },
+      "observedAt": "2026-11-11T10:00:00Z"
+    },
+    {
+      "kind": "fact",
+      "id": "f2",
+      "code": "no_problem_detected",
+      "resource": {
+        "group": "networking.k8s.io",
+        "kind": "Ingress",
+        "namespace": "app",
+        "name": "site",
+        "uid": "i1"
+      },
+      "params": {
+        "pods": "0"
+      },
+      "source": {
+        "kind": "derived",
+        "resource": {
+          "group": "networking.k8s.io",
+          "kind": "Ingress",
+          "namespace": "app",
+          "name": "site",
+          "uid": "i1"
+        }
+      },
+      "observedAt": "2026-11-11T10:00:00Z"
+    }
+  ],
+  "hypotheses": [],
+  "recommendations": [],
+  "steps": [
+    {
+      "kind": "step",
+      "id": "s1",
+      "code": "step.check_events",
+      "resource": {
+        "group": "networking.k8s.io",
+        "kind": "Ingress",
+        "namespace": "app",
+        "name": "site",
+        "uid": "i1"
+      },
+      "hypotheses": []
+    }
+  ],
+  "missing": [
+    {
+      "code": "context.insufficient",
+      "resource": {
+        "group": "networking.k8s.io",
+        "kind": "Ingress",
+        "namespace": "app",
+        "name": "site",
+        "uid": "i1"
+      }
+    }
+  ],
+  "graph": {
+    "nodes": [
+      {
+        "group": "example.io",
+        "kind": "Bucket",
+        "namespace": "app",
+        "name": "static",
+        "health": "Unknown",
+        "unknown": "policy"
+      },
+      {
+        "group": "networking.k8s.io",
+        "kind": "Ingress",
+        "namespace": "app",
+        "name": "site",
+        "health": "Healthy"
+      },
+      {
+        "group": "networking.k8s.io",
+        "kind": "IngressClass",
+        "name": "nginx",
+        "health": "Healthy"
+      }
+    ],
+    "edges": [
+      {
+        "from": "networking.k8s.io/Ingress/app/site",
+        "to": "example.io/Bucket/app/static",
+        "type": "routes",
+        "state": "unknown",
+        "reason": "policy"
+      },
+      {
+        "from": "networking.k8s.io/Ingress/app/site",
+        "to": "networking.k8s.io/IngressClass//nginx",
+        "type": "binds",
+        "state": "ok"
+      }
+    ]
+  }
+}

@@ -35,7 +35,7 @@ export const storageClass = defineResource<k8s.StorageClassInfo>({
       key: 'default',
       label: 'defs.columns.default',
       formatter: s => yesNo(s.default),
-      colorFn: s => (s.default ? '#4ade80' : '#868d8a'),
+      colorFn: s => (s.default ? 'var(--green)' : 'var(--text-gray)'),
     },
     { key: 'volumes', label: 'defs.columns.pvs', formatter: s => String(s.volumes?.length ?? 0) },
     ageCol,
