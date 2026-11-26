@@ -24,14 +24,14 @@ import (
 
 // fakeCluster — двойник кластера: хранит объекты и записывает, что читалось.
 type fakeCluster struct {
-	mu      sync.Mutex
-	objs    map[string]*unstructured.Unstructured // ключ: Kind/ns/name
-	hpas    []unstructured.Unstructured
-	hpaErr  error
-	getErr  map[string]error
-	listErr map[string]error
+	mu        sync.Mutex
+	objs      map[string]*unstructured.Unstructured // ключ: Kind/ns/name
+	hpas      []unstructured.Unstructured
+	hpaErr    error
+	getErr    map[string]error
+	listErr   map[string]error
 	truncated map[string]bool
-	reads   []string
+	reads     []string
 }
 
 func newCluster() *fakeCluster {
