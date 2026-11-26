@@ -15,6 +15,10 @@ import legacy from '../__fixtures__/map/legacy-no-graph.json'
 import emptyGraph from '../__fixtures__/map/empty-graph.json'
 import DependencyMap from './DependencyMap.vue'
 import MapDetails from './MapDetails.vue'
+import { createI18n } from 'vue-i18n'
+import enChain from '../../../i18n/locales/en/incidentsChainConfig.json'
+import ruChain from '../../../i18n/locales/ru/incidentsChainConfig.json'
+import cnChain from '../../../i18n/locales/cn/incidentsChainConfig.json'
 import { buildMapModel } from '../../../composables/dependencyMap'
 import type { Report } from '../../../types/incident'
 
@@ -96,10 +100,70 @@ describe('MapDetails', () => {
     expect(await render(MapDetails, { report: rep(truncated), model: m, node: null })).toContain('data-testid="map-details-empty"')
   })
 
-  it('свёрнутая группа даёт кнопку раскрытия', async () => {
+  it('свёрнутая группа даёт кнопку раскрытия и показывает namespace', async () => {
     const m = buildMapModel(rep(ingress))
-    const group = { ...m.nodes[0], key: 'group:Pod', variant: 'group' as const, members: ['a', 'b', 'c'] }
-    expect(await render(MapDetails, { report: rep(ingress), model: m, node: group })).toContain('data-testid="map-expand"')
+    const group = { ...m.nodes[0], key: 'group:ns/shop/Pod', kind: 'Pod', namespace: 'shop', variant: 'group' as const, members: ['a', 'b', 'c'] }
+    const html = await render(MapDetails, { report: rep(ingress), model: m, node: group })
+    expect(html).toContain('data-testid="map-expand"')
+    expect(html).toContain('3 × Pod (shop)')
+  })
+})
+
+/** Необязательный ConfigMap отсутствует: бэкенд отдаёт вершину Healthy с reason и ребро ok с reason optional_absent. */
+const optionalAbsentReport = (): Report => ({
+  ruleSetVersion: 2, target: { kind: 'Pod', name: 'api-1', namespace: 'shop' }, observedAt: '', symptoms: [], resources: [],
+  facts: [], hypotheses: [], recommendations: [], steps: [], missing: [],
+  graph: {
+    nodes: [
+      { kind: 'Pod', name: 'api-1', namespace: 'shop', group: 'core', health: 'Healthy' },
+      { kind: 'ConfigMap', name: 'flags', namespace: 'shop', group: 'core', health: 'Healthy', reason: 'optional_absent' },
+    ],
+    edges: [{ from: 'core/Pod/shop/api-1', to: 'core/ConfigMap/shop/flags', type: 'mounts', state: 'ok', reason: 'optional_absent' }],
+  },
+})
+
+describe('MapDetails: optional_absent', () => {
+  const expected = i18n.global.t('incidentsMap.reasons.optional_absent')
+
+  it('текст понятный, а не «сырой» ключ', () => {
+    expect(expected).not.toContain('incidentsMap.')
+    expect(expected).not.toContain('@:')
+    expect(expected.length).toBeGreaterThan(10)
+  })
+
+  it('панель ConfigMap объясняет, что объекта нет, но ссылка необязательная; это не Missing/placeholder', async () => {
+    const m = buildMapModel(optionalAbsentReport())
+    const node = m.nodes.find((n) => n.kind === 'ConfigMap')!
+    const html = await render(MapDetails, { report: optionalAbsentReport(), model: m, node })
+    expect(html).toContain('data-testid="map-details-reason"')
+    expect(html).toContain(expected)
+    expect(html).not.toContain('data-testid="map-details-placeholder"')
+    expect(html).not.toContain('h-Missing')
+    expect(html).not.toContain('incidentsMap.')
+  })
+
+  it('панель Pod показывает причину у связи; состояние связи остаётся «working», не broken/missing', async () => {
+    const m = buildMapModel(optionalAbsentReport())
+    const node = m.nodes.find((n) => n.kind === 'Pod')!
+    const html = await render(MapDetails, { report: optionalAbsentReport(), model: m, node })
+    expect(html).toContain('data-testid="map-relation-reason"')
+    expect(html).toContain(expected)
+    expect(html).toContain('data-state="ok"')
+    expect(html).not.toContain('data-state="missing"')
+    expect(html).not.toContain('data-state="broken"')
+  })
+
+  it('связь без reason не получает пояснения', async () => {
+    const m = buildMapModel(rep(configmap))
+    const pod = m.nodes.find((n) => n.kind === 'Pod')!
+    expect(await render(MapDetails, { report: rep(configmap), model: m, node: pod })).not.toContain('data-testid="map-relation-reason"')
+  })
+
+  it('карта целиком рисует отсутствующий необязательный ConfigMap как обычную вершину, а не заглушку', async () => {
+    const html = await render(DependencyMap, { report: optionalAbsentReport() })
+    expect(html).not.toContain('data-variant="placeholder"')
+    expect(html).not.toContain('data-health="Missing"')
+    expect(html).not.toMatch(/data-state="(missing|broken)"/)
   })
 })
 
@@ -114,5 +178,30 @@ describe('переводы incidentsMap', () => {
       expect(Object.keys(other).sort()).toEqual(Object.keys(base).sort())
       for (const k of Object.keys(base)) expect(placeholders(other[k]), k).toBe(placeholders(base[k]))
     }
+  })
+
+  it('en, ru и cn содержат reasons.optional_absent и labelNs группы', () => {
+    for (const [lang, msgs] of Object.entries({ en, ru, cn })) {
+      const f = flat(msgs)
+      expect(f['reasons.optional_absent'], lang).toBeTruthy()
+      expect(f['group.labelNs'], lang).toBeTruthy()
+    }
+  })
+
+  it('optional_absent переводится на всех языках из единственного источника (incidentsChainConfig.graphReasons)', () => {
+    const chain = { en: enChain, ru: ruChain, cn: cnChain }
+    const maps = { en, ru, cn }
+    const texts = new Set<string>()
+    for (const lang of ['en', 'ru', 'cn'] as const) {
+      const source = chain[lang].graphReasons.optional_absent
+      expect(source, lang).toBeTruthy()
+      // сам ключ incidentsMap — ссылка, а не копия текста: правка перевода в одном месте
+      expect(maps[lang].reasons.optional_absent, lang).toBe('@:incidentsChainConfig.graphReasons.optional_absent')
+      const local = createI18n({ legacy: false, locale: lang, messages: { [lang]: { incidentsMap: maps[lang], incidentsChainConfig: chain[lang] } } })
+      const text = local.global.t('incidentsMap.reasons.optional_absent')
+      expect(text, lang).toBe(source)
+      texts.add(text)
+    }
+    expect(texts.size).toBe(3) // три разных перевода
   })
 })
