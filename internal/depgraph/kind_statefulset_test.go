@@ -392,8 +392,8 @@ func TestStatefulSetPodOutsideRangeKeepsItsClaim(t *testing.T) {
 		}
 	}
 	// У db-0 PVC отсутствует, но Pod вне [5, 8): это не доказательство проблемы активной реплики.
-	if hasNode(g, claimRef(0)) {
-		t.Error("StatefulSet must not invent a Missing claim for out-of-range Pod db-0")
+	if slices.ContainsFunc(g.EdgesFrom(refSTS, depgraph.EdgeOwns), func(e depgraph.Edge) bool { return e.To == claimRef(0) }) {
+		t.Error("StatefulSet must not declare a Missing claim for out-of-range Pod db-0")
 	}
 	edgeOf(t, g, refSTS, claimRef(5), depgraph.EdgeOwns)
 }
