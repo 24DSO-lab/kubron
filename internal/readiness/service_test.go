@@ -137,11 +137,17 @@ func node(name, kubelet string, ready bool) unstructured.Unstructured {
 func newService(t *testing.T) (*readiness.Service, readiness.Backend) {
 	t.Helper()
 	b := readiness.NewFileBackend(t.TempDir())
+	var idMu sync.Mutex
 	n := 0
 	s, err := readiness.New(readiness.Options{
 		Backend: b,
 		Now:     func() time.Time { return readinesstest.Base },
-		NewID:   func() string { n++; return fmt.Sprintf("rep-%08d", n) },
+		NewID: func() string {
+			idMu.Lock()
+			defer idMu.Unlock()
+			n++
+			return fmt.Sprintf("rep-%08d", n)
+		},
 	})
 	if err != nil {
 		t.Fatal(err)
