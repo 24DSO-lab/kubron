@@ -42,6 +42,7 @@ Kubron должен поддерживать интерактивные и ав�
 
 ### 2.2. Типы ExecutionIdentity
 
+
 **User identity**
 - Связана с конкретным пользователем и его персональными Kubernetes credentials.
 - Допускается для интерактивной операции, пока пользовательская сессия и права действительны.
@@ -60,6 +61,13 @@ Kubron должен поддерживать интерактивные и ав�
 - Создание, изменение, ротация и отзыв управляются явными административными процедурами и аудитом.
 - Service identity не означает обход app-RBAC, tenant isolation или autonomy policy.
 
+**Модель каталога и управления (принятое решение)**
+- `Team identity` и `Service identity` — логически разные типы с разными назначением, scope и правилами использования.
+- Они используют общую существующую подсистему хранения секретов, credential resolution, ротации и отзыва. Две независимые системы управления secrets/credentials не создаются.
+- Organization Admin управляет организационными Service Identity.
+- Team Admin управляет Team Identity своей команды.
+- Эти административные роли сами по себе не обходят app-RBAC, tenant boundaries и audit; каждая операция управления identity должна отдельно авторизоваться и журналироваться.
+
 ### 2.3. Матрица допустимости
 
 | Тип запуска | Actor | Execution identity |
@@ -76,6 +84,8 @@ Kubron должен поддерживать интерактивные и ав�
 ### 2.4. Credential binding
 
 Run фиксирует ссылку на credential identity, а не секрет и не копию kubeconfig.
+
+Для multi-cluster Run действует обязательное правило: **каждый cluster-scoped sub-run имеет собственную явно назначенную Execution Identity**. Identity назначается и фиксируется до создания Plan соответствующего sub-run. Она не наследуется от parent Run и не подменяется автоматически. В пределах одного sub-run identity не меняется; смена identity требует нового Plan и нового approval. Каждый sub-run независимо проходит tenant, cluster access, policy и credential checks.
 
 Credential binding содержит как минимум:
 - тип identity и её стабильный ID;
@@ -245,7 +255,7 @@ Step должен различать как минимум:
 
 Перед каждым side effect worker обязан повторно проверить:
 1. tenant и принадлежность кластера;
-2. app-RBAC и effective permissions инициатора/владельца запуска согласно выбранной модели;
+2. app-RBAC для текущего actor при интерактивном запросе; для фонового/автоматического исполнения полномочия инициатора не являются источником execution authorization. Проверяются актуальные tenant policy, grants и permissions назначенной Execution Identity, а также доступ к каждому target;
 3. актуальность execution identity и credential binding;
 4. Kubernetes RBAC/фактическую возможность действия;
 5. текущий autonomy mode и policy revision;
@@ -300,11 +310,12 @@ Operation, Run, Step, Plan, Approval и lease state — разные логич�
 ### 6.3. История и retention
 
 - История Run/Step должна быть доступна после перезапуска и из любой Web replica.
-- Audit остаётся отдельным потоком согласно ADR-0022; Run history не заменяет audit.
-- Evidence хранится по правилам домена-владельца, Run содержит ссылки и метаданные происхождения.
+- Для Run/Step history применяется настраиваемая retention policy на уровне Organization. Конкретные сроки и классы данных задаются политикой, а не зашиваются в доменные обработчики.
+- Audit остаётся отдельным потоком согласно ADR-0022 и подчиняется отдельным обязательным правилам хранения/retention. Очистка Run history или Evidence не должна удалять обязательный audit trail.
+- Evidence хранится по правилам домена-владельца; Run содержит ссылки и метаданные происхождения. Retention Evidence согласуется с организационной политикой и требованиями домена.
 - Retention не удаляет незавершённые Run, активные approvals или записи, необходимые для reconciliation.
 - Удаление/архивация завершённых Run не должно удалять обязательный audit trail.
-- В Desktop поддерживаемый объём истории может быть меньше, но state machine и смысл статусов совпадают с Web.
+- В Desktop поддерживаемый объём истории может быть меньше, но state machine и смысл статусов совпадают с Web; организационная retention policy должна применяться с учётом возможностей локального хранения.
 
 ## 7. Desktop и Web execution lifecycle
 
@@ -377,7 +388,7 @@ Exactly-once для side effects во внешнем Kubernetes API не обе�
 - Plan сохраняет immutable target snapshot: cluster ID, GVK, namespace/name, UID и нужные precondition markers.
 - Изменение состава группы после Plan не меняет уже созданный Plan. Для нового состава нужен новый Plan и approval.
 - Потеря доступа к одному target блокирует соответствующий sub-run; она не даёт права пропустить проверку или использовать credentials другого tenant.
-- Cross-cluster execution — parent Run с независимыми cluster-scoped sub-runs. Distributed transaction не имитируется; partial success остаётся видимым.
+- Cross-cluster execution — parent Run с независимыми cluster-scoped sub-runs. Каждый sub-run получает собственную явно назначенную Execution Identity до создания своего Plan; identity одного кластера не переносится на другой. Distributed transaction не имитируется; partial success остаётся видимым.
 
 ## 10. Security invariants
 
@@ -473,16 +484,57 @@ Exactly-once для side effects во внешнем Kubernetes API не обе�
 - Audit содержит достаточные ссылки для расследования без хранения секретов.
 - Для каждого action документированы idempotency, verification, retry и recovery semantics.
 
-## 14. Открытые вопросы для следующего design pass
+## 14. Закрытые архитектурные решения
 
-Эти вопросы намеренно оставлены открытыми и не должны решаться скрытыми предположениями в коде:
+Все вопросы, перечисленные в предыдущей редакции этого раздела, рассмотрены и закрыты следующими решениями.
 
-1. Может ли один Run менять execution identity между независимыми cluster sub-runs? Рекомендуемое значение по умолчанию — нет; identity фиксируется на уровне каждого sub-run до создания Plan.
-2. Кто может создавать и ротировать Team/Service identities: только organization admin, team admin или отдельная permission? Нужна матрица ролей и аудит.
-3. Как именно определяется effective authorization для запущенного по расписанию Run после изменения ролей инициатора? Рекомендация: права инициатора не заменяют service identity; актуальные tenant policy и identity grants проверяются при каждом запуске и side effect.
-4. Должны ли расписания быть доступны в Desktop? Рекомендация: Desktop schedules локальны и исполняются только пока запущен процесс; server schedules исполняются на сервере. Синхронизация расписаний между режимами требует отдельного решения.
-5. Какой срок хранения Run/Step history нужен в Desktop и Web и какие данные могут содержать evidence references?
-6. Нужен ли отдельный тип `service identity` в каталоге credentials или это сначала ограниченная разновидность team-scoped credential с явным purpose/scope? Не создавать второй секретный subsystem.
+### 14.1. Execution Identity для cross-cluster Run
+
+- Parent Run не обязан иметь одну общую Kubernetes Execution Identity.
+- Каждый cluster-scoped sub-run использует отдельную явно назначенную Execution Identity.
+- Identity назначается до создания Plan конкретного sub-run и включается в его immutable Plan/approval binding.
+- Identity не наследуется автоматически от инициатора или соседнего sub-run.
+- В пределах одного sub-run identity неизменна. Её изменение требует нового Plan и повторного approval.
+- Каждый sub-run независимо проходит authorization, tenant, cluster access, policy и credential validation.
+
+### 14.2. Управление Team/Service Identity
+
+- Organization Admin управляет организационными Service Identity.
+- Team Admin управляет Team Identity своей команды.
+- Team и Service — логически разные типы identity, но используют общую подсистему хранения и выдачи credentials.
+- Все операции создания, изменения, ротации, отзыва и назначения identity подлежат app-RBAC checks и audit.
+- Это решение не создаёт вторую независимую систему secret/credential management.
+
+### 14.3. Права инициатора после создания автоматического задания
+
+- Автоматическое выполнение не зависит от сохранения текущих прав инициатора.
+- Инициатор сохраняется как provenance/audit metadata, но не является execution principal для фонового Run.
+- При запуске и перед каждым side effect проверяются актуальные tenant policy, права и состояние назначенной Team/Service Execution Identity, доступ к target и effective autonomy policy.
+- Потеря инициатором роли или членства сама по себе не отзывает техническую identity и не останавливает задание.
+- Отзыв/изменение самой Execution Identity, tenant access или policy блокирует дальнейшие side effects.
+- Интерактивные действия от User identity продолжают требовать действующую пользовательскую сессию и актуальную авторизацию.
+
+### 14.4. Где исполняются расписания
+
+- Desktop schedules локальны и исполняются только пока запущен процесс Kubron Desktop.
+- Сворачивание окна, неактивность приложения и блокировка ОС не останавливают задания.
+- Отдельный Desktop daemon/service не вводится. Завершение процесса, logout ОС, shutdown/reboot или crash прекращают локальное исполнение; sleep/hibernation физически приостанавливает его.
+- Web schedules исполняются серверной платформой независимо от браузера, UI connection и WebSocket.
+- Синхронизация расписаний между Desktop и Web не входит в это решение и требует отдельного проектирования.
+
+### 14.5. Retention
+
+- Run/Step history и связанные с ними данные управляются настраиваемой retention policy на уровне Organization.
+- Политика должна определять сроки/классы хранения и учитывать незавершённые Runs, активные approvals и данные, необходимые для reconciliation.
+- Audit — отдельный поток с отдельными обязательными правилами хранения. Очистка Run/Step history или Evidence не может удалять обязательные audit records.
+- Точные сроки, legal hold, экспорт и поведение при удалении Organization требуют отдельной детализации при проектировании retention implementation; они не блокируют принятие этой архитектурной модели.
+
+### 14.6. Тип Service Identity
+
+- Service Identity — отдельный логический тип, а не неявный alias Team Identity.
+- Team и Service Identity используют общие credential storage/resolution/rotation/revocation mechanisms.
+- Различия типов выражаются в назначении, владельце, scope, допустимых trigger types и правилах управления, а не в дублировании secret subsystem.
+
 
 ## 15. Что этот документ не утверждает
 
