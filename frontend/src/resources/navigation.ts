@@ -66,7 +66,7 @@ const NAV_ORDER: string[] = [
   'applications',
   'nodes', 'events',
   'namespaces',
-  'workloads', 'config', 'audit-compliance', 'network', 'storage',
+  'workloads', 'config', 'network', 'storage',
   'helm', 'access', 'argocd', 'flux',
 ]
 
