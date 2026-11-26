@@ -144,10 +144,11 @@ func rank(b bool) int {
 	return 0
 }
 
-// expandStatefulSetClaims добавляет PVC, созданные по volumeClaimTemplates, одним List namespace. Ожидаются PVC
-// ordinal'ов, которые уже созданы (в том числе вне желаемого диапазона: Pod ещё удаляется после уменьшения replicas
-// или сдвига ordinals.start) или входят в диапазон [start, start+replicas). Отсутствие PVC — заглушка
-// Missing, но только для ordinal'а с существующим Pod'ом: у ещё не созданного Pod'а PVC может законно не быть.
+// expandStatefulSetClaims добавляет PVC, созданные по volumeClaimTemplates, одним List namespace. Существующие
+// PVC отображаются и для Pod'ов вне желаемого диапазона (например, пока контроллер удаляет остаток после уменьшения
+// replicas или сдвига ordinals.start). Отсутствующий PVC объявляется Missing только для существующего Pod'а,
+// ordinal которого входит в желаемый диапазон [start, start+replicas): у уходящего Pod'а PVC может быть удалён
+// политикой хранения, а у ещё не созданного Pod'а PVC может законно не существовать.
 func expandStatefulSetClaims(ctx context.Context, b *builder, n Node, sts *appsv1.StatefulSet, pods []podAt, d int) {
 	templates := make([]string, 0, len(sts.Spec.VolumeClaimTemplates))
 	for _, t := range sts.Spec.VolumeClaimTemplates {
@@ -195,7 +196,7 @@ func expandStatefulSetClaims(ctx context.Context, b *builder, n Node, sts *appsv
 				b.enqueue(pn.Ref, d, false)
 				continue
 			}
-			if res.Truncated || !hasPod[o] {
+			if res.Truncated || !hasPod[o] || !want.Contains(o) {
 				continue
 			}
 			miss := specPVC.ref(n.Namespace, name)

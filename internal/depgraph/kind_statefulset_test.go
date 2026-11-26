@@ -380,11 +380,20 @@ func TestStatefulSetMissingClaimWithOrdinalsStart(t *testing.T) {
 // ordinal'у: отсутствующий PVC существующего Pod'а остаётся Missing независимо от диапазона.
 func TestStatefulSetPodOutsideRangeKeepsItsClaim(t *testing.T) {
 	f := stsWorld(t, stsYAML(startFive, "{replicas: 3, readyReplicas: 3}"),
-		stsPod(2, true), stsPod(5, true), stsClaim(5), stsClaim(2))
+		stsPod(0, true), stsPod(2, true), stsPod(5, true), stsPod(9, true),
+		stsClaim(2), stsClaim(5), stsClaim(9))
 	g := build(t, f, refSTS, depgraph.Options{})
-	edgeOf(t, g, refSTS, stsRef("Pod", "db-2"), depgraph.EdgeOwns)
-	if e := edgeOf(t, g, refSTS, claimRef(2), depgraph.EdgeOwns); e.State != depgraph.EdgeOK {
-		t.Errorf("claim of the leftover Pod = %+v", e)
+	for _, o := range []int{0, 2, 9} {
+		edgeOf(t, g, refSTS, stsRef("Pod", fmt.Sprintf("db-%d", o)), depgraph.EdgeOwns)
+	}
+	for _, o := range []int{2, 9} {
+		if e := edgeOf(t, g, refSTS, claimRef(o), depgraph.EdgeOwns); e.State != depgraph.EdgeOK {
+			t.Errorf("existing claim of out-of-range Pod db-%d = %+v", o, e)
+		}
+	}
+	// У db-0 PVC отсутствует, но Pod вне [5, 8): это не доказательство проблемы активной реплики.
+	if hasNode(g, claimRef(0)) {
+		t.Error("StatefulSet must not invent a Missing claim for out-of-range Pod db-0")
 	}
 	edgeOf(t, g, refSTS, claimRef(5), depgraph.EdgeOwns)
 }
