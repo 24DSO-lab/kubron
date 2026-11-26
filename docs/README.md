@@ -41,6 +41,8 @@
 | [architecture/2026-11-26-missed-schedule-occurrences-decision.md](architecture/2026-11-26-missed-schedule-occurrences-decision.md) | Политика пропущенных occurrences: Coalesce, Skip и ограниченный Catch-up |
 | [architecture/2026-11-26-schedule-timezones-dst-decision.md](architecture/2026-11-26-schedule-timezones-dst-decision.md) | IANA timezone, UTC timestamps и детерминированная обработка DST |
 | [architecture/kubron-executable-platform-architecture-specification.md](architecture/kubron-executable-platform-architecture-specification.md) | Сводная инженерная спецификация A+B+C: identity/authz, targets, autonomy, durable execution, scheduler, persistence, audit, тесты и roadmap |
+| [architecture/2026-11-26-phase-0-executable-contracts.md](architecture/2026-11-26-phase-0-executable-contracts.md) | Phase 0: границы пакетов, целевые интерфейсы, atomic persistence, critical audit, Desktop/Web contract tests и критерии готовности |
+| [architecture/2026-11-26-phase-0-executable-contracts.md](architecture/2026-11-26-phase-0-executable-contracts.md) | Phase 0: границы пакетов, целевые интерфейсы, atomic persistence, critical audit, Desktop/Web contract tests и критерии готовности |
 | [e2e.md](e2e.md) | Smoke-e2e |
 | [authentication-lab.md](authentication-lab.md) | Ручной стенд входа в облачные кластеры (EKS, GKE, AKS) без создания кластеров |
 | [releasing.md](releasing.md) | Как выпускается релиз |
