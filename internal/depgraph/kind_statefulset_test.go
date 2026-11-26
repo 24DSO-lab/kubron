@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	"github.com/24DSO-lab/kubron/internal/depgraph"
@@ -257,4 +258,133 @@ func TestStatefulSetPodsForbidden(t *testing.T) {
 	if !slices.Contains(g.Warnings(), "forbidden:Pod") {
 		t.Errorf("warnings = %v", g.Warnings())
 	}
+}
+
+// spec.ordinals.start: ordinal'ы реплик — [start, start+replicas). Единый расчёт для PVC графа и правил diagnose.
+func TestStatefulSetOrdinalRange(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		start     *int32
+		replicas  *int32
+		wantStart int
+		wantEnd   int
+		in, out   []int
+		created   map[int]int // последний созданный ordinal → сколько создано
+	}{
+		{name: "start 0, replicas 3", start: ptr32(0), replicas: ptr32(3), wantStart: 0, wantEnd: 3,
+			in: []int{0, 1, 2}, out: []int{-1, 3, 5}, created: map[int]int{-1: 0, 0: 1, 1: 2, 2: 3, 9: 3}},
+		{name: "start 5, replicas 3", start: ptr32(5), replicas: ptr32(3), wantStart: 5, wantEnd: 8,
+			in: []int{5, 6, 7}, out: []int{0, 4, 8}, created: map[int]int{4: 0, 5: 1, 6: 2, 7: 3, 12: 3}},
+		{name: "no ordinals, default replicas", wantStart: 0, wantEnd: 1, in: []int{0}, out: []int{1}},
+		{name: "replicas 0", start: ptr32(5), replicas: ptr32(0), wantStart: 5, wantEnd: 5, out: []int{4, 5}},
+		{name: "negative values are clamped", start: ptr32(-2), replicas: ptr32(-1), wantStart: 0, wantEnd: 0, out: []int{0}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			sts := &appsv1.StatefulSet{Spec: appsv1.StatefulSetSpec{Replicas: tc.replicas}}
+			if tc.start != nil {
+				sts.Spec.Ordinals = &appsv1.StatefulSetOrdinals{Start: *tc.start}
+			}
+			r := depgraph.StatefulSetOrdinals(sts)
+			if r.Start != tc.wantStart || r.End() != tc.wantEnd {
+				t.Fatalf("range = [%d, %d), want [%d, %d)", r.Start, r.End(), tc.wantStart, tc.wantEnd)
+			}
+			for _, o := range tc.in {
+				if !r.Contains(o) {
+					t.Errorf("ordinal %d must be inside %+v", o, r)
+				}
+			}
+			for _, o := range tc.out {
+				if r.Contains(o) {
+					t.Errorf("ordinal %d must be outside %+v", o, r)
+				}
+			}
+			for last, want := range tc.created {
+				if got := r.Created(last); got != want {
+					t.Errorf("Created(%d) = %d, want %d", last, got, want)
+				}
+			}
+		})
+	}
+}
+
+func ptr32(v int32) *int32 { return &v }
+
+func TestPodOrdinal(t *testing.T) {
+	for _, tc := range []struct {
+		pod  string
+		want int
+		ok   bool
+	}{{"db-0", 0, true}, {"db-5", 5, true}, {"db-12", 12, true}, {"db-05", 0, false}, {"db--1", 0, false},
+		{"db-x", 0, false}, {"web-1", 0, false}, {"db-", 0, false}, {"db", 0, false}} {
+		if got, ok := depgraph.PodOrdinal(tc.pod, "db"); got != tc.want || ok != tc.ok {
+			t.Errorf("PodOrdinal(%q) = %d, %v; want %d, %v", tc.pod, got, ok, tc.want, tc.ok)
+		}
+	}
+}
+
+const startFive = "  ordinals: {start: 5}"
+
+// start=5, replicas=3: Pod'ы db-5..db-7, PVC data-db-5..data-db-7. PVC с ordinal'ами от нуля (они остались от прежних
+// реплик) в граф не входят: контроллер их для этого диапазона не ждёт.
+func TestStatefulSetClaimsFollowOrdinalsStart(t *testing.T) {
+	f := stsWorld(t, stsYAML(startFive, "{replicas: 3, readyReplicas: 3}"),
+		stsPod(5, true), stsPod(6, true), stsPod(7, true),
+		stsClaim(5), stsClaim(6), stsClaim(7), stsClaim(0), stsClaim(1), stsClaim(2))
+	g := build(t, f, refSTS, depgraph.Options{})
+	for o := 5; o <= 7; o++ {
+		edgeOf(t, g, refSTS, stsRef("Pod", fmt.Sprintf("db-%d", o)), depgraph.EdgeOwns)
+		if e := edgeOf(t, g, refSTS, claimRef(o), depgraph.EdgeOwns); e.State != depgraph.EdgeOK {
+			t.Errorf("claim data-db-%d edge = %+v", o, e)
+		}
+	}
+	for o := range 3 {
+		if hasNode(g, claimRef(o)) {
+			t.Errorf("claim data-db-%d is outside [5, 8) and must not be in the graph", o)
+		}
+	}
+}
+
+// Без ordinals.start имена PVC считаются от нуля, как и раньше (start=0 неотличим от отсутствия поля).
+func TestStatefulSetClaimsStartAtZeroWithoutOrdinals(t *testing.T) {
+	for name, extra := range map[string]string{"absent": "", "explicit zero": "  ordinals: {start: 0}"} {
+		t.Run(name, func(t *testing.T) {
+			f := stsWorld(t, stsYAML(extra, "{replicas: 3, readyReplicas: 1}"), stsPod(0, true), stsClaim(0), stsClaim(1), stsClaim(2), stsClaim(5))
+			g := build(t, f, refSTS, depgraph.Options{})
+			for o := range 3 {
+				edgeOf(t, g, refSTS, claimRef(o), depgraph.EdgeOwns)
+			}
+			if hasNode(g, claimRef(5)) {
+				t.Error("data-db-5 is outside [0, 3)")
+			}
+		})
+	}
+}
+
+// Отсутствующий PVC у существующего Pod'а db-5 — Missing; у ещё не созданных db-6 и db-7 PVC не требуется.
+func TestStatefulSetMissingClaimWithOrdinalsStart(t *testing.T) {
+	f := stsWorld(t, stsYAML(startFive, "{replicas: 3, readyReplicas: 0}"), stsPod(5, false))
+	g := build(t, f, refSTS, depgraph.Options{})
+	miss := mustNode(t, g, claimRef(5))
+	if !miss.Placeholder || miss.Health != depgraph.Missing {
+		t.Fatalf("claim of the existing Pod db-5 = %+v, want Missing placeholder", miss)
+	}
+	edgeOf(t, g, refSTS, claimRef(5), depgraph.EdgeOwns)
+	for _, o := range []int{0, 6, 7} {
+		if hasNode(g, claimRef(o)) {
+			t.Errorf("claim data-db-%d: its Pod does not exist, a Missing claim must not be invented", o)
+		}
+	}
+}
+
+// Pod за пределами диапазона (остался после сдвига start) в граф попадает как есть, а его PVC — по его собственному
+// ordinal'у: отсутствующий PVC существующего Pod'а остаётся Missing независимо от диапазона.
+func TestStatefulSetPodOutsideRangeKeepsItsClaim(t *testing.T) {
+	f := stsWorld(t, stsYAML(startFive, "{replicas: 3, readyReplicas: 3}"),
+		stsPod(2, true), stsPod(5, true), stsClaim(5), stsClaim(2))
+	g := build(t, f, refSTS, depgraph.Options{})
+	edgeOf(t, g, refSTS, stsRef("Pod", "db-2"), depgraph.EdgeOwns)
+	if e := edgeOf(t, g, refSTS, claimRef(2), depgraph.EdgeOwns); e.State != depgraph.EdgeOK {
+		t.Errorf("claim of the leftover Pod = %+v", e)
+	}
+	edgeOf(t, g, refSTS, claimRef(5), depgraph.EdgeOwns)
 }

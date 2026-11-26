@@ -41,6 +41,7 @@ type stsView struct {
 	node     depgraph.Node
 	sts      appsv1.StatefulSet
 	replicas int32
+	ordinals depgraph.OrdinalRange // [start, start+replicas): единый расчёт с PVC графа (depgraph.StatefulSetOrdinals)
 }
 
 func stsFromGraph(b *builder) (stsView, bool) {
@@ -61,7 +62,7 @@ func stsFromGraph(b *builder) (stsView, bool) {
 	if sts.Spec.Replicas != nil {
 		replicas = *sts.Spec.Replicas
 	}
-	return stsView{ref: t, node: n, sts: *sts, replicas: replicas}, true
+	return stsView{ref: t, node: n, sts: *sts, replicas: replicas, ordinals: depgraph.StatefulSetOrdinals(sts)}, true
 }
 
 func ruleStatefulSet(b *builder) {
@@ -72,19 +73,6 @@ func ruleStatefulSet(b *builder) {
 	stuckOrderedStart(b, v)
 	claimsPending(b, v)
 	updatePartitioned(b, v)
-}
-
-// ordinalOf — ordinal Pod'а StatefulSet по имени <sts>-<ordinal>.
-func ordinalOf(pod, sts string) (int, bool) {
-	rest, ok := strings.CutPrefix(pod, sts+"-")
-	if !ok {
-		return 0, false
-	}
-	n, err := strconv.Atoi(rest)
-	if err != nil || n < 0 || strconv.Itoa(n) != rest {
-		return 0, false
-	}
-	return n, true
 }
 
 // ownedNodes — вершины вида kind, которыми StatefulSet владеет в графе, по Key().
@@ -104,6 +92,10 @@ func ownedNodes(g *depgraph.Graph, v stsView, kind string) []depgraph.Node {
 // stuckOrderedStart: podManagementPolicy OrderedReady (значение по умолчанию), последний созданный Pod N не готов, а
 // Pod'ов после него ещё нет — контроллер не создаёт следующие, пока N не станет Ready. Кандидат — Pod N; почему он не
 // готов, объясняют правила Pod (их гипотезы получают Explains на эту).
+//
+// Реплики занимают ordinal'ы [start, start+replicas) (spec.ordinals.start): Pod'ы вне диапазона (остаток после
+// уменьшения replicas или сдвига start) активными репликами не считаются и «последним созданным» быть не могут, а число
+// созданных считается от start.
 func stuckOrderedStart(b *builder, v stsView) {
 	g := b.c.Graph
 	if graphLimited(g) { // «следующих Pod'ов нет» нельзя утверждать по неполному списку
@@ -115,11 +107,11 @@ func stuckOrderedStart(b *builder, v stsView) {
 	last, found := depgraph.Node{}, false
 	lastOrd := -1
 	for _, n := range ownedNodes(g, v, "Pod") {
-		if o, ok := ordinalOf(n.Name, v.ref.Name); ok && o > lastOrd {
+		if o, ok := depgraph.PodOrdinal(n.Name, v.ref.Name); ok && v.ordinals.Contains(o) && o > lastOrd {
 			last, lastOrd, found = n, o, true
 		}
 	}
-	if !found || int32(lastOrd)+1 >= v.replicas || (last.Health != depgraph.Degraded && last.Health != depgraph.Progressing) {
+	if !found || lastOrd+1 >= v.ordinals.End() || (last.Health != depgraph.Degraded && last.Health != depgraph.Progressing) {
 		return
 	}
 	pod := ResourceRef{Kind: "Pod", Namespace: last.Namespace, Name: last.Name, UID: last.UID}
@@ -131,7 +123,7 @@ func stuckOrderedStart(b *builder, v stsView) {
 		b.fact(pod, "sts.pod_not_ready", Source{Kind: SourceDerived, Resource: pod, Field: "status.conditions"},
 			map[string]string{"pod": pod.Name, "ordinal": ord}),
 		b.fact(v.ref, "sts.pods_not_created", Source{Kind: SourceDerived, Resource: v.ref, Field: "status.replicas"},
-			map[string]string{"created": strconv.Itoa(lastOrd + 1), "replicas": strconv.Itoa(int(v.replicas))}),
+			map[string]string{"created": strconv.Itoa(v.ordinals.Created(lastOrd)), "replicas": strconv.Itoa(v.ordinals.Count)}),
 	}
 	conf := ConfidenceMedium // Pod, который ещё запускается, может стать готовым сам
 	if last.Health == depgraph.Degraded {

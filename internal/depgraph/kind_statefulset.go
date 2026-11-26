@@ -35,8 +35,38 @@ type podAt struct {
 	node    Node
 }
 
-// ordinalOf разбирает имя Pod'а StatefulSet: <sts>-<ordinal>. Ordinal — десятичное число без ведущих нулей.
-func ordinalOf(pod, sts string) (int, bool) {
+// OrdinalRange — полуинтервал ordinal'ов [Start, Start+Count), которые контроллер держит активными при текущем
+// spec: Start — spec.ordinals.start (0, если не задан), Count — spec.replicas (1, если не задан). Это единственное
+// место формулы диапазона: PVC в графе и правило «упорядоченный запуск застрял» считают по нему, а не каждый свою.
+type OrdinalRange struct {
+	Start, Count int
+}
+
+// StatefulSetOrdinals — диапазон ordinal'ов StatefulSet. Отрицательные start и replicas (их отвергает валидация API)
+// приводятся к нулю, чтобы диапазон оставался корректным и для не прошедшего валидацию объекта.
+func StatefulSetOrdinals(sts *appsv1.StatefulSet) OrdinalRange {
+	r := OrdinalRange{Count: int(ptrInt(sts.Spec.Replicas, 1))}
+	if o := sts.Spec.Ordinals; o != nil {
+		r.Start = int(o.Start)
+	}
+	r.Start, r.Count = max(r.Start, 0), max(r.Count, 0)
+	return r
+}
+
+// End — первый ordinal за диапазоном (исключается).
+func (r OrdinalRange) End() int { return r.Start + r.Count }
+
+// Contains: ordinal входит в желаемый диапазон, то есть Pod с ним должен существовать.
+func (r OrdinalRange) Contains(ordinal int) bool { return ordinal >= r.Start && ordinal < r.End() }
+
+// Created — сколько Pod'ов уже создано, если последний созданный имеет ordinal last: счёт от Start, а не от нуля
+// (при start=5 Pod db-5 — первый, а не шестой). Для last вне диапазона создано 0 либо весь Count.
+func (r OrdinalRange) Created(last int) int {
+	return min(max(last-r.Start+1, 0), r.Count)
+}
+
+// PodOrdinal разбирает имя Pod'а StatefulSet: <sts>-<ordinal>. Ordinal — десятичное число без ведущих нулей.
+func PodOrdinal(pod, sts string) (int, bool) {
 	rest, ok := strings.CutPrefix(pod, sts+"-")
 	if !ok {
 		return 0, false
@@ -81,7 +111,7 @@ func expandStatefulSet(ctx context.Context, b *builder, it item, n Node) {
 	}
 	var pods []podAt
 	for _, p := range sortedItems(res.Items) {
-		ord, ok := ordinalOf(p.GetName(), n.Name)
+		ord, ok := PodOrdinal(p.GetName(), n.Name)
 		if !ok || !ownedBy(&p, "StatefulSet", n.Name) {
 			continue
 		}
@@ -115,7 +145,8 @@ func rank(b bool) int {
 }
 
 // expandStatefulSetClaims добавляет PVC, созданные по volumeClaimTemplates, одним List namespace. Ожидаются PVC
-// ordinal'ов, которые уже созданы или должны существовать при текущем числе реплик. Отсутствие PVC — заглушка
+// ordinal'ов, которые уже созданы (в том числе вне желаемого диапазона: Pod ещё удаляется после уменьшения replicas
+// или сдвига ordinals.start) или входят в диапазон [start, start+replicas). Отсутствие PVC — заглушка
 // Missing, но только для ordinal'а с существующим Pod'ом: у ещё не созданного Pod'а PVC может законно не быть.
 func expandStatefulSetClaims(ctx context.Context, b *builder, n Node, sts *appsv1.StatefulSet, pods []podAt, d int) {
 	templates := make([]string, 0, len(sts.Spec.VolumeClaimTemplates))
@@ -133,7 +164,9 @@ func expandStatefulSetClaims(ctx context.Context, b *builder, n Node, sts *appsv
 	for _, p := range pods {
 		hasPod[p.ordinal], ordinals[p.ordinal] = true, true
 	}
-	for o := range int(ptrInt(sts.Spec.Replicas, 1)) {
+	want := StatefulSetOrdinals(sts)
+	// Больше maxStatefulSetClaims ordinal'ов всё равно усечёт граф: огромный replicas не должен раздувать цикл.
+	for o := want.Start; o < want.End() && o <= want.Start+maxStatefulSetClaims; o++ {
 		ordinals[o] = true
 	}
 	res, err := b.list(ctx, specPVC, ListOptions{Namespace: n.Namespace})

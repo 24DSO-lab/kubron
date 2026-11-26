@@ -1,0 +1,26 @@
+{
+  "target": {
+    "kind": "StatefulSet",
+    "namespace": "app",
+    "name": "db"
+  },
+  "expect": {
+    "symptoms": [
+      "sts.start_stuck",
+      "pod.startup_failure"
+    ],
+    "hypotheses": [
+      "sts.stuck_ordered_start:high"
+    ],
+    "explains": [
+      [
+        "image.not_found",
+        "sts.stuck_ordered_start"
+      ]
+    ],
+    "chains": [
+      "sts.stuck_ordered_start: StatefulSet/db > Pod/db-6"
+    ]
+  },
+  "golden": true
+}
