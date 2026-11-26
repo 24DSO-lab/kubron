@@ -186,6 +186,14 @@ func (b *fileBackend) CreateWithVersion(ctx context.Context, bl Baseline, v Vers
 // CommitVersion: файл версии, затем исключения, затем документ baseline — он и есть точка фиксации. При сбое
 // на любом шаге уже записанное убирается, а активной остаётся прежняя версия.
 func (b *fileBackend) CommitVersion(ctx context.Context, s tenant.Scope, baselineID string, v Version) error {
+	return b.commitVersion(ctx, s, baselineID, "", false, v)
+}
+
+func (b *fileBackend) CommitVersionIfActive(ctx context.Context, s tenant.Scope, baselineID, expectedActiveVersionID string, v Version) error {
+	return b.commitVersion(ctx, s, baselineID, expectedActiveVersionID, true, v)
+}
+
+func (b *fileBackend) commitVersion(ctx context.Context, s tenant.Scope, baselineID, expectedActiveVersionID string, checkActive bool, v Version) error {
 	if err := check(ctx, s); err != nil {
 		return err
 	}
@@ -200,6 +208,9 @@ func (b *fileBackend) CommitVersion(ctx context.Context, s tenant.Scope, baselin
 	bl, err := b.getBaseline(s, baselineID)
 	if err != nil {
 		return err
+	}
+	if checkActive && bl.ActiveVersionID != expectedActiveVersionID {
+		return ErrActiveVersionChanged
 	}
 	files, err := b.versionFiles(s, baselineID)
 	if err != nil {

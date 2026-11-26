@@ -119,11 +119,15 @@ func (s *Service) PreviewVersion(ctx context.Context, sess Session, baselineID s
 		}
 		prev = &v
 	}
-	return s.engine(sess).Preview(ctx, specOf(b), prev, b.ID, s.now())
+	return s.engine(sess).Preview(ctx, specOf(b), prev, previewBinding(b.ID, b.ActiveVersionID), s.now())
 }
 
 func specOf(b baseline.Baseline) Spec {
 	return Spec{Namespaces: b.Namespaces, Selector: b.Selector, Kinds: b.Kinds, Refs: b.Refs}
+}
+
+func previewBinding(baselineID, activeVersionID string) string {
+	return baselineID + "\x00" + activeVersionID
 }
 
 func checkIntent(comment string, confirmed bool) (string, error) {
@@ -205,7 +209,7 @@ func (s *Service) AddVersion(ctx context.Context, sess Session, in VersionInput)
 	if err != nil {
 		return baseline.Version{}, err
 	}
-	snap, err := s.engine(sess).SnapshotConfirmed(ctx, specOf(b), in.Token, b.ID, s.now())
+	snap, err := s.engine(sess).SnapshotConfirmed(ctx, specOf(b), in.Token, previewBinding(b.ID, b.ActiveVersionID), s.now())
 	if err != nil {
 		return baseline.Version{}, err
 	}
@@ -220,7 +224,10 @@ func (s *Service) AddVersion(ctx context.Context, sess Session, in VersionInput)
 		}
 		v = newVersion(b.ID, seq, snap, sess.Actor, comment, baseline.Normalize(s.now()))
 		// Версия, перенос исключений прежней активной версии и смена указателя — одна атомарная операция хранилища.
-		err = s.store.CommitVersion(ctx, sess.Scope, b.ID, v)
+		err = s.store.CommitVersionIfActive(ctx, sess.Scope, b.ID, b.ActiveVersionID, v)
+		if errors.Is(err, baseline.ErrActiveVersionChanged) {
+			return baseline.Version{}, ErrStalePreview
+		}
 		if err == nil {
 			return v, nil
 		}

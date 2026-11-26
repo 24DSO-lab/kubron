@@ -21,6 +21,8 @@ var (
 	ErrNotFound = errors.New("baseline record not found")
 	// ErrExists — запись с таким идентификатором (или номером версии) уже есть: версии неизменяемы.
 	ErrExists = errors.New("baseline record already exists")
+	// ErrActiveVersionChanged — активная версия изменилась после предпросмотра.
+	ErrActiveVersionChanged = errors.New("baseline active version changed since preview")
 	// ErrInvalid — запись или параметр не прошли проверку.
 	ErrInvalid = errors.New("invalid baseline data")
 	// ErrInvalidScope — область доступа не заполнена целиком: хранилище отказывает (fail closed), а не трактует
@@ -121,6 +123,8 @@ type Backend interface {
 	// параллельно не теряется. Занятый номер или ID версии — ErrExists, нет baseline — ErrNotFound; при ошибке
 	// ничего не меняется.
 	CommitVersion(ctx context.Context, scope tenant.Scope, baselineID string, v Version) error
+	// CommitVersionIfActive фиксирует версию только если активная версия не изменилась после Preview.
+	CommitVersionIfActive(ctx context.Context, scope tenant.Scope, baselineID, expectedActiveVersionID string, v Version) error
 	// SetActiveVersion атомарно делает активной существующую версию и возвращает обновлённый документ. Нет baseline
 	// или версии — ErrNotFound.
 	SetActiveVersion(ctx context.Context, scope tenant.Scope, baselineID, versionID string) (Baseline, error)

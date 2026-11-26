@@ -30,11 +30,12 @@ type fakeCluster struct {
 	hpaErr  error
 	getErr  map[string]error
 	listErr map[string]error
+	truncated map[string]bool
 	reads   []string
 }
 
 func newCluster() *fakeCluster {
-	return &fakeCluster{objs: map[string]*unstructured.Unstructured{}, getErr: map[string]error{}, listErr: map[string]error{}}
+	return &fakeCluster{objs: map[string]*unstructured.Unstructured{}, getErr: map[string]error{}, listErr: map[string]error{}, truncated: map[string]bool{}}
 }
 
 func ck(kind, ns, name string) string { return kind + "/" + ns + "/" + name }
@@ -67,7 +68,7 @@ func (f *fakeCluster) List(_ context.Context, g schema.GroupVersionKind, ns, _ s
 		if f.hpaErr != nil {
 			return ListResult{}, f.hpaErr
 		}
-		return ListResult{Items: f.hpas}, nil
+		return ListResult{Items: f.hpas, Truncated: f.truncated[g.Kind]}, nil
 	}
 	if err := f.listErr[g.Kind]; err != nil {
 		return ListResult{}, err
@@ -78,7 +79,7 @@ func (f *fakeCluster) List(_ context.Context, g schema.GroupVersionKind, ns, _ s
 			out = append(out, *u.DeepCopy())
 		}
 	}
-	return ListResult{Items: out}, nil
+	return ListResult{Items: out, Truncated: f.truncated[g.Kind]}, nil
 }
 
 type fakeAudit struct {
@@ -424,6 +425,15 @@ func TestPreviewToken(t *testing.T) {
 	if _, err := e.SnapshotConfirmed(t.Context(), nsSpec(), "garbage", "b1", t0); !errors.Is(err, ErrPreviewExpired) {
 		t.Errorf("garbage: %v", err)
 	}
+	mac, exp, _ := strings.Cut(pv.Token, ".")
+	badFirst := "0"
+	if strings.HasPrefix(mac, "0") {
+		badFirst = "1"
+	}
+	badSignature := badFirst + mac[1:] + "." + exp
+	if _, err := e.SnapshotConfirmed(t.Context(), nsSpec(), badSignature, "b1", t0); !errors.Is(err, ErrStalePreview) {
+		t.Errorf("invalid signature: %v", err)
+	}
 	c.put(deployment("web", "nginx:2", canaryPW, 1))
 	if _, err := e.SnapshotConfirmed(t.Context(), nsSpec(), pv.Token, "b1", t0); !errors.Is(err, ErrStalePreview) {
 		t.Errorf("changed cluster: %v", err)
@@ -452,6 +462,99 @@ func TestPreviewTokenAcrossReplicas(t *testing.T) {
 	stranger := NewEngine(c, Options{PreviewKey: NewPreviewKey()})
 	if _, err := stranger.SnapshotConfirmed(t.Context(), nsSpec(), pv.Token, "b1", t0); !errors.Is(err, ErrStalePreview) {
 		t.Errorf("a replica with another key: %v", err)
+	}
+}
+
+func TestPreviewTokenBindsSpecAndCoverage(t *testing.T) {
+	t.Parallel()
+	baseSpec := Spec{Namespaces: []string{"prod"}, Kinds: []string{"Deployment", "Ingress"}}
+	run := func(name string, before, after func(*fakeCluster) Spec) {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			c := newCluster()
+			c.put(deployment("web", "nginx:1", "x", 1))
+			initial := before(c)
+			e := NewEngine(c, Options{PreviewKey: NewPreviewKey()})
+			pv, err := e.Preview(t.Context(), initial, nil, "b1", t0)
+			if err != nil {
+				t.Fatal(err)
+			}
+			changed := after(c)
+			if _, err := e.SnapshotConfirmed(t.Context(), changed, pv.Token, "b1", t0); !errors.Is(err, ErrStalePreview) {
+				t.Fatalf("changed Preview context must reject old token, got %v", err)
+			}
+		})
+	}
+	run("namespace", func(*fakeCluster) Spec {
+		return Spec{Namespaces: []string{"prod"}, Kinds: []string{"Deployment"}}
+	}, func(*fakeCluster) Spec {
+		return Spec{Namespaces: []string{"prod", "other"}, Kinds: []string{"Deployment"}}
+	})
+	run("selector", func(*fakeCluster) Spec {
+		return Spec{Namespaces: []string{"prod"}, Kinds: []string{"Deployment"}, Selector: "app=web"}
+	}, func(*fakeCluster) Spec {
+		return Spec{Namespaces: []string{"prod"}, Kinds: []string{"Deployment"}, Selector: "app=other"}
+	})
+	run("skipped reason", func(c *fakeCluster) Spec {
+		c.listErr["Ingress"] = fmt.Errorf("denied: %w", ErrForbidden)
+		return baseSpec
+	}, func(c *fakeCluster) Spec {
+		c.listErr["Ingress"] = fmt.Errorf("offline: %w", ErrUnavailable)
+		return baseSpec
+	})
+	run("truncation", func(*fakeCluster) Spec {
+		return baseSpec
+	}, func(c *fakeCluster) Spec {
+		c.truncated["Ingress"] = true
+		return baseSpec
+	})
+	run("HPA coverage", func(*fakeCluster) Spec {
+		return Spec{Namespaces: []string{"prod"}, Kinds: []string{"Deployment"}}
+	}, func(c *fakeCluster) Spec {
+		c.hpaErr = fmt.Errorf("denied: %w", ErrForbidden)
+		return Spec{Namespaces: []string{"prod"}, Kinds: []string{"Deployment"}}
+	})
+	run("HPA coverage reason", func(c *fakeCluster) Spec {
+		c.hpaErr = fmt.Errorf("denied: %w", ErrForbidden)
+		return Spec{Namespaces: []string{"prod"}, Kinds: []string{"Deployment"}}
+	}, func(c *fakeCluster) Spec {
+		c.hpaErr = fmt.Errorf("offline: %w", ErrUnavailable)
+		return Spec{Namespaces: []string{"prod"}, Kinds: []string{"Deployment"}}
+	})
+}
+
+func TestPreviewFingerprintCanonicalOrder(t *testing.T) {
+	t.Parallel()
+	c := newCluster()
+	c.put(deployment("web", "nginx:1", "x", 1))
+	c.put(configMap("cfg", map[string]any{"k": "v"}))
+	e := NewEngine(c, Options{PreviewKey: NewPreviewKey()})
+	a := Spec{
+		Namespaces: []string{"prod", "other"}, Kinds: []string{"Deployment", "ConfigMap"},
+		Selector: "app=web,tier=frontend",
+		Refs: []baseline.Ref{
+			{Group: "apps", Version: "v1", Kind: "Deployment", Namespace: "prod", Name: "web"},
+			{Version: "v1", Kind: "ConfigMap", Namespace: "prod", Name: "cfg"},
+		},
+	}
+	b := Spec{
+		Namespaces: []string{"other", "prod"}, Kinds: []string{"ConfigMap", "Deployment"},
+		Selector: "tier=frontend,app=web,app=web",
+		Refs: []baseline.Ref{
+			{Version: "v1", Kind: "ConfigMap", Namespace: "prod", Name: "cfg"},
+			{Group: "apps", Version: "v1", Kind: "Deployment", Namespace: "prod", Name: "web"},
+		},
+	}
+	sa, err := e.Snapshot(t.Context(), a)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sb, err := e.Snapshot(t.Context(), b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sa.Fingerprint != sb.Fingerprint {
+		t.Fatalf("logically identical Specs have different fingerprints: %s != %s", sa.Fingerprint, sb.Fingerprint)
 	}
 }
 

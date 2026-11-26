@@ -89,6 +89,41 @@ func TestCreateLeavesNothingOnFailure(t *testing.T) {
 	}
 }
 
+func TestAddVersionRejectsChangedActiveVersion(t *testing.T) {
+	t.Parallel()
+	e := newSvcEnv(t)
+	b, v1 := e.create(t)
+
+	v2 := v1
+	v2.ID = baseline.NewID()
+	v2.Seq = 2
+	if err := e.svc.store.PutVersion(t.Context(), e.sess.Scope, v2); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.svc.SetActive(t.Context(), e.sess, b.ID, v2.ID); err != nil {
+		t.Fatal(err)
+	}
+	pv, err := e.svc.PreviewVersion(t.Context(), e.sess, b.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.svc.SetActive(t.Context(), e.sess, b.ID, v1.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.svc.AddVersion(t.Context(), e.sess, VersionInput{
+		BaselineID: b.ID, Comment: "must require a fresh preview", Token: pv.Token, Confirmed: true,
+	}); !errors.Is(err, ErrStalePreview) {
+		t.Fatalf("confirmation after ActiveVersionID changed: %v", err)
+	}
+
+	v3 := v1
+	v3.ID = baseline.NewID()
+	v3.Seq = 3
+	if err := e.svc.store.CommitVersionIfActive(t.Context(), e.sess.Scope, b.ID, v2.ID, v3); !errors.Is(err, baseline.ErrActiveVersionChanged) {
+		t.Fatalf("conditional commit must reject stale active version: %v", err)
+	}
+}
+
 func TestLifecycle(t *testing.T) {
 	t.Parallel()
 	e := newSvcEnv(t)

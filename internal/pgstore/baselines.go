@@ -452,6 +452,14 @@ func (b *baselineBackend) CreateWithVersion(ctx context.Context, bl baseline.Bas
 }
 
 func (b *baselineBackend) CommitVersion(ctx context.Context, sc tenant.Scope, baselineID string, v baseline.Version) error {
+	return b.commitVersion(ctx, sc, baselineID, "", false, v)
+}
+
+func (b *baselineBackend) CommitVersionIfActive(ctx context.Context, sc tenant.Scope, baselineID, expectedActiveVersionID string, v baseline.Version) error {
+	return b.commitVersion(ctx, sc, baselineID, expectedActiveVersionID, true, v)
+}
+
+func (b *baselineBackend) commitVersion(ctx context.Context, sc tenant.Scope, baselineID, expectedActiveVersionID string, checkActive bool, v baseline.Version) error {
 	ctx, cancel, err := begin(ctx, sc)
 	if err != nil {
 		return err
@@ -468,10 +476,13 @@ func (b *baselineBackend) CommitVersion(ctx context.Context, sc tenant.Scope, ba
 		if err != nil {
 			return err
 		}
+		if checkActive && active != expectedActiveVersionID {
+			return baseline.ErrActiveVersionChanged
+		}
 		if err := b.insertVersion(ctx, tx, sc, v); err != nil {
 			return err
 		}
-		if active != "" { // исключения прежней активной версии читаются уже под блокировкой: ничего не потеряется
+		if active != "" {
 			if _, err := tx.Exec(ctx, `
 				INSERT INTO baseline_exceptions (org_id, team_id, cluster_id, baseline_id, version_id, items)
 				SELECT org_id, team_id, cluster_id, baseline_id, $6, items FROM baseline_exceptions
