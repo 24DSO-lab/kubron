@@ -10,6 +10,9 @@ vi.mock('monaco-editor/editor/editor.worker?worker', () => ({ default: class {} 
 
 const { investigate } = vi.hoisted(() => ({ investigate: vi.fn() }))
 vi.mock('../composables/incidentLaunch', () => ({ investigate }))
+// Some resource definition components import resourceActions. Loading the real actions module
+// also loads registry.ts while its definitions are still being evaluated, creating an ESM cycle.
+vi.mock('./actions', () => ({ resourceActions: {} }))
 
 import { Perm } from '../types/auth'
 import { investigateAction } from './investigateAction'
