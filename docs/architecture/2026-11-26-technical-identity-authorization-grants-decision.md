@@ -44,21 +44,34 @@ Credential identity и authorization principal — связанные, но не
 - **Targets** — какие Organization/Team/Cluster и, где применимо, namespace/workload/object scope разрешены.
 - **Constraints** — дополнительные ограничения, например запрет destructive actions, ограничение окружений, concurrency, budgets или временного окна.
 
-Модель должна быть least-privilege и deny-by-default. Отсутствие grant, неоднозначное сопоставление или невозможность проверить любой обязательный элемент означает отказ.
+Модель должна быть least-privilege и deny-by-default. Отсутствие подходящего разрешающего grant, неоднозначное сопоставление или невозможность проверить любой обязательный элемент означает отказ.
 
-### 4. Границы Team и Service principals
+### 4. Объединение grants и семантика ограничений
+
+Для одного principal применяются следующие правила:
+
+1. **Разрешающие grants складываются (union).** Если хотя бы один действующий grant разрешает конкретную комбинацию Operation + Action + Target, она входит в набор потенциально разрешённых действий. Например, grant на диагностику во всех кластерах команды вместе с grant на рестарт workload в development разрешает оба набора действий; grants не должны пересекаться друг с другом как множества.
+2. **Ограничения внутри каждого grant применяются совместно (AND).** Действие должно удовлетворять всем constraints конкретного grant, на основании которого оно разрешается.
+3. **Глобальные границы всегда сужают результат (intersection).** Объединённый набор grants пересекается с максимальным scope identity, tenancy/ownership, назначением Service Identity, Kubernetes RBAC и Effective Autonomy Policy. Ни один grant не может расширить эти границы.
+4. **Нет подходящего grant — deny.** Невозможность однозначно определить, какой grant разрешает действие, или проверить его constraints трактуется как отказ.
+5. **Отдельные пользовательские Deny grants не вводятся.** Отрицательные ограничения и запреты остаются частью обязательных верхнеуровневых границ и Autonomy Policy. Они всегда имеют приоритет над разрешением grant. Отсутствие отдельного Deny grant не означает, что ограничения других слоёв можно игнорировать.
+6. **Отзыв действует при следующей проверке.** После отзыва grant он больше не участвует в вычислении effective permissions; уже созданный Plan не сохраняет право на действие, если актуальная проверка его запрещает.
+
+Таким образом, grants выражают набор разрешённых возможностей, а независимые policy/tenant/security boundaries могут только сузить этот набор. Не вводить неявные приоритеты «последний grant побеждает» или зависимость результата от порядка хранения grants.
+
+### 5. Границы Team и Service principals
 
 - TeamPrincipal ограничен своей Team и кластерами, принадлежащими этой Team согласно ADR-0012. Он не получает доступ к другим Teams или кластерам через Target Group, Organization Admin или parent Run.
 - ServicePrincipal управляется на уровне Organization, но само организационное владение не даёт ему доступ ко всем командам и кластерам. Его доступ определяется явными grants и проверками tenant/target ownership.
 - Organization Admin и Team Admin могут управлять соответствующими identity/grants только в пределах своей административной области и действующего app-RBAC.
 - Ни одна техническая identity не получает административных полномочий в Kubron только потому, что её credentials имеют широкие Kubernetes permissions.
 
-### 5. Effective authorization — пересечение ограничений
+### 6. Effective authorization — пересечение ограничений
 
 Разрешение на действие вычисляется по всем применимым независимым уровням:
 
 1. Organization/Team tenancy и ownership target согласно ADR-0012.
-2. Явные Kubron grants самого TeamPrincipal/ServicePrincipal.
+2. Объединение действующих Kubron grants самого TeamPrincipal/ServicePrincipal по правилам раздела 4.
 3. Разрешённые Operation и конкретные Action.
 4. Target scope и ограничения действия.
 5. Действующие Kubernetes permissions назначенных credentials.
@@ -69,7 +82,7 @@ Credential identity и authorization principal — связанные, но не
 
 Для интерактивного UserPrincipal продолжают действовать существующие app-RBAC, пользовательская сессия и Kubernetes authorization пользователя; это решение не заменяет интерактивную модель ADR-0018.
 
-### 6. Повторная проверка и жизненный цикл
+### 7. Повторная проверка и жизненный цикл
 
 - Авторизация проверяется при планировании/создании Plan и повторно перед каждым side effect.
 - Изменение или отзыв grants блокирует последующие запрещённые side effects, даже если Plan/Approval был создан ранее.
@@ -81,7 +94,7 @@ Credential identity и authorization principal — связанные, но не
 
 - Нужна отдельная модель хранения и разрешения Kubron authorization principals/grants, связанная с существующей credential subsystem, но не смешанная с ней.
 - Нельзя переиспользовать пользовательские роли как скрытый механизм авторизации Team/Service identities.
-- Конкретная схема grants, формат policy expressions, inheritance/deny precedence, UI управления и миграция требуют отдельного проектирования до runtime implementation.
+- Семантика объединения grants, deny-by-default и приоритета независимых ограничений зафиксирована. Конкретная схема хранения grants, формат policy expressions, валидация constraints, UI управления и миграция требуют отдельного проектирования до runtime implementation.
 - Решение должно быть реализовано единообразно в Web и Desktop через общие domain contracts и backend enforcement.
 - Это решение не добавляет ClusterGrant и не меняет владение кластерами из ADR-0012.
 
@@ -91,9 +104,10 @@ Credential identity и authorization principal — связанные, но не
 2. Credentials не создают grants; grants не создают credentials.
 3. Инициатор и администратор, создавший identity, не становятся execution principal.
 4. Kubernetes RBAC и Kubron authorization независимы; оба обязательны.
-5. Нет явного разрешения — отказ.
-6. Проверка актуальных полномочий выполняется перед каждым side effect.
-7. Никакого расширения старого Plan/Approval после изменения grants.
-8. Все проверки выполняются backend, UI не является источником истины.
+5. Разрешающие grants объединяются; ограничения каждого grant применяются совместно; внешние границы сужают общий результат.
+6. Нет подходящего явного разрешения — отказ.
+7. Проверка актуальных полномочий выполняется перед каждым side effect.
+8. Никакого расширения старого Plan/Approval после изменения grants.
+9. Все проверки выполняются backend, UI не является источником истины.
 
-Это решение закрывает архитектурный вопрос о том, как Team/Service Execution Identity авторизуются в Kubron. Оно не является разрешением начинать runtime implementation.
+Это решение закрывает архитектурный вопрос о том, как Team/Service Execution Identity авторизуются в Kubron и как вычисляется совокупность их grants. Оно не является разрешением начинать runtime implementation.
