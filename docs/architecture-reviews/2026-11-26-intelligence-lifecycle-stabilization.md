@@ -48,7 +48,7 @@
 
 - `internal/incident/incidenttest/problems.go`: общий контракт содержит `problemFindOrCreateAtomic`, который одновременно запускает 12 вызовов с одинаковыми scope/key и проверяет, что все получают один Problem ID и в хранилище остаётся одна открытая проблема.
 - `internal/incident/filebackend_test.go`: `TestFileProblemBackendContract` запускает общий контракт против файловой реализации.
-- PostgreSQL implementation использует тот же `ProblemBackend` contract; фактическое выполнение интеграционного теста PostgreSQL зависит от соответствующего CI job и тестовой БД.
+- Общий контракт `incidenttest.RunProblems` содержит конкурентный тест. В этой проверке подтверждён его запуск для `FileBackend` (`TestFileProblemBackendContract`). PostgreSQL реализация проверена по production-коду, но запуск этого конкурентного контракта против PostgreSQL здесь отдельно не подтверждён; это остаётся частью CI/integration verification.
 
 ### Граница атомарности
 
