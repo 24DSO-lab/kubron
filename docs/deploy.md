@@ -285,6 +285,29 @@ networkPolicy:
 Правила профилей выведены из вызовов Kubernetes API в коде (`internal/k8s`) для прав `read` и `operate`; шаблоны лежат в
 `values.yaml` (`rbac.readonlyRules`, `rbac.operatorRules`).
 
+**Что читает Kubron Intelligence.** Для расследований, графа зависимостей и корреляции профилю `readonly` достаточно
+чтения (`get`, `list`) следующих видов; все они уже входят в `rbac.readonlyRules`, дополнять роль для второй итерации
+Intelligence не нужно:
+
+| Группа API | Ресурсы | Зачем |
+| --- | --- | --- |
+| core | `pods`, `pods/log`, `events`, `namespaces`, `nodes`, `services`, `persistentvolumeclaims`, `persistentvolumes` | цели, цепочки, хранилище, Node |
+| core | `configmaps` | проверка существования ссылки Pod; `data` и `binaryData` отбрасываются при чтении, значения нигде не сохраняются |
+| `apps` | `deployments`, `replicasets`, `statefulsets`, `daemonsets` | цели и владельцы Pod |
+| `batch` | `jobs`, `cronjobs` | цели и владельцы Pod |
+| `networking.k8s.io` | `ingresses`, `ingressclasses` | цель Ingress, связь Ingress → Service и класс |
+| `autoscaling` | `horizontalpodautoscalers` | цель HPA, связь HPA → workload |
+| `discovery.k8s.io`, `storage.k8s.io` | `endpointslices`, `storageclasses` | endpoints Service, класс хранилища |
+
+`secrets` в список не входят и не добавляются: Intelligence их не читает. `controllerrevisions` не нужны.
+Расследование цепочки добавляет запросы чтения (не более 40 дополнительных на расследование, ADR-0031 §3), поэтому
+нагрузка на API-сервер ограничена и растёт только с числом открываемых расследований.
+
+Если права на какой-то вид нет (свой профиль `custom`, роль `view` без нужных групп, выдача только в отдельных
+namespace), расследование не падает: объекты помечаются `Unknown` с причиной `forbidden`, а отчёт содержит
+`MissingContext`. В режиме namespace-scoping недоступно чтение Node и кластерных видов (Node, IngressClass,
+StorageClass, PersistentVolume), и список затронутых Pod узла помечается неполным.
+
 **Что профили не покрывают намеренно.** Терминал пода (`pods/exec`, `pods/attach`), port-forward, оболочка узла (создаёт
 привилегированный под), drain (`pods/eviction`), правка и удаление произвольных объектов, Helm (релизы хранятся в Secret'ах
 и применяют произвольные манифесты) требуют широких прав, и выдавать их по умолчанию нельзя. Включайте их осознанно через
