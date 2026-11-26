@@ -99,7 +99,9 @@ func (s *Service) attachAuto(ctx context.Context, in *Incident, key, kind string
 					Members: []ProblemMember{{IncidentID: in.ID, AddedAt: s.clock(), AddedBy: AutoMember}},
 				}
 				p, err = s.problems.FindOrCreateOpenProblem(ctx, candidate, s.clock().Add(-ProblemWindow))
-				if err != nil { return "", err }
+				if err != nil {
+					return "", err
+				}
 			}
 		default:
 			return "", err
