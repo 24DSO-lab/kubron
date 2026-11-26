@@ -1,0 +1,12 @@
+kind: Expect
+target: {kind: Pod, namespace: shop, name: api-1}
+symptoms: [pod.crash_loop]
+missing: [crash.no_termination_info]
+absent: [crash.application_error]
+---
+apiVersion: v1
+kind: Pod
+metadata: {name: api-1, namespace: shop}
+status:
+  containerStatuses:
+    - {name: app, restartCount: 3, state: {waiting: {reason: CrashLoopBackOff}}}

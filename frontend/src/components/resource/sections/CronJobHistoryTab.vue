@@ -169,10 +169,10 @@ onBeforeUnmount(() => {
   margin-right: 8px;
   vertical-align: middle;
 }
-.status-success { background: #4ade80; }
-.status-failed { background: #ef4444; }
-.status-running { background: #60a5fa; }
-.status-unknown { background: #868d8a; }
+.status-success { background: var(--green); }
+.status-failed { background: var(--red); }
+.status-running { background: var(--blue); }
+.status-unknown { background: var(--text-gray); }
 
 .job-name {
   vertical-align: middle;
@@ -181,15 +181,15 @@ onBeforeUnmount(() => {
 .btn-icon {
   background: transparent;
   border: none;
-  color: #d4d4d4;
+  color: var(--text-code);
   cursor: pointer;
   padding: 4px 8px;
   border-radius: 4px;
   transition: background 0.15s;
 }
 .btn-icon:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
+  background: rgba(var(--tint-rgb), 0.1);
+  color: var(--text-strong);
 }
 
 .menu-overlay {
@@ -203,8 +203,8 @@ onBeforeUnmount(() => {
 }
 
 .cluster-context-menu {
-  background: #1e1f35;
-  border: 1px solid #3b3d5c;
+  background: var(--panel-raised);
+  border: 1px solid var(--line-strong);
   border-radius: 4px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   z-index: 9999;
@@ -215,7 +215,7 @@ onBeforeUnmount(() => {
 
 .ctx-menu-item {
   padding: 8px 12px;
-  color: #d4d4d4;
+  color: var(--text-code);
   cursor: pointer;
   font-size: 0.875rem;
   transition: background 0.15s;
@@ -225,12 +225,12 @@ onBeforeUnmount(() => {
   gap: 8px;
 }
 .ctx-menu-item:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
+  background: rgba(var(--tint-rgb), 0.1);
+  color: var(--text-strong);
 }
 .ctx-menu-item:first-child { border-radius: 3px 3px 0 0; }
 .ctx-menu-item:last-child { border-radius: 0 0 3px 3px; }
 
-.ctx-menu-danger { color: #ef4444; }
+.ctx-menu-danger { color: var(--red); }
 .ctx-menu-danger:hover { background: rgba(239, 68, 68, 0.2); }
 </style>

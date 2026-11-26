@@ -1,0 +1,113 @@
+{
+  "ruleSetVersion": 3,
+  "target": {
+    "kind": "Pod",
+    "namespace": "app",
+    "name": "api-0",
+    "uid": "p-api-0"
+  },
+  "observedAt": "2026-11-11T10:00:00Z",
+  "symptoms": [
+    "none"
+  ],
+  "resources": [
+    {
+      "kind": "Pod",
+      "namespace": "app",
+      "name": "api-0",
+      "uid": "p-api-0"
+    }
+  ],
+  "facts": [
+    {
+      "kind": "fact",
+      "id": "f1",
+      "code": "no_problem_detected",
+      "resource": {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "api-0",
+        "uid": "p-api-0"
+      },
+      "params": {
+        "pods": "1"
+      },
+      "source": {
+        "kind": "derived",
+        "resource": {
+          "kind": "Pod",
+          "namespace": "app",
+          "name": "api-0",
+          "uid": "p-api-0"
+        }
+      },
+      "observedAt": "2026-11-11T10:00:00Z"
+    }
+  ],
+  "hypotheses": [],
+  "recommendations": [],
+  "steps": [
+    {
+      "kind": "step",
+      "id": "s1",
+      "code": "step.check_events",
+      "resource": {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "api-0",
+        "uid": "p-api-0"
+      },
+      "hypotheses": []
+    }
+  ],
+  "missing": [
+    {
+      "code": "source.unavailable",
+      "resource": {
+        "kind": "Node",
+        "name": "n1"
+      },
+      "params": {
+        "reason": "forbidden"
+      }
+    },
+    {
+      "code": "context.insufficient",
+      "resource": {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "api-0",
+        "uid": "p-api-0"
+      }
+    }
+  ],
+  "graph": {
+    "nodes": [
+      {
+        "kind": "Node",
+        "name": "n1",
+        "health": "Unknown",
+        "unknown": "forbidden"
+      },
+      {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "api-0",
+        "health": "Degraded",
+        "reason": "not_ready"
+      }
+    ],
+    "edges": [
+      {
+        "from": "core/Pod/app/api-0",
+        "to": "core/Node//n1",
+        "type": "runs_on",
+        "state": "unknown",
+        "reason": "forbidden"
+      }
+    ],
+    "warnings": [
+      "forbidden:Node"
+    ]
+  }
+}

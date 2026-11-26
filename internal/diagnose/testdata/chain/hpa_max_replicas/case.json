@@ -1,0 +1,20 @@
+{
+  "target": {
+    "kind": "HorizontalPodAutoscaler",
+    "namespace": "app",
+    "name": "web"
+  },
+  "golden": true,
+  "expect": {
+    "symptoms": [
+      "hpa.at_max_replicas"
+    ],
+    "hypotheses": [
+      "hpa.max_replicas_reached:medium"
+    ],
+    "absent": [
+      "hpa.target_missing",
+      "hpa.metrics_unavailable"
+    ]
+  }
+}

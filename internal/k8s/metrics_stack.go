@@ -13,6 +13,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// PrometheusService — имя «сервис:порт» Prometheus встроенного стека для API-прокси Kubernetes. Вместе с
+// MetricsNamespace — единственный источник правды о координатах стека: слой связки передаёт их платформе
+// (opsplatform.Config.Metrics, ADR-0032 §3), а платформа их не дублирует.
+const PrometheusService = prometheusServiceName
+
 // metricsInstallGrace — сколько после создания namespace отсутствие или неготовность
 // компонентов считается «установкой», а не неисправностью.
 const metricsInstallGrace = 5 * time.Minute

@@ -50,7 +50,7 @@ export const application = defineResource<k8s.ApplicationInfo>({
       sortValue: (a: any) => applicationReplicas(a).ready,
       colorFn: (a: any) => {
         const { ready, desired } = applicationReplicas(a)
-        return ready >= desired ? '#4ade80' : '#facc15'
+        return ready >= desired ? 'var(--green)' : 'var(--yellow)'
       },
     },
     ageCol,

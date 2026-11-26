@@ -1,0 +1,29 @@
+{
+  "target": {
+    "kind": "Ingress",
+    "namespace": "app",
+    "name": "site"
+  },
+  "golden": true,
+  "expect": {
+    "symptoms": [
+      "ingress.unreachable",
+      "pod.crash_loop"
+    ],
+    "hypotheses": [
+      "ingress.backend_no_endpoints:high"
+    ],
+    "explains": [
+      [
+        "crash.application_error",
+        "ingress.backend_no_endpoints"
+      ]
+    ],
+    "chains": [
+      "crash.application_error: Ingress/site > Service/web > Pod/web-1"
+    ],
+    "absent": [
+      "ingress.backend_service_missing"
+    ]
+  }
+}

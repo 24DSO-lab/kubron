@@ -99,12 +99,12 @@ describe('колонки на данных DTO', () => {
 
   it('цвет состояния: Ready зелёный, Reconciling и Suspended жёлтые, Failed и Stalled красные, Unknown серый', () => {
     const color = (state: FluxKustomizationInfo['state']) => col('state').colorFn!(ks({ state }))
-    expect(color('Ready')).toBe('#4ade80')
-    expect(color('Reconciling')).toBe('#facc15')
-    expect(color('Suspended')).toBe('#facc15')
-    expect(color('Failed')).toBe('#ef4444')
-    expect(color('Stalled')).toBe('#ef4444')
-    expect(color('Unknown')).toBe('#868d8a')
+    expect(color('Ready')).toBe('var(--green)')
+    expect(color('Reconciling')).toBe('var(--yellow)')
+    expect(color('Suspended')).toBe('var(--yellow)')
+    expect(color('Failed')).toBe('var(--red)')
+    expect(color('Stalled')).toBe('var(--red)')
+    expect(color('Unknown')).toBe('var(--text-gray)')
   })
 
   it('сортировка по состоянию: проблемные выше здоровых', () => {

@@ -1,0 +1,35 @@
+kind: Expect
+target: {kind: Pod, namespace: shop, name: api-1}
+symptoms: [pod.crash_loop]
+hypotheses: ["crash.application_error:medium"]
+recommendations: [rec.fix_application_error]
+---
+apiVersion: v1
+kind: Pod
+metadata: {name: api-1, namespace: shop, uid: p9}
+spec: {nodeName: n1, containers: [{name: app, image: "app:2"}]}
+status:
+  phase: Running
+  conditions: [{type: Ready, status: "False"}]
+  containerStatuses:
+    - name: app
+      ready: false
+      restartCount: 7
+      state: {waiting: {reason: CrashLoopBackOff, message: "back-off 5m0s restarting failed container"}}
+      lastState: {terminated: {exitCode: 1, reason: Error, finishedAt: "2026-11-11T09:58:00Z"}}
+---
+apiVersion: v1
+kind: Event
+metadata: {name: e1, namespace: shop}
+involvedObject: {kind: Pod, name: api-1, namespace: shop}
+type: Warning
+reason: BackOff
+message: Back-off restarting failed container app
+count: 30
+lastTimestamp: "2026-11-11T09:59:30Z"
+---
+kind: Log
+pod: api-1
+container: app
+previous: true
+text: "starting\nconnecting to db\nFATAL: connection refused\n"

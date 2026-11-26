@@ -320,22 +320,22 @@ onMounted(reload)
 <style scoped>
 .teams-view { padding: 24px; text-align: left; max-width: 1100px; }
 .teams-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
-.teams-head h2 { margin: 0; font-size: 22px; color: #89b4fa; }
-.teams-sub { margin: 4px 0 0; color: #a6adc8; font-size: 13px; }
+.teams-head h2 { margin: 0; font-size: 22px; color: var(--accent); }
+.teams-sub { margin: 4px 0 0; color: var(--text-muted); font-size: 13px; }
 .teams-clusters { margin-top: 32px; }
-.teams-clusters h3 { margin: 0 0 8px; color: #cdd6f4; font-size: 16px; }
+.teams-clusters h3 { margin: 0 0 8px; color: var(--text); font-size: 16px; }
 
 .teams-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-.teams-table th { text-align: left; padding: 8px 12px; color: #a6adc8; font-weight: 600; border-bottom: 1px solid #313244; }
+.teams-table th { text-align: left; padding: 8px 12px; color: var(--text-muted); font-weight: 600; border-bottom: 1px solid var(--surface-0); }
 .teams-table td { padding: 10px 12px; border-bottom: 1px solid #232334; vertical-align: middle; }
 .col-actions { text-align: right; white-space: nowrap; }
 .col-actions .btn { margin-left: 6px; }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
-.muted { color: #6c7086; }
+.muted { color: var(--text-subtle); }
 .role-select, .move-select { width: auto; min-width: 150px; padding: 6px 8px; }
 
 .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
-.badge-ok { background: rgba(166, 227, 161, 0.15); color: #a6e3a1; }
+.badge-ok { background: rgba(166, 227, 161, 0.15); color: var(--ok); }
 
 .add-member { display: flex; gap: 8px; align-items: center; margin-top: 4px; }
 .add-member .form-input:first-child { flex: 1; min-width: 0; }
@@ -346,8 +346,8 @@ onMounted(reload)
 }
 .dlg {
   width: 100%; max-width: 400px; padding: 24px; display: flex; flex-direction: column; gap: 14px;
-  background: #181825; border: 1px solid #313244; border-radius: 14px; box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+  background: var(--bg-sunken); border: 1px solid var(--surface-0); border-radius: 14px; box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
 }
 .dlg-wide { max-width: 640px; max-height: 80vh; overflow: auto; }
-.dlg h3 { margin: 0; color: #89b4fa; font-size: 17px; }
+.dlg h3 { margin: 0; color: var(--accent); font-size: 17px; }
 </style>

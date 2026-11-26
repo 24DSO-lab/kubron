@@ -1,0 +1,5 @@
+request failed with Bearer ⟦AbCdEf0123456789⟧ rejected
+%%%
+retrying with token Bearer ⟦sk_live_abc-123+xyz=⟧
+%%%
+proxy auth basic ⟦dXNlcjpwYXNz⟧ was sent

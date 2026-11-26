@@ -1,0 +1,19 @@
+{
+  "target": {
+    "kind": "Ingress",
+    "namespace": "app",
+    "name": "site"
+  },
+  "forbid": [
+    "networking.k8s.io/v1/IngressClass"
+  ],
+  "golden": true,
+  "expect": {
+    "missing": [
+      "source.unavailable"
+    ],
+    "absent": [
+      "ingress.class_not_found"
+    ]
+  }
+}

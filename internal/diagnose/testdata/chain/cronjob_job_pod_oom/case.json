@@ -1,0 +1,27 @@
+{
+  "target": {
+    "kind": "CronJob",
+    "namespace": "app",
+    "name": "nightly"
+  },
+  "golden": true,
+  "expect": {
+    "symptoms": [
+      "job.failed",
+      "pod.oom_killed"
+    ],
+    "hypotheses": [
+      "job.backoff_limit_exceeded:high",
+      "oom.limit_too_low:medium"
+    ],
+    "explains": [
+      [
+        "oom.limit_too_low",
+        "job.backoff_limit_exceeded"
+      ]
+    ],
+    "chains": [
+      "oom.limit_too_low: CronJob/nightly > Job/nightly-1 > Pod/nightly-1-a"
+    ]
+  }
+}

@@ -39,8 +39,8 @@ const containers = computed(() => {
   border-radius: 2px;
   cursor: help;
 }
-.sq-green { background-color: #4ade80; }
-.sq-red   { background-color: #ef4444; }
-.sq-yellow{ background-color: #facc15; }
-.sq-gray  { background-color: #868d8a; }
+.sq-green { background-color: var(--green); }
+.sq-red   { background-color: var(--red); }
+.sq-yellow{ background-color: var(--yellow); }
+.sq-gray  { background-color: var(--text-gray); }
 </style>

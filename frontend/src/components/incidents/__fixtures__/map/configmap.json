@@ -1,0 +1,183 @@
+{
+  "ruleSetVersion": 2,
+  "target": {
+    "kind": "Pod",
+    "name": "api-1",
+    "namespace": "shop"
+  },
+  "observedAt": "2026-11-20T10:00:00Z",
+  "symptoms": [],
+  "resources": [
+    {
+      "kind": "Pod",
+      "name": "api-1",
+      "namespace": "shop"
+    }
+  ],
+  "facts": [
+    {
+      "kind": "fact",
+      "id": "f1",
+      "code": "config.missing_reference",
+      "resource": {
+        "kind": "Pod",
+        "name": "api-1",
+        "namespace": "shop"
+      },
+      "params": {
+        "container": "app",
+        "kind": "ConfigMap"
+      },
+      "source": {
+        "kind": "resource",
+        "resource": {
+          "kind": "Pod",
+          "name": "api-1",
+          "namespace": "shop"
+        }
+      },
+      "observedAt": "2026-11-20T10:00:00Z"
+    }
+  ],
+  "hypotheses": [
+    {
+      "kind": "hypothesis",
+      "id": "h1",
+      "code": "config.missing_reference",
+      "resource": {
+        "kind": "Pod",
+        "name": "api-1",
+        "namespace": "shop"
+      },
+      "params": {
+        "container": "app",
+        "kind": "ConfigMap"
+      },
+      "confidence": "high",
+      "supporting": [
+        "f1"
+      ],
+      "contradicting": []
+    }
+  ],
+  "recommendations": [],
+  "steps": [],
+  "missing": [],
+  "graph": {
+    "nodes": [
+      {
+        "kind": "Pod",
+        "name": "api-1",
+        "health": "Degraded",
+        "group": "core",
+        "namespace": "shop",
+        "reason": "pending"
+      },
+      {
+        "kind": "ConfigMap",
+        "name": "app-config",
+        "health": "Missing",
+        "group": "core",
+        "namespace": "shop",
+        "placeholder": true
+      },
+      {
+        "kind": "ConfigMap",
+        "name": "feature-flags",
+        "health": "Missing",
+        "group": "core",
+        "namespace": "shop",
+        "placeholder": true
+      },
+      {
+        "kind": "Secret",
+        "name": "db-creds",
+        "health": "Unknown",
+        "group": "core",
+        "namespace": "shop",
+        "unknown": "policy"
+      },
+      {
+        "kind": "Node",
+        "name": "n1",
+        "health": "Healthy",
+        "group": "core"
+      },
+      {
+        "kind": "Deployment",
+        "name": "api",
+        "health": "Degraded",
+        "group": "apps",
+        "namespace": "shop"
+      },
+      {
+        "kind": "ReplicaSet",
+        "name": "api-5c8",
+        "health": "Degraded",
+        "group": "apps",
+        "namespace": "shop"
+      }
+    ],
+    "edges": [
+      {
+        "from": "core/Pod/shop/api-1",
+        "to": "core/ConfigMap/shop/app-config",
+        "type": "mounts",
+        "state": "missing"
+      },
+      {
+        "from": "core/Pod/shop/api-1",
+        "to": "core/ConfigMap/shop/feature-flags",
+        "type": "mounts",
+        "state": "ok"
+      },
+      {
+        "from": "core/Pod/shop/api-1",
+        "to": "core/Secret/shop/db-creds",
+        "type": "mounts",
+        "state": "unknown"
+      },
+      {
+        "from": "core/Pod/shop/api-1",
+        "to": "core/Node//n1",
+        "type": "runs_on",
+        "state": "ok"
+      },
+      {
+        "from": "apps/ReplicaSet/shop/api-5c8",
+        "to": "core/Pod/shop/api-1",
+        "type": "owns",
+        "state": "ok"
+      },
+      {
+        "from": "apps/Deployment/shop/api",
+        "to": "apps/ReplicaSet/shop/api-5c8",
+        "type": "owns",
+        "state": "ok"
+      }
+    ]
+  },
+  "chains": [
+    {
+      "path": [
+        {
+          "ref": {
+            "kind": "Pod",
+            "name": "api-1",
+            "namespace": "shop"
+          },
+          "health": "Degraded"
+        },
+        {
+          "ref": {
+            "kind": "ConfigMap",
+            "name": "app-config",
+            "namespace": "shop"
+          },
+          "health": "Missing"
+        }
+      ],
+      "candidate": "h1"
+    }
+  ]
+}

@@ -23,10 +23,17 @@ import (
 // увидеть быстро, но десятки вызовов GetFluxStatus и fluxList за секунду не должны превращаться в десятки обходов API.
 const fluxDiscoveryTTL = 30 * time.Second
 
+// fluxDiscoveryFailureTTL — время жизни результата неудачного discovery (таймаут, кластер недоступен, нет прав).
+// Короткое намеренно: временный сбой не должен прятать раздел Flux на целые fluxDiscoveryTTL (повторная загрузка
+// страницы в это окно получала бы тот же кэшированный «не установлен»), но кластер, который не отвечает, не должен
+// получать новый обход API на каждый вызов.
+const fluxDiscoveryFailureTTL = 2 * time.Second
+
 // fluxDiscoveryEntry — кэшированный результат discovery одного подключения.
 type fluxDiscoveryEntry struct {
-	mu     sync.Mutex // удерживается на время самого discovery: параллельные вызовы ждут и берут свежий результат
-	at     time.Time  // момент получения; нулевой — результата ещё нет
+	mu     sync.Mutex    // удерживается на время самого discovery: параллельные вызовы ждут и берут свежий результат
+	at     time.Time     // момент получения; нулевой — результата ещё нет
+	ttl    time.Duration // сколько результат годен: fluxDiscoveryTTL после успеха, fluxDiscoveryFailureTTL после сбоя
 	status FluxStatus
 }
 
@@ -82,11 +89,16 @@ func fluxDiscoveryStatus(conn *ClusterConnection) FluxStatus {
 
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	if !e.at.IsZero() && time.Since(e.at) < fluxDiscoveryTTL {
+	if !e.at.IsZero() && time.Since(e.at) < e.ttl {
 		return cloneFluxStatus(e.status)
 	}
-	e.status = fluxDiscover(conn.DiscoveryClient)
+	var ok bool
+	e.status, ok = fluxDiscoverResult(conn.DiscoveryClient)
 	e.at = time.Now()
+	e.ttl = fluxDiscoveryTTL
+	if !ok {
+		e.ttl = fluxDiscoveryFailureTTL
+	}
 	return cloneFluxStatus(e.status)
 }
 
@@ -96,10 +108,17 @@ func fluxDiscoveryStatus(conn *ClusterConnection) FluxStatus {
 // в ответе остаются все остальные группы, и Flux из-за чужого сбоя не пропадает. Любая другая ошибка (кластер
 // недоступен, нет прав на discovery) значит «Flux не обнаружен»: раздел просто скрыт, интерфейс ошибки не видит.
 func fluxDiscover(d discovery.DiscoveryInterface) FluxStatus {
+	st, _ := fluxDiscoverResult(d)
+	return st
+}
+
+// fluxDiscoverResult — fluxDiscover, который отдельно сообщает, получен ли ответ кластера (ok=false: discovery не
+// удался, статус «не установлен» вынужденный). По ok кэш решает, насколько долго такому ответу верить.
+func fluxDiscoverResult(d discovery.DiscoveryInterface) (FluxStatus, bool) {
 	_, lists, err := d.ServerGroupsAndResources()
 	if err != nil && !discovery.IsGroupDiscoveryFailedError(err) {
 		slog.Debug("Flux discovery failed, treating Flux as not installed", "error", err)
-		return emptyFluxStatus()
+		return emptyFluxStatus(), false
 	}
 
 	// served: какие версии API каждого (группа, plural) обслуживает кластер. Подресурсы («kustomizations/status»)
@@ -169,7 +188,7 @@ func fluxDiscover(d discovery.DiscoveryInterface) FluxStatus {
 	default:
 		st.State = FluxStatusOK
 	}
-	return st
+	return st, true
 }
 
 // GetFluxStatus сообщает, какие контроллеры Flux есть в активном кластере и какие версии API они обслуживают.

@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Namespace
+metadata: {name: app}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata: {name: web, namespace: app, uid: hpa-1}
+spec:
+  scaleTargetRef: {apiVersion: argoproj.io/v1alpha1, kind: Rollout, name: web}
+  minReplicas: 1
+  maxReplicas: 5
+status:
+  currentReplicas: 2
+  desiredReplicas: 2
+  conditions:
+    - {type: AbleToScale, status: "True", reason: ReadyForNewScale}
+    - {type: ScalingActive, status: "True", reason: ValidMetricFound}
+    - {type: ScalingLimited, status: "False", reason: DesiredWithinRange}

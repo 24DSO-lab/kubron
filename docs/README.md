@@ -6,8 +6,8 @@
 
 | Документ | О чём |
 |---|---|
-| [Руководства пользователя (PDF/DOCX)](DOCS) | Helm и GitOps (Argo CD), русский и английский |
 | [cluster-sign-in.md](cluster-sign-in.md) | Какие окна входа в кластер бывают и что в них делать |
+| [intelligence.md](intelligence.md) | Расследования Kubron Intelligence: что диагностируется, как хранятся логи как доказательства, права и retention |
 | [i18n.md](i18n.md) | Локализация интерфейса: как добавить язык и ключи |
 
 ## Для эксплуатации сервера
@@ -16,39 +16,27 @@
 |---|---|
 | [deploy.md](deploy.md) | Развёртывание `kubron-server`: образ, Helm-чарт, переменные, сетевая политика |
 | [ha.md](ha.md), [ha-sessions.md](ha-sessions.md) | Высокая доступность: несколько реплик, сессии в PostgreSQL |
+| [lifecycle-readiness.md](lifecycle-readiness.md) | Готовность к обновлению Kubernetes: что проверяется, coverage, матрица API и порядок её обновления |
+| [baseline.md](baseline.md) | Baseline конфигурации и дрейф: правила, хранение, retention, переменные |
+| [intelligence-operations.md](intelligence-operations.md) | Intelligence для администраторов: метрики, проблемы, статистика правил, права, аудит и поведение при отказах |
 | [backup.md](backup.md) | Резервное копирование и восстановление, ключ шифрования |
 | [logging.md](logging.md), [metrics.md](metrics.md) | Журнал процесса, аудит в stdout, метрики Prometheus |
 | [http-security.md](http-security.md) | Заголовки безопасности, защита от перебора |
-
-## Безопасность
-
-| Документ | О чём |
-|---|---|
-| [threat-model.md](threat-model.md) | Модель угроз серверного режима |
-| [security-review.md](security-review.md) | Находки ревью и сценарии проверки |
 
 ## Для разработчиков
 
 | Документ | О чём |
 |---|---|
-| [adr/](adr/README.md) | Архитектурные решения (ADR-0001…0022): почему устроено так |
-| [decisions/](decisions/README.md) | Решения по безопасности и реализации (статус: ждёт ревью → принято) |
-| [e2e.md](e2e.md), [perf-check.md](perf-check.md) | Smoke-e2e, замер скорости списков |
+| [adr/](adr/README.md) | Архитектурные решения (ADR-0001…0034): почему устроено так |
+| [intelligence-rule-improvement.md](intelligence-rule-improvement.md) | Как мантейнеры улучшают правила Intelligence по выгруженной статистике (ADR-0034 §9) |
+| [architecture-reviews/2026-11-26-intelligence-lifecycle-stabilization.md](architecture-reviews/2026-11-26-intelligence-lifecycle-stabilization.md) | Техническая фиксация исправлений LIFE-01 и INT-01 |
+| [architecture-reviews/2026-11-26-stage-closure.md](architecture-reviews/2026-11-26-stage-closure.md) | Итог этапа: стабилизация Intelligence и Lifecycle, закрытие замечаний и очистка устаревших промптов |
+| [e2e.md](e2e.md) | Smoke-e2e |
 | [authentication-lab.md](authentication-lab.md) | Ручной стенд входа в облачные кластеры (EKS, GKE, AKS) без создания кластеров |
 | [releasing.md](releasing.md) | Как выпускается релиз |
 | [../CONTRIBUTING.md](../CONTRIBUTING.md) | Правила вклада, DCO, заголовки лицензии |
 
-## Статус работ
-
-| Документ | О чём |
-|---|---|
-| [tickets/cluster-auth.md](tickets/cluster-auth.md) | **Активный** тикет: вход в кластеры (ADR-0018) |
-| [acceptance/](acceptance) | Датированные акты приёмки; [2026-11-05](acceptance/2026-11-05-cluster-auth-manual.md) ждёт выполнения владельцем |
-
 ## Что где хранить
 
 - **ADR** хранятся всегда. Принятый ADR не переписывается и не удаляется: если решение изменилось, пишется новый ADR, а старому ставится статус «заменено». Номера ADR встречаются в коде, чарте и CI, поэтому имена файлов не меняются.
-- **Решения (`decisions/`)** фиксируют выбор исполнителя до проверки человеком. После ревью файл остаётся со статусом «принято»; если решение меняет архитектуру, оно дополнительно оформляется ADR.
-- **Тикеты** нужны, пока работа идёт. Закрытый тикет удаляется; детали остаются в git-истории и `CHANGELOG.md`.
-- **Акты приёмки** хранятся с датой в имени и не правятся задним числом.
 - Новые руководства и справка для людей, а не для команды, идут в `docs-site/`, а не сюда.

@@ -1,0 +1,23 @@
+{
+  "target": {
+    "kind": "CronJob",
+    "namespace": "app",
+    "name": "nightly"
+  },
+  "golden": true,
+  "expect": {
+    "symptoms": [
+      "cronjob.not_scheduling"
+    ],
+    "hypotheses": [
+      "cronjob.concurrency_blocked:high"
+    ],
+    "chains": [
+      "cronjob.concurrency_blocked: CronJob/nightly > Job/nightly-27"
+    ],
+    "absent": [
+      "cronjob.missed_schedule",
+      "cronjob.suspended"
+    ]
+  }
+}

@@ -1,0 +1,158 @@
+{
+  "ruleSetVersion": 3,
+  "target": {
+    "group": "networking.k8s.io",
+    "kind": "Ingress",
+    "namespace": "app",
+    "name": "site",
+    "uid": "i1"
+  },
+  "observedAt": "2026-11-11T10:00:00Z",
+  "symptoms": [
+    "none"
+  ],
+  "resources": [
+    {
+      "group": "networking.k8s.io",
+      "kind": "Ingress",
+      "namespace": "app",
+      "name": "site",
+      "uid": "i1"
+    }
+  ],
+  "facts": [
+    {
+      "kind": "fact",
+      "id": "f1",
+      "code": "no_problem_detected",
+      "resource": {
+        "group": "networking.k8s.io",
+        "kind": "Ingress",
+        "namespace": "app",
+        "name": "site",
+        "uid": "i1"
+      },
+      "params": {
+        "pods": "1"
+      },
+      "source": {
+        "kind": "derived",
+        "resource": {
+          "group": "networking.k8s.io",
+          "kind": "Ingress",
+          "namespace": "app",
+          "name": "site",
+          "uid": "i1"
+        }
+      },
+      "observedAt": "2026-11-11T10:00:00Z"
+    }
+  ],
+  "hypotheses": [],
+  "recommendations": [],
+  "steps": [
+    {
+      "kind": "step",
+      "id": "s1",
+      "code": "step.check_events",
+      "resource": {
+        "group": "networking.k8s.io",
+        "kind": "Ingress",
+        "namespace": "app",
+        "name": "site",
+        "uid": "i1"
+      },
+      "hypotheses": []
+    }
+  ],
+  "missing": [
+    {
+      "code": "source.unavailable",
+      "resource": {
+        "group": "networking.k8s.io",
+        "kind": "IngressClass",
+        "name": "nginx"
+      },
+      "params": {
+        "reason": "forbidden"
+      }
+    },
+    {
+      "code": "context.insufficient",
+      "resource": {
+        "group": "networking.k8s.io",
+        "kind": "Ingress",
+        "namespace": "app",
+        "name": "site",
+        "uid": "i1"
+      }
+    }
+  ],
+  "graph": {
+    "nodes": [
+      {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "web-1",
+        "health": "Healthy"
+      },
+      {
+        "kind": "Service",
+        "namespace": "app",
+        "name": "web",
+        "health": "Healthy"
+      },
+      {
+        "group": "discovery.k8s.io",
+        "kind": "EndpointSlice",
+        "namespace": "app",
+        "name": "web-abc",
+        "health": "Healthy"
+      },
+      {
+        "group": "networking.k8s.io",
+        "kind": "Ingress",
+        "namespace": "app",
+        "name": "site",
+        "health": "Healthy"
+      },
+      {
+        "group": "networking.k8s.io",
+        "kind": "IngressClass",
+        "name": "nginx",
+        "health": "Unknown",
+        "unknown": "forbidden"
+      }
+    ],
+    "edges": [
+      {
+        "from": "core/Service/app/web",
+        "to": "core/Pod/app/web-1",
+        "type": "selects",
+        "state": "ok"
+      },
+      {
+        "from": "core/Service/app/web",
+        "to": "discovery.k8s.io/EndpointSlice/app/web-abc",
+        "type": "backed_by",
+        "state": "ok"
+      },
+      {
+        "from": "networking.k8s.io/Ingress/app/site",
+        "to": "core/Service/app/web",
+        "type": "routes",
+        "state": "ok"
+      },
+      {
+        "from": "networking.k8s.io/Ingress/app/site",
+        "to": "networking.k8s.io/IngressClass//nginx",
+        "type": "binds",
+        "state": "unknown",
+        "reason": "forbidden"
+      }
+    ],
+    "warnings": [
+      "forbidden:IngressClass"
+    ]
+  }
+}

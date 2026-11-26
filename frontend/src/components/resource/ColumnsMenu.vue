@@ -138,18 +138,18 @@ onUnmounted(() => {
   background: transparent;
   border: 0;
   border-radius: 4px;
-  color: #a6adc8;
+  color: var(--text-muted);
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
 }
-.cm-btn:hover, .cm-btn.active { background: rgba(255, 255, 255, 0.1); color: #89b4fa; }
+.cm-btn:hover, .cm-btn.active { background: rgba(var(--tint-rgb), 0.1); color: var(--accent); }
 .cm-pop {
   position: fixed;
   z-index: 10000;
   width: 240px;
   overflow: auto;
-  background: #1e1f35;
-  border: 1px solid #3b3d5c;
+  background: var(--panel-raised);
+  border: 1px solid var(--line-strong);
   border-radius: 6px;
   padding: 6px;
   text-align: left;
@@ -168,21 +168,21 @@ onUnmounted(() => {
   border-radius: 4px;
   cursor: grab;
 }
-.cm-row:hover { background: rgba(255, 255, 255, 0.06); }
-.cm-row.over { outline: 1px dashed #89b4fa; }
-.cm-label { display: flex; align-items: center; gap: 8px; flex: 1; font-size: 13px; color: #d4d4d4; }
-.cm-label input { accent-color: #89b4fa; margin: 0; }
+.cm-row:hover { background: rgba(var(--tint-rgb), 0.06); }
+.cm-row.over { outline: 1px dashed var(--accent); }
+.cm-label { display: flex; align-items: center; gap: 8px; flex: 1; font-size: 13px; color: var(--text-code); }
+.cm-label input { accent-color: var(--accent); margin: 0; }
 .cm-move button {
   width: 22px;
   height: 22px;
   margin-left: 2px;
   background: transparent;
-  border: 1px solid #3b3d5c;
+  border: 1px solid var(--line-strong);
   border-radius: 4px;
-  color: #d4d4d4;
+  color: var(--text-code);
   cursor: pointer;
 }
-.cm-move button:hover:not(:disabled) { border-color: #89b4fa; }
+.cm-move button:hover:not(:disabled) { border-color: var(--accent); }
 .cm-move button:disabled { opacity: 0.3; cursor: default; }
 .cm-reset {
   width: 100%;
@@ -190,8 +190,8 @@ onUnmounted(() => {
   padding: 6px;
   background: transparent;
   border: 0;
-  border-top: 1px solid #3b3d5c;
-  color: #89b4fa;
+  border-top: 1px solid var(--line-strong);
+  color: var(--accent);
   font: inherit;
   font-size: 12px;
   cursor: pointer;

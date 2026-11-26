@@ -1,0 +1,15 @@
+connecting with password=⟦hunter2⟧ to db
+%%%
+{"db_password": "⟦p@ss w0rd⟧", "port": 5432}
+%%%
+client_secret: ⟦abcd1234efgh⟧
+%%%
+X-Api-Key: ⟦k-12345⟧
+%%%
+DefaultEndpointsProtocol=https;AccountKey=⟦Zm9vYmFyYmF6⟧;EndpointSuffix=core.windows.net
+%%%
+DATABASE_PASSWORD='⟦x y z⟧'
+%%%
+accessToken: ⟦abc⟧
+%%%
+aws_session_token=⟦FwoGZXIvYXdzEBYaDExample⟧

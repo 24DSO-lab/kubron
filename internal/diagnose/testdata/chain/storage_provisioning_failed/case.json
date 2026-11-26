@@ -1,0 +1,11 @@
+{
+  "target": {"kind": "Pod", "namespace": "app", "name": "db-0"},
+  "expect": {
+    "symptoms": ["pod.pending", "storage.claim_pending"],
+    "hypotheses": ["pending.unbound_pvc:low", "storage.provisioning_failed:medium"],
+    "explains": [["storage.provisioning_failed", "pending.unbound_pvc"]],
+    "chains": ["storage.provisioning_failed: Pod/db-0 > PersistentVolumeClaim/data"],
+    "absent": ["storage.class_not_found"],
+    "absent_steps": ["step.check_pvc"]
+  }
+}

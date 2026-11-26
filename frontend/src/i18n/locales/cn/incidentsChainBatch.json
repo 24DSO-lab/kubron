@@ -1,0 +1,44 @@
+{
+  "symptoms": {
+    "job_failed": "Job 已失败结束。",
+    "cronjob_not_scheduling": "CronJob 没有按计划启动 Job。"
+  },
+  "facts": {
+    "job_backoff_limit_exceeded": "Job {job} 被标记为失败：{failed} 个 Pod 失败，已达到重试上限 {limit}。",
+    "job_deadline_exceeded": "Job {job} 被标记为失败：运行时间超过了其时限（spec.activeDeadlineSeconds）。",
+    "job_failed": "Job {job} 被标记为失败。",
+    "job_suspended": "Job {job} 已暂停（spec.suspend）：这是您设置的状态，不是故障。",
+    "cronjob_suspended": "CronJob {cronjob} 已暂停（spec.suspend）。",
+    "cronjob_missed_runs": "自 {since} 起，CronJob {cronjob} 本应启动 {missed} 次，但没有创建 Job。",
+    "cronjob_starting_deadline": "CronJob {cronjob} 最多允许延迟 {seconds} 秒启动（spec.startingDeadlineSeconds）；更晚的运行将被跳过。",
+    "cronjob_concurrency_forbid": "CronJob {cronjob} 禁止并发运行（spec.concurrencyPolicy）。",
+    "cronjob_active_job_blocking": "CronJob {cronjob} 的 Job {job} 自 {since} 起一直在运行，超过了计划间隔；已跳过 {skipped} 次运行。"
+  },
+  "hypotheses": {
+    "job_backoff_limit_exceeded": "Job {job} 用尽了重试次数：它的 Pod 不断失败直至达到上限，Kubernetes 因此停止了它。",
+    "job_deadline_exceeded": "Job {job} 未在时限内完成，Kubernetes 因此停止了它。",
+    "cronjob_suspended": "CronJob {cronjob} 已暂停，因此约 {missed} 次计划运行没有启动。",
+    "cronjob_missed_schedule": "CronJob {cronjob} 错过了计划运行：Job 没有及时创建，这些运行被跳过。",
+    "cronjob_concurrency_blocked": "Job {job} 仍在运行，而 CronJob {cronjob} 禁止并发运行，因此已跳过 {skipped} 次计划运行。"
+  },
+  "recommendations": {
+    "rec_fix_job_pod_failures": "查明 Job {job} 的 Pod 为何失败（见其自身的发现），并先解决该原因。",
+    "rec_raise_job_backoff_limit": "如果失败是预期且暂时的，请提高 Job {job} 的 spec.backoffLimit（当前为 {limit}）。",
+    "rec_raise_job_deadline": "如果任务确实需要更多时间，请提高 Job {job} 的 spec.activeDeadlineSeconds。",
+    "rec_resume_cronjob": "如果计划应当运行，请恢复 CronJob {cronjob}（将 spec.suspend 设为 false）；若是有意暂停，则保持不变。",
+    "rec_fix_blocking_job": "查明 Job {job} 为何不结束并修复或停止它；或将 CronJob {cronjob} 的 spec.concurrencyPolicy 改为 Replace 或 Allow。",
+    "rec_check_cronjob_controller": "检查集群控制器管理器是否正常、各节点时钟是否同步；查看 CronJob {cronjob} 的事件。",
+    "rec_review_starting_deadline": "检查 CronJob {cronjob} 的 spec.startingDeadlineSeconds：时限过短会使任何延迟的运行被跳过。"
+  },
+  "steps": {
+    "step_check_job_pods": "打开 Job {job} 的 Pod，查看其最近状态和事件。Pod 可能已被保留策略删除。",
+    "step_check_cronjob_events": "查看 CronJob {cronjob} 的事件：控制器会在其中给出跳过运行的原因。"
+  },
+  "missing": {
+    "job_pods_not_retained": "集群中已没有 Job {job} 的 Pod，因此无法显示它们失败的原因。它们可能已被保留策略删除。",
+    "job_history_truncated": "Job {job} 的 Pod 数量超过报告保留的数量：仅显示最新的，较早的失败未做分析。",
+    "job_failure_reason_unrecognized": "Job {job} 因 Kubron 暂不分析的原因而失败。",
+    "cronjob_history_truncated": "CronJob {cronjob} 的 Job 数量超过报告保留的数量：仅显示最新的，较早的运行未做分析。",
+    "cronjob_schedule_unreadable": "无法解析 CronJob {cronjob} 的计划或时区，因此无法统计错过的运行。"
+  }
+}

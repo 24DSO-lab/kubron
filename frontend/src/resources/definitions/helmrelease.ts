@@ -49,7 +49,7 @@ export const helmRelease = defineResource<k8s.HelmReleaseInfo, k8s.HelmReleaseDe
       key: 'latestVersion',
       label: 'defs.columns.update',
       formatter: r => (r.latestVersion ? `${r.latestVersion} (${r.latestRepo})` : ''),
-      colorFn: () => '#facc15',
+      colorFn: () => 'var(--yellow)',
       sortValue: r => r.latestVersion || null,
     },
     { key: 'updated', label: 'defs.columns.updated' },

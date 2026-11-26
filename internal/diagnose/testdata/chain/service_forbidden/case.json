@@ -1,0 +1,9 @@
+{
+  "target": {"kind": "Service", "namespace": "app", "name": "web"},
+  "forbid": ["EndpointSlice"],
+  "golden": true,
+  "expect": {
+    "missing": ["source.unavailable"],
+    "absent": ["service.no_ready_endpoints", "service.no_endpoints", "service.selector_no_match"]
+  }
+}

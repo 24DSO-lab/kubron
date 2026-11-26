@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": null,
+  "wallets": [
+    {
+      "id": "btc-bitcoin",
+      "asset": "BTC",
+      "network": "Bitcoin",
+      "address": "bc1q7qazgg8xqsd7q9ajqvhru0ekmxrj9y6usty3g2",
+      "explorerAddressUrl": "https://mempool.space/address/bc1q7qazgg8xqsd7q9ajqvhru0ekmxrj9y6usty3g2"
+    },
+    {
+      "id": "eth-ethereum",
+      "asset": "ETH",
+      "network": "Ethereum",
+      "address": "0x45c14C29fC24848054bdefC24AB3FfF3de0648F8",
+      "explorerAddressUrl": "https://etherscan.io/address/0x45c14C29fC24848054bdefC24AB3FfF3de0648F8"
+    },
+    {
+      "id": "usdt-tron",
+      "asset": "USDT",
+      "network": "TRON (TRC-20)",
+      "address": "TU3ZAL5fdSHnpveC7T89AitgqEs7BdDkph",
+      "explorerAddressUrl": "https://tronscan.org/#/address/TU3ZAL5fdSHnpveC7T89AitgqEs7BdDkph"
+    },
+    {
+      "id": "usdc-ethereum",
+      "asset": "USDC",
+      "network": "Ethereum (ERC-20)",
+      "address": "0x45c14C29fC24848054bdefC24AB3FfF3de0648F8",
+      "explorerAddressUrl": "https://etherscan.io/address/0x45c14C29fC24848054bdefC24AB3FfF3de0648F8"
+    }
+  ],
+  "transactions": []
+}

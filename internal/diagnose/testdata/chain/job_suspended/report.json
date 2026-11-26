@@ -1,0 +1,120 @@
+{
+  "ruleSetVersion": 3,
+  "target": {
+    "group": "batch",
+    "kind": "Job",
+    "namespace": "app",
+    "name": "report",
+    "uid": "j1"
+  },
+  "observedAt": "2026-11-11T10:00:00Z",
+  "symptoms": [
+    "none"
+  ],
+  "resources": [
+    {
+      "group": "batch",
+      "kind": "Job",
+      "namespace": "app",
+      "name": "report",
+      "uid": "j1"
+    }
+  ],
+  "facts": [
+    {
+      "kind": "fact",
+      "id": "f1",
+      "code": "job.suspended",
+      "resource": {
+        "group": "batch",
+        "kind": "Job",
+        "namespace": "app",
+        "name": "report",
+        "uid": "j1"
+      },
+      "params": {
+        "job": "report"
+      },
+      "source": {
+        "kind": "resource",
+        "resource": {
+          "group": "batch",
+          "kind": "Job",
+          "namespace": "app",
+          "name": "report",
+          "uid": "j1"
+        },
+        "field": "spec.suspend"
+      },
+      "observedAt": "2026-11-11T10:00:00Z"
+    },
+    {
+      "kind": "fact",
+      "id": "f2",
+      "code": "no_problem_detected",
+      "resource": {
+        "group": "batch",
+        "kind": "Job",
+        "namespace": "app",
+        "name": "report",
+        "uid": "j1"
+      },
+      "params": {
+        "pods": "0"
+      },
+      "source": {
+        "kind": "derived",
+        "resource": {
+          "group": "batch",
+          "kind": "Job",
+          "namespace": "app",
+          "name": "report",
+          "uid": "j1"
+        }
+      },
+      "observedAt": "2026-11-11T10:00:00Z"
+    }
+  ],
+  "hypotheses": [],
+  "recommendations": [],
+  "steps": [
+    {
+      "kind": "step",
+      "id": "s1",
+      "code": "step.check_events",
+      "resource": {
+        "group": "batch",
+        "kind": "Job",
+        "namespace": "app",
+        "name": "report",
+        "uid": "j1"
+      },
+      "hypotheses": []
+    }
+  ],
+  "missing": [
+    {
+      "code": "context.insufficient",
+      "resource": {
+        "group": "batch",
+        "kind": "Job",
+        "namespace": "app",
+        "name": "report",
+        "uid": "j1"
+      }
+    }
+  ],
+  "graph": {
+    "nodes": [
+      {
+        "group": "batch",
+        "kind": "Job",
+        "namespace": "app",
+        "name": "report",
+        "health": "Suspended",
+        "reason": "suspended"
+      }
+    ],
+    "edges": []
+  }
+}

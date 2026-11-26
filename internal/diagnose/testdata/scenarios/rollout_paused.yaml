@@ -1,0 +1,17 @@
+# Выкат поставлен на паузу: реплики здоровы, но обновление не идёт. Это факт spec.paused, уверенность высокая.
+kind: Expect
+target: {kind: Deployment, namespace: shop, name: web}
+symptoms: [workload.rollout]
+hypotheses: ["rollout.paused:high"]
+recommendations: [rec.resume_rollout]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: web, namespace: shop, uid: d1, generation: 2}
+spec: {replicas: 2, paused: true, selector: {matchLabels: {app: web}}}
+status:
+  observedGeneration: 2
+  replicas: 2
+  updatedReplicas: 2
+  readyReplicas: 2
+  availableReplicas: 2

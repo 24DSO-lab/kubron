@@ -1,0 +1,22 @@
+{
+  "ruleSetVersion": 2,
+  "target": {
+    "kind": "Pod",
+    "name": "api-1",
+    "namespace": "shop"
+  },
+  "observedAt": "2026-11-20T10:00:00Z",
+  "symptoms": [],
+  "resources": [
+    {
+      "kind": "Pod",
+      "name": "api-1",
+      "namespace": "shop"
+    }
+  ],
+  "facts": [],
+  "hypotheses": [],
+  "recommendations": [],
+  "steps": [],
+  "missing": []
+}

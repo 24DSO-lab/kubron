@@ -1,0 +1,15 @@
+kind: Expect
+target: {kind: Pod, namespace: shop, name: web-1}
+symptoms: [pod.startup_failure]
+hypotheses: ["image.registry_auth:medium"]
+---
+apiVersion: v1
+kind: Pod
+metadata: {name: web-1, namespace: shop}
+spec: {nodeName: n1, containers: [{name: app, image: "reg.example/app:1"}]}
+status:
+  phase: Pending
+  containerStatuses:
+    - name: app
+      image: reg.example/app:1
+      state: {waiting: {reason: ErrImagePull, message: "pull access denied, repository does not exist or may require authorization"}}

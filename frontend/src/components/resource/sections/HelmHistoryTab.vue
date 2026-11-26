@@ -135,18 +135,18 @@ const lineClass = (l: string) =>
 .hh-actions .rd-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .hh-diff { margin-top: 12px; }
 .hh-bar { display: flex; align-items: center; gap: 12px; padding: 8px 0; flex-wrap: wrap; font-size: 0.85rem; }
-.hh-seg { display: inline-flex; border: 1px solid #3b3d5c; border-radius: 4px; overflow: hidden; }
-.hh-seg button { padding: 4px 10px; background: transparent; color: #9ca3af; border: 0; font: inherit; cursor: pointer; }
-.hh-seg button.on { background: #3b82f6; color: #fff; }
+.hh-seg { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 4px; overflow: hidden; }
+.hh-seg button { padding: 4px 10px; background: transparent; color: var(--gray-400); border: 0; font: inherit; cursor: pointer; }
+.hh-seg button.on { background: var(--blue-strong); color: #fff; }
 .hh-close { margin-left: auto; }
-.hh-error { color: #f87171; font-size: 0.85rem; margin: 8px 0; }
+.hh-error { color: var(--red-soft); font-size: 0.85rem; margin: 8px 0; }
 .hh-pre {
   margin: 0; padding: 8px 10px; overflow: auto; max-height: 420px; background: #12141f;
   border: 1px solid #2a2f47; border-radius: 4px; font-family: 'Courier New', monospace; font-size: 0.8rem; line-height: 1.45; text-align: left;
 }
 .hh-pre span { display: block; white-space: pre; }
-.hh-add { color: #4ade80; background: rgba(74, 222, 128, 0.08); }
-.hh-del { color: #f87171; background: rgba(248, 113, 113, 0.08); }
-.hh-hunk { color: #60a5fa; }
-.hh-ctx { color: #9ca3af; }
+.hh-add { color: var(--green); background: rgba(74, 222, 128, 0.08); }
+.hh-del { color: var(--red-soft); background: rgba(248, 113, 113, 0.08); }
+.hh-hunk { color: var(--blue); }
+.hh-ctx { color: var(--gray-400); }
 </style>

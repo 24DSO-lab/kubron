@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: Namespace
+metadata: {name: app}
+---
+apiVersion: batch/v1
+kind: Job
+metadata: {name: report, namespace: app, uid: j1, creationTimestamp: "2026-11-11T09:00:00Z"}
+spec: {selector: {matchLabels: {controller-uid: j1}}, backoffLimit: 0}
+status: {failed: 1, conditions: [{type: Failed, status: "True", reason: BackoffLimitExceeded}]}
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: report-a
+  namespace: app
+  uid: p-report-a
+  creationTimestamp: "2026-11-11T09:01:00Z"
+  labels: {controller-uid: j1, batch.kubernetes.io/job-name: report}
+  ownerReferences: [{apiVersion: batch/v1, kind: Job, name: report, uid: j1, controller: true}]
+spec: {restartPolicy: Never, containers: [{name: main, image: example/report}]}
+status:
+  phase: Failed
+  containerStatuses:
+    - name: main
+      ready: false
+      restartCount: 0
+      state: {terminated: {exitCode: 1, reason: Error, finishedAt: "2026-11-11T09:20:00Z"}}

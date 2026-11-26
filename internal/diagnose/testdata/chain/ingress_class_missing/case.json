@@ -1,0 +1,19 @@
+{
+  "target": {
+    "kind": "Ingress",
+    "namespace": "app",
+    "name": "site"
+  },
+  "golden": true,
+  "expect": {
+    "symptoms": [
+      "ingress.unreachable"
+    ],
+    "hypotheses": [
+      "ingress.class_not_found:high"
+    ],
+    "chains": [
+      "ingress.class_not_found: Ingress/site > IngressClass/gone"
+    ]
+  }
+}

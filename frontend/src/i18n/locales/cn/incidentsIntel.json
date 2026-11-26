@@ -1,0 +1,167 @@
+{
+  "chain": {
+    "title": "依赖链",
+    "aria": "受影响资源的依赖链",
+    "pathAria": "链 {n}",
+    "note": "链路显示受影响资源依赖的对象。“候选”是解释其他问题的假设，并非已确认的原因。",
+    "candidate": "候选",
+    "missingHint": "不存在",
+    "unknownHint": "未检查：{reason}",
+    "health": {
+      "Healthy": "健康",
+      "Degraded": "降级",
+      "Progressing": "进行中",
+      "Suspended": "已挂起",
+      "Missing": "缺失",
+      "Unknown": "未知",
+      "other": "未识别的状态"
+    },
+    "unknownReasons": {
+      "forbidden": "无权限读取",
+      "unavailable": "来源未响应",
+      "too_large": "响应过大",
+      "limit": "达到读取上限",
+      "policy": "被策略排除",
+      "other": "未说明原因"
+    },
+    "reasons": {
+      "pending": "待处理"
+    },
+    "explainedByCandidate": "由上方候选解释"
+  },
+  "unknownEntry": "此版本界面无法识别的条目",
+  "metric": {
+    "badge": "指标",
+    "summary": "{value} · {agg}，窗口 {window}",
+    "summaryNoWindow": "{value} · {agg}",
+    "limit": "上限 {limit}",
+    "cores": "核",
+    "flagOn": "观察到压力",
+    "flagOff": "无压力",
+    "agg": {
+      "max": "峰值",
+      "min": "最低",
+      "avg": "平均",
+      "increase": "增量",
+      "last": "最新值",
+      "ratio": "占比",
+      "other": "值"
+    }
+  },
+  "monitoring": {
+    "title": "启用监控后，诊断会更精确、更完整",
+    "generic": "此处无法使用监控数据。诊断仅基于 Kubernetes 数据，在无监控时仍保持完整。",
+    "open": "打开集群设置"
+  },
+  "sourceKinds": {
+    "metric": "监控指标",
+    "other": "来源"
+  },
+  "correlation": {
+    "note": "这是可能的共同来源，不是已证实的原因：请先核实再操作。",
+    "lowHint": "置信度低：仅作提示。",
+    "since": "自 {time}",
+    "affected": "受影响工作负载：{total}",
+    "noneListed": "未列出工作负载。",
+    "truncated": "列表已截断：显示 {shown}/{total}。",
+    "potential": "可能受影响",
+    "potentialNote": "这些工作负载共享来源，但尚未出现问题。",
+    "supporting": "支持事实",
+    "pods": "{n} 个有问题的 Pod",
+    "incompleteForbidden": "列表不完整：无权限读取部分数据。",
+    "openProblem": "打开问题",
+    "kindOther": "可能的共同来源",
+    "recompute": "重新计算关联",
+    "recomputing": "正在重新计算…",
+    "recomputeHint": "重新读取集群；报告、事件和日志保持不变。",
+    "recomputeClosed": "已关闭的调查不会重新计算。",
+    "recomputeUnavailable": "当前后端版本不支持重新计算。",
+    "symptomHint": "低置信度：命名空间中出现相同症状，未发现结构性关联。"
+  },
+  "problem": {
+    "title": "问题",
+    "subtitle": "共享可能来源的调查会归入同一问题。分组不会删除或合并调查。",
+    "empty": "暂无问题。",
+    "filter": {
+      "open": "进行中",
+      "closed": "已关闭",
+      "all": "全部"
+    },
+    "columns": {
+      "source": "来源",
+      "members": "调查",
+      "affected": "受影响",
+      "updated": "更新时间"
+    },
+    "manual": "手动",
+    "status": {
+      "open": "进行中",
+      "closed": "已关闭"
+    },
+    "origin": {
+      "auto": "自动形成",
+      "manual": "手动形成"
+    },
+    "members": "{n} 项调查",
+    "membersTitle": "调查",
+    "affected": "受影响工作负载：{total}",
+    "addedAuto": "自动加入",
+    "addedBy": "由 {user} 加入",
+    "detach": "分离",
+    "detachedNote": "已分离 {n} 项调查，不会再自动加入。",
+    "actions": "更改分组",
+    "safeNote": "调查不会被删除或合并：仅更改其分组。",
+    "attach": "附加",
+    "pickIncident": "选择调查",
+    "merge": "合并到",
+    "pickProblem": "选择问题",
+    "needOperate": "更改问题需要 operate 权限。",
+    "createTitle": "从调查创建问题",
+    "createHint": "选择尚未属于问题的调查。",
+    "createEmpty": "所有调查已属于某个问题。",
+    "createSubmit": "创建问题（{n}）",
+    "confirm": {
+      "attach": "将此调查附加到该问题？",
+      "detach": "将此调查从该问题分离？",
+      "merge": "将此问题合并到所选问题？",
+      "create": "用所选调查创建问题？"
+    }
+  },
+  "outcome": {
+    "more": "更多详情（可选）",
+    "optionalHint": "此处均可不填",
+    "rejected": "已排除的假设",
+    "recommendations": "建议是否有帮助？",
+    "mark": {
+      "none": "未标记",
+      "helpful": "有帮助",
+      "useless": "无帮助"
+    },
+    "otherAction": "建议之外的操作有帮助",
+    "resolvedAt": "解决时间",
+    "resolvedAtHint": "问题消失的时间",
+    "correlation": "可能的共同来源",
+    "verdict": {
+      "none": "未标记",
+      "confirmed": "已确认",
+      "rejected": "已排除",
+      "unknown": "未知"
+    },
+    "errors": {
+      "tooMany": "单个列表中选中项过多。",
+      "noteTooLong": "备注过长。",
+      "resolvedBeforeOpen": "解决时间不能早于调查开始时间。",
+      "resolvedInFuture": "解决时间不能是将来。",
+      "resolvedInvalid": "无法解析解决时间。"
+    },
+    "markRejected": "已被人工排除",
+    "markHelpful": "有帮助",
+    "markUseless": "没有帮助",
+    "doneRejected": "已排除：{items}",
+    "doneHelpful": "有帮助：{items}",
+    "doneUseless": "无帮助：{items}",
+    "doneOtherAction": "建议之外的操作有帮助",
+    "doneResolvedAt": "解决于 {time}",
+    "doneCorrelation": "可能的共同来源：{verdict}"
+  }
+}

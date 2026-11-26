@@ -105,5 +105,5 @@ onBeforeUnmount(() => { clientSecret.value = '' })
 .go-row { display: flex; flex-direction: column; gap: 0.25rem; margin-bottom: 0.75rem; }
 .go-actions { display: flex; gap: 0.5rem; }
 .go-hint { opacity: 0.8; font-size: 0.85em; margin: 0 0 0.75rem; }
-.go-error { color: var(--color-danger, #ef4444); }
+.go-error { color: var(--color-danger, var(--red)); }
 </style>

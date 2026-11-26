@@ -1,0 +1,19 @@
+{
+  "target": {
+    "kind": "Job",
+    "namespace": "app",
+    "name": "report"
+  },
+  "forbid": [
+    "v1/Pod"
+  ],
+  "golden": true,
+  "expect": {
+    "missing": [
+      "source.unavailable"
+    ],
+    "hypotheses": [
+      "job.backoff_limit_exceeded:high"
+    ]
+  }
+}

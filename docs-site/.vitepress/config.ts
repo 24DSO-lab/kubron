@@ -65,6 +65,7 @@ export default defineConfig({
           { text: 'Features', link: '/features/' },
           { text: 'Web version', link: '/server/' },
           { text: 'Development', link: '/development/' },
+          { text: 'Sponsors', link: '/sponsors' },
           { text: 'Download', link: releases }
         ],
         sidebar: {
@@ -76,6 +77,7 @@ export default defineConfig({
             { text: 'Build from source', link: '/guide/build-from-source' },
             { text: 'Web', link: '/guide/web' },
             { text: 'First cluster', link: '/guide/first-cluster' },
+            { text: 'Typical scenarios', link: '/guide/scenarios' },
             { text: 'Troubleshooting & FAQ', link: '/guide/troubleshooting' },
             { text: 'Keyboard shortcuts', link: '/guide/shortcuts' }
           ]}],
@@ -87,13 +89,19 @@ export default defineConfig({
             { text: 'Resources & YAML', link: '/features/resources' },
             { text: 'Working with resources', link: '/features/working-with-resources' },
             { text: 'Operations', link: '/features/operations' },
+            { text: 'Debug containers', link: '/features/debug-containers' },
+            { text: 'Configuration baseline', link: '/features/baseline' },
             { text: 'Metrics stack & charts', link: '/features/metrics' },
+            { text: 'Incidents', link: '/features/intelligence' },
             { text: 'Helm', link: '/features/helm' },
             { text: 'GitOps', link: '/features/gitops' },
+            { text: 'Upgrade readiness', link: '/features/upgrade-readiness' },
             { text: 'Teams & shared access', link: '/features/teams' },
             { text: 'Security & access', link: '/features/security' },
             { text: 'Users & audit log', link: '/features/administration' },
-            { text: 'Settings', link: '/features/settings' }
+            { text: 'Settings', link: '/features/settings' },
+            { text: 'Version & updates', link: '/features/updates' },
+            { text: 'Report a problem', link: '/features/bug-reports' }
           ]}],
           '/server/': [{ text: 'Web version', items: [
             { text: 'Overview', link: '/server/' },
@@ -126,6 +134,7 @@ export default defineConfig({
           { text: 'Возможности', link: '/ru/features/' },
           { text: 'Web-версия', link: '/ru/server/' },
           { text: 'Разработка', link: '/ru/development/' },
+          { text: 'Поддержать', link: '/ru/sponsors' },
           { text: 'Скачать', link: releases }
         ],
         sidebar: {
@@ -137,6 +146,7 @@ export default defineConfig({
             { text: 'Сборка из исходников', link: '/ru/guide/build-from-source' },
             { text: 'Web', link: '/ru/guide/web' },
             { text: 'Первый кластер', link: '/ru/guide/first-cluster' },
+            { text: 'Типовые сценарии', link: '/ru/guide/scenarios' },
             { text: 'Диагностика и FAQ', link: '/ru/guide/troubleshooting' },
             { text: 'Горячие клавиши', link: '/ru/guide/shortcuts' }
           ]}],
@@ -148,13 +158,19 @@ export default defineConfig({
             { text: 'Ресурсы и YAML', link: '/ru/features/resources' },
             { text: 'Работа с ресурсами', link: '/ru/features/working-with-resources' },
             { text: 'Операции', link: '/ru/features/operations' },
+            { text: 'Debug-контейнеры', link: '/ru/features/debug-containers' },
+            { text: 'Baseline конфигурации', link: '/ru/features/baseline' },
             { text: 'Стек метрик и графики', link: '/ru/features/metrics' },
+            { text: 'Инциденты', link: '/ru/features/intelligence' },
             { text: 'Helm', link: '/ru/features/helm' },
             { text: 'GitOps', link: '/ru/features/gitops' },
+            { text: 'Готовность к обновлению', link: '/ru/features/upgrade-readiness' },
             { text: 'Команды и совместный доступ', link: '/ru/features/teams' },
             { text: 'Безопасность и доступ', link: '/ru/features/security' },
             { text: 'Пользователи и аудит', link: '/ru/features/administration' },
-            { text: 'Настройки', link: '/ru/features/settings' }
+            { text: 'Настройки', link: '/ru/features/settings' },
+            { text: 'Версия и обновления', link: '/ru/features/updates' },
+            { text: 'Сообщить о проблеме', link: '/ru/features/bug-reports' }
           ]}],
           '/ru/server/': [{ text: 'Web-версия', items: [
             { text: 'Обзор', link: '/ru/server/' },

@@ -1,0 +1,97 @@
+{
+  "apiVersion": "apps/v1",
+  "kind": "Deployment",
+  "metadata": {
+    "name": "web",
+    "namespace": "prod",
+    "uid": "6f1c1a5e-0b0d-4c5e-9a53-1d7d3f0a1a11",
+    "resourceVersion": "48211733",
+    "generation": 14,
+    "creationTimestamp": "2026-03-02T09:14:07Z",
+    "selfLink": "/apis/apps/v1/namespaces/prod/deployments/web",
+    "labels": {"app": "web", "app.kubernetes.io/managed-by": "Helm", "tier": "frontend"},
+    "annotations": {
+      "deployment.kubernetes.io/revision": "9",
+      "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\"}",
+      "meta.helm.sh/release-name": "web",
+      "example.com/owner": "team-web"
+    },
+    "managedFields": [
+      {"manager": "helm", "operation": "Update", "apiVersion": "apps/v1", "time": "2026-10-20T08:00:00Z",
+       "fieldsType": "FieldsV1",
+       "fieldsV1": {"f:spec": {"f:replicas": {}, "f:template": {"f:spec": {"f:containers": {"k:{\"name\":\"web\"}": {".": {}, "f:image": {}, "f:name": {}}}}}}}},
+      {"manager": "kube-controller-manager", "operation": "Update", "apiVersion": "apps/v1", "time": "2026-11-01T10:00:00Z",
+       "fieldsType": "FieldsV1", "subresource": "status",
+       "fieldsV1": {"f:status": {"f:readyReplicas": {}}}}
+    ]
+  },
+  "spec": {
+    "replicas": 3,
+    "revisionHistoryLimit": 10,
+    "progressDeadlineSeconds": 600,
+    "selector": {"matchLabels": {"app": "web"}},
+    "strategy": {"type": "RollingUpdate", "rollingUpdate": {"maxSurge": "25%", "maxUnavailable": "25%"}},
+    "template": {
+      "metadata": {"creationTimestamp": null, "labels": {"app": "web", "tier": "frontend"}},
+      "spec": {
+        "serviceAccount": "web",
+        "serviceAccountName": "web",
+        "dnsPolicy": "ClusterFirst",
+        "restartPolicy": "Always",
+        "schedulerName": "default-scheduler",
+        "securityContext": {},
+        "terminationGracePeriodSeconds": 30,
+        "initContainers": [
+          {"name": "wait-db", "image": "busybox:1.36", "imagePullPolicy": "IfNotPresent",
+           "command": ["sh", "-c", "until nc -z db 5432; do sleep 1; done"],
+           "resources": {}, "terminationMessagePath": "/dev/termination-log", "terminationMessagePolicy": "File"},
+          {"name": "migrate", "image": "registry.example.com/web/migrate:2.4.1", "imagePullPolicy": "IfNotPresent",
+           "args": ["--up"], "resources": {}, "terminationMessagePath": "/dev/termination-log", "terminationMessagePolicy": "File"}
+        ],
+        "containers": [
+          {
+            "name": "sidecar", "image": "registry.example.com/web/log-shipper:latest", "imagePullPolicy": "Always",
+            "resources": {}, "terminationMessagePath": "/dev/termination-log", "terminationMessagePolicy": "File"
+          },
+          {
+            "name": "web",
+            "image": "registry.example.com/web/app:3.8.2",
+            "imagePullPolicy": "IfNotPresent",
+            "ports": [
+              {"containerPort": 9090, "name": "metrics", "protocol": "TCP"},
+              {"containerPort": 8080, "name": "http", "protocol": "TCP"}
+            ],
+            "env": [
+              {"name": "LOG_LEVEL", "value": "info"},
+              {"name": "DB_PASSWORD", "value": "canary-db-password-7f3a9c"},
+              {"name": "API_KEY", "valueFrom": {"secretKeyRef": {"name": "web-api", "key": "key"}}},
+              {"name": "POD_NAME", "valueFrom": {"fieldRef": {"apiVersion": "v1", "fieldPath": "metadata.name"}}}
+            ],
+            "resources": {"limits": {"cpu": "500m", "memory": "512Mi"}, "requests": {"cpu": "250m", "memory": "256Mi"}},
+            "livenessProbe": {"httpGet": {"path": "/healthz", "port": 8080, "scheme": "HTTP"},
+              "initialDelaySeconds": 10, "timeoutSeconds": 1, "periodSeconds": 10, "successThreshold": 1, "failureThreshold": 3},
+            "readinessProbe": {"httpGet": {"path": "/ready", "port": "http", "scheme": "HTTP"},
+              "timeoutSeconds": 2, "periodSeconds": 5, "successThreshold": 1, "failureThreshold": 3},
+            "volumeMounts": [
+              {"name": "tmp", "mountPath": "/tmp"},
+              {"name": "config", "mountPath": "/etc/web", "readOnly": true}
+            ],
+            "terminationMessagePath": "/dev/termination-log",
+            "terminationMessagePolicy": "File",
+            "securityContext": {"runAsNonRoot": true, "allowPrivilegeEscalation": false}
+          }
+        ],
+        "volumes": [
+          {"name": "tmp", "emptyDir": {}},
+          {"name": "config", "configMap": {"name": "web-config", "defaultMode": 420}}
+        ],
+        "tolerations": [
+          {"key": "node.kubernetes.io/unreachable", "operator": "Exists", "effect": "NoExecute", "tolerationSeconds": 300},
+          {"key": "node.kubernetes.io/not-ready", "operator": "Exists", "effect": "NoExecute", "tolerationSeconds": 300}
+        ]
+      }
+    }
+  },
+  "status": {"observedGeneration": 14, "replicas": 3, "readyReplicas": 3, "availableReplicas": 3,
+    "conditions": [{"type": "Available", "status": "True", "lastUpdateTime": "2026-11-01T10:00:00Z"}]}
+}

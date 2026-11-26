@@ -234,6 +234,9 @@ rbac:
   allowSecretsRead: false
   # Правила профиля readonly (они же база operator): только на чтение, по группам API, которые использует Kubron.
   # Пользовательские ресурсы (CRD, Argo CD Application и др.) не входят: добавьте их в extraRules.
+  # Kubron Intelligence (расследования, граф, корреляция) читает из этого списка: pods, pods/log, events, namespaces, nodes,
+  # services, endpointslices, persistentvolume(claim)s, storageclasses, configmaps (только существование), deployments,
+  # replicasets, statefulsets, daemonsets, jobs, cronjobs, ingresses, ingressclasses, horizontalpodautoscalers. Secret не читается.
   readonlyRules:
     - apiGroups: [""]
       resources:

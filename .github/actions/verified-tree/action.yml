@@ -10,8 +10,10 @@ description: >
   найти не удалось (нет артефакта, срок истёк, ошибка API, нет прав), ответ всегда «не проверено»:
   ошибка поиска может лишь добавить работы, но не убрать проверку.
 
-  Повторное использование выключено для тегов (релиз проверяется заново, см. release.yml) и для ручных
-  запусков. Отметку записывают только прогоны веток этого репозитория, не форков.
+  Ручные запуски отметку не используют. Теги используют её только с входом reuse-on-tag=true (так делает
+  ci.yml, который вызывает release.yml): scripts/release.sh выпускает тег на содержимом, уже проверенном в dev,
+  и повторять ради этого e2e на полчаса незачем. Нет отметки: на теге выполняется полный набор, как раньше.
+  Отметку записывают только прогоны веток этого репозитория, не форков и не теги.
 
   Требует выполненный actions/checkout (дерево берётся из HEAD) и право `actions: read`.
 
@@ -22,6 +24,10 @@ inputs:
   token:
     description: Токен для чтения списка артефактов (github.token)
     required: true
+  reuse-on-tag:
+    description: "true: на теге тоже искать отметку (по умолчанию тег проверяется заново)"
+    required: false
+    default: "false"
 
 outputs:
   tree:
@@ -46,6 +52,7 @@ runs:
         REF: ${{ github.ref }}
         REPO: ${{ github.repository }}
         HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+        REUSE_ON_TAG: ${{ inputs.reuse-on-tag }}
       run: |
         set -uo pipefail
         tree=$(git rev-parse 'HEAD^{tree}')
@@ -53,8 +60,8 @@ runs:
         record=false
         run_id=
 
-        # Только ветки и PR; теги (релиз) и ручные запуски проверяются заново
-        if [[ ($EVENT == push || $EVENT == pull_request) && $REF != refs/tags/* ]]; then
+        # Ветки и PR; тег только с reuse-on-tag=true; ручные запуски проверяются заново
+        if [[ ($EVENT == push || $EVENT == pull_request) && ($REF != refs/tags/* || $REUSE_ON_TAG == true) ]]; then
           # Сбой поиска оставляет verified=false: проверка выполнится
           if run_id=$(gh api "repos/$REPO/actions/artifacts?name=$PREFIX-verified-$tree&per_page=10" \
             --jq '[.artifacts[] | select(.expired | not)] | first | .workflow_run.id // empty' 2>/dev/null) &&
@@ -63,10 +70,11 @@ runs:
           else
             run_id=
           fi
-          # Отметку пишут push в этот репозиторий и PR из веток этого же репозитория (не из форков)
-          if [[ $EVENT == push || $HEAD_REPO == "$REPO" ]]; then
-            record=true
-          fi
+        fi
+        # Отметку пишут push в ветку этого репозитория и PR из веток этого же репозитория (не из форков, не теги)
+        if [[ ($EVENT == push || $EVENT == pull_request) && $REF != refs/tags/* ]] &&
+          [[ $EVENT == push || $HEAD_REPO == "$REPO" ]]; then
+          record=true
         fi
 
         {

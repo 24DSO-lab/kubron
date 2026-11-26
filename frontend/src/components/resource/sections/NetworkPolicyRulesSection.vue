@@ -41,5 +41,5 @@ const dirs = computed(() => [
 </script>
 
 <style scoped>
-.np-title { font-weight: 700; color: #fff; padding: 12px 0 8px; text-align: left; }
+.np-title { font-weight: 700; color: var(--text-strong); padding: 12px 0 8px; text-align: left; }
 </style>

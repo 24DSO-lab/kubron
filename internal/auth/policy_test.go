@@ -34,6 +34,22 @@ var publicMethods = map[string]bool{
 
 // Точные требования для особых методов.
 var exactPermission = map[string]Permission{
+	// Baseline конфигурации (ADR-0027): просмотр и запуск проверки — read, изменение — baseline.manage.
+	"BaselineKinds":           PermRead,
+	"BaselineList":            PermRead,
+	"BaselinePreviewNew":      PermBaselineManage,
+	"BaselineCreate":          PermBaselineManage,
+	"BaselineVersions":        PermRead,
+	"BaselinePreviewVersion":  PermBaselineManage,
+	"BaselineAddVersion":      PermBaselineManage,
+	"BaselineSetActive":       PermBaselineManage,
+	"BaselineExceptions":      PermRead,
+	"BaselineAddException":    PermBaselineManage,
+	"BaselineRemoveException": PermBaselineManage,
+	"BaselineDelete":          PermBaselineManage,
+	"DriftCheck":              PermRead,
+	"DriftResults":            PermRead,
+	"DriftResult":             PermRead,
 	"AddHelmRepo":             PermClusterManage,
 	"RemoveHelmRepo":          PermClusterManage,
 	"UpdateHelmRepos":         PermClusterManage,
@@ -142,12 +158,44 @@ var exactPermission = map[string]Permission{
 	"ResetClusterSharedAccount": PermClusterManage,
 	"MoveCluster":               PermClusterManage,
 	// Вход в кластер (ADR-0018): личные данные пользователя, права кластера проверяет Broker и authzCluster.
-	"ConnectCluster":    PermRead,
-	"AnswerChallenge":   PermRead,
-	"PollChallenge":     PermRead,
-	"CancelChallenge":   PermRead,
-	"ListMyConnections": PermRead,
-	"DisconnectCluster": PermRead,
+	"ConnectCluster":         PermRead,
+	"AnswerChallenge":        PermRead,
+	"PollChallenge":          PermRead,
+	"CancelChallenge":        PermRead,
+	"ListMyConnections":      PermRead,
+	"DisconnectCluster":      PermRead,
+	"IncidentOpen":           PermRead,
+	"IncidentRefresh":        PermRead,
+	"IncidentGet":            PermRead,
+	"IncidentList":           PermRead,
+	"IncidentMarkOutcome":    PermRead,
+	"IncidentSaveFragment":   PermRead,
+	"IncidentDeleteFragment": PermDiagnosticsLogs,
+	"IncidentSetLogCapture":  PermRead,
+	"IncidentReadFragment":   PermRead,
+	"IncidentExport":         PermRead,
+	"IncidentDelete":         PermDiagnosticsLogs,
+	"IncidentGetSettings":    PermRead,
+	"IncidentSaveSettings":   PermUsersManage,
+
+	// Проблемы и статистика правил (ADR-0033, ADR-0034): просмотр — read, состав проблем — operate (как действия
+	// над рабочими нагрузками), выгрузка статистики для мантейнеров — как настройки хранения (users.manage).
+	"IncidentProblemList":     PermRead,
+	"IncidentProblemGet":      PermRead,
+	"IncidentProblemAttach":   PermOperate,
+	"IncidentProblemDetach":   PermOperate,
+	"IncidentProblemMerge":    PermOperate,
+	"IncidentProblemCreate":   PermOperate,
+	"IncidentRuleStats":       PermRead,
+	"IncidentRuleStatsExport": PermUsersManage,
+
+	// Upgrade Readiness (ADR-0025): только чтение, ничего в кластере не меняется.
+	"ReadinessInfo":    PermRead,
+	"ReadinessRun":     PermRead,
+	"ReadinessHistory": PermRead,
+	"ReadinessGet":     PermRead,
+	"ReadinessCompare": PermRead,
+	"ReadinessExport":  PermRead,
 }
 
 // Глаголы, по которым метод считается изменяющим: слабое право чтения для них недопустимо.
@@ -179,6 +227,9 @@ var permByIdent = map[string]Permission{
 	"PermClusterManage": PermClusterManage,
 	"PermUsersManage":   PermUsersManage,
 	"PermAuditRead":     PermAuditRead,
+
+	"PermDiagnosticsLogs": PermDiagnosticsLogs,
+	"PermBaselineManage":  PermBaselineManage,
 }
 
 type methodGuard struct {

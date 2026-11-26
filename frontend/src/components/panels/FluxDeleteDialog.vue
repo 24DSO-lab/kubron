@@ -84,23 +84,23 @@ onMounted(() => { void nextTick(() => inputEl.value?.focus()) })
 
 <style scoped>
 .fd-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6); display: flex; align-items: center; justify-content: center; z-index: 2000; }
-.fd { width: 90%; max-width: 520px; background: #1e1f35; border: 1px solid #3b3d5c; border-radius: 8px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5); text-align: left; }
-.fd-head { padding: 16px; background: #0f1017; border-bottom: 1px solid #3b3d5c; border-radius: 8px 8px 0 0; }
-.fd-head h3 { margin: 0; font-size: 1rem; color: #fff; overflow-wrap: anywhere; }
-.fd-name { color: #60a5fa; font-family: 'JetBrains Mono', 'Fira Code', monospace; }
+.fd { width: 90%; max-width: 520px; background: var(--panel-raised); border: 1px solid var(--line-strong); border-radius: 8px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5); text-align: left; }
+.fd-head { padding: 16px; background: var(--panel-deep); border-bottom: 1px solid var(--line-strong); border-radius: 8px 8px 0 0; }
+.fd-head h3 { margin: 0; font-size: 1rem; color: var(--text-strong); overflow-wrap: anywhere; }
+.fd-name { color: var(--blue); font-family: 'JetBrains Mono', 'Fira Code', monospace; }
 .fd-body { padding: 16px 20px; display: flex; flex-direction: column; gap: 12px; }
 .fd-risk { padding: 10px 12px; border-radius: 4px; font-size: 0.8rem; }
 .fd-risk.danger { color: #fca5a5; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.4); }
 .fd-line { margin: 0; }
 .fd-line + .fd-line { margin-top: 6px; }
-.fd-label { font-size: 0.85rem; color: #d4d4d4; }
-.fd-input { padding: 8px 10px; background: #0f1017; color: #d4d4d4; border: 1px solid #3b3d5c; border-radius: 4px; font: inherit; font-family: 'JetBrains Mono', 'Fira Code', monospace; }
-.fd-input:focus-visible { outline: 2px solid #60a5fa; outline-offset: 1px; }
-.fd-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 12px 16px; background: #0f1017; border-top: 1px solid #3b3d5c; border-radius: 0 0 8px 8px; }
-.fd-btn { padding: 8px 16px; border-radius: 4px; border: 1px solid #3b3d5c; background: transparent; color: #d4d4d4; font-size: 0.9rem; font-weight: 600; cursor: pointer; }
-.fd-btn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.06); }
+.fd-label { font-size: 0.85rem; color: var(--text-code); }
+.fd-input { padding: 8px 10px; background: var(--panel-deep); color: var(--text-code); border: 1px solid var(--line-strong); border-radius: 4px; font: inherit; font-family: 'JetBrains Mono', 'Fira Code', monospace; }
+.fd-input:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
+.fd-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 12px 16px; background: var(--panel-deep); border-top: 1px solid var(--line-strong); border-radius: 0 0 8px 8px; }
+.fd-btn { padding: 8px 16px; border-radius: 4px; border: 1px solid var(--line-strong); background: transparent; color: var(--text-code); font-size: 0.9rem; font-weight: 600; cursor: pointer; }
+.fd-btn:hover:not(:disabled) { background: rgba(var(--tint-rgb), 0.06); }
 .fd-btn.danger { background: #dc2626; border-color: #dc2626; color: #fff; }
 .fd-btn.danger:hover:not(:disabled) { background: #b91c1c; }
 .fd-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.fd-btn:focus-visible { outline: 2px solid #60a5fa; outline-offset: 2px; }
+.fd-btn:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 </style>

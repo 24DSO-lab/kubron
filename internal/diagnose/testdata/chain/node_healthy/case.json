@@ -1,0 +1,7 @@
+{
+  "target": {"kind": "Node", "name": "n1"},
+  "golden": true,
+  "expect": {
+    "absent": ["node.not_ready", "node.pressure_memory", "node.pressure_disk", "node.pressure_pid", "node.network_unavailable", "node.unschedulable"]
+  }
+}

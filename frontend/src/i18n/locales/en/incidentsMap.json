@@ -1,0 +1,116 @@
+{
+  "title": "Dependency map",
+  "aria": "Interactive dependency map. Use the arrow keys to move between resources, Enter to select, Escape to clear.",
+  "summary": "{nodes} resources, {edges} links",
+  "incomplete": "The graph is incomplete: some resources or links were not collected.",
+  "note": "The map shows what the affected resource depends on. “Candidate” is a hypothesis that explains others, not a confirmed cause.",
+  "health": {
+    "Healthy": "healthy",
+    "Degraded": "degraded",
+    "Progressing": "in progress",
+    "Suspended": "suspended",
+    "Missing": "missing",
+    "Unknown": "unknown",
+    "other": "state not recognised"
+  },
+  "variant": {
+    "normal": "resource",
+    "placeholder": "does not exist",
+    "unknown": "not checked",
+    "secret": "not read by design",
+    "group": "healthy, grouped"
+  },
+  "unknownReasons": {
+    "forbidden": "no permission to read it",
+    "unavailable": "the source did not answer",
+    "too_large": "the response was too large",
+    "limit": "the read limit was reached",
+    "policy": "excluded by policy",
+    "other": "reason not stated"
+  },
+  "edge": {
+    "owns": "owns",
+    "selects": "selects",
+    "backed_by": "backed by",
+    "routes": "routes to",
+    "mounts": "mounts",
+    "binds": "binds to",
+    "runs_on": "runs on",
+    "scales": "scales",
+    "other": "related to"
+  },
+  "edgeState": {
+    "ok": "working",
+    "broken": "broken",
+    "missing": "target missing",
+    "unknown": "not checked",
+    "other": "state not recognised"
+  },
+  "direction": {
+    "in": "from",
+    "out": "to"
+  },
+  "reasons": {
+    "pending": "pending",
+    "ingress_backend_missing": "Backend Service does not exist",
+    "ingress_class_missing": "IngressClass does not exist",
+    "ingress_backend_port_missing": "Backend port is not declared by the Service",
+    "scaling_inactive": "Autoscaling is not working",
+    "scaling_disabled": "Autoscaling is switched off (zero replicas)",
+    "optional_absent": "@:incidentsChainConfig.graphReasons.optional_absent"
+  },
+  "confidence": {
+    "low": "low confidence",
+    "medium": "medium confidence",
+    "high": "high confidence"
+  },
+  "candidate": "Candidate",
+  "target": "Affected",
+  "legend": {
+    "title": "Legend",
+    "states": "Resource state",
+    "edges": "Links",
+    "marks": "Marks",
+    "edgeSolid": "working link",
+    "edgeBroken": "broken link",
+    "edgeMissing": "link to a missing resource",
+    "edgeUnknown": "link not checked",
+    "chain": "Chain to the candidate"
+  },
+  "filters": {
+    "title": "Filters",
+    "kind": "Kind",
+    "health": "State",
+    "reset": "Show everything"
+  },
+  "controls": {
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "fit": "Fit to view",
+    "highlight": "Highlight the chain to the candidate",
+    "expandAll": "Show all resources"
+  },
+  "group": {
+    "label": "{count} × {kind}",
+    "labelNs": "{count} × {kind} ({namespace})",
+    "expand": "Show all {kind}",
+    "collapse": "Group {kind} again"
+  },
+  "details": {
+    "title": "Resource details",
+    "empty": "Select a resource on the map to see its facts and hypotheses.",
+    "namespace": "Namespace",
+    "clusterScoped": "cluster-wide",
+    "state": "State",
+    "facts": "Facts",
+    "hypotheses": "Hypotheses",
+    "missing": "Missing context",
+    "relations": "Links",
+    "none": "Nothing recorded for this resource.",
+    "close": "Clear selection",
+    "members": "{count} healthy resources of this kind",
+    "secretNote": "Secrets are never read. This is not a sign that the Secret is missing.",
+    "placeholderNote": "The resource was referenced, but it does not exist in the cluster.",
+    "unknownNote": "The resource could not be checked: {reason}."
+  }
+}

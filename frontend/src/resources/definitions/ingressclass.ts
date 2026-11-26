@@ -25,7 +25,7 @@ export const ingressClass = defineResource<k8s.IngressClassInfo>({
     flatNameCol,
     { key: 'controller', label: 'defs.columns.controller' },
     { key: 'paramsKind', label: 'defs.columns.parameters', formatter: (c: any) => (c.paramsKind ? `${c.paramsKind}/${c.paramsName}` : '—') },
-    { key: 'default', label: 'defs.columns.default', formatter: (c: any) => yesNo(c.default), colorFn: (c: any) => (c.default ? '#4ade80' : '#868d8a') },
+    { key: 'default', label: 'defs.columns.default', formatter: (c: any) => yesNo(c.default), colorFn: (c: any) => (c.default ? 'var(--green)' : 'var(--text-gray)') },
     {
       key: 'usedBy',
       label: 'defs.columns.usedBy',

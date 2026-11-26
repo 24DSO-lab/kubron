@@ -1,0 +1,77 @@
+kind: Expect
+target: {kind: Deployment, namespace: shop, name: web}
+symptoms: [workload.rollout, pod.crash_loop]
+hypotheses: ["rollout.new_pods_unhealthy:medium", "crash.application_error:medium"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: web, namespace: shop, uid: d1, generation: 3}
+spec: {replicas: 2, selector: {matchLabels: {app: web}}}
+status:
+  observedGeneration: 3
+  replicas: 3
+  updatedReplicas: 1
+  readyReplicas: 2
+  unavailableReplicas: 1
+  conditions:
+    - {type: Progressing, status: "False", reason: ProgressDeadlineExceeded, message: "ReplicaSet web-2 has timed out progressing."}
+---
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: web-1
+  namespace: shop
+  uid: rs1
+  labels: {app: web}
+  creationTimestamp: "2026-11-10T09:50:00Z"
+  ownerReferences: [{kind: Deployment, name: web, uid: d1, controller: true}]
+spec: {replicas: 2, selector: {matchLabels: {app: web}}}
+status: {replicas: 2, readyReplicas: 2}
+---
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: web-2
+  namespace: shop
+  uid: rs2
+  labels: {app: web}
+  creationTimestamp: "2026-11-11T09:30:00Z"
+  ownerReferences: [{kind: Deployment, name: web, uid: d1, controller: true}]
+spec: {replicas: 1, selector: {matchLabels: {app: web}}}
+status: {replicas: 1, readyReplicas: 0}
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: web-2-abc
+  namespace: shop
+  labels: {app: web}
+  ownerReferences: [{kind: ReplicaSet, name: web-2, controller: true}]
+spec: {nodeName: n1, containers: [{name: app, image: "app:3"}]}
+status:
+  phase: Running
+  conditions: [{type: Ready, status: "False"}]
+  containerStatuses:
+    - name: app
+      restartCount: 6
+      state: {waiting: {reason: CrashLoopBackOff}}
+      lastState: {terminated: {exitCode: 2, reason: Error}}
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: web-1-aaa
+  namespace: shop
+  labels: {app: web}
+  ownerReferences: [{kind: ReplicaSet, name: web-1, controller: true}]
+spec: {nodeName: n1, containers: [{name: app, image: "app:2"}]}
+status:
+  phase: Running
+  conditions: [{type: Ready, status: "True"}]
+  containerStatuses: [{name: app, ready: true, state: {running: {}}}]
+---
+kind: Log
+pod: web-2-abc
+container: app
+previous: true
+text: "boot\npanic: config invalid\n"

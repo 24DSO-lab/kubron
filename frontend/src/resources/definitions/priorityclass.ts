@@ -24,7 +24,7 @@ export const priorityClass = defineResource<k8s.PriorityClassInfo>({
   columns: [
     flatNameCol,
     { key: 'value', label: 'defs.columns.value' },
-    { key: 'globalDefault', label: 'defs.columns.globalDefault', formatter: (p: any) => yesNo(p.globalDefault), colorFn: (p: any) => (p.globalDefault ? '#4ade80' : '#868d8a') },
+    { key: 'globalDefault', label: 'defs.columns.globalDefault', formatter: (p: any) => yesNo(p.globalDefault), colorFn: (p: any) => (p.globalDefault ? 'var(--green)' : 'var(--text-gray)') },
     ageCol,
   ],
 

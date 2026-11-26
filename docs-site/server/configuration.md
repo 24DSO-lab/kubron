@@ -99,6 +99,8 @@ Durations use Go syntax (`30s`, `15m`, `12h`). Boolean variables accept `1`, `tr
 | `KUBRON_DRAIN_DELAY` | — | Pause between SIGTERM and closing WebSocket connections, so the load balancer can stop routing to the replica. At most `60s`. |
 | `KUBRON_METRICS_LISTEN` | empty (off) | Address of the separate Prometheus `/metrics` listener. Do not expose it through the ingress. |
 | `KUBRON_AUDIT_RETENTION` | `0` (forever) | How long audit entries are kept in PostgreSQL. A non-zero value must be at least `24h`. |
+| `KUBRON_BASELINE_RESULTS_RETENTION_DAYS` | `90` | How many days the results of configuration baseline checks are kept (1 to 3650). |
+| `KUBRON_BASELINE_MIN_VERSIONS` | `20` | How many of the latest versions of each baseline are kept (at least 20). The active version is never removed. |
 | `KUBRON_AUDIT_STDOUT` | off | Also write every audit entry as a JSON line to stdout, for an external log collector. The database log stays the primary one. |
 | `KUBRON_CLUSTER_CHECK_INTERVAL` | `30s` | How often cluster connectivity is checked in the background. `0` disables the check. |
 | `KUBRON_LOG_LEVEL` | `info` | `debug`, `info`, `warn` or `error`. |

@@ -66,5 +66,5 @@ const tip = computed(() => {
 .nu-cpu { background: #3b9edb; }
 .nu-memory { background: #c04fc9; }
 .nu-disk { background: #f2c94c; }
-.nu-none { color: #6b6d8a; }
+.nu-none { color: var(--text-dim); }
 </style>

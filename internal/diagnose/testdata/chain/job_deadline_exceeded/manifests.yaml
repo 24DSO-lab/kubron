@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: Namespace
+metadata: {name: app}
+---
+apiVersion: batch/v1
+kind: Job
+metadata: {name: report, namespace: app, uid: j1, creationTimestamp: "2026-11-11T09:00:00Z"}
+spec: {selector: {matchLabels: {controller-uid: j1}}, activeDeadlineSeconds: 600}
+status: {conditions: [{type: Failed, status: "True", reason: DeadlineExceeded}]}
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: report-a
+  namespace: app
+  uid: p-report-a
+  creationTimestamp: "2026-11-11T09:01:00Z"
+  labels: {controller-uid: j1, batch.kubernetes.io/job-name: report}
+  ownerReferences: [{apiVersion: batch/v1, kind: Job, name: report, uid: j1, controller: true}]
+spec: {restartPolicy: Never, containers: [{name: main, image: example/report}]}
+status:
+  phase: Pending
+  conditions:
+    - {type: PodScheduled, status: "False", reason: Unschedulable, message: "0/3 nodes are available: 3 Insufficient cpu."}

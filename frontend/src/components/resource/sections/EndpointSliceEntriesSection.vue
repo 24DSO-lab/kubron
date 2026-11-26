@@ -41,5 +41,5 @@ const entries = computed<any[]>(() => props.resource?.entries ?? [])
 </script>
 
 <style scoped>
-.es-title { font-weight: 700; color: #fff; padding: 8px 0; text-align: left; }
+.es-title { font-weight: 700; color: var(--text-strong); padding: 8px 0; text-align: left; }
 </style>

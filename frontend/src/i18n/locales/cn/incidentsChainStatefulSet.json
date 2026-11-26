@@ -1,0 +1,26 @@
+{
+  "symptoms": {
+    "sts_start_stuck": "StatefulSet 的启动卡在某一个 Pod 上。"
+  },
+  "facts": {
+    "sts_ordered_start": "StatefulSet {sts} 逐个启动 Pod，并等待每个 Pod 就绪。",
+    "sts_pod_not_ready": "Pod {pod}（序号 {ordinal}）未就绪。",
+    "sts_pods_not_created": "{replicas} 个 Pod 中仅创建了 {created} 个。",
+    "sts_claim_not_bound": "卷模板中的 claim {pvc} 未绑定（阶段：{phase}）。",
+    "sts_update_partitioned": "更新受 partition {partition} 限制：{replicas} 个副本中已更新 {updated} 个。",
+    "sts_pods_on_old_revision": "仍运行旧版本的 Pod 数量：{count}。"
+  },
+  "hypotheses": {
+    "sts_stuck_ordered_start": "在 Pod {pod} 就绪之前，StatefulSet {sts} 不会创建后续 Pod。",
+    "sts_pvc_pending": "StatefulSet {sts} 的 claim {pvc} 未绑定，因此其 Pod 无法启动。",
+    "sts_update_partitioned": "StatefulSet {sts} 的更新被 partition {partition} 停止；这可能是有意为之（金丝雀发布）。"
+  },
+  "recommendations": {
+    "rec_fix_blocking_pod": "修复 Pod {pod}：在其就绪之前，StatefulSet {sts} 不会创建其余 Pod。",
+    "rec_fix_statefulset_claim": "修复 claim {pvc}（存储类、provisioner、容量），以便 StatefulSet {sts} 启动其 Pod。",
+    "rec_lower_statefulset_partition": "如需继续更新，请调低 StatefulSet {sts} 的 partition（当前为 {partition}）。"
+  },
+  "missing": {
+    "statefulset_selector_missing": "StatefulSet 没有选择器，因此无法找到其 Pod。"
+  }
+}

@@ -45,10 +45,10 @@ describe('badgeClass', () => {
 
 describe('statusColor', () => {
   it('соответствует классу бейджа', () => {
-    expect(statusColor('Running')).toBe('#4ade80')
-    expect(statusColor('Pending')).toBe('#facc15')
-    expect(statusColor('Failed')).toBe('#ef4444')
-    expect(statusColor('whatever')).toBe('#868d8a')
-    expect(statusColor(undefined)).toBe('#868d8a')
+    expect(statusColor('Running')).toBe('var(--green)')
+    expect(statusColor('Pending')).toBe('var(--yellow)')
+    expect(statusColor('Failed')).toBe('var(--red)')
+    expect(statusColor('whatever')).toBe('var(--text-gray)')
+    expect(statusColor(undefined)).toBe('var(--text-gray)')
   })
 })

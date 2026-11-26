@@ -1,0 +1,163 @@
+{
+  "ruleSetVersion": 3,
+  "target": {
+    "group": "autoscaling",
+    "kind": "HorizontalPodAutoscaler",
+    "namespace": "app",
+    "name": "web",
+    "uid": "hpa-1"
+  },
+  "observedAt": "2026-11-11T10:00:00Z",
+  "symptoms": [
+    "hpa.at_max_replicas"
+  ],
+  "resources": [
+    {
+      "group": "autoscaling",
+      "kind": "HorizontalPodAutoscaler",
+      "namespace": "app",
+      "name": "web",
+      "uid": "hpa-1"
+    }
+  ],
+  "facts": [
+    {
+      "kind": "fact",
+      "id": "f1",
+      "code": "hpa.scaling_limited",
+      "resource": {
+        "group": "autoscaling",
+        "kind": "HorizontalPodAutoscaler",
+        "namespace": "app",
+        "name": "web",
+        "uid": "hpa-1"
+      },
+      "params": {
+        "current": "5",
+        "hpa": "web",
+        "kind": "Deployment",
+        "max": "5",
+        "target": "web"
+      },
+      "source": {
+        "kind": "resource",
+        "resource": {
+          "group": "autoscaling",
+          "kind": "HorizontalPodAutoscaler",
+          "namespace": "app",
+          "name": "web",
+          "uid": "hpa-1"
+        },
+        "field": "status.conditions[ScalingLimited]"
+      },
+      "observedAt": "2026-11-11T10:00:00Z"
+    }
+  ],
+  "hypotheses": [
+    {
+      "kind": "hypothesis",
+      "id": "h1",
+      "code": "hpa.max_replicas_reached",
+      "resource": {
+        "group": "autoscaling",
+        "kind": "HorizontalPodAutoscaler",
+        "namespace": "app",
+        "name": "web",
+        "uid": "hpa-1"
+      },
+      "params": {
+        "current": "5",
+        "hpa": "web",
+        "kind": "Deployment",
+        "max": "5",
+        "target": "web"
+      },
+      "confidence": "medium",
+      "supporting": [
+        "f1"
+      ],
+      "contradicting": [],
+      "ruleId": "chain.hpa",
+      "ruleEpoch": 1
+    }
+  ],
+  "recommendations": [
+    {
+      "kind": "recommendation",
+      "id": "r1",
+      "code": "hpa.raise_max_replicas",
+      "resource": {
+        "group": "autoscaling",
+        "kind": "HorizontalPodAutoscaler",
+        "namespace": "app",
+        "name": "web",
+        "uid": "hpa-1"
+      },
+      "params": {
+        "current": "5",
+        "hpa": "web",
+        "kind": "Deployment",
+        "max": "5",
+        "target": "web"
+      },
+      "hypotheses": [
+        "h1"
+      ],
+      "ruleId": "chain.hpa",
+      "ruleEpoch": 1
+    }
+  ],
+  "steps": [],
+  "missing": [],
+  "graph": {
+    "nodes": [
+      {
+        "group": "apps",
+        "kind": "Deployment",
+        "namespace": "app",
+        "name": "web",
+        "health": "Healthy"
+      },
+      {
+        "group": "apps",
+        "kind": "ReplicaSet",
+        "namespace": "app",
+        "name": "web-7d",
+        "health": "Healthy"
+      },
+      {
+        "group": "autoscaling",
+        "kind": "HorizontalPodAutoscaler",
+        "namespace": "app",
+        "name": "web",
+        "health": "Healthy"
+      },
+      {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "web-7d-a",
+        "health": "Healthy"
+      }
+    ],
+    "edges": [
+      {
+        "from": "apps/Deployment/app/web",
+        "to": "apps/ReplicaSet/app/web-7d",
+        "type": "owns",
+        "state": "ok"
+      },
+      {
+        "from": "apps/ReplicaSet/app/web-7d",
+        "to": "core/Pod/app/web-7d-a",
+        "type": "owns",
+        "state": "ok"
+      },
+      {
+        "from": "autoscaling/HorizontalPodAutoscaler/app/web",
+        "to": "apps/Deployment/app/web",
+        "type": "scales",
+        "state": "ok"
+      }
+    ]
+  }
+}

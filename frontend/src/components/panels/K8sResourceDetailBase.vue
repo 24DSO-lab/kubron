@@ -247,8 +247,8 @@ function formatAgeAbsolute(created: string): string {
 <style scoped>
 .detail-panel {
   /* position/right/top/bottom/width заданы глобально (assets/style.css), ширину переопределяет :style */
-  background: #1a1b2e;
-  color: #d4d4d4;
+  background: var(--panel);
+  color: var(--text-code);
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -260,8 +260,8 @@ function formatAgeAbsolute(created: string): string {
   align-items: center;
   justify-content: space-between;
   padding: 12px 16px;
-  border-bottom: 1px solid #2a2b40;
-  background: #1a1b2e;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
   gap: 12px;
   flex-shrink: 0;
 }
@@ -269,7 +269,7 @@ function formatAgeAbsolute(created: string): string {
 .detail-header h3 {
   margin: 0;
   flex: 1;
-  color: white;
+  color: var(--text-strong);
   font-size: 1.1rem;
   white-space: nowrap;
   overflow: hidden;
@@ -284,9 +284,9 @@ function formatAgeAbsolute(created: string): string {
   align-items: center;
   padding: 2px 10px;
   border-radius: 4px;
-  background: #2a2b40;
+  background: var(--line);
   border: 1px solid #35365a;
-  color: #868d8a;
+  color: var(--text-gray);
   font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -304,8 +304,8 @@ function formatAgeAbsolute(created: string): string {
 
 .detail-meta {
   padding: 12px 16px;
-  border-bottom: 1px solid #2a2b40;
-  background: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid var(--line);
+  background: rgba(var(--tint-rgb), 0.02);
   flex-shrink: 0;
 }
 
@@ -325,7 +325,7 @@ function formatAgeAbsolute(created: string): string {
 
 .meta-label {
   font-weight: bold;
-  color: #d4d4d4;
+  color: var(--text-code);
   white-space: nowrap;
 }
 
@@ -340,19 +340,19 @@ function formatAgeAbsolute(created: string): string {
   background: transparent;
   border: none;
   border-bottom: 2px solid transparent;
-  color: #868d8a;
+  color: var(--text-gray);
   cursor: pointer;
   font-size: 0.875rem;
   transition: color 0.15s, border-color 0.15s;
 }
 
 .tab:hover {
-  color: #d4d4d4;
+  color: var(--text-code);
 }
 
 .tab.active {
-  border-bottom-color: #3b82f6;
-  color: white;
+  border-bottom-color: var(--blue-strong);
+  color: var(--text-strong);
 }
 
 .detail-content {
@@ -370,7 +370,7 @@ function formatAgeAbsolute(created: string): string {
   background: transparent;
   border: none;
   border-radius: 4px;
-  color: white;
+  color: var(--text-strong);
   cursor: pointer;
   font-size: 1rem;
   transition: all 0.15s;
@@ -383,7 +383,7 @@ function formatAgeAbsolute(created: string): string {
 }
 
 .btn-close:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(var(--tint-rgb), 0.05);
 }
 
 .icon-close {
@@ -402,7 +402,7 @@ function formatAgeAbsolute(created: string): string {
   background: transparent;
   border: none;
   border-radius: 4px;
-  color: white;
+  color: var(--text-strong);
   cursor: pointer;
   font-size: 1rem;
   transition: all 0.15s;
@@ -415,11 +415,11 @@ function formatAgeAbsolute(created: string): string {
 }
 
 .btn-action:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(var(--tint-rgb), 0.1);
 }
 
 .btn-action.btn-danger {
-  color: #ef4444;
+  color: var(--red);
 }
 
 .btn-action.btn-danger:hover {
@@ -458,10 +458,10 @@ function formatAgeAbsolute(created: string): string {
 }
 
 .meta-link {
-  color: #60a5fa !important;
+  color: var(--blue) !important;
   cursor: pointer !important;
   text-decoration: underline;
-  text-decoration-color: #60a5fa;
+  text-decoration-color: var(--blue);
   text-decoration-thickness: 1px;
   text-underline-offset: 2px;
   transition: all 0.15s ease;
@@ -480,12 +480,12 @@ function formatAgeAbsolute(created: string): string {
 }
 
 .meta-link:active {
-  color: #3b82f6 !important;
-  text-decoration-color: #3b82f6;
+  color: var(--blue-strong) !important;
+  text-decoration-color: var(--blue-strong);
 }
 
 .meta-link:focus {
-  outline: 1px solid #60a5fa;
+  outline: 1px solid var(--blue);
   outline-offset: 2px;
 }
 
@@ -500,7 +500,7 @@ function formatAgeAbsolute(created: string): string {
   background: transparent;
   border: none;
   border-radius: 3px;
-  color: #d4d4d4;
+  color: var(--text-code);
   cursor: pointer;
   font-size: 0.9rem;
   transition: all 0.15s;
@@ -531,9 +531,9 @@ function formatAgeAbsolute(created: string): string {
 .flex { display: flex; }
 .space-x-4 { gap: 1rem; }
 .border-b { border-bottom: 1px solid; }
-.border-gray-700 { border-bottom-color: #2a2b40; }
+.border-gray-700 { border-bottom-color: var(--line); }
 .mb-4 { margin-bottom: 1rem; }
-.text-gray-300 { color: #d4d4d4; }
+.text-gray-300 { color: var(--text-code); }
 
 .age-display {
   display: flex;
@@ -543,12 +543,12 @@ function formatAgeAbsolute(created: string): string {
 
 .age-relative {
   font-weight: 500;
-  color: #d4d4d4;
+  color: var(--text-code);
 }
 
 .age-absolute {
   font-size: 0.8rem;
-  color: #868d8a;
+  color: var(--text-gray);
 }
 </style>
 <style scoped>
@@ -574,6 +574,6 @@ function formatAgeAbsolute(created: string): string {
 .btn-expand {
   font-size: 1rem;
   line-height: 1;
-  color: #d4d4d4;
+  color: var(--text-code);
 }
 </style>

@@ -2,6 +2,17 @@
 
 Kubron detects the credential type from the selected kubeconfig context. You do not need to choose a connection mode manually. When interactive sign-in is required, Kubron opens a challenge dialog and guides you through the next step.
 
+## Desktop and Web at a glance
+
+| | Desktop | Web |
+|---|---|---|
+| Static credentials (token, client certificate) | Yes | Yes, embedded in the kubeconfig |
+| OIDC (password, device code, browser) | Yes | Yes. Browser sign-in returns to the server only with `KUBRON_PUBLIC_URL` and a web client, otherwise you paste the address |
+| Azure AKS, AWS EKS, Google GKE | Yes | Yes, depending on the provider settings (for Google accounts, an OAuth client) |
+| Local `exec` plugins | Yes, **after you confirm** the command | No. You run the command on your own computer and paste the token |
+| Files referenced by the kubeconfig (certificates, keys, token files) | Yes, read from your computer | No. The server cannot read your files: embed the data |
+| Where credentials live | On your computer | On the server, encrypted |
+
 ## Credentials supported by the current build
 
 - **Static credentials:** bearer tokens, basic credentials and client certificates embedded in kubeconfig data.
@@ -23,6 +34,8 @@ Desktop connects to the Kubernetes API from your computer.
 - If a native provider cannot handle an `exec` mode, Kubron can use the confirmed local plugin when one is configured.
 
 An `exec` plugin is executable code. Import kubeconfigs only from sources you trust, and review the command before approving it.
+
+That is why Kubron never runs a plugin silently. Before the first run it shows the exact command, its arguments and the names of the environment variables it will receive, and waits for your decision. **Always for this kubeconfig** is remembered only for that exact plugin block of that cluster: if the command, the arguments or the environment change, Kubron asks again. This protects you from a kubeconfig that was edited, or swapped for a malicious one, to run something else.
 
 ## Web
 

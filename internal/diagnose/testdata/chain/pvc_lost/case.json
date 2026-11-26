@@ -1,0 +1,8 @@
+{
+  "target": {"kind": "PersistentVolumeClaim", "namespace": "app", "name": "data"},
+  "expect": {
+    "symptoms": ["storage.claim_pending"],
+    "hypotheses": ["pvc.lost:high"],
+    "chains": ["pvc.lost: Pod/db-0 > PersistentVolumeClaim/data > PersistentVolume/pv-1"]
+  }
+}

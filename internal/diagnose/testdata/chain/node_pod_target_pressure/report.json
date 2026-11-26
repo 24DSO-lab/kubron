@@ -1,0 +1,213 @@
+{
+  "ruleSetVersion": 3,
+  "target": {
+    "kind": "Pod",
+    "namespace": "app",
+    "name": "api-0",
+    "uid": "p-api-0"
+  },
+  "observedAt": "2026-11-11T10:00:00Z",
+  "symptoms": [
+    "none"
+  ],
+  "resources": [
+    {
+      "kind": "Pod",
+      "namespace": "app",
+      "name": "api-0",
+      "uid": "p-api-0"
+    },
+    {
+      "kind": "Node",
+      "name": "n1"
+    }
+  ],
+  "facts": [
+    {
+      "kind": "fact",
+      "id": "f1",
+      "code": "node.pods_unready",
+      "resource": {
+        "kind": "Node",
+        "name": "n1"
+      },
+      "params": {
+        "node": "n1",
+        "total": "1",
+        "unready": "1"
+      },
+      "source": {
+        "kind": "derived",
+        "resource": {
+          "kind": "Node",
+          "name": "n1"
+        },
+        "field": "pods"
+      },
+      "observedAt": "2026-11-11T10:00:00Z"
+    },
+    {
+      "kind": "fact",
+      "id": "f2",
+      "code": "node.condition",
+      "resource": {
+        "kind": "Node",
+        "name": "n1"
+      },
+      "params": {
+        "condition": "DiskPressure",
+        "node": "n1",
+        "status": "True"
+      },
+      "source": {
+        "kind": "resource",
+        "resource": {
+          "kind": "Node",
+          "name": "n1"
+        },
+        "field": "status.conditions[DiskPressure]"
+      },
+      "observedAt": "2026-11-11T10:00:00Z"
+    },
+    {
+      "kind": "fact",
+      "id": "f3",
+      "code": "no_problem_detected",
+      "resource": {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "api-0",
+        "uid": "p-api-0"
+      },
+      "params": {
+        "pods": "1"
+      },
+      "source": {
+        "kind": "derived",
+        "resource": {
+          "kind": "Pod",
+          "namespace": "app",
+          "name": "api-0",
+          "uid": "p-api-0"
+        }
+      },
+      "observedAt": "2026-11-11T10:00:00Z"
+    }
+  ],
+  "hypotheses": [
+    {
+      "kind": "hypothesis",
+      "id": "h1",
+      "code": "node.pressure_disk",
+      "resource": {
+        "kind": "Node",
+        "name": "n1"
+      },
+      "params": {
+        "node": "n1"
+      },
+      "confidence": "high",
+      "supporting": [
+        "f2",
+        "f1"
+      ],
+      "contradicting": [],
+      "ruleId": "node.chain",
+      "ruleEpoch": 1
+    }
+  ],
+  "recommendations": [
+    {
+      "kind": "recommendation",
+      "id": "r1",
+      "code": "rec.relieve_node",
+      "resource": {
+        "kind": "Node",
+        "name": "n1"
+      },
+      "params": {
+        "node": "n1"
+      },
+      "hypotheses": [
+        "h1"
+      ],
+      "ruleId": "node.chain",
+      "ruleEpoch": 1
+    }
+  ],
+  "steps": [
+    {
+      "kind": "step",
+      "id": "s1",
+      "code": "step.check_events",
+      "resource": {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "api-0",
+        "uid": "p-api-0"
+      },
+      "hypotheses": []
+    }
+  ],
+  "missing": [
+    {
+      "code": "context.insufficient",
+      "resource": {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "api-0",
+        "uid": "p-api-0"
+      }
+    }
+  ],
+  "graph": {
+    "nodes": [
+      {
+        "kind": "Node",
+        "name": "n1",
+        "health": "Degraded",
+        "reason": "node_pressure_disk"
+      },
+      {
+        "kind": "Pod",
+        "namespace": "app",
+        "name": "api-0",
+        "health": "Degraded",
+        "reason": "not_ready"
+      }
+    ],
+    "edges": [
+      {
+        "from": "core/Pod/app/api-0",
+        "to": "core/Node//n1",
+        "type": "runs_on",
+        "state": "broken",
+        "reason": "node_pressure_disk"
+      }
+    ]
+  },
+  "chains": [
+    {
+      "path": [
+        {
+          "ref": {
+            "kind": "Pod",
+            "namespace": "app",
+            "name": "api-0"
+          },
+          "health": "Degraded",
+          "reason": "not_ready"
+        },
+        {
+          "ref": {
+            "kind": "Node",
+            "name": "n1"
+          },
+          "health": "Degraded",
+          "reason": "node_pressure_disk"
+        }
+      ],
+      "candidate": "h1"
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "ruleSetVersion": 1,
+  "target": {"kind": "Pod", "namespace": "app", "name": "web-0"},
+  "observedAt": "2026-10-01T10:00:00Z",
+  "symptoms": ["pod.crash_loop"],
+  "resources": [{"kind": "Pod", "namespace": "app", "name": "web-0"}],
+  "facts": [
+    {"kind": "fact", "id": "f1", "code": "container.crash_loop", "resource": {"kind": "Pod", "namespace": "app", "name": "web-0"},
+     "source": {"kind": "resource", "resource": {"kind": "Pod", "namespace": "app", "name": "web-0"}, "field": "status.containerStatuses"},
+     "observedAt": "2026-10-01T10:00:00Z"}
+  ],
+  "hypotheses": [
+    {"kind": "hypothesis", "id": "h1", "code": "app_exits", "confidence": "high", "resource": {"kind": "Pod", "namespace": "app", "name": "web-0"},
+     "supporting": ["f1"]}
+  ],
+  "recommendations": [],
+  "steps": [],
+  "missing": []
+}

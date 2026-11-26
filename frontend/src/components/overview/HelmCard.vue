@@ -62,16 +62,16 @@ watch(helmLiveTick, load)
 
 <style scoped>
 .hc-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 10px; }
-.hc-stat { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 8px 10px; border: 1px solid #313244; border-radius: 6px; background: transparent; color: inherit; font: inherit; cursor: pointer; text-align: left; }
-.hc-stat:hover { border-color: #45475a; }
-.hc-n { font-size: 20px; font-weight: 600; color: #cdd6f4; }
-.hc-l { font-size: 12px; color: #a6adc8; }
-.hc-stat.w .hc-n { color: #f9e2af; }
-.hc-stat.d .hc-n { color: #f38ba8; }
+.hc-stat { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 8px 10px; border: 1px solid var(--surface-0); border-radius: 6px; background: transparent; color: inherit; font: inherit; cursor: pointer; text-align: left; }
+.hc-stat:hover { border-color: var(--surface-1); }
+.hc-n { font-size: 20px; font-weight: 600; color: var(--text); }
+.hc-l { font-size: 12px; color: var(--text-muted); }
+.hc-stat.w .hc-n { color: var(--warn); }
+.hc-stat.d .hc-n { color: var(--danger); }
 .hc-list { list-style: none; margin: 0; padding: 0; }
 .hc-row { display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; border-top: 1px solid #232334; font-size: 13px; }
 .hc-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.hc-ver { color: #a6adc8; white-space: nowrap; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; }
-.hc-ver strong { color: #f9e2af; }
-.hc-more, .hc-none { margin: 6px 0 0; font-size: 12px; color: #6c7086; }
+.hc-ver { color: var(--text-muted); white-space: nowrap; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; }
+.hc-ver strong { color: var(--warn); }
+.hc-more, .hc-none { margin: 6px 0 0; font-size: 12px; color: var(--text-subtle); }
 </style>

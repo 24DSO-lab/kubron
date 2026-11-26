@@ -1,0 +1,225 @@
+apiVersion: v1
+kind: Namespace
+metadata: {name: app}
+---
+apiVersion: batch/v1
+kind: Job
+metadata: {name: report, namespace: app, uid: j1, creationTimestamp: "2026-11-11T09:00:00Z"}
+spec: {selector: {matchLabels: {controller-uid: j1}}, backoffLimit: 20}
+status: {failed: 12, conditions: [{type: Failed, status: "True", reason: BackoffLimitExceeded}]}
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: report-01
+  namespace: app
+  uid: p-report-01
+  creationTimestamp: "2026-11-11T09:01:00Z"
+  labels: {controller-uid: j1, batch.kubernetes.io/job-name: report}
+  ownerReferences: [{apiVersion: batch/v1, kind: Job, name: report, uid: j1, controller: true}]
+spec: {restartPolicy: Never, containers: [{name: main, image: example/report}]}
+status:
+  phase: Failed
+  containerStatuses:
+    - name: main
+      ready: false
+      restartCount: 0
+      state: {terminated: {exitCode: 1, reason: Error, finishedAt: "2026-11-11T09:20:00Z"}}
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: report-02
+  namespace: app
+  uid: p-report-02
+  creationTimestamp: "2026-11-11T09:02:00Z"
+  labels: {controller-uid: j1, batch.kubernetes.io/job-name: report}
+  ownerReferences: [{apiVersion: batch/v1, kind: Job, name: report, uid: j1, controller: true}]
+spec: {restartPolicy: Never, containers: [{name: main, image: example/report}]}
+status:
+  phase: Failed
+  containerStatuses:
+    - name: main
+      ready: false
+      restartCount: 0
+      state: {terminated: {exitCode: 1, reason: Error, finishedAt: "2026-11-11T09:20:00Z"}}
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: report-03
+  namespace: app
+  uid: p-report-03
+  creationTimestamp: "2026-11-11T09:03:00Z"
+  labels: {controller-uid: j1, batch.kubernetes.io/job-name: report}
+  ownerReferences: [{apiVersion: batch/v1, kind: Job, name: report, uid: j1, controller: true}]
+spec: {restartPolicy: Never, containers: [{name: main, image: example/report}]}
+status:
+  phase: Failed
+  containerStatuses:
+    - name: main
+      ready: false
+      restartCount: 0
+      state: {terminated: {exitCode: 1, reason: Error, finishedAt: "2026-11-11T09:20:00Z"}}
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: report-04
+  namespace: app
+  uid: p-report-04
+  creationTimestamp: "2026-11-11T09:04:00Z"
+  labels: {controller-uid: j1, batch.kubernetes.io/job-name: report}
+  ownerReferences: [{apiVersion: batch/v1, kind: Job, name: report, uid: j1, controller: true}]
+spec: {restartPolicy: Never, containers: [{name: main, image: example/report}]}
+status:
+  phase: Failed
+  containerStatuses:
+    - name: main
+      ready: false
+      restartCount: 0
+      state: {terminated: {exitCode: 1, reason: Error, finishedAt: "2026-11-11T09:20:00Z"}}
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: report-05
+  namespace: app
+  uid: p-report-05
+  creationTimestamp: "2026-11-11T09:05:00Z"
+  labels: {controller-uid: j1, batch.kubernetes.io/job-name: report}
+  ownerReferences: [{apiVersion: batch/v1, kind: Job, name: report, uid: j1, controller: true}]
+spec: {restartPolicy: Never, containers: [{name: main, image: example/report}]}
+status:
+  phase: Failed
+  containerStatuses:
+    - name: main
+      ready: false
+      restartCount: 0
+      state: {terminated: {exitCode: 1, reason: Error, finishedAt: "2026-11-11T09:20:00Z"}}
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: report-06
+  namespace: app
+  uid: p-report-06
+  creationTimestamp: "2026-11-11T09:06:00Z"
+  labels: {controller-uid: j1, batch.kubernetes.io/job-name: report}
+  ownerReferences: [{apiVersion: batch/v1, kind: Job, name: report, uid: j1, controller: true}]
+spec: {restartPolicy: Never, containers: [{name: main, image: example/report}]}
+status:
+  phase: Failed
+  containerStatuses:
+    - name: main
+      ready: false
+      restartCount: 0
+      state: {terminated: {exitCode: 1, reason: Error, finishedAt: "2026-11-11T09:20:00Z"}}
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: report-07
+  namespace: app
+  uid: p-report-07
+  creationTimestamp: "2026-11-11T09:07:00Z"
+  labels: {controller-uid: j1, batch.kubernetes.io/job-name: report}
+  ownerReferences: [{apiVersion: batch/v1, kind: Job, name: report, uid: j1, controller: true}]
+spec: {restartPolicy: Never, containers: [{name: main, image: example/report}]}
+status:
+  phase: Failed
+  containerStatuses:
+    - name: main
+      ready: false
+      restartCount: 0
+      state: {terminated: {exitCode: 1, reason: Error, finishedAt: "2026-11-11T09:20:00Z"}}
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: report-08
+  namespace: app
+  uid: p-report-08
+  creationTimestamp: "2026-11-11T09:08:00Z"
+  labels: {controller-uid: j1, batch.kubernetes.io/job-name: report}
+  ownerReferences: [{apiVersion: batch/v1, kind: Job, name: report, uid: j1, controller: true}]
+spec: {restartPolicy: Never, containers: [{name: main, image: example/report}]}
+status:
+  phase: Failed
+  containerStatuses:
+    - name: main
+      ready: false
+      restartCount: 0
+      state: {terminated: {exitCode: 1, reason: Error, finishedAt: "2026-11-11T09:20:00Z"}}
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: report-09
+  namespace: app
+  uid: p-report-09
+  creationTimestamp: "2026-11-11T09:09:00Z"
+  labels: {controller-uid: j1, batch.kubernetes.io/job-name: report}
+  ownerReferences: [{apiVersion: batch/v1, kind: Job, name: report, uid: j1, controller: true}]
+spec: {restartPolicy: Never, containers: [{name: main, image: example/report}]}
+status:
+  phase: Failed
+  containerStatuses:
+    - name: main
+      ready: false
+      restartCount: 0
+      state: {terminated: {exitCode: 1, reason: Error, finishedAt: "2026-11-11T09:20:00Z"}}
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: report-10
+  namespace: app
+  uid: p-report-10
+  creationTimestamp: "2026-11-11T09:10:00Z"
+  labels: {controller-uid: j1, batch.kubernetes.io/job-name: report}
+  ownerReferences: [{apiVersion: batch/v1, kind: Job, name: report, uid: j1, controller: true}]
+spec: {restartPolicy: Never, containers: [{name: main, image: example/report}]}
+status:
+  phase: Failed
+  containerStatuses:
+    - name: main
+      ready: false
+      restartCount: 0
+      state: {terminated: {exitCode: 1, reason: Error, finishedAt: "2026-11-11T09:20:00Z"}}
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: report-11
+  namespace: app
+  uid: p-report-11
+  creationTimestamp: "2026-11-11T09:11:00Z"
+  labels: {controller-uid: j1, batch.kubernetes.io/job-name: report}
+  ownerReferences: [{apiVersion: batch/v1, kind: Job, name: report, uid: j1, controller: true}]
+spec: {restartPolicy: Never, containers: [{name: main, image: example/report}]}
+status:
+  phase: Failed
+  containerStatuses:
+    - name: main
+      ready: false
+      restartCount: 0
+      state: {terminated: {exitCode: 1, reason: Error, finishedAt: "2026-11-11T09:20:00Z"}}
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: report-12
+  namespace: app
+  uid: p-report-12
+  creationTimestamp: "2026-11-11T09:12:00Z"
+  labels: {controller-uid: j1, batch.kubernetes.io/job-name: report}
+  ownerReferences: [{apiVersion: batch/v1, kind: Job, name: report, uid: j1, controller: true}]
+spec: {restartPolicy: Never, containers: [{name: main, image: example/report}]}
+status:
+  phase: Failed
+  containerStatuses:
+    - name: main
+      ready: false
+      restartCount: 0
+      state: {terminated: {exitCode: 1, reason: Error, finishedAt: "2026-11-11T09:20:00Z"}}

@@ -156,31 +156,31 @@ async function stop() {
 
 <style scoped>
 .pf-control { display: inline-flex; align-items: center; }
-.pf-btn { padding: 2px 8px; background: transparent; border: 1px solid #3b3d5c; border-radius: 4px; color: #d4d4d4; cursor: pointer; font-size: 0.75rem; }
-.pf-btn:hover { background: rgba(59,130,246,0.2); border-color: #60a5fa; color: #60a5fa; }
+.pf-btn { padding: 2px 8px; background: transparent; border: 1px solid var(--line-strong); border-radius: 4px; color: var(--text-code); cursor: pointer; font-size: 0.75rem; }
+.pf-btn:hover { background: rgba(59,130,246,0.2); border-color: var(--blue); color: var(--blue); }
 .pf-active { display: flex; align-items: center; gap: 6px; }
 .pf-label { color: #34d399; font-size: 0.75rem; font-weight: 500; }
-.pf-btn-stop { padding: 2px 8px; background: transparent; border: 1px solid #ef4444; border-radius: 4px; color: #ef4444; cursor: pointer; font-size: 0.75rem; }
+.pf-btn-stop { padding: 2px 8px; background: transparent; border: 1px solid var(--red); border-radius: 4px; color: var(--red); cursor: pointer; font-size: 0.75rem; }
 .pf-btn-stop:hover { background: rgba(239,68,68,0.2); }
 
 .pf-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-.pf-modal { background: #1e1f35; border: 1px solid #3b3d5c; border-radius: 8px; width: 90%; max-width: 420px; overflow: hidden; }
-.pf-modal-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid #2a2b40; font-weight: 600; font-size: 0.95rem; }
-.pf-close { background: transparent; border: none; color: #9ca0b8; cursor: pointer; font-size: 1rem; }
-.pf-close:hover { color: #d4d4d4; }
+.pf-modal { background: var(--panel-raised); border: 1px solid var(--line-strong); border-radius: 8px; width: 90%; max-width: 420px; overflow: hidden; }
+.pf-modal-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--line); font-weight: 600; font-size: 0.95rem; }
+.pf-close { background: transparent; border: none; color: var(--text-soft); cursor: pointer; font-size: 1rem; }
+.pf-close:hover { color: var(--text-code); }
 .pf-modal-body { padding: 18px; display: flex; flex-direction: column; gap: 14px; }
 .pf-row { display: flex; align-items: center; gap: 12px; }
-.pf-row-label { color: #9ca0b8; font-size: 0.85rem; font-weight: 500; white-space: nowrap; }
+.pf-row-label { color: var(--text-soft); font-size: 0.85rem; font-weight: 500; white-space: nowrap; }
 .pf-port-input-wrap { flex: 1; }
-.pf-input { padding: 6px 10px; background: #1a1b2e; border: 1px solid #3b3d5c; border-radius: 4px; color: white; font-size: 0.9rem; width: 100%; }
-.pf-input:focus { outline: none; border-color: #3b82f6; }
-.pf-input::placeholder { color: #6b7280; font-style: italic; }
-.pf-check { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.85rem; color: #d4d4d4; }
-.pf-check input[type="checkbox"] { width: 16px; height: 16px; accent-color: #3b82f6; cursor: pointer; }
-.pf-modal-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 18px; border-top: 1px solid #2a2b40; }
-.pf-btn-secondary { padding: 7px 16px; background: #45475a; border: none; border-radius: 6px; color: #cdd6f4; cursor: pointer; font-size: 0.85rem; }
-.pf-btn-secondary:hover { background: #585b70; }
-.pf-btn-primary { padding: 7px 16px; background: #3b82f6; border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 0.85rem; }
-.pf-btn-primary:hover:not(:disabled) { background: #2563eb; }
+.pf-input { padding: 6px 10px; background: var(--panel); border: 1px solid var(--line-strong); border-radius: 4px; color: var(--text-strong); font-size: 0.9rem; width: 100%; }
+.pf-input:focus { outline: none; border-color: var(--blue-strong); }
+.pf-input::placeholder { color: var(--gray-500); font-style: italic; }
+.pf-check { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.85rem; color: var(--text-code); }
+.pf-check input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--blue-strong); cursor: pointer; }
+.pf-modal-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 18px; border-top: 1px solid var(--line); }
+.pf-btn-secondary { padding: 7px 16px; background: var(--surface-1); border: none; border-radius: 6px; color: var(--text); cursor: pointer; font-size: 0.85rem; }
+.pf-btn-secondary:hover { background: var(--surface-2); }
+.pf-btn-primary { padding: 7px 16px; background: var(--blue-strong); border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 0.85rem; }
+.pf-btn-primary:hover:not(:disabled) { background: var(--blue-deep); }
 .pf-btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
 </style>

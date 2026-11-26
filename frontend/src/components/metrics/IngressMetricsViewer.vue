@@ -99,11 +99,11 @@ const current = computed(() => tabs.value.find(tb => tb.id === selected.value) ?
 .im-viewer { display: flex; flex-direction: column; gap: 12px; width: 100%; }
 .im-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
 .im-btn {
-  padding: 6px 12px; background: #1e1f35; border: 1px solid #3b3d5c; border-radius: 4px;
-  color: #9ca0b8; font-size: 0.85rem; font-weight: 500; cursor: pointer; transition: all 0.15s; white-space: nowrap;
+  padding: 6px 12px; background: var(--panel-raised); border: 1px solid var(--line-strong); border-radius: 4px;
+  color: var(--text-soft); font-size: 0.85rem; font-weight: 500; cursor: pointer; transition: all 0.15s; white-space: nowrap;
 }
 .im-btn:hover { background: #262740; border-color: #5a5c7a; color: #c0c2d8; }
-.im-btn.active { background: #3b82f6; border-color: #3b82f6; color: white; }
-.im-chart { background: #1a1b2e; border: 1px solid #2a2b40; border-radius: 6px; padding: 12px; width: 100%; }
-.im-hint { margin: 0; font-size: 0.75rem; color: #6b6d8a; text-align: left; }
+.im-btn.active { background: var(--blue-strong); border-color: var(--blue-strong); color: white; }
+.im-chart { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 12px; width: 100%; }
+.im-hint { margin: 0; font-size: 0.75rem; color: var(--text-dim); text-align: left; }
 </style>

@@ -11,7 +11,10 @@ import (
 
 	"github.com/24DSO-lab/kubron/internal/audit"
 	"github.com/24DSO-lab/kubron/internal/auth"
+	"github.com/24DSO-lab/kubron/internal/baseline"
+	"github.com/24DSO-lab/kubron/internal/incident"
 	"github.com/24DSO-lab/kubron/internal/k8s"
+	"github.com/24DSO-lab/kubron/internal/readiness"
 )
 
 type webOIDCSettings struct {
@@ -28,8 +31,20 @@ type fileStore struct {
 // — в собственном каталоге k8s (argoTokenDir), как раньше.
 func NewFile(dir string) Store { return fileStore{dir: dir} }
 
-func (s fileStore) Users() auth.Backend        { return auth.NewFileBackend(s.dir) }
-func (s fileStore) Audit() audit.Backend       { return audit.NewFileBackend(s.dir) }
+func (s fileStore) Users() auth.Backend  { return auth.NewFileBackend(s.dir) }
+func (s fileStore) Audit() audit.Backend { return audit.NewFileBackend(s.dir) }
+func (s fileStore) Readiness() readiness.Backend {
+	return readiness.NewFileBackend(filepath.Join(s.dir, "readiness"))
+}
+
+// Incidents — подкаталог incidents каталога данных: <org>/<team>/<cluster>/…, права 0600/0700 (ADR-0026 §4).
+func (s fileStore) Incidents() incident.Backend {
+	return incident.NewFileBackend(filepath.Join(s.dir, "incidents"))
+}
+
+func (s fileStore) Baselines() baseline.Backend {
+	return baseline.NewFileBackend(filepath.Join(s.dir, "baselines"))
+}
 func (s fileStore) ArgoTokens() k8s.TokenStore { return k8s.NewFileTokenStore() }
 
 // Clusters — каталог clusters в каталоге данных (k8s.GetKubronDir): путь к kubeconfig нужен client-go и Helm.

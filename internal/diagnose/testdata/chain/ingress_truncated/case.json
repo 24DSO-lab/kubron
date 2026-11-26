@@ -1,0 +1,22 @@
+{
+  "target": {
+    "kind": "Ingress",
+    "namespace": "app",
+    "name": "site"
+  },
+  "limits": {
+    "maxNodes": 3,
+    "maxEdges": 3,
+    "maxDepth": 1,
+    "maxReads": 3
+  },
+  "golden": true,
+  "expect": {
+    "partial": [
+      "Graph"
+    ],
+    "absent": [
+      "ingress.backend_no_endpoints"
+    ]
+  }
+}

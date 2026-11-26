@@ -211,7 +211,7 @@ kubectl -n kubron exec -i deploy/kubron -- \
 
 Правила профилей выведены из вызовов Kubernetes API в коде для прав `read` и `operate`. Шаблоны — `rbac.readonlyRules` и `rbac.operatorRules` в `values.yaml` чарта.
 
-**Что профили не покрывают намеренно.** Терминал Pod (`pods/exec`, `pods/attach`), port-forward, оболочка узла (создаёт привилегированный Pod), drain (`pods/eviction`), правка и удаление произвольных объектов, Helm (релизы хранятся в Secret и применяют произвольные манифесты) требуют широких прав, которые нельзя выдавать по умолчанию. Включайте их осознанно через `custom`. Соответствующие права Kubron при этом всё равно можно отключить для всех: `kubron.disableExec`, `kubron.disableNodeShell`, `kubron.disablePortForward`.
+**Что профили не покрывают намеренно.** Терминал Pod (`pods/exec`, `pods/attach`), debug-контейнеры (`pods/ephemeralcontainers`, см. [Debug-контейнеры](/ru/features/debug-containers)), port-forward, оболочка узла (создаёт привилегированный Pod), drain (`pods/eviction`), правка и удаление произвольных объектов, Helm (релизы хранятся в Secret и применяют произвольные манифесты) требуют широких прав, которые нельзя выдавать по умолчанию. Включайте их осознанно через `custom`. Соответствующие права Kubron при этом всё равно можно отключить для всех: `kubron.disableExec`, `kubron.disableNodeShell`, `kubron.disablePortForward`.
 
 - **Значения Secret.** По умолчанию ServiceAccount не читает `secrets`, поэтому значения Secret недоступны никому. `rbac.allowSecretsRead=true` добавляет `get/list/watch` на `secrets` кластера для любого профиля; после этого их увидят все, у кого в Kubron есть право `secrets.read` (роли `operator` и `admin`).
 - **Пользовательские ресурсы** (CRD, Argo CD `Application`, объекты Flux и др.) в профили не входят. Добавьте нужные группы в `rbac.extraRules`; готовый фрагмент для Flux приведён [ниже](#rights-for-flux-cd).
@@ -375,6 +375,23 @@ helm upgrade kubron oci://ghcr.io/24dso-lab/charts/kubron \
 - Сначала прочитайте [журнал изменений](https://github.com/24DSO-lab/kubron/blob/master/CHANGELOG.md): в нём перечислены изменения поведения, например ролей и разрешений.
 - Перед каждым обновлением делайте резервную копию базы.
 - Откат: `helm rollback kubron -n kubron`. Откат не отменяет миграцию базы, поэтому, если релиз менял схему и нужно вернуться дальше, восстанавливайте из резервной копии.
+
+## Проверка обновлений {#update-check}
+
+Раз в сутки сервер спрашивает `api.github.com` о последнем релизе. Номер версии в шапке видят все пользователи; администратор (право `users.manage`) видит баннер, если вышла новая версия, и окно **Version and updates** с шагами для вашего способа установки. Сервер сам себя не обновляет. Что показывает окно, см. в разделе [Версия и обновления](/ru/features/updates).
+
+| Установка | Как определяется | Что показывается |
+|---|---|---|
+| Helm | Чарт задаёт `KUBRON_INSTALL_METHOD=helm`, `KUBRON_HELM_RELEASE`, `KUBRON_HELM_NAMESPACE` | `helm upgrade <релиз> oci://ghcr.io/24dso-lab/charts/kubron --version <версия> --namespace <ns> --reset-then-reuse-values` |
+| Kubernetes без Helm | Задан `KUBERNETES_SERVICE_HOST` | Тег нового образа для манифестов, Kustomize или GitOps |
+| Docker, Podman, Compose | Признаки контейнера (`/.dockerenv`, cgroup) | `docker pull` и `docker compose pull && docker compose up -d` |
+| Бинарный файл | Всё остальное | Ссылка на релиз |
+
+Если автоопределение ошиблось (например, образ запущен вашим оркестратором), задайте `KUBRON_INSTALL_METHOD` равным `helm`, `kubernetes`, `docker` или `binary`.
+
+- **Отключение.** `KUBRON_UPDATE_CHECK=off` (`kubron.updateCheck: false` в чарте) останавливает любые исходящие проверки. Отключайте её в изолированных сетях. Сборка без версии (`dev`) ничего не проверяет. Значение, отличное от `on` и `off`, — ошибка запуска.
+- **NetworkPolicy.** Правило исходящего трафика к API-серверам по умолчанию пропускает порт 443 на любые адреса, и до GitHub сервер дойдёт. Если вы сузили `networkPolicy.egress.clusterApi.cidrs`, добавьте правило для `api.github.com` в `networkPolicy.egress.extra` либо отключите проверку; иначе окно покажет ошибку сети.
+- **Без токена и без расхода лимита.** Запросы анонимные и условные (`ETag`), поэтому лимит GitHub (60 в час на адрес) не расходуется, а ручная проверка разрешена раз в минуту.
 
 ## Удаление
 

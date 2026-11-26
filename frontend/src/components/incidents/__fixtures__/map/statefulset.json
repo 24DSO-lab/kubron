@@ -1,0 +1,183 @@
+{
+  "ruleSetVersion": 2,
+  "target": {
+    "kind": "StatefulSet",
+    "name": "db",
+    "group": "apps",
+    "namespace": "shop"
+  },
+  "observedAt": "2026-11-20T10:00:00Z",
+  "symptoms": [],
+  "resources": [
+    {
+      "kind": "StatefulSet",
+      "name": "db",
+      "group": "apps",
+      "namespace": "shop"
+    }
+  ],
+  "facts": [],
+  "hypotheses": [
+    {
+      "kind": "hypothesis",
+      "id": "h1",
+      "code": "sts.pvc_pending",
+      "resource": {
+        "kind": "StatefulSet",
+        "name": "db",
+        "group": "apps",
+        "namespace": "shop"
+      },
+      "params": {
+        "statefulset": "db"
+      },
+      "confidence": "medium",
+      "supporting": [],
+      "contradicting": [],
+      "explains": [
+        "h2"
+      ]
+    }
+  ],
+  "recommendations": [],
+  "steps": [],
+  "missing": [],
+  "graph": {
+    "nodes": [
+      {
+        "kind": "StatefulSet",
+        "name": "db",
+        "health": "Degraded",
+        "group": "apps",
+        "namespace": "shop"
+      },
+      {
+        "kind": "Pod",
+        "name": "db-0",
+        "health": "Healthy",
+        "group": "core",
+        "namespace": "shop"
+      },
+      {
+        "kind": "Pod",
+        "name": "db-1",
+        "health": "Degraded",
+        "group": "core",
+        "namespace": "shop",
+        "reason": "pending"
+      },
+      {
+        "kind": "PersistentVolumeClaim",
+        "name": "data-db-0",
+        "health": "Healthy",
+        "group": "core",
+        "namespace": "shop"
+      },
+      {
+        "kind": "PersistentVolumeClaim",
+        "name": "data-db-1",
+        "health": "Degraded",
+        "group": "core",
+        "namespace": "shop",
+        "reason": "pending"
+      },
+      {
+        "kind": "PersistentVolumeClaim",
+        "name": "data-db-2",
+        "health": "Missing",
+        "group": "core",
+        "namespace": "shop",
+        "placeholder": true
+      },
+      {
+        "kind": "StorageClass",
+        "name": "fast",
+        "health": "Missing",
+        "group": "storage.k8s.io",
+        "placeholder": true
+      }
+    ],
+    "edges": [
+      {
+        "from": "apps/StatefulSet/shop/db",
+        "to": "core/Pod/shop/db-0",
+        "type": "owns",
+        "state": "ok"
+      },
+      {
+        "from": "apps/StatefulSet/shop/db",
+        "to": "core/Pod/shop/db-1",
+        "type": "owns",
+        "state": "ok"
+      },
+      {
+        "from": "apps/StatefulSet/shop/db",
+        "to": "core/PersistentVolumeClaim/shop/data-db-0",
+        "type": "owns",
+        "state": "ok"
+      },
+      {
+        "from": "apps/StatefulSet/shop/db",
+        "to": "core/PersistentVolumeClaim/shop/data-db-1",
+        "type": "owns",
+        "state": "ok"
+      },
+      {
+        "from": "apps/StatefulSet/shop/db",
+        "to": "core/PersistentVolumeClaim/shop/data-db-2",
+        "type": "owns",
+        "state": "missing"
+      },
+      {
+        "from": "core/Pod/shop/db-0",
+        "to": "core/PersistentVolumeClaim/shop/data-db-0",
+        "type": "mounts",
+        "state": "ok"
+      },
+      {
+        "from": "core/Pod/shop/db-1",
+        "to": "core/PersistentVolumeClaim/shop/data-db-1",
+        "type": "mounts",
+        "state": "ok"
+      },
+      {
+        "from": "core/PersistentVolumeClaim/shop/data-db-1",
+        "to": "storage.k8s.io/StorageClass//fast",
+        "type": "backed_by",
+        "state": "missing"
+      }
+    ]
+  },
+  "chains": [
+    {
+      "path": [
+        {
+          "ref": {
+            "kind": "StatefulSet",
+            "name": "db",
+            "group": "apps",
+            "namespace": "shop"
+          },
+          "health": "Degraded"
+        },
+        {
+          "ref": {
+            "kind": "PersistentVolumeClaim",
+            "name": "data-db-1",
+            "namespace": "shop"
+          },
+          "health": "Degraded"
+        },
+        {
+          "ref": {
+            "kind": "StorageClass",
+            "name": "fast",
+            "group": "storage.k8s.io"
+          },
+          "health": "Missing"
+        }
+      ],
+      "candidate": "h1"
+    }
+  ]
+}

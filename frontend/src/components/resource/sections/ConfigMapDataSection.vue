@@ -24,6 +24,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, onUpdated, reactive } from 'vue'
 
 import 'monaco-editor'
+import { useMonacoTheme } from '../../../composables/useMonacoTheme'
 import * as monaco from 'monaco-editor/editor/editor.api'
 import editorWorker from 'monaco-editor/editor/editor.worker?worker'
 
@@ -40,6 +41,7 @@ import { useNotifications } from '../../../composables/useNotifications'
 import { t } from '../../../i18n'
 import { errorText } from '../../../composables/errorText'
 
+const monacoTheme = useMonacoTheme(n => monaco.editor.setTheme(n))
 const props = defineProps<{ resource: any }>()
 const entries = computed(() => Object.entries(props.resource?.data ?? {}) as [string, string][])
 
@@ -93,7 +95,7 @@ function createOrUpdateEditors() {
     const editor = monaco.editor.create(container, {
       value: val,
       language: detectLanguage(val),
-      theme: 'vs-dark',
+      theme: monacoTheme(),
       automaticLayout: true,
       minimap: { enabled: false, scale: 1, showSlider: 'mouseover' },
       scrollBeyondLastLine: false,
@@ -208,10 +210,10 @@ onBeforeUnmount(() => {
 }
 
 .cm-data-item {
-  border: 1px solid #2a2b40;
+  border: 1px solid var(--line);
   border-radius: 4px;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(var(--tint-rgb), 0.02);
 }
 
 .cm-data-header {
@@ -219,13 +221,13 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: space-between;
   padding: 8px 12px;
-  background: #1a1b2e;
-  border-bottom: 1px solid #2a2b40;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
 }
 
 .cm-data-key {
   font-weight: 600;
-  color: #60a5fa;
+  color: var(--blue);
   font-size: 0.85rem;
 }
 
@@ -234,7 +236,7 @@ onBeforeUnmount(() => {
   font-size: 0.8rem;
   font-weight: 500;
   color: #fff;
-  background: #3b82f6;
+  background: var(--blue-strong);
   border: none;
   border-radius: 4px;
   cursor: pointer;
@@ -242,7 +244,7 @@ onBeforeUnmount(() => {
 }
 
 .cm-data-save:hover:not(:disabled) {
-  background: #2563eb;
+  background: var(--blue-deep);
 }
 
 .cm-data-save:disabled {
@@ -258,20 +260,20 @@ onBeforeUnmount(() => {
   display: flex;
   justify-content: flex-end;
   padding: 8px 12px;
-  background: #1a1b2e;
-  border-top: 1px solid #2a2b40;
+  background: var(--panel);
+  border-top: 1px solid var(--line);
 }
 
 .cm-editor-container :deep(.monaco-editor) {
-  background-color: #1a1b26 !important;
+  background-color: var(--panel-alt) !important;
 }
 
 .cm-editor-container :deep(.monaco-editor .margin) {
-  background-color: #1a1b26 !important;
+  background-color: var(--panel-alt) !important;
 }
 
 .cm-editor-container :deep(.monaco-editor .minimap) {
-  border-left: 1px solid #3b3d5c;
+  border-left: 1px solid var(--line-strong);
 }
 
 .cm-editor-container :deep(.monaco-editor .scroll-decoration) {
@@ -284,17 +286,17 @@ onBeforeUnmount(() => {
 }
 
 .cm-editor-container :deep(.monaco-editor .cursors-layer .cursor) {
-  background-color: #60a5fa !important;
-  border-color: #60a5fa !important;
+  background-color: var(--blue) !important;
+  border-color: var(--blue) !important;
 }
 
 .cm-editor-container :deep(.monaco-editor .scrollbar .slider) {
-  background: rgba(255, 255, 255, 0.15) !important;
+  background: rgba(var(--tint-rgb), 0.15) !important;
   border-radius: 4px;
 }
 
 .cm-editor-container :deep(.monaco-editor .scrollbar .slider:hover) {
-  background: rgba(255, 255, 255, 0.25) !important;
+  background: rgba(var(--tint-rgb), 0.25) !important;
 }
 
 .cm-editor-container :deep(.monaco-editor .view-lines) {

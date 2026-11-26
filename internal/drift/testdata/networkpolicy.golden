@@ -1,0 +1,17 @@
+# networking.k8s.io/v1 NetworkPolicy prod/web-allow
+metadata.labels.app = "web"
+spec.egress[0].ports[0].port = 5432
+spec.egress[0].to[0].ipBlock.cidr = "10.0.0.0/8"
+spec.egress[0].to[0].ipBlock.except[0] = "10.0.5.0/24"
+spec.egress[0].to[0].ipBlock.except[1] = "10.1.0.0/16"
+spec.egress[1] = {}
+spec.ingress[0].from[0].namespaceSelector.matchLabels["kubernetes.io/metadata.name"] = "ingress-nginx"
+spec.ingress[0].from[1].podSelector.matchExpressions[0].key = "role"
+spec.ingress[0].from[1].podSelector.matchExpressions[0].operator = "In"
+spec.ingress[0].from[1].podSelector.matchExpressions[0].values[0] = "admin"
+spec.ingress[0].from[1].podSelector.matchExpressions[0].values[1] = "frontend"
+spec.ingress[0].ports[0].port = 8080
+spec.ingress[0].ports[1].port = 9090
+spec.podSelector.matchLabels.app = "web"
+spec.policyTypes[0] = "Egress"
+spec.policyTypes[1] = "Ingress"

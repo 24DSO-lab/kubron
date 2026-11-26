@@ -392,6 +392,18 @@ func (m *Manager) AuthSessionOf() AuthSession {
 }
 
 func (m *Manager) ConnectToCluster(clusterID string) error {
+	plan, _, err := m.connect(clusterID)
+	if err != nil {
+		return err
+	}
+	m.viewMu.Lock()
+	defer m.viewMu.Unlock()
+	return m.activateLocked(clusterID, plan.Key)
+}
+
+// connect строит (или берёт из общего пула) подключение этого вида к кластеру, не делая кластер активным.
+// Конфигурацию даёт только ConfigFor по плану для пары «вид, кластер» (ADR-0018).
+func (m *Manager) connect(clusterID string) (ConnPlan, *ClusterConnection, error) {
 	sess := m.AuthSessionOf()
 	orig := sess.OnAuthRequired
 	var key string
@@ -403,7 +415,7 @@ func (m *Manager) ConnectToCluster(clusterID string) error {
 	}
 	plan, err := PlanFor(sess, clusterID)
 	if err != nil {
-		return err
+		return ConnPlan{}, nil, err
 	}
 	key = plan.Key
 	m.noteScope(plan)
@@ -411,13 +423,12 @@ func (m *Manager) ConnectToCluster(clusterID string) error {
 	if build == nil {
 		build = buildPlanConnection
 	}
-	if _, err := m.pool.getOrCreate(plan.Key, func() (*ClusterConnection, error) { return build(plan) }); err != nil {
-		return err
+	conn, err := m.pool.getOrCreate(plan.Key, func() (*ClusterConnection, error) { return build(plan) })
+	if err != nil {
+		return ConnPlan{}, nil, err
 	}
 	m.authLost.Delete(plan.Key) // вход действует: пометка «нужен вход» снимается до первого отказа брокера
-	m.viewMu.Lock()
-	defer m.viewMu.Unlock()
-	return m.activateLocked(clusterID, plan.Key)
+	return plan, conn, nil
 }
 
 // noteScope запоминает, чьи учётные данные у кластера, и ставит пометку «нужен вход» при отказе брокера.

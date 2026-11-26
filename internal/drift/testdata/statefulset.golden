@@ -1,0 +1,23 @@
+# apps/v1 StatefulSet prod/db
+metadata.labels.app = "db"
+spec.replicas = 2
+spec.selector.matchLabels.app = "db"
+spec.serviceName = "db"
+spec.template.metadata.labels.app = "db"
+spec.template.spec.containers[name=postgres].env[name=PGDATA].name = "PGDATA"
+spec.template.spec.containers[name=postgres].env[name=PGDATA].value = HASH:e5c800fc
+spec.template.spec.containers[name=postgres].image = "postgres:16.4"
+spec.template.spec.containers[name=postgres].name = "postgres"
+spec.template.spec.containers[name=postgres].ports[containerPort=5432].containerPort = 5432
+spec.template.spec.containers[name=postgres].ports[containerPort=5432].name = "pg"
+spec.template.spec.containers[name=postgres].resources.requests.cpu = "1"
+spec.template.spec.containers[name=postgres].resources.requests.memory = "2Gi"
+spec.template.spec.containers[name=postgres].volumeMounts[mountPath=/var/lib/postgresql/data].mountPath = "/var/lib/postgresql/data"
+spec.template.spec.containers[name=postgres].volumeMounts[mountPath=/var/lib/postgresql/data].name = "data"
+spec.template.spec.securityContext.fsGroup = 999
+spec.volumeClaimTemplates[metadata.name=data].apiVersion = "v1"
+spec.volumeClaimTemplates[metadata.name=data].kind = "PersistentVolumeClaim"
+spec.volumeClaimTemplates[metadata.name=data].metadata.name = "data"
+spec.volumeClaimTemplates[metadata.name=data].spec.accessModes[0] = "ReadWriteOnce"
+spec.volumeClaimTemplates[metadata.name=data].spec.resources.requests.storage = "50Gi"
+spec.volumeClaimTemplates[metadata.name=data].spec.storageClassName = "fast-ssd"

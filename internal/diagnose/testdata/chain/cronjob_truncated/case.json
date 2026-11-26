@@ -1,0 +1,20 @@
+{
+  "target": {
+    "kind": "CronJob",
+    "namespace": "app",
+    "name": "nightly"
+  },
+  "golden": true,
+  "expect": {
+    "missing": [
+      "cronjob.history_truncated"
+    ],
+    "partial": [
+      "Graph",
+      "Job"
+    ],
+    "absent": [
+      "cronjob.missed_schedule"
+    ]
+  }
+}

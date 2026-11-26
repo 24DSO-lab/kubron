@@ -1,0 +1,5 @@
+the header eyJhbGciOiJIUzI1NiJ9 alone has no payload
+%%%
+api version v1.2.3 of io.k8s.api.core.v1.Pod
+%%%
+eyJ is the base64 prefix of a JSON object

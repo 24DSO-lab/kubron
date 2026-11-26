@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { defineResource } from '../types'
+import { investigateAction } from '../investigateAction'
 import type { k8s } from '../../../wailsjs/go/models'
 import { callApp } from '../wails'
 import { flatNameCol, flatNsCol, ageCol, controlledByProp, managedByProp } from './common'
@@ -14,6 +15,7 @@ const classLink = (i: any) => (i.class ? { id: 'ingressclass', ns: '', name: i.c
 export const ingress = defineResource<k8s.IngressInfo>({
   id: 'ingress',
   kind: 'Ingress',
+  actions: [investigateAction('Ingress')],
   view: 'ingresses',
   title: 'Ingresses',
   namespaced: true,

@@ -1,0 +1,111 @@
+{
+  "version": 2,
+  "observedAt": "2026-11-17T12:00:00Z",
+  "candidates": [
+    {
+      "id": "cc-96eb939f77e5",
+      "kind": "shared_node",
+      "source": {
+        "kind": "Node",
+        "name": "n1",
+        "uid": "uid-n1"
+      },
+      "confidence": "low",
+      "since": "2026-11-17T11:40:00Z",
+      "affected": [
+        {
+          "kind": "Deployment",
+          "namespace": "prod",
+          "name": "api",
+          "problemPods": 3,
+          "symptoms": [
+            "pod.not_ready"
+          ],
+          "since": "2026-11-17T11:40:00Z"
+        },
+        {
+          "kind": "Deployment",
+          "namespace": "prod",
+          "name": "cache",
+          "problemPods": 3,
+          "symptoms": [
+            "pod.not_ready"
+          ],
+          "since": "2026-11-17T11:40:00Z"
+        },
+        {
+          "kind": "Deployment",
+          "namespace": "prod",
+          "name": "web",
+          "problemPods": 3,
+          "symptoms": [
+            "pod.not_ready"
+          ],
+          "since": "2026-11-17T11:40:00Z"
+        },
+        {
+          "kind": "Deployment",
+          "namespace": "prod",
+          "name": "worker",
+          "problemPods": 3,
+          "symptoms": [
+            "pod.not_ready"
+          ],
+          "since": "2026-11-17T11:40:00Z"
+        }
+      ],
+      "total": 4,
+      "supporting": [
+        "cf1",
+        "cf2"
+      ]
+    }
+  ],
+  "facts": [
+    {
+      "kind": "fact",
+      "id": "cf1",
+      "code": "correlation.shared_node.runs_on",
+      "resource": {
+        "kind": "Node",
+        "name": "n1",
+        "uid": "uid-n1"
+      },
+      "params": {
+        "pods": "12",
+        "workloads": "4"
+      },
+      "source": {
+        "kind": "derived",
+        "resource": {
+          "kind": "Node",
+          "name": "n1",
+          "uid": "uid-n1"
+        }
+      },
+      "observedAt": "2026-11-17T12:00:00Z"
+    },
+    {
+      "kind": "fact",
+      "id": "cf2",
+      "code": "correlation.shared_node.multi_workload",
+      "resource": {
+        "kind": "Node",
+        "name": "n1",
+        "uid": "uid-n1"
+      },
+      "params": {
+        "workloads": "4"
+      },
+      "source": {
+        "kind": "derived",
+        "resource": {
+          "kind": "Node",
+          "name": "n1",
+          "uid": "uid-n1"
+        }
+      },
+      "observedAt": "2026-11-17T12:00:00Z"
+    }
+  ]
+}

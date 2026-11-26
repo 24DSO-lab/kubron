@@ -1,0 +1,22 @@
+{
+  "target": {
+    "kind": "Ingress",
+    "namespace": "app",
+    "name": "site"
+  },
+  "golden": true,
+  "expect": {
+    "symptoms": [
+      "ingress.unreachable"
+    ],
+    "hypotheses": [
+      "ingress.backend_service_missing:high"
+    ],
+    "chains": [
+      "ingress.backend_service_missing: Ingress/site > Service/ghost"
+    ],
+    "absent": [
+      "ingress.class_not_found"
+    ]
+  }
+}

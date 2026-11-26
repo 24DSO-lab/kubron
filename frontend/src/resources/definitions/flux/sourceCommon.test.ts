@@ -106,9 +106,9 @@ describe('колонки на фикстурах каждого вида', () =>
   })
   it('цвета состояний', () => {
     const c = fluxGitRepository.columns.find(x => x.key === 'state')!.colorFn!
-    expect(c(src({ state: 'Ready' }))).toBe('#4ade80')
-    expect(c(src({ state: 'Failed' }))).toBe('#ef4444')
-    expect(c(src({ state: 'Suspended' }))).toBe('#facc15')
+    expect(c(src({ state: 'Ready' }))).toBe('var(--green)')
+    expect(c(src({ state: 'Failed' }))).toBe('var(--red)')
+    expect(c(src({ state: 'Suspended' }))).toBe('var(--yellow)')
   })
 })
 
