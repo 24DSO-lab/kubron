@@ -1,0 +1,313 @@
+{
+  "ruleSetVersion": 2,
+  "target": {
+    "kind": "Ingress",
+    "name": "web",
+    "group": "networking.k8s.io",
+    "namespace": "shop"
+  },
+  "observedAt": "2026-11-20T10:00:00Z",
+  "symptoms": [],
+  "resources": [
+    {
+      "kind": "Ingress",
+      "name": "web",
+      "group": "networking.k8s.io",
+      "namespace": "shop"
+    }
+  ],
+  "facts": [
+    {
+      "kind": "fact",
+      "id": "f1",
+      "code": "ingress.backend_missing",
+      "resource": {
+        "kind": "Ingress",
+        "name": "web",
+        "group": "networking.k8s.io",
+        "namespace": "shop"
+      },
+      "params": {
+        "ingress": "web",
+        "service": "api"
+      },
+      "source": {
+        "kind": "resource",
+        "resource": {
+          "kind": "Ingress",
+          "name": "web",
+          "group": "networking.k8s.io",
+          "namespace": "shop"
+        }
+      },
+      "observedAt": "2026-11-20T10:00:00Z"
+    },
+    {
+      "kind": "fact",
+      "id": "f2",
+      "code": "ingress.backend_endpoints",
+      "resource": {
+        "kind": "Ingress",
+        "name": "web",
+        "group": "networking.k8s.io",
+        "namespace": "shop"
+      },
+      "params": {
+        "ingress": "web",
+        "service": "web"
+      },
+      "source": {
+        "kind": "resource",
+        "resource": {
+          "kind": "Ingress",
+          "name": "web",
+          "group": "networking.k8s.io",
+          "namespace": "shop"
+        }
+      },
+      "observedAt": "2026-11-20T10:00:00Z"
+    },
+    {
+      "kind": "fact",
+      "id": "f3",
+      "code": "ingress.class_missing",
+      "resource": {
+        "kind": "Ingress",
+        "name": "web",
+        "group": "networking.k8s.io",
+        "namespace": "shop"
+      },
+      "params": {
+        "ingress": "web",
+        "class": "nginx"
+      },
+      "source": {
+        "kind": "resource",
+        "resource": {
+          "kind": "Ingress",
+          "name": "web",
+          "group": "networking.k8s.io",
+          "namespace": "shop"
+        }
+      },
+      "observedAt": "2026-11-20T10:00:00Z"
+    }
+  ],
+  "hypotheses": [
+    {
+      "kind": "hypothesis",
+      "id": "h1",
+      "code": "ingress.backend_service_missing",
+      "resource": {
+        "kind": "Ingress",
+        "name": "web",
+        "group": "networking.k8s.io",
+        "namespace": "shop"
+      },
+      "params": {
+        "ingress": "web",
+        "service": "api"
+      },
+      "confidence": "high",
+      "supporting": [
+        "f1"
+      ],
+      "contradicting": [],
+      "explains": [
+        "h2"
+      ]
+    },
+    {
+      "kind": "hypothesis",
+      "id": "h2",
+      "code": "ingress.backend_no_endpoints",
+      "resource": {
+        "kind": "Ingress",
+        "name": "web",
+        "group": "networking.k8s.io",
+        "namespace": "shop"
+      },
+      "params": {
+        "ingress": "web",
+        "service": "web"
+      },
+      "confidence": "medium",
+      "supporting": [
+        "f2"
+      ],
+      "contradicting": []
+    },
+    {
+      "kind": "hypothesis",
+      "id": "h3",
+      "code": "ingress.class_not_found",
+      "resource": {
+        "kind": "Ingress",
+        "name": "web",
+        "group": "networking.k8s.io",
+        "namespace": "shop"
+      },
+      "params": {
+        "ingress": "web",
+        "class": "nginx"
+      },
+      "confidence": "medium",
+      "supporting": [
+        "f3"
+      ],
+      "contradicting": []
+    }
+  ],
+  "recommendations": [],
+  "steps": [],
+  "missing": [],
+  "graph": {
+    "nodes": [
+      {
+        "kind": "Ingress",
+        "name": "web",
+        "health": "Degraded",
+        "group": "networking.k8s.io",
+        "namespace": "shop",
+        "reason": "ingress_backend_missing"
+      },
+      {
+        "kind": "Service",
+        "name": "api",
+        "health": "Missing",
+        "group": "core",
+        "namespace": "shop",
+        "placeholder": true
+      },
+      {
+        "kind": "Service",
+        "name": "web",
+        "health": "Degraded",
+        "group": "core",
+        "namespace": "shop"
+      },
+      {
+        "kind": "IngressClass",
+        "name": "nginx",
+        "health": "Missing",
+        "group": "networking.k8s.io",
+        "placeholder": true
+      },
+      {
+        "kind": "Pod",
+        "name": "web-1",
+        "health": "Degraded",
+        "group": "core",
+        "namespace": "shop"
+      },
+      {
+        "kind": "ReplicaSet",
+        "name": "web-7d9",
+        "health": "Degraded",
+        "group": "apps",
+        "namespace": "shop"
+      },
+      {
+        "kind": "Deployment",
+        "name": "web",
+        "health": "Degraded",
+        "group": "apps",
+        "namespace": "shop"
+      }
+    ],
+    "edges": [
+      {
+        "from": "networking.k8s.io/Ingress/shop/web",
+        "to": "core/Service/shop/api",
+        "type": "routes",
+        "state": "missing",
+        "reason": "ingress_backend_missing"
+      },
+      {
+        "from": "networking.k8s.io/Ingress/shop/web",
+        "to": "core/Service/shop/web",
+        "type": "routes",
+        "state": "ok"
+      },
+      {
+        "from": "networking.k8s.io/Ingress/shop/web",
+        "to": "networking.k8s.io/IngressClass//nginx",
+        "type": "binds",
+        "state": "missing",
+        "reason": "ingress_class_missing"
+      },
+      {
+        "from": "core/Service/shop/web",
+        "to": "core/Pod/shop/web-1",
+        "type": "selects",
+        "state": "ok"
+      },
+      {
+        "from": "apps/ReplicaSet/shop/web-7d9",
+        "to": "core/Pod/shop/web-1",
+        "type": "owns",
+        "state": "ok"
+      },
+      {
+        "from": "apps/Deployment/shop/web",
+        "to": "apps/ReplicaSet/shop/web-7d9",
+        "type": "owns",
+        "state": "ok"
+      }
+    ]
+  },
+  "chains": [
+    {
+      "path": [
+        {
+          "ref": {
+            "kind": "Ingress",
+            "name": "web",
+            "group": "networking.k8s.io",
+            "namespace": "shop"
+          },
+          "health": "Degraded"
+        },
+        {
+          "ref": {
+            "kind": "Service",
+            "name": "api",
+            "namespace": "shop"
+          },
+          "health": "Missing"
+        }
+      ],
+      "candidate": "h1"
+    },
+    {
+      "path": [
+        {
+          "ref": {
+            "kind": "Ingress",
+            "name": "web",
+            "group": "networking.k8s.io",
+            "namespace": "shop"
+          },
+          "health": "Degraded"
+        },
+        {
+          "ref": {
+            "kind": "Service",
+            "name": "web",
+            "namespace": "shop"
+          },
+          "health": "Degraded"
+        },
+        {
+          "ref": {
+            "kind": "Pod",
+            "name": "web-1",
+            "namespace": "shop"
+          },
+          "health": "Degraded"
+        }
+      ],
+      "candidate": "h1"
+    }
+  ]
+}
