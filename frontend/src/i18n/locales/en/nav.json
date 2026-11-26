@@ -12,6 +12,7 @@
   "groups": {
     "workloads": "Workloads",
     "config": "Config",
+    "auditCompliance": "Audit & Compliance",
     "network": "Network",
     "storage": "Storage",
     "helm": "Helm",
