@@ -61,7 +61,7 @@ func (col *collector) listLastFailedJobPods(ctx context.Context, cj *batchv1.Cro
 		}
 	}
 	slices.SortStableFunc(jobs, func(a, b *batchv1.Job) int {
-		if c := b.CreationTimestamp.Time.Compare(a.CreationTimestamp.Time); c != 0 {
+		if c := b.CreationTimestamp.Compare(a.CreationTimestamp.Time); c != 0 {
 			return c
 		}
 		return strings.Compare(a.Name, b.Name)
