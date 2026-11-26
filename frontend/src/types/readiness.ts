@@ -112,7 +112,7 @@ export interface CatalogInfo {
 }
 
 export interface Coverage {
-  mode: 'generic_kubernetes'
+  mode: 'generic-kubernetes'
   targetSpecified: boolean
   evaluatedAgainst: string
   sources: SourceCoverage[]
