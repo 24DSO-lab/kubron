@@ -357,35 +357,64 @@ export function filterModel(model: MapModel, filter: MapFilter, keep: ReadonlySe
 
 // ---- Свёртка больших графов ----
 
-export const groupKey = (kind: string) => `group:${kind}`
-export const isGroupKey = (key: string) => key.startsWith('group:')
+/** Префикс ключей групп: у настоящих вершин ключ начинается с API-группы («core/…», «apps/…»), коллизий нет. */
+const GROUP_PREFIX = 'group:'
 
 /**
- * Большой граф (> `threshold` вершин) свёртывается по виду: здоровые, не выбранные и не лежащие на
- * цепочке вершины одного вида сливаются в группу «N × Вид»; раскрытие — через `expandedKinds`.
- * Проблемные вершины (любое состояние кроме Healthy), цель, кандидаты и `keep` остаются
- * отдельными. Рёбра переводятся на группы и дедуплицируются; худшее состояние побеждает.
+ * Ключ свёрнутой группы. Namespaced-ресурсы группируются по паре «вид + namespace» (`group:ns/<namespace>/<Kind>`),
+ * cluster-scoped — по виду без искусственного namespace (`group:cluster/<Kind>`). Части кодируются
+ * `encodeURIComponent`, поэтому «/» в данных не даёт коллизий; ключ детерминирован и однозначен.
+ */
+export function groupKey(kind: string, namespace?: string): string {
+  const k = encodeURIComponent(kind)
+  return namespace ? `${GROUP_PREFIX}ns/${encodeURIComponent(namespace)}/${k}` : `${GROUP_PREFIX}cluster/${k}`
+}
+
+/** Ключ группы, в которую сворачивается вершина. */
+export const groupKeyOf = (n: Pick<MapNode, 'kind' | 'namespace'>): string => groupKey(n.kind, n.namespace)
+
+export const isGroupKey = (key: string) => key.startsWith(GROUP_PREFIX)
+
+/** Все возможные ключи групп модели (для «раскрыть всё»); отсортированы. */
+export function groupKeysOf(model: MapModel): string[] {
+  return [...new Set(model.nodes.filter((n) => n.variant !== 'group').map(groupKeyOf))].sort(compareKeys)
+}
+
+const EDGE_RANK: Record<MapEdgeState, number> = { ok: 0, other: 1, unknown: 2, broken: 3, missing: 4 }
+
+/**
+ * Большой граф (> `threshold` вершин) свёртывается по группам «вид + namespace» (cluster-scoped — по виду):
+ * здоровые, не выбранные и не лежащие на цепочке вершины одной группы сливаются в узел «N × Вид».
+ * Раскрытие — через `expandedGroups` (ключи групп, см. `groupKey`): раскрытая группа не влияет на остальные.
+ * Проблемные вершины (любое состояние кроме Healthy), цель, кандидаты и `keep` остаются отдельными.
+ * Рёбра переводятся на группы и дедуплицируются; худшее состояние побеждает.
  */
 export function collapseModel(
   model: MapModel,
-  expandedKinds: ReadonlySet<string> = new Set(),
+  expandedGroups: ReadonlySet<string> = new Set(),
   keep: ReadonlySet<string> = new Set(),
   threshold: number = MAP_COLLAPSE_THRESHOLD,
 ): MapModel {
   if (model.nodes.length <= threshold) return model
   const collapsible = (n: MapNode) =>
-    n.health === 'Healthy' && n.variant === 'normal' && !n.target && !n.candidate && !keep.has(n.key) && !expandedKinds.has(n.kind)
-  const byKind = new Map<string, MapNode[]>()
-  for (const n of model.nodes) if (collapsible(n)) byKind.set(n.kind, [...(byKind.get(n.kind) ?? []), n])
+    n.health === 'Healthy' && n.variant === 'normal' && !n.target && !n.candidate && !keep.has(n.key) && !expandedGroups.has(groupKeyOf(n))
+  const byGroup = new Map<string, MapNode[]>()
+  for (const n of model.nodes) {
+    if (!collapsible(n)) continue
+    const gk = groupKeyOf(n)
+    const list = byGroup.get(gk)
+    if (list) list.push(n)
+    else byGroup.set(gk, [n])
+  }
 
   const redirect = new Map<string, string>()
   const groups: MapNode[] = []
-  for (const [kind, members] of [...byKind.entries()].sort((a, b) => compareKeys(a[0], b[0]))) {
+  for (const [key, members] of [...byGroup.entries()].sort((a, b) => compareKeys(a[0], b[0]))) {
     if (members.length < MAP_COLLAPSE_MIN_GROUP) continue
-    const key = groupKey(kind)
     for (const m of members) redirect.set(m.key, key)
+    const { kind, namespace } = members[0]
     groups.push({
-      key, group: '', kind, namespace: '', name: String(members.length), health: 'Healthy', rawHealth: 'Healthy',
+      key, group: '', kind, namespace, name: String(members.length), health: 'Healthy', rawHealth: 'Healthy',
       variant: 'group', knownKind: KNOWN_KINDS.has(kind), candidate: false, target: false,
       members: members.map((m) => m.key).sort(compareKeys),
     })
@@ -401,8 +430,7 @@ export function collapseModel(
     const key = `${from}|${e.type}|${to}`
     const prev = merged.get(key)
     // Худшее состояние ребра побеждает: свёртка не должна скрывать оборванную связь.
-    const rank = (s: MapEdgeState) => ({ ok: 0, other: 1, unknown: 2, broken: 3, missing: 4 })[s]
-    if (!prev || rank(e.state) > rank(prev.state)) merged.set(key, { ...e, key, from, to })
+    if (!prev || EDGE_RANK[e.state] > EDGE_RANK[prev.state]) merged.set(key, { ...e, key, from, to })
   }
   return { ...model, nodes, edges: [...merged.values()].sort((a, b) => compareKeys(a.key, b.key)) }
 }
@@ -431,6 +459,8 @@ export interface NodeRelation {
   direction: 'in' | 'out'
   type: MapEdgeType
   state: MapEdgeState
+  /** Причина связи (`GraphEdge.reason`, например `optional_absent`): не теряется при переводе ребра в связь. */
+  reason?: string
   other: MapNode
 }
 
@@ -439,8 +469,8 @@ export function relationsOf(model: MapModel, key: string): NodeRelation[] {
   const byKey = new Map(model.nodes.map((n) => [n.key, n]))
   const out: NodeRelation[] = []
   for (const e of model.edges) {
-    if (e.from === key && byKey.has(e.to)) out.push({ direction: 'out', type: e.type, state: e.state, other: byKey.get(e.to)! })
-    else if (e.to === key && byKey.has(e.from)) out.push({ direction: 'in', type: e.type, state: e.state, other: byKey.get(e.from)! })
+    if (e.from === key && byKey.has(e.to)) out.push({ direction: 'out', type: e.type, state: e.state, reason: e.reason, other: byKey.get(e.to)! })
+    else if (e.to === key && byKey.has(e.from)) out.push({ direction: 'in', type: e.type, state: e.state, reason: e.reason, other: byKey.get(e.from)! })
   }
   return out.sort((a, b) => compareKeys(`${a.direction}|${a.type}|${a.other.key}`, `${b.direction}|${b.type}|${b.other.key}`))
 }
