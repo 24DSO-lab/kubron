@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-11-26
+
 ### Added
 
 - **Incident investigation (Intelligence):** a new **Incidents** section answers "why is this Pod or Deployment not working" without changing the cluster. Open an investigation for a Pod, Deployment, ReplicaSet, StatefulSet, Job, CronJob, Ingress, HPA, Service, PVC or Node. Kubron reads the cluster read-only (Secrets are never read) and builds a structured report that separates **facts** (with source and time), **hypotheses** (with confidence and supporting/contradicting data), **recommendations** and **diagnostic steps**. The first rule set covers Pod Pending, CrashLoopBackOff, OOMKilled, container start errors, Deployment/ReplicaSet rollout problems, Ingress and HPA issues, and missing ConfigMap references. A hypothesis is never marked as the established cause on its own — only a person confirms it when marking the investigation outcome.
@@ -303,7 +305,8 @@ First public release.
 - Web mode (`cmd/kubron-server`): several concurrent sessions, per-session
   cluster managers with per-user resource limits, idle informers released after a TTL.
 
-[Unreleased]: https://github.com/24DSO-lab/kubron/compare/v1.2.1...HEAD
+[Unreleased]: https://github.com/24DSO-lab/kubron/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/24DSO-lab/kubron/compare/v1.2.1...v1.3.0
 [1.2.1]: https://github.com/24DSO-lab/kubron/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/24DSO-lab/kubron/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/24DSO-lab/kubron/compare/v1.0.0...v1.1.0
