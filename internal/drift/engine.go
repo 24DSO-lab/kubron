@@ -258,7 +258,7 @@ func (e *Engine) loadHPA(ctx context.Context, c *collected) {
 		if res.Truncated {
 			c.hpaUnreadable = true
 			c.hpaSkipped = append(c.hpaSkipped, Skip{
-				Ref: baseline.Ref{Group: hpaGVK.Group, Version: hpaGVK.Version, Kind: hpaGVK.Kind, Namespace: ns},
+				Ref:    baseline.Ref{Group: hpaGVK.Group, Version: hpaGVK.Version, Kind: hpaGVK.Kind, Namespace: ns},
 				Reason: baseline.ReasonTruncated,
 			})
 		}
