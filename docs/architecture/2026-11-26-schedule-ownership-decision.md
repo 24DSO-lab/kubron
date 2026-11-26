@@ -2,7 +2,7 @@
 
 - Дата: 2026-11-26
 - Статус: принятое продуктовое/архитектурное решение пользователя
-- Связано: [Execution Identity & Durable Operations design proposal](execution-identity-durable-operations-design.md), [Missed Schedule Occurrences](2026-11-26-missed-schedule-occurrences-decision.md), ADR-0012, ADR-0016, ADR-0018, ADR-0022, ADR-0026
+- Связано: [Execution Identity & Durable Operations design proposal](execution-identity-durable-operations-design.md), [Missed Schedule Occurrences](2026-11-26-missed-schedule-occurrences-decision.md), [Schedule Time Zones and DST](2026-11-26-schedule-timezones-dst-decision.md), ADR-0012, ADR-0016, ADR-0018, ADR-0022, ADR-0026
 - Область: расписания Desktop и Web, автоматические и policy-triggered операции
 
 ## Решение
@@ -60,7 +60,8 @@
 7. Contract tests должны покрывать оба сценария: создатель покинул Team, но schedule продолжает работать; пользователь без роли создателя не может управлять schedule, пока не имеет актуальных административных прав.
 8. Desktop и Web должны иметь одинаковую доменную семантику, хотя сроки и поведение исполнения при остановке процесса различаются.
 9. Политика пропущенных occurrences задаётся отдельно и должна соответствовать [принятому решению](2026-11-26-missed-schedule-occurrences-decision.md): Observe — Coalesce, Assisted/Autonomous — Skip по умолчанию; Catch-up — только явный opt-in с ограничениями.
+10. Расписание использует собственную IANA timezone; правила DST gap/fold определены в [принятом решении](2026-11-26-schedule-timezones-dst-decision.md).
 
 ## Границы решения
 
-Это решение определяет ownership и административное управление расписаниями. Стратегия пропущенных occurrences определена отдельным принятым решением. Синхронизация расписаний между Desktop и Web, перенос владения между средами и конфликт-резолюция по-прежнему требуют отдельного дизайна. Решение не разрешает write actions без принятых policy, identity, approval и recovery controls.
+Это решение определяет ownership и административное управление расписаниями. Стратегия пропущенных occurrences и timezone/DST semantics определены отдельными принятыми решениями. Синхронизация расписаний между Desktop и Web, перенос владения между средами и конфликт-резолюция по-прежнему требуют отдельного дизайна. Решение не разрешает write actions без принятых policy, identity, approval и recovery controls.
