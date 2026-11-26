@@ -18,7 +18,7 @@
 2. **Контракты зафиксированы заранее** (`contracts.md`): формы вершин и рёбер, ID правил, коды гипотез, ID сигналов, виды корреляции, RPC. Код, который читает чужой результат (метрические правила читают узлы HPA/Ingress, корреляция читает «заглушки Missing», карта читает любой граф), опирается на контракт и на ручные фейки, а не на чужую реализацию.
 3. **Один файл — один владелец, файлы разные у всех.** Общие файлы заморожены (список ниже). У каждого вида свои: `kind_<вид>.go`, `rules_chain_<вид>.go`, `targets_<вид>.go`, `testdata/chain/<вид>_*`, `incidentsChain<Вид>.json`.
 4. **Тесты не общие.** Кто-то обновляет общий список в тесте — конфликт; поэтому общие тесты уже переведены на «подмножество» (`TestTargetRegistry`, `TestAllowedKindsExcludeSecret` читает `allowedReads`, `chainForbidGVK`), а свои проверки каждый кладёт в свои новые `_test.go`.
-5. **`RuleSetVersion` не трогает никто.** Интегратор поднимает его до 3 один раз, после слияния всех PR (см. «Интеграция»).
+5. **`RuleSetVersion` не трогает никто.** Интегратор поднимает его до 3 один раз, после слияния всех PR (см. «Интеграция»). Сделано: `RuleSetVersion = 3`, `correlation.Version = 2`.
 6. **Права и allowlist готовы.** `diagnose.AllowedKinds` уже включает Ingress, IngressClass, HorizontalPodAutoscaler, ConfigMap; RBAC чарта — D9 проверяет.
 
 ## Состав команды
@@ -68,7 +68,7 @@
 
 ## Интеграция (после слияния всех PR, делает тимлид или назначенный интегратор)
 
-1. `git pull` `refactor`; `RuleSetVersion = 3` в `internal/diagnose/types.go`; обновить golden-отчёты (`KUBRON_UPDATE_CHAIN=1`), просмотреть diff.
+1. ✅ Сделано (ветка `fix/backend-final-review`): `RuleSetVersion = 3` в `internal/diagnose/types.go` и `correlation.Version = 2` в `internal/correlation/types.go` (этап C добавил правила, ADR-0033 требует поднять версию); golden-отчёты (`KUBRON_UPDATE_CHAIN=1`) и снимки корреляции (`go test ./internal/correlation -update`) обновлены, в diff изменились только номера версий.
 2. Полный прогон `go test ./...`, `npm test`, `npm run build`, линтер, CI.
 3. Приёмка (ниже). Затем — CHANGELOG из строк PR.
 
@@ -81,7 +81,7 @@
 5. **Метрики B.** Без стека — полный отчёт и подсказка только для нужных сигналов; с ингресс-метриками — `ingress_5xx_ratio` в доказательствах Ingress.
 6. **Корреляция C.** Десять расследований из-за одного отсутствующего ConfigMap → `shared_dependency`; цепочка Ingress → Service → Deployment → Pod → `shared_root`; пять workloads namespace с одним кодом → `shared_symptom` строго `low`; «пересчитать корреляцию» обновляет снимок и не трогает Events.
 7. **Карта.** Для расследования с графом открывается карта: вершины по состоянию, `Missing`/`Unknown` различимы, выбор вершины показывает факты, клавиатурная навигация, пустой/усечённый граф без падений.
-8. Старые отчёты (RuleSetVersion 1–2) открываются; детерминизм: один и тот же снимок → одинаковый отчёт.
+8. Старые отчёты (RuleSetVersion 1–2) открываются; детерминизм: один и тот же снимок → одинаковый отчёт. Backend: покрыто тестами `TestStoredReportsOfOlderRuleSetsStayReadable`, `TestLegacyDocumentOnDisk`, `TestCorrelationSnapshotVersion1StaysReadable`, `TestRuleStatsMixesRuleSetVersions`; открытие в интерфейсе проверяется на стороне frontend.
 
 ## Ветки и PR
 

@@ -1,5 +1,5 @@
 {
-  "ruleSetVersion": 2,
+  "ruleSetVersion": 3,
   "target": {
     "kind": "Node",
     "name": "n1",

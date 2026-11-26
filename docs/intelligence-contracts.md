@@ -157,7 +157,7 @@ Report: + Graph *depgraph.Snapshot `json:"graph,omitempty"`; Chains []Chain `jso
 type Chain struct { Path []ChainStep `json:"path"`; Candidate string `json:"candidate,omitempty"` } // Candidate — ID гипотезы-кандидата
 type ChainStep struct { Ref ResourceRef `json:"ref"`; Health string `json:"health"`; Reason string `json:"reason,omitempty"` }
 func (r *Report) RootCandidates() []string // ID гипотез, которые объясняют другие и сами не объясняются
-const RuleSetVersion = 2
+const RuleSetVersion = 3 // 2 — первая итерация (граф, RuleID); 3 — вторая (правила видов этапов 2–3, метрики B, ordinals.start)
 
 // context.go
 Context: + Graph *depgraph.Graph; Signals *signals.Set; ObservedAt time.Time
@@ -182,7 +182,7 @@ func RegisterTarget(kind string, c TargetCollector)
 ```go
 package correlation
 
-const Version = 1
+const Version = 2 // 1 — этапы A и B; 2 — добавлены shared_dependency, shared_root, shared_symptom (этап C)
 type Kind string // "shared_node","shared_storage","shared_dependency","shared_root","shared_symptom" (этап A: первые два)
 type WorkloadRef struct { Kind, Namespace, Name string; ProblemPods int; Symptoms []string; Since time.Time }
 type Candidate struct {
