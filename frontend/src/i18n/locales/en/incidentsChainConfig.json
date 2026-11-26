@@ -11,4 +11,3 @@
     "config_unverified": "Whether the referenced ConfigMap exists could not be checked ({reason})."
   }
 }
-

@@ -24,4 +24,3 @@
     "statefulset_selector_missing": "StatefulSet 没有选择器，因此无法找到其 Pod。"
   }
 }
-

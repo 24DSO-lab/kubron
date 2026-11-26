@@ -11,4 +11,3 @@
     "config_unverified": "无法检查被引用的 ConfigMap 是否存在（{reason}）。"
   }
 }
-

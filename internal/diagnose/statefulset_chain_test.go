@@ -13,7 +13,7 @@ import (
 
 // Правило chain.statefulset и цель StatefulSet (ADR-0031 §6, этап 3). Сценарии — testdata/chain/sts_*.
 
-func hasHypothesis(rep Report, code string) bool {
+func stsHasHypothesis(rep Report, code string) bool {
 	return slices.ContainsFunc(rep.Hypotheses, func(h Hypothesis) bool { return h.Code == code })
 }
 
@@ -61,7 +61,7 @@ func TestStatefulSetNotStuckWhenAllReplicasExist(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if hasHypothesis(Analyze(ctx), "sts.stuck_ordered_start") {
+	if stsHasHypothesis(Analyze(ctx), "sts.stuck_ordered_start") {
 		t.Error("all replicas exist: nothing is waiting to be created")
 	}
 }
@@ -75,7 +75,7 @@ func TestStatefulSetPartitionWithAllUpdatedIsQuiet(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if hasHypothesis(Analyze(ctx), "sts.update_partitioned") {
+	if stsHasHypothesis(Analyze(ctx), "sts.update_partitioned") {
 		t.Error("every replica is updated: partition holds nothing back")
 	}
 }

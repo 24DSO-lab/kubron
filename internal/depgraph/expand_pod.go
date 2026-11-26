@@ -171,14 +171,6 @@ func (b *builder) expandPod(ctx context.Context, it item, n Node) {
 			}
 		}
 		if b.o.ExpandConfigMapRefs {
-			for _, name := range sortedKeys(refs.configMaps) {
-				cn, obj := b.get(ctx, specConfigMap, n.Namespace, name)
-				if obj == nil && cn.Placeholder && refs.configMaps[name] {
-					delete(b.g.nodes, cn.Key()) // optional и отсутствует — не ошибка
-					continue
-				}
-				b.edge(n.Ref, cn.Ref, EdgeMounts)
-			}
 			b.expandConfigMaps(ctx, n, refs.configMaps)
 		}
 	}

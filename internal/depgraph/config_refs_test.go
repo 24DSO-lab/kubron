@@ -23,7 +23,7 @@ func cmRef(name string) depgraph.Ref {
 	return depgraph.Ref{Kind: "ConfigMap", Namespace: "app", Name: name}
 }
 
-func podRefOf(name string) depgraph.Ref {
+func cfgPodRef(name string) depgraph.Ref {
 	return depgraph.Ref{Kind: "Pod", Namespace: "app", Name: name}
 }
 
@@ -65,13 +65,13 @@ func TestConfigMapRefSources(t *testing.T) {
 	for _, n := range []string{"from-init-env", "from-envfrom", "from-volume"} { // два других отсутствуют
 		f.PutYAML(t, cmManifest(n))
 	}
-	g := build(t, f, podRefOf("refs"), configOpts())
+	g := build(t, f, cfgPodRef("refs"), configOpts())
 
 	for name, want := range map[string]depgraph.EdgeState{
 		"from-init-env": depgraph.EdgeOK, "from-envfrom": depgraph.EdgeOK, "from-volume": depgraph.EdgeOK,
 		"from-env-key": depgraph.EdgeMissing, "from-projected": depgraph.EdgeMissing,
 	} {
-		e := edgeOf(t, g, podRefOf("refs"), cmRef(name), depgraph.EdgeMounts)
+		e := edgeOf(t, g, cfgPodRef("refs"), cmRef(name), depgraph.EdgeMounts)
 		if e.State != want {
 			t.Errorf("edge to %s = %s, want %s", name, e.State, want)
 		}
@@ -92,7 +92,7 @@ func TestConfigMapsAreReadByNameOnly(t *testing.T) {
 	f := graphtest.NewFakeReader()
 	f.PutYAML(t, refsPod)
 	f.PutYAML(t, cmManifest("from-volume"))
-	build(t, f, podRefOf("refs"), configOpts())
+	build(t, f, cfgPodRef("refs"), configOpts())
 	var gets int
 	for _, c := range f.CallLog() {
 		switch {
@@ -124,7 +124,7 @@ spec:
 status: {phase: Running, conditions: [{type: Ready, status: "True"}]}
 `)
 	f.PutYAML(t, cmManifest("shared"))
-	build(t, f, podRefOf("dup"), configOpts())
+	build(t, f, cfgPodRef("dup"), configOpts())
 	n := 0
 	for _, c := range f.CallLog() {
 		if strings.HasPrefix(c, "GET ConfigMap") {
@@ -171,11 +171,11 @@ status: {phase: Running, conditions: [{type: Ready, status: "True"}]}
 			if !shared.Placeholder {
 				t.Fatalf("shared = %+v, want a placeholder for the required reference", shared)
 			}
-			e := edgeOf(t, g, podRefOf(tc.requiredPod), cmRef("shared"), depgraph.EdgeMounts)
+			e := edgeOf(t, g, cfgPodRef(tc.requiredPod), cmRef("shared"), depgraph.EdgeMounts)
 			if e.State != depgraph.EdgeMissing {
 				t.Errorf("required edge = %+v", e)
 			}
-			if es := g.EdgesFrom(podRefOf(tc.optionalPod), depgraph.EdgeMounts); len(es) != 0 {
+			if es := g.EdgesFrom(cfgPodRef(tc.optionalPod), depgraph.EdgeMounts); len(es) != 0 {
 				t.Errorf("optional reference must not become an edge: %+v", es)
 			}
 			for _, e := range g.Edges() { // ни одно ребро не ведёт в никуда
@@ -199,8 +199,8 @@ spec:
 status: {phase: Running, conditions: [{type: Ready, status: "True"}]}
 `)
 	f.PutYAML(t, cmManifest("here"))
-	g := build(t, f, podRefOf("opt"), configOpts())
-	if e := edgeOf(t, g, podRefOf("opt"), cmRef("here"), depgraph.EdgeMounts); e.State != depgraph.EdgeOK {
+	g := build(t, f, cfgPodRef("opt"), configOpts())
+	if e := edgeOf(t, g, cfgPodRef("opt"), cmRef("here"), depgraph.EdgeMounts); e.State != depgraph.EdgeOK {
 		t.Errorf("edge = %+v", e)
 	}
 }
@@ -210,12 +210,12 @@ func TestConfigMapForbiddenIsUnknownNotMissing(t *testing.T) {
 	f := graphtest.NewFakeReader()
 	f.PutYAML(t, refsPod)
 	f.Forbid(gvkConfigMap)
-	g := build(t, f, podRefOf("refs"), configOpts())
+	g := build(t, f, cfgPodRef("refs"), configOpts())
 	n := mustNode(t, g, cmRef("from-volume"))
 	if n.Health != depgraph.Unknown || n.Unknown != depgraph.UnknownForbidden || n.Placeholder {
 		t.Errorf("node = %+v", n)
 	}
-	if e := edgeOf(t, g, podRefOf("refs"), cmRef("from-volume"), depgraph.EdgeMounts); e.State != depgraph.EdgeUnknown || e.Reason != "forbidden" {
+	if e := edgeOf(t, g, cfgPodRef("refs"), cmRef("from-volume"), depgraph.EdgeMounts); e.State != depgraph.EdgeUnknown || e.Reason != "forbidden" {
 		t.Errorf("edge = %+v", e)
 	}
 	if !slices.Contains(g.Warnings(), "forbidden:ConfigMap") {
@@ -228,7 +228,7 @@ func TestConfigMapUnavailableIsUnknown(t *testing.T) {
 	f := graphtest.NewFakeReader()
 	f.PutYAML(t, refsPod)
 	f.FailObject(gvkConfigMap, "app", "from-volume", depgraph.ErrUnavailable)
-	g := build(t, f, podRefOf("refs"), configOpts())
+	g := build(t, f, cfgPodRef("refs"), configOpts())
 	if n := mustNode(t, g, cmRef("from-volume")); n.Unknown != depgraph.UnknownUnavailable || n.Placeholder {
 		t.Errorf("node = %+v", n)
 	}
@@ -254,7 +254,7 @@ status: {phase: Running, conditions: [{type: Ready, status: "True"}]}
 	for _, n := range names { // все 45 существуют: «нет» здесь быть не может
 		f.PutYAML(t, cmManifest(n))
 	}
-	g := build(t, f, podRefOf("many"), configOpts())
+	g := build(t, f, cfgPodRef("many"), configOpts())
 
 	if f.Calls() > depgraph.DefaultLimits.MaxReads {
 		t.Errorf("reads = %d, limit %d", f.Calls(), depgraph.DefaultLimits.MaxReads)
@@ -270,7 +270,7 @@ status: {phase: Running, conditions: [{type: Ready, status: "True"}]}
 			read++
 		case n.Health == depgraph.Unknown && n.Unknown == depgraph.UnknownLimit && !n.Placeholder:
 			unknown++
-			if e := edgeOf(t, g, podRefOf("many"), n.Ref, depgraph.EdgeMounts); e.State != depgraph.EdgeUnknown || e.Reason != "limit" {
+			if e := edgeOf(t, g, cfgPodRef("many"), n.Ref, depgraph.EdgeMounts); e.State != depgraph.EdgeUnknown || e.Reason != "limit" {
 				t.Errorf("edge to unread %s = %+v", name, e)
 			}
 		default:
@@ -316,7 +316,7 @@ spec: {containers: [{name: c, image: x, envFrom: [{configMapRef: {name: web-cfg}
 status: {phase: Running, conditions: [{type: Ready, status: "True"}]}
 `)
 	f.PutYAML(t, leakyConfigMap)
-	g := build(t, f, podRefOf("leaky"), configOpts())
+	g := build(t, f, cfgPodRef("leaky"), configOpts())
 
 	n := mustNode(t, g, cmRef("web-cfg"))
 	if n.Health != depgraph.Healthy || n.Object == nil {

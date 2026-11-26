@@ -23,11 +23,9 @@ import (
 const maxStatefulSetClaims = 30 // PVC шаблонов в графе: шаблон × ordinal; сверх — граф усечён (limit.nodes)
 
 func init() {
-	// StatefulSet перечислен среди встроенных видов (kinds.go) как владелец Pod'ов, а реестр отказывается принимать
-	// встроенный вид. Переводим его в расширения здесь, в собственном файле: общие таблицы не правятся. Чтение,
-	// владельцев и здоровье по числу готовых реплик (health.go) это не меняет.
-	allSpecs = slices.DeleteFunc(allSpecs, func(s kindSpec) bool { return s == specStatefulSet })
-	registerKind(kindExt{Spec: specStatefulSet, Seedable: true})
+	// StatefulSet встроен в таблицу видов (kinds.go), поэтому registerKind его отвергает; целью расследования вид
+	// делает markSeedable (kind_job.go). Чтение, владельцы и здоровье по числу готовых реплик остаются встроенными.
+	markSeedable(specStatefulSet)
 	registerExpander("StatefulSet", expandStatefulSet)
 }
 
