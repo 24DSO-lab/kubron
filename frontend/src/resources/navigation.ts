@@ -67,7 +67,7 @@ const NAV_ORDER: string[] = [
   'nodes', 'events',
   'namespaces',
   'workloads', 'config', 'network', 'storage',
-  'helm', 'access', 'argocd', 'flux',
+  'helm', 'access', 'argocd', 'flux', 'audit-compliance',
 ]
 
 export interface NavItem { view: string; label: string; icon?: string }
