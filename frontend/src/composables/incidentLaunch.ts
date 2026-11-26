@@ -15,7 +15,7 @@ export const pendingInvestigation = shallowRef<OpenIncidentRequest | null>(null)
 
 /** Запоминает цель и переключает экран на «Расследования». У кластерных объектов namespace пустой. */
 export function investigate(kind: TargetKind, namespace: string, name: string): void {
-  pendingInvestigation.value = { kind, namespace: isClusterScoped(kind) ? '' : namespace, name }
+  pendingInvestigation.value = { kind, namespace: isClusterScoped(kind) ? '' : namespace, name, disableLogs: false }
   useK8s().switchView('incidents')
 }
 
