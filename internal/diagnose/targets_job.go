@@ -74,7 +74,7 @@ func (col *collector) listJobPods(ctx context.Context, job *batchv1.Job) {
 func (col *collector) keepNewestPods() {
 	pods := col.c.Pods
 	slices.SortStableFunc(pods, func(a, b *corev1.Pod) int {
-		if c := b.CreationTimestamp.Compare(a.CreationTimestamp); c != 0 {
+		if c := b.CreationTimestamp.Compare(a.CreationTimestamp.Time); c != 0 {
 			return c
 		}
 		return strings.Compare(a.Name, b.Name)
