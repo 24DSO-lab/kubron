@@ -61,7 +61,7 @@
 </template>
 
 <script lang="ts" setup>
-import { defineAsyncComponent, ref } from 'vue'
+import { defineAsyncComponent, ref, type Component } from 'vue'
 import CorrelationBlock from './CorrelationBlock.vue'
 import EventsTable from './EventsTable.vue'
 import EvidencePanel from './EvidencePanel.vue'
@@ -103,7 +103,7 @@ const emit = defineEmits<{
  */
 const MAP_PATH = './map/DependencyMap.vue'
 const mapLoaders = import.meta.glob('./map/DependencyMap.vue')
-const DependencyMap = mapLoaders[MAP_PATH] ? defineAsyncComponent(mapLoaders[MAP_PATH] as () => Promise<never>) : null
+const DependencyMap = mapLoaders[MAP_PATH] ? defineAsyncComponent(mapLoaders[MAP_PATH] as () => Promise<Component>) : null
 const selectedNode = ref('')
 
 function when(iso: string): string {
