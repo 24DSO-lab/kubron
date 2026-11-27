@@ -17,10 +17,12 @@ type Transaction = {
   asset: string
   network: string
   amount: string
-  txHash: string
+  txHash?: string
   fromAddress?: string
+  donorName?: string
+  source?: 'donationalerts'
   receivedAt: string
-  explorerTxUrl: string
+  explorerTxUrl?: string
   status: 'confirmed'
 }
 
@@ -135,14 +137,18 @@ async function copyAddress(wallet: Wallet) {
       <p v-else-if="transactions.length === 0" class="donations-empty">{{ isRussian ? 'Пока нет поступлений за последние 30 дней. Станьте одним из первых спонсоров Kubron.' : 'There are no contributions in the last 30 days yet. Be one of the first Kubron sponsors.' }}</p>
       <div v-else class="donations-table-wrap">
         <table class="donations-table">
-          <thead><tr><th>{{ isRussian ? 'Дата (UTC)' : 'Date (UTC)' }}</th><th>{{ isRussian ? 'Актив / сеть' : 'Asset / network' }}</th><th>{{ isRussian ? 'Сумма' : 'Amount' }}</th><th>{{ isRussian ? 'Отправитель' : 'From' }}</th><th>{{ isRussian ? 'Транзакция' : 'Transaction' }}</th></tr></thead>
+          <thead><tr><th>{{ isRussian ? 'Дата (UTC)' : 'Date (UTC)' }}</th><th>{{ isRussian ? 'Актив / сеть' : 'Asset / network' }}</th><th>{{ isRussian ? 'Сумма' : 'Amount' }}</th><th>{{ isRussian ? 'Спонсор' : 'Sponsor' }}</th><th>{{ isRussian ? 'Транзакция' : 'Transaction' }}</th></tr></thead>
           <tbody>
             <tr v-for="tx in transactions" :key="tx.id">
               <td>{{ formatDate(tx.receivedAt) }}</td>
               <td>{{ tx.asset }} · {{ tx.network }}</td>
               <td>{{ tx.amount }}</td>
-              <td :title="tx.fromAddress || (isRussian ? 'Не указан' : 'Not provided')">{{ tx.fromAddress ? shortAddress(tx.fromAddress) : '—' }}</td>
-              <td><a :href="tx.explorerTxUrl" target="_blank" rel="noopener noreferrer">{{ shortAddress(tx.txHash) }} ↗</a></td>
+              <td :title="tx.donorName || tx.fromAddress || (isRussian ? 'Не указан' : 'Not provided')">{{ tx.donorName || (tx.fromAddress ? shortAddress(tx.fromAddress) : '—') }}</td>
+              <td>
+                <a v-if="tx.explorerTxUrl && tx.txHash" :href="tx.explorerTxUrl" target="_blank" rel="noopener noreferrer">{{ shortAddress(tx.txHash) }} ↗</a>
+                <a v-else-if="tx.source === 'donationalerts'" href="https://www.donationalerts.com/r/kubron" target="_blank" rel="noopener noreferrer">DonationAlerts ↗</a>
+                <span v-else>—</span>
+              </td>
             </tr>
           </tbody>
         </table>

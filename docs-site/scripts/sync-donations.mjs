@@ -22,6 +22,30 @@ const tx = (asset, network, hash, amount, fromAddress, time, explorer, suffix = 
   id: `${network}:${hash.toLowerCase()}${suffix}`, asset, network, amount, txHash: hash,
   ...(fromAddress ? { fromAddress } : {}), receivedAt: new Date(time).toISOString(), explorerTxUrl: explorer, status: 'confirmed'
 })
+async function donationAlerts() {
+  const secret = process.env.DONATIONALERTS_SYNC_SECRET ?? ''
+  if (!secret) return []
+  const endpoint = process.env.DONATIONALERTS_SYNC_URL ?? 'https://kubron.pages.dev/api/donationalerts/sync'
+  const response = await fetch(endpoint, { method: 'POST', headers: { Accept: 'application/json', Authorization: `Bearer ${secret}` }, signal: AbortSignal.timeout(20000) })
+  if (!response.ok) throw new Error(`DonationAlerts sync endpoint returned HTTP ${response.status}`)
+  const result = await response.json()
+  if (!Array.isArray(result.data)) throw new Error('Invalid DonationAlerts sync response')
+  return result.data.flatMap(item => {
+    const id = String(item.id ?? '')
+    const currency = String(item.currency ?? '').trim().toUpperCase()
+    const amount = String(item.amount ?? '')
+    const createdAt = String(item.created_at ?? '')
+    const timestamp = Date.parse(createdAt.includes('T') ? createdAt : createdAt.replace(' ', 'T') + 'Z')
+    if (!id || !/^[A-Z]{3,8}$/.test(currency) || !/^[0-9]+([.][0-9]+)?$/.test(amount) ||
+      !Number.isFinite(timestamp) || Number(amount) <= 0) return []
+    const donorName = typeof item.username === 'string' ? item.username.trim().slice(0, 100) : ''
+    return [{
+      id: `donationalerts:${id}`, asset: currency, network: 'DonationAlerts', amount,
+      txHash: id, receivedAt: new Date(timestamp).toISOString(), status: 'confirmed',
+      source: 'donationalerts', ...(donorName ? { donorName } : {}),
+    }]
+  })
+}
 async function bitcoin(wallet) {
   const [items, tip] = await Promise.all([
     fetchJson(`https://mempool.space/api/address/${encodeURIComponent(wallet.address)}/txs`),
@@ -80,6 +104,7 @@ export async function syncDonations({ dryRun = false } = {}) {
     if (!sources[w.id]) throw new Error(`Unknown wallet id: ${w.id}`)
     incoming.push(...await sources[w.id](w))
   }
+  incoming.push(...await donationAlerts())
   const ids = new Set(data.transactions.map(x => x.id))
   const fresh = incoming.filter(x => !ids.has(x.id))
   data.transactions = [...data.transactions, ...fresh].sort((a, b) => Date.parse(b.receivedAt) - Date.parse(a.receivedAt))
