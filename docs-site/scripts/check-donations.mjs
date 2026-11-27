@@ -40,16 +40,23 @@ const transactionIds = new Set()
 const transactionKeys = new Set()
 for (const [index, tx] of (data.transactions ?? []).entries()) {
   const label = `transactions[${index}]`
-  for (const field of ['id', 'asset', 'network', 'amount', 'txHash', 'receivedAt', 'explorerTxUrl']) {
+  for (const field of ['id', 'asset', 'network', 'amount', 'receivedAt']) {
     if (typeof tx[field] !== 'string' || !tx[field].trim()) errors.push(`${label}.${field} is required`)
   }
-  if (!/^[0-9]+([.][0-9]+)?$/.test(tx.amount ?? '')) errors.push(`${label}.amount must be a decimal string`)
-  if (!Number.isFinite(Date.parse(tx.receivedAt))) errors.push(`${label}.receivedAt must be a valid date`)
-  if (!isHttpsUrl(tx.explorerTxUrl)) errors.push(`${label}.explorerTxUrl must use HTTPS`)
+  if (tx.source === 'donationalerts') {
+    if (typeof tx.txHash !== 'string' || !tx.txHash.trim()) errors.push(`${label}.txHash is required for DonationAlerts records`)
+    if (tx.explorerTxUrl !== undefined) errors.push(`${label}.explorerTxUrl must be omitted for DonationAlerts records`)
+    if (tx.donorName !== undefined && typeof tx.donorName !== 'string') errors.push(`${label}.donorName must be a string`)
+  } else {
+    for (const field of ['txHash', 'explorerTxUrl']) {
+      if (typeof tx[field] !== 'string' || !tx[field].trim()) errors.push(`${label}.${field} is required`)
+    }
+    if (tx.explorerTxUrl && !isHttpsUrl(tx.explorerTxUrl)) errors.push(`${label}.explorerTxUrl must use HTTPS`)
+  }
   if (tx.status !== 'confirmed') errors.push(`${label}.status must be confirmed`)
   if (transactionIds.has(tx.id)) errors.push(`${label}.id is duplicated`)
   transactionIds.add(tx.id)
-  const key = `${tx.network}/${tx.txHash}/${tx.id}`
+  const key = `${tx.network}/${tx.txHash ?? tx.id}/${tx.id}`
   if (transactionKeys.has(key)) errors.push(`${label} duplicates transaction record ${key}`)
   transactionKeys.add(key)
   if (tx.fromAddress !== undefined && typeof tx.fromAddress !== 'string') errors.push(`${label}.fromAddress must be a string`)
