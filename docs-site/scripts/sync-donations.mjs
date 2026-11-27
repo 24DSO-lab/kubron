@@ -27,7 +27,8 @@ async function donationAlerts() {
   if (!secret) return []
   const endpoint = process.env.DONATIONALERTS_SYNC_URL ?? 'https://kubron.pages.dev/api/donationalerts/sync'
   const response = await fetch(endpoint, { method: 'POST', headers: { Accept: 'application/json', Authorization: `Bearer ${secret}` }, signal: AbortSignal.timeout(20000) })
-  if (!response.ok) throw new Error(`DonationAlerts sync endpoint returned HTTP ${response.status}`)\n  const result = await response.json()
+  if (!response.ok) throw new Error(`DonationAlerts sync endpoint returned HTTP ${response.status}`)
+  const result = await response.json()
   if (!Array.isArray(result.data)) throw new Error('Invalid DonationAlerts sync response')
   return result.data.flatMap(item => {
     const id = String(item.id ?? '')
@@ -108,7 +109,8 @@ export async function syncDonations({ dryRun = false } = {}) {
   const fresh = incoming.filter(x => !ids.has(x.id))
   data.transactions = [...data.transactions, ...fresh].sort((a, b) => Date.parse(b.receivedAt) - Date.parse(a.receivedAt))
   data.updatedAt = new Date().toISOString()
-  if (!dryRun) await writeFile(DATA_PATH, JSON.stringify(data, null, 2) + '\n')
+  if (!dryRun) await writeFile(DATA_PATH, JSON.stringify(data, null, 2) + '
+')
   return { added: fresh.length, total: data.transactions.length, data }
 }
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
