@@ -69,10 +69,6 @@ function toBase64(bytes: Uint8Array): string {
   return btoa(binary)
 }
 
-function fromBase64(value: string): Uint8Array {
-  return Uint8Array.from(atob(value), c => c.charCodeAt(0))
-}
-
 async function encryptionKey(secret: string, cryptoImpl: Crypto): Promise<CryptoKey> {
   const digest = await cryptoImpl.subtle.digest('SHA-256', new TextEncoder().encode(secret))
   return cryptoImpl.subtle.importKey('raw', digest, { name: 'AES-GCM' }, false, ['encrypt'])
@@ -125,7 +121,7 @@ export async function handleCallback(request: Request, env: DonationAlertsEnv, r
   await env.DONATIONALERTS.delete(stateKey)
 
   let callback: string
-  try { callback = redirectUri(request, env) } catch { return html(503, 'Kubron · DonationAlerts', 'The integration is not configured yet.') }
+  try { callback = redirectUri(env) } catch { return html(503, 'Kubron · DonationAlerts', 'The integration is not configured yet.') }
 
   const body = new URLSearchParams({
     grant_type: 'authorization_code',
