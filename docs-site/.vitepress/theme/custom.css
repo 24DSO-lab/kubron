@@ -255,3 +255,8 @@
 .donations-alerts-button { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 18px; border: 1px solid var(--vp-c-brand-1); border-radius: 9px; color: #fff !important; background: var(--vp-c-brand-1); font-size: 13px; font-weight: 700; text-decoration: none !important; transition: background-color 160ms ease, border-color 160ms ease, transform 160ms ease; }
 .donations-alerts-button:hover { border-color: var(--vp-c-brand-2); background: var(--vp-c-brand-2); transform: translateY(-1px); }
 .donations-alerts-button:focus-visible { outline: 3px solid var(--vp-c-brand-soft); outline-offset: 3px; }
+
+
+/* Boosty contribution call to action */
+.donations-boosty-button { border-color: #f15f9b; background: #f15f9b; }
+.donations-boosty-button:hover { border-color: #e94b8b; background: #e94b8b; }
