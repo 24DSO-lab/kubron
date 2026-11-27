@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 concurrency:
   group: donations-ledger
@@ -46,9 +47,11 @@ jobs:
         run: npm run donations:check
 
       - name: Commit and push ledger update
+        id: commit
         run: |
           if git diff --quiet -- docs-site/public/donations.json; then
-            echo "No new donation transactions."
+            echo "No ledger changes."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           git config user.name "github-actions[bot]"
@@ -56,3 +59,12 @@ jobs:
           git add docs-site/public/donations.json
           git commit -m "chore(sponsors): update public donation ledger"
           git push origin refactor
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      # Pushes made with GITHUB_TOKEN do not trigger another workflow's push event.
+      # Dispatch the docs workflow explicitly so the updated public JSON reaches Pages.
+      - name: Deploy updated donation ledger
+        if: steps.commit.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run docs.yml --ref refactor
