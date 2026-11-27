@@ -96,10 +96,26 @@ Per-replica values (sessions, WebSockets, terminals, streams) must be summed acr
 | `kubron_cluster_health_leader` | gauge | | `1` if this replica runs the cluster checks (otherwise it reads the leader's results) |
 | `kubron_draining` | gauge | | `1` while the replica is stopping (`/readyz` returns `503`) |
 | `kubron_db_pool_*` | gauge, counter | | Database pool: in use, idle, total, maximum, waiting (PostgreSQL only) |
+| `kubron_ops_operations_total` | counter | `module`, `operation`, `status` | Runs of diagnostic and lifecycle operations (incidents, upgrade readiness, baseline). `status` is `ok`, `partial`, `failed`, `canceled` or `deadline` |
+| `kubron_ops_operation_duration_seconds` | histogram | `module`, `operation` | Duration of those operations |
 | `kubron_build_info` | gauge | `version`, `go_version` | Always `1` |
 | `go_*`, `process_*` | | | Standard Go runtime and process metrics |
 
 Counters start from zero whenever a replica starts, so use `rate()` and `increase()`.
+
+### Diagnostic and lifecycle operations
+
+Incidents, upgrade readiness and configuration baseline run through one shared layer, so they behave the same way and are observed the same way.
+
+- **Read-only, through the existing connection.** They use the cluster account that is already configured, only read, and never read Secrets. There is no agent in the cluster.
+- **Bounded.** An operation has a deadline of 60 seconds, a single cluster read 20 seconds, and at most 4 reads of one cluster run at the same time in a process. A source that did not answer in time makes the result **partial**; it is never shown as empty and healthy.
+- **Audited and measured.** Every run and every refusal by permission is written to the audit log, and counted in `kubron_ops_operations_total` and `kubron_ops_operation_duration_seconds`. The labels hold only the module, the operation and the status: no users, clusters or namespaces, so the cardinality stays small. The process log gets one line per operation with the correlation id and the number of partial sources.
+
+Growth of `status="deadline"` or `status="partial"` usually means the cluster API or the metrics stack answers slowly:
+
+```text
+sum by (module) (increase(kubron_ops_operations_total{status=~"deadline|failed"}[1h])) > 0
+```
 
 ### Example queries and alerts
 

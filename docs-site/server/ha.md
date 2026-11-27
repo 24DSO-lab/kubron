@@ -81,6 +81,8 @@ Jobs that exactly one replica must run are held under a PostgreSQL advisory lock
 | Expired web sessions | 1 min | Deletes expired `web_sessions` rows |
 | Sign-in counters | 1 min | Deletes unlocked `login_failures` rows older than 15 minutes, and rows beyond 10,000 |
 | Audit retention | 5 min | Only with `KUBRON_AUDIT_RETENTION` (for example `2160h`): deletes entries older than the period, up to 10,000 per tick |
+| Incident retention | `KUBRON_INCIDENT_PURGE_INTERVAL` (1 h) | Deletes expired investigations and saved log fragments, and problems left without living members |
+| Readiness retention | 1 h | Deletes upgrade readiness reports beyond `KUBRON_READINESS_KEEP_PER_CLUSTER` or older than `KUBRON_READINESS_MAX_AGE` |
 | Baseline retention | 1 h | Deletes check results older than `KUBRON_BASELINE_RESULTS_RETENTION_DAYS` and versions beyond the latest `KUBRON_BASELINE_MIN_VERSIONS` of each baseline (never the active one) |
 
 - **The audit log is kept forever by default.** `KUBRON_AUDIT_RETENTION` takes a Go duration (`720h`; days are not supported). `0` or empty keeps everything; values under `24h` are rejected so a typo cannot wipe the log.

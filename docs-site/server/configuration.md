@@ -101,6 +101,13 @@ Durations use Go syntax (`30s`, `15m`, `12h`). Boolean variables accept `1`, `tr
 | `KUBRON_AUDIT_RETENTION` | `0` (forever) | How long audit entries are kept in PostgreSQL. A non-zero value must be at least `24h`. |
 | `KUBRON_BASELINE_RESULTS_RETENTION_DAYS` | `90` | How many days the results of configuration baseline checks are kept (1 to 3650). |
 | `KUBRON_BASELINE_MIN_VERSIONS` | `20` | How many of the latest versions of each baseline are kept (at least 20). The active version is never removed. |
+| `KUBRON_INCIDENT_LOG_EVIDENCE` | `on` | Default for organizations without saved settings: whether incident investigations may save log fragments (`on` or `off`). An invalid value stops the server from starting. |
+| `KUBRON_INCIDENT_FRAGMENT_RETENTION_DAYS` | `15` | Default retention of saved log fragments in days, from 1 to 15 (15 is also the upper limit). |
+| `KUBRON_INCIDENT_RETENTION_DAYS` | `90` | Default retention of investigations in days, from 1 to 365. |
+| `KUBRON_INCIDENT_EXCLUDED_NAMESPACES` | empty | Comma-separated namespaces whose logs are never saved. |
+| `KUBRON_INCIDENT_PURGE_INTERVAL` | `1h` | How often expired investigations and fragments are removed. |
+| `KUBRON_READINESS_KEEP_PER_CLUSTER` | `50` | How many upgrade readiness reports are kept per cluster, 0 to 1000 (`0` means no limit). |
+| `KUBRON_READINESS_MAX_AGE` | `4320h` (180 days) | How long readiness reports are kept, as a Go duration (days are not supported); `0` means no limit, otherwise at least `24h`. An invalid value turns the readiness cleanup off and is logged. |
 | `KUBRON_AUDIT_STDOUT` | off | Also write every audit entry as a JSON line to stdout, for an external log collector. The database log stays the primary one. |
 | `KUBRON_CLUSTER_CHECK_INTERVAL` | `30s` | How often cluster connectivity is checked in the background. `0` disables the check. |
 | `KUBRON_LOG_LEVEL` | `info` | `debug`, `info`, `warn` or `error`. |
