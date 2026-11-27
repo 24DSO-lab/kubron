@@ -109,7 +109,7 @@ async function copyAddress(wallet: Wallet) {
         <h3 id="boosty-title">{{ isRussian ? 'Поддержать через Boosty' : 'Support via Boosty' }}</h3>
         <p class="donations-muted">{{ isRussian ? 'Подписка или разовое пожертвование помогают развивать Kubron.' : 'A subscription or one-time contribution helps support the development of Kubron.' }}</p>
       </div>
-      <a class="donations-alerts-button donations-boosty-button" href="https://boosty.to/kubron" target="_blank" rel="noopener noreferrer">
+      <a class="donations-alerts-button donations-boosty-button" href="https://boosty.to/kubron/donate" target="_blank" rel="noopener noreferrer">
         {{ isRussian ? 'Поддержать на Boosty ↗' : 'Support on Boosty ↗' }}
       </a>
     </section>
