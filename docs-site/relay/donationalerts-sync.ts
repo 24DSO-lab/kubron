@@ -116,10 +116,18 @@ async function validAccessToken(env: SyncEnv, tokens: Record<string, unknown>): 
   return next
 }
 
+export function parseDonationTimestamp(value: unknown): number | null {
+  if (typeof value !== 'string' || !value.trim()) return null
+  const normalized = value.includes('T') ? value : value.replace(' ', 'T')
+  const hasTimezone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(normalized)
+  const timestamp = Date.parse(hasTimezone ? normalized : `${normalized}Z`)
+  return Number.isFinite(timestamp) ? timestamp : null
+}
+
 function isRecentDonation(value: unknown): boolean {
-  if (typeof value !== 'string') return false
-  const timestamp = Date.parse(value.includes('T') ? value : value.replace(' ', 'T') + 'Z')
-  return Number.isFinite(timestamp) && timestamp >= Date.now() - 30 * 24 * 60 * 60 * 1000
+  const timestamp = parseDonationTimestamp(value)
+  const now = Date.now()
+  return timestamp !== null && timestamp >= now - 30 * 24 * 60 * 60 * 1000 && timestamp <= now
 }
 
 async function getRecentDonations(accessToken: string): Promise<Record<string, unknown>[]> {
@@ -148,8 +156,9 @@ async function getRecentDonations(accessToken: string): Promise<Record<string, u
       }
     }
     pages++
-    const oldest = items.map(item => typeof item.created_at === 'string' ? Date.parse(item.created_at.replace(' ', 'T') + 'Z') : NaN)
-      .filter(Number.isFinite).reduce((min, value) => Math.min(min, value), Number.POSITIVE_INFINITY)
+    const oldest = items.map(item => parseDonationTimestamp(item.created_at))
+      .filter((value): value is number => value !== null)
+      .reduce((min, value) => Math.min(min, value), Number.POSITIVE_INFINITY)
     if (oldest < Date.now() - 30 * 24 * 60 * 60 * 1000) break
     const links = page.links as { next?: unknown } | undefined
     next = typeof links?.next === 'string' ? links.next : null
