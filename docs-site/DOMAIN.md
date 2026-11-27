@@ -52,4 +52,31 @@ The Pages Function `functions/api/bugreport.ts` (logic in `relay/bugreport.ts`) 
 Limits: 10 reports an hour per address and 200 a day in total; the free Cloudflare plan allows 100,000 Functions
 requests a day.
 
-The receiver tests run in the workflow before the build: `npm run test:relay`.
+## DonationAlerts OAuth
+
+The DonationAlerts OAuth routes are Pages Functions under `functions/api/donationalerts/`; implementation and tests
+are in `relay/donationalerts.ts` and `relay/donationalerts.test.ts`.
+
+1. Register an OAuth app at https://www.donationalerts.com/application/clients.
+2. Set its redirect URI to exactly `https://kubron.pages.dev/api/donationalerts/callback`.
+3. Request the least-privilege scope `oauth-donation-index` (read donation history).
+4. In Cloudflare Pages → project `kubron` → **Settings → Bindings**, create a dedicated KV namespace binding named
+   `DONATIONALERTS`. Do not reuse the bug-report `RATE` namespace.
+5. In **Settings → Variables and Secrets** (production), configure:
+   - `DONATIONALERTS_CLIENT_ID`: numeric OAuth client ID;
+   - `DONATIONALERTS_CLIENT_SECRET`: secret OAuth client secret;
+   - `DONATIONALERTS_TOKEN_ENCRYPTION_KEY`: random secret of at least 32 characters;
+   - `DONATIONALERTS_REDIRECT_URI`: must exactly equal the callback URI above.
+
+Generate the encryption key with `openssl rand -base64 48`. The OAuth tokens are encrypted with AES-GCM before storage in KV.
+Never commit or share OAuth credentials.
+
+After deployment and configuration, open `https://kubron.pages.dev/api/donationalerts/connect` to authorize the Kubron
+account. The callback confirms success without exposing tokens. `GET /api/donationalerts/status` returns only a boolean
+connection status.
+
+This milestone implements OAuth authorization and secure token storage only. Automatic donation synchronization and
+publishing DonationAlerts entries in the public ledger are not enabled yet; they will be added as a separate step after
+the OAuth application is registered and the account is connected.
+
+The relay tests run in the workflow before the build: `npm run test:relay`.
