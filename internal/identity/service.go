@@ -622,7 +622,20 @@ func (s *Service) protect(ctx context.Context, p protected, apply func(eventID s
 		if aerr := s.rec.AppendOutcome(octx, out); aerr != nil {
 			return fmt.Errorf("%w: %w", audit.ErrOutcomeUnknown, aerr)
 		}
-		return s.confirm(octx, p.principal.OrgID, lastEvent, rev)
+		// The backend may return a mutation committed by a concurrent request. Only that
+		// request owns lastEvent and may append its outcome; this replay must not race it
+		// by synthesizing a second succeeded outcome with a different completion time.
+		existing, getErr := s.rec.GetOutcome(octx, p.principal.OrgID, lastEvent)
+		switch {
+		case getErr == nil && existing.Result == audit.CriticalSucceeded:
+			return nil
+		case errors.Is(getErr, audit.ErrCriticalNotFound):
+			return fmt.Errorf("%w: %s", audit.ErrOutcomeUnknown, "concurrent mutation is not yet audited")
+		case getErr != nil:
+			return fmt.Errorf("%w: %w", ErrUnavailable, getErr)
+		default:
+			return fmt.Errorf("%w: %s", audit.ErrOutcomeUnknown, "concurrent mutation has a non-succeeded outcome")
+		}
 	}
 	out := audit.CriticalOutcome{EventID: eventID, Result: audit.CriticalSucceeded, ResourceRevision: rev, CompletedAt: s.now()}
 	if aerr := s.rec.AppendOutcome(octx, out); aerr != nil {
