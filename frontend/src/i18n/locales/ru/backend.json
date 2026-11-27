@@ -1067,5 +1067,11 @@
   "criticalQuarantineCreateError": "audit: не удалось создать файл карантина: {p0}",
   "criticalTailQuarantineError": "audit: не удалось поместить хвост в карантин: {p0}",
   "criticalJournalTruncateError": "audit: не удалось усечь критичный журнал: {p0}",
-  "criticalJournalFinalSyncError": "audit: не удалось синхронизировать критичный журнал: {p0}"
+  "criticalJournalFinalSyncError": "audit: не удалось синхронизировать критичный журнал: {p0}",
+  "identityNotFound": "identity: не найдена",
+  "identityRevisionConflict": "identity: конфликт версии",
+  "identityInvalid": "identity: некорректные данные",
+  "identityForbidden": "identity: доступ запрещён",
+  "identityRevoked": "identity: отозвана",
+  "identityDependencyUnavailable": "identity: зависимость недоступна"
 }
