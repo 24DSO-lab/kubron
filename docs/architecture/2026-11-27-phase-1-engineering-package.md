@@ -4,6 +4,7 @@
 - Дата: 2026-11-27
 - Исходная проверенная code baseline при подготовке handoff: refactor SHA f102f31ce79b9fdffb8762c5b7ba1655574343f4
 - Contract Freeze follow-up подготовлен поверх refactor SHA d0dbbe5f978af96aa05de17b5523a4a812102f8b; промежуточное изменение затронуло только docs-site
+- Контракты Go и границы четырёх lanes: [Phase 1 Contract Freeze](2026-11-27-phase-1-contract-freeze.md)
 - Нормативные документы:
   - Executable Platform Architecture Specification
   - Phase 0 Executable Contracts
