@@ -109,8 +109,7 @@ export async function syncDonations({ dryRun = false } = {}) {
   const fresh = incoming.filter(x => !ids.has(x.id))
   data.transactions = [...data.transactions, ...fresh].sort((a, b) => Date.parse(b.receivedAt) - Date.parse(a.receivedAt))
   data.updatedAt = new Date().toISOString()
-  if (!dryRun) await writeFile(DATA_PATH, JSON.stringify(data, null, 2) + '
-')
+  if (!dryRun) await writeFile(DATA_PATH, JSON.stringify(data, null, 2) + '\n')
   return { added: fresh.length, total: data.transactions.length, data }
 }
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
