@@ -1067,5 +1067,11 @@
   "criticalQuarantineCreateError": "审计：创建隔离文件失败：{p0}",
   "criticalTailQuarantineError": "审计：隔离日志尾部失败：{p0}",
   "criticalJournalTruncateError": "审计：截断关键日志失败：{p0}",
-  "criticalJournalFinalSyncError": "审计：最终同步关键日志失败：{p0}"
+  "criticalJournalFinalSyncError": "审计：最终同步关键日志失败：{p0}",
+  "identityNotFound": "identity: 未找到",
+  "identityRevisionConflict": "identity: 版本冲突",
+  "identityInvalid": "identity: 无效",
+  "identityForbidden": "identity: 禁止访问",
+  "identityRevoked": "identity: 已撤销",
+  "identityDependencyUnavailable": "identity: 依赖不可用"
 }
