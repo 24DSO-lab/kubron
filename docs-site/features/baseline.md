@@ -4,6 +4,8 @@ A baseline records the current configuration of selected resources. Later you ru
 
 [[toc]]
 
+You find it in the **Cluster Lifecycle** group at the bottom of the sidebar, together with [Upgrade readiness](/features/upgrade-readiness).
+
 ## What is supported
 
 Deployments, StatefulSets, DaemonSets, Services, Ingresses, NetworkPolicies and ConfigMaps. **Secrets are not supported and are never read**, even if you list one explicitly.
@@ -47,3 +49,18 @@ Kubron keeps at least the 20 latest versions of every baseline and never removes
 ## Exceptions
 
 An exception excludes a field from comparison for one resource or for every resource of a type. It needs a comment and can expire. Exceptions are listed in every result, so a hidden difference stays visible. Expired exceptions are not applied.
+
+## Where a change came from
+
+A source is shown only when there is evidence: a `managedFields` entry (the manager and the time), or a Kubron audit entry for applying YAML whose time matches it within 30 seconds. The name of a person is never shown. No evidence means no source.
+
+## Access, audit and storage
+
+| Action | Permission |
+|---|---|
+| View, history, run a check | `read` |
+| Preview and create a version, change the active one, exceptions, delete | `baseline.manage` (`admin` by default) |
+
+Previews, versions, activations, exceptions, checks and deletions are written to the audit log without the content of resources. A baseline belongs to the organization, team and cluster; another team never sees it. Creating a version, activating one and editing exceptions are atomic, so two people editing at once do not lose each other's changes.
+
+On desktop baselines are stored in files in the data folder. On the server they are stored in PostgreSQL, and versions are encrypted at rest and re-encrypted on key rotation. Retention is set by `KUBRON_BASELINE_RESULTS_RETENTION_DAYS` and `KUBRON_BASELINE_MIN_VERSIONS` ([Configuration](/server/configuration)).

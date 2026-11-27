@@ -52,6 +52,14 @@ Kubron is a Kubernetes Operations Workspace available as a native Desktop applic
 - Add evidence from the metrics stack when it is available. The report is complete without it.
 - See which other workloads share the same source, such as a Node under memory pressure, and group related investigations into a problem.
 - Mark the result and see which hypotheses and recommendations helped in your cluster. Nothing is sent anywhere automatically.
+- Start an investigation from the **Investigate** action of a resource, or from **Incidents** in the sidebar.
+
+## Cluster lifecycle
+
+The **Cluster Lifecycle** group at the bottom of the sidebar assesses changes before they happen. Both checks only read the cluster.
+
+- [Upgrade readiness](/features/upgrade-readiness): deprecated and removed APIs in live objects, compatibility of kubelet and common system components, the upgrade path, and a report that says what was **not checked**. Reports are kept as a history, compared with the previous one and exported as JSON or Markdown.
+- [Configuration baseline](/features/baseline): record the configuration of selected resources, then check what drifted from it. Sensitive values are stored only as hashes, and Secrets are never read. Kubron does not apply a baseline and does not fix drift.
 
 ## Helm and GitOps
 
@@ -77,6 +85,7 @@ Kubron is a Kubernetes Operations Workspace available as a native Desktop applic
 - [Working with resources](/features/working-with-resources)
 - [Day-to-day operations](/features/operations)
 - [Debug containers](/features/debug-containers)
+- [Upgrade readiness](/features/upgrade-readiness)
 - [Configuration baseline](/features/baseline)
 - [Metrics stack and charts](/features/metrics)
 - [Incidents](/features/intelligence)
