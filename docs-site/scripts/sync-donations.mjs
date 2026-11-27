@@ -52,6 +52,7 @@ async function donationAlerts() {
 async function fetchBitcoinHistory(initialUrl) {
   const items = []
   let url = new URL(initialUrl)
+  let hasMore = false
   for (let page = 0; page < MAX_SCAN_PAGES; page++) {
     const batch = await fetchJson(url)
     if (!Array.isArray(batch) || batch.length === 0) break
@@ -60,15 +61,21 @@ async function fetchBitcoinHistory(initialUrl) {
     if (confirmed.some(item => item.status.block_time * 1000 < Date.now() - SCAN_WINDOW_MS)) break
     const lastConfirmed = confirmed.at(-1)
     if (!lastConfirmed || confirmed.length < 25) break
+    if (page === MAX_SCAN_PAGES - 1) {
+      hasMore = true
+      break
+    }
     url = new URL(initialUrl)
     url.searchParams.set('after_txid', lastConfirmed.txid)
   }
+  if (hasMore) throw new Error(`Bitcoin history exceeded the ${MAX_SCAN_PAGES}-page safety limit`)
   return items
 }
 
 async function fetchBlockscoutHistory(initialUrl) {
   const items = []
   let url = new URL(initialUrl)
+  let hasMore = false
   for (let page = 0; page < MAX_SCAN_PAGES; page++) {
     const result = await fetchJson(url)
     const batch = Array.isArray(result.items) ? result.items : []
@@ -78,11 +85,16 @@ async function fetchBlockscoutHistory(initialUrl) {
     if (timestamps.length && Math.min(...timestamps) < Date.now() - SCAN_WINDOW_MS) break
     const cursor = result.next_page_params
     if (!cursor || typeof cursor !== 'object' || !Object.keys(cursor).length) break
+    if (page === MAX_SCAN_PAGES - 1) {
+      hasMore = true
+      break
+    }
     url = new URL(initialUrl)
     for (const [key, value] of Object.entries(cursor)) {
       if (value !== null && value !== undefined) url.searchParams.set(key, String(value))
     }
   }
+  if (hasMore) throw new Error(`Ethereum history exceeded the ${MAX_SCAN_PAGES}-page safety limit`)
   return items
 }
 
@@ -133,13 +145,19 @@ async function tron(wallet) {
   })) u.searchParams.set(k, v)
   const headers = TRONGRID_API_KEY ? { 'TRON-PRO-API-KEY': TRONGRID_API_KEY } : {}
   const items = []
+  let hasMore = false
   for (let page = 0; page < MAX_SCAN_PAGES; page++) {
     const result = await fetchJson(u, headers)
     items.push(...(result.data ?? []))
     const fingerprint = result.meta?.fingerprint
     if (!fingerprint || !result.data?.length) break
+    if (page === MAX_SCAN_PAGES - 1) {
+      hasMore = true
+      break
+    }
     u.searchParams.set('fingerprint', fingerprint)
   }
+  if (hasMore) throw new Error(`TRON history exceeded the ${MAX_SCAN_PAGES}-page safety limit`)
   return items.flatMap(item => {
     if (item.to !== wallet.address || item.token_info?.address !== USDT || item.type !== 'Transfer' || !item.block_timestamp || BigInt(item.value ?? 0) <= 0n) return []
     return [tx('USDT', 'TRON (TRC-20)', item.transaction_id, decimalFromUnits(item.value, Number(item.token_info.decimals ?? 6)),
