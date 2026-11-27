@@ -179,7 +179,7 @@ Validation:
     }
 
 Rules:
-- Backend checks structural invariants, owner immutability, revisions and state transitions. Service checks actor authority before mutation.
+- Backend checks structural invariants, owner immutability, revisions and state transitions. Service checks actor authority before mutation. Create accepts only Team/Service kinds; UserPrincipal remains the existing auth user and is not stored as a technical Identity record.
 - Team Identity owner is exactly one Team. Service Identity owner is exactly one Organization. Owner cannot be changed in place.
 - Creator is provenance only. It never becomes owner, execution authority or grant.
 - TeamPrincipal cannot receive cross-Team delegation. ServicePrincipal can receive Team-issued delegation.
@@ -259,7 +259,7 @@ Required behavior:
 - User challenge methods require valid User scope and session binding where Web semantics require it.
 - Technical Team/Service subjects are non-interactive: stored credential/refresh flow may run; if human challenge is required, return ErrChallengeRequired/blocked. Never attach a user session or emit a challenge to another user.
 - Revoke filters for technical subjects specify exact principal kind, principal ID, cluster/binding as required. Empty wildcard filters are reserved for explicitly authorized administrative maintenance, never normal principal revocation.
-- Existing Broker methods and old RPC behavior remain compatible. Technical credential management APIs are not exposed through legacy user-facing RPC accidentally.
+- Existing Broker methods and old RPC behavior remain compatible. Technical credential management APIs are not exposed through legacy user-facing RPC accidentally.\n- Credential assignment, administrative credential replacement/rotation and revoke use CriticalRecorder intent/outcome. Routine provider token refresh is not an identity/grant mutation, but secrets still never enter audit.
 
 In internal/k8s:
 - Keep ConfigFor(ConnPlan) as the **only** constructor of stored-cluster rest.Config.
@@ -365,7 +365,7 @@ Package: internal/authorization. It owns Kubron grants/delegations, not Kubernet
 
 Canonicalization:
 - ID lists are sorted, deduplicated and validated before persistence/digesting.
-- Grant requires explicit OrgID, principal, at least one Operation ID and Action ID, finite expiry, and bounded non-empty target scope. No implicit global wildcard.
+- Grant requires explicit OrgID, principal, at least one Operation ID and Action ID, finite expiry, and at least one explicit target selector (TeamIDs, ClusterIDs, Namespaces or Objects). OrgID alone is not a wildcard.
 - Delegation requires explicit OrgID, owner Team, one same-Organization ServicePrincipal, finite expiry and explicit operations/actions/targets restricted to owner Team.
 - TeamPrincipal grant TargetScope may include only its own Team; evaluator rejects any other Team even if malformed data exists.
 - ServicePrincipal has no implicit Team/Cluster membership or target rights.
@@ -431,8 +431,8 @@ GrantDecision.Granted means **only** that Kubron technical grants + required Tea
 4. For ServicePrincipal, require an active, unexpired delegation issued by target Team for this exact ServicePrincipal. ServicePrincipal is Organization-owned, not Team-owned; therefore every Team-owned cluster target requires explicit consent from that target Team. Organization Admin cannot substitute for Team Admin.
 5. Find active, unexpired grants for the principal matching Operation, Action and target.
 6. Grants combine by union: at least one applicable grant may cover the tuple. All constraints within the qualifying grant are ANDed.
-7. Intersect with identity scope, tenant ownership and required delegation. No grant/delegation, ambiguity, stale revision, missing ownership or unavailable dependency → deny.
-8. Return stable safe reason code and IDs/revisions needed for audit. Do not reveal metadata of foreign targets.
+7. Evaluate every supported ConstraintSet field using trusted target/action facts and server time. If a stored constraint cannot be evaluated by this Phase 1 evaluator, deny; never skip it.\n8. Intersect with identity scope, tenant ownership and required delegation. No grant/delegation, ambiguity, stale revision, missing ownership or unavailable dependency → deny.
+9. Return stable safe reason code and IDs/revisions needed for audit. Do not reveal metadata of foreign targets.
 
 No explicit user Deny grants, precedence ordering or last-grant-wins. Kubernetes RBAC and Autonomy Policy remain mandatory independent gates, implemented outside this package. Evaluator must not fetch credentials, construct a Kubernetes client or call Kubernetes API.
 
@@ -485,7 +485,7 @@ Package: internal/audit. Do not change legacy Logger.Record(Event) best-effort c
     type CriticalRecorder interface {
         AppendIntent(ctx context.Context, in CriticalIntent) error
         AppendOutcome(ctx context.Context, out CriticalOutcome) error
-        ListPending(ctx context.Context, limit int) ([]CriticalIntent, error)
+        ListPending(ctx context.Context, orgID string, limit int) ([]CriticalIntent, error)
     }
 
 EventID identifies one immutable intent/outcome pair; MutationID identifies requested domain mutation. Same EventID + same canonical payload is idempotent. Same EventID + different payload is a conflict. Outcome requires a known intent and is unique; conflicting second outcome is an error. Pending means durable intent exists but no durable outcome exists.
@@ -500,13 +500,13 @@ Every protected Identity/Grant/Delegation/Binding mutation uses this order:
 5. Append CriticalOutcome (succeeded or failed). If outcome append fails after mutation attempt, return typed ErrOutcomeUnknown; do not report success and do not blindly repeat mutation.
 6. Pending intents are reconciled by reading resource and comparing mutation ID/revision/request digest. If result cannot be proven, retain unknown and require explicit safe resolution.
 
-A helper may centralize this protocol, but must not hide errors or automatically retry mutation after unknown outcome.
+A helper may centralize this protocol, but must not hide errors or automatically retry mutation after unknown outcome. The same protocol applies to credential assignment/replacement/revoke operations; Lane B must inject CriticalRecorder at the trusted credential-management use-case boundary. Provider token refresh itself is not a new identity assignment.
 
 ### 7.3. Durability and persistence
 
 - PostgreSQL: append intent/outcome in committed transaction; unique constraints enforce EventID/phase idempotency. Integration owner supplies pgstore adapter and migration. A domain mutation and its audit intent are not claimed to be one cross-domain transaction in Phase 1; durable intent-before-mutation is the guarantee. A later aggregate may strengthen this with atomic mutation+audit in one transaction.
 - Desktop File: dedicated critical journal, separate from rotating legacy audit.log; serialized single-process append, complete-write check, file Sync, directory Sync when creating/rotating. If durability cannot be confirmed, fail closed. Startup detects incomplete/corrupt tail; it must not silently discard or reinterpret a partial record.
-- Critical journal is append-only. Retention/archival is separate and cannot silently delete pending intents or mandatory audit.
+- Critical journal is append-only. Retention/archival is separate and cannot silently delete pending intents or mandatory audit. Pending-intent queries are organization-scoped and must not expose another tenant's audit metadata.
 - stdout mirror is not durable audit storage.
 - Never store plaintext kubeconfig, tokens, passwords, refresh tokens, provider payloads, private keys or secret fields. Audit contains IDs, action, revision, safe reason code, digest and timestamps only.
 - Legacy best-effort audit remains behavior-compatible. Only new protected operations use CriticalRecorder.
