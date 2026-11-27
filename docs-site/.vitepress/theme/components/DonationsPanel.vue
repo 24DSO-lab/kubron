@@ -82,6 +82,12 @@ function formatDate(value: string): string {
   return new Intl.DateTimeFormat(isRussian.value ? 'ru-RU' : 'en', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' }).format(date) + ' UTC'
 }
 
+function formatDateOnly(value: string): string {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return new Intl.DateTimeFormat(isRussian.value ? 'ru-RU' : 'en', { dateStyle: 'medium', timeZone: 'UTC' }).format(date)
+}
+
 async function copyAddress(wallet: Wallet) {
   try {
     await navigator.clipboard.writeText(wallet.address)
@@ -157,10 +163,10 @@ async function copyAddress(wallet: Wallet) {
       <p v-else-if="transactions.length === 0" class="donations-empty">{{ isRussian ? 'Пока нет поступлений за последние 30 дней. Станьте одним из первых спонсоров Kubron.' : 'There are no contributions in the last 30 days yet. Be one of the first Kubron sponsors.' }}</p>
       <div v-else class="donations-table-wrap">
         <table class="donations-table">
-          <thead><tr><th>{{ isRussian ? 'Дата (UTC)' : 'Date (UTC)' }}</th><th>{{ isRussian ? 'Актив / сеть' : 'Asset / network' }}</th><th>{{ isRussian ? 'Сумма' : 'Amount' }}</th><th>{{ isRussian ? 'Спонсор' : 'Sponsor' }}</th><th>{{ isRussian ? 'Транзакция' : 'Transaction' }}</th></tr></thead>
+          <thead><tr><th>{{ isRussian ? 'Дата' : 'Date' }}</th><th>{{ isRussian ? 'Актив / сеть' : 'Asset / network' }}</th><th>{{ isRussian ? 'Сумма' : 'Amount' }}</th><th>{{ isRussian ? 'Спонсор' : 'Sponsor' }}</th><th>{{ isRussian ? 'Транзакция' : 'Transaction' }}</th></tr></thead>
           <tbody>
             <tr v-for="tx in transactions" :key="tx.id">
-              <td>{{ formatDate(tx.receivedAt) }}</td>
+              <td>{{ formatDateOnly(tx.receivedAt) }}</td>
               <td>{{ tx.asset }} · {{ tx.network }}</td>
               <td>{{ tx.amount }}</td>
               <td :title="tx.donorName || tx.fromAddress || (isRussian ? 'Не указан' : 'Not provided')">{{ tx.donorName || (tx.fromAddress ? shortAddress(tx.fromAddress) : '—') }}</td>
