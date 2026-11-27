@@ -8,6 +8,8 @@ Four things make the answer better, and **none of them is required**: the depend
 
 ## Open an investigation
 
+There are two ways in. Open **Incidents** in the sidebar and fill in the form, or choose **Investigate** among the actions of a resource (a Pod, Deployment, ReplicaSet, StatefulSet, Job, CronJob, Service, Ingress, HorizontalPodAutoscaler, PersistentVolumeClaim or Node): the investigation of that object opens at once. Nothing is changed in the cluster either way.
+
 Choose a kind (Pod, Deployment, ReplicaSet, StatefulSet, Job, CronJob, Ingress, HorizontalPodAutoscaler, Service, PersistentVolumeClaim or Node), a namespace and a name. A Node has no namespace. A ConfigMap is not a target: it appears as a link in the chain of a Pod that refers to it. Kubron reads the object, its owners (Pod → ReplicaSet → Deployment), its Pods, Events, Namespace and Nodes, and then the objects it depends on (see [Dependency chain](#dependency-chain)). Everything is read-only. **Secrets are never read.**
 
 The report separates four kinds of entries, and the interface shows them differently:
@@ -191,7 +193,8 @@ A **problem** groups the investigations that have the same shared source. It sto
 - **Automatic attach.** When the best candidate has medium confidence or higher, the investigation joins an open problem with the same source that was updated in the last 6 hours, or starts a new one. A second investigation of another Pod on the same Node joins the same problem.
 - **Reversible.** Detaching an investigation is remembered: it will not return to that problem automatically.
 - **Closing.** A problem closes when its last member is closed. A new failure after the 6-hour window starts a new problem.
-- **Limits.** A problem has at most 100 members, and at most 100 open problems of the cluster are searched. When a problem is full, the investigation keeps its correlation block but is not attached.
+- **Limits.** A problem has at most 100 members. When a problem is full, the investigation keeps its correlation block but is not attached.
+- **No duplicates.** Finding an open problem with the same source and creating a new one is a single atomic step: on the server it is serialized across all replicas (a database lock per organization, team, cluster and key), on desktop within the process. Two investigations opened at the same moment for the same source join one problem.
 
 The problem screen lists the members, the affected workloads aggregated from the members' snapshots and the manual actions:
 
@@ -203,10 +206,6 @@ The problem screen lists the members, the affected workloads aggregated from the
 | Create from selected | Starts a new problem from the investigations you select |
 
 Viewing problems needs `read`. Changing the members needs `operate`, because it changes the history your team sees. Every action is written to the audit log with identifiers and without report content.
-
-::: tip Known limitation
-Two investigations opened at the same moment for the same source can create two problems, because there are no transactions between records. Merge them manually.
-:::
 
 If the problem storage is unavailable, the correlation block is still shown and the investigation is saved without a group. The operation is then marked partial.
 
@@ -288,7 +287,7 @@ If a right is missing, the investigation does not fail: the affected objects are
 
 Fragments are kept at most **15 days** (the default and the upper limit; you can only shorten it to 1–15 days). Investigations are kept **90 days** by default, up to **365**. The dependency graph, the correlation result and the fields of the mark are part of the investigation and follow its retention; problems without living members are removed together with them. An administrator can turn log fragment saving off for the whole organization (the application on desktop) and exclude namespaces. You can also turn saving off for a single investigation and delete the fragments already saved. Deleting an investigation deletes its fragments.
 
-On desktop, investigations and problems are stored in files in the data folder. On the server they are stored in PostgreSQL, and the update adds the table for problems through the usual migration.
+On desktop, investigations and problems are stored in files in the data folder. On the server they are stored in PostgreSQL, and the update adds the table for problems and an index for finding an open problem through the usual migrations.
 
 On the server, defaults for organizations without saved settings come from `KUBRON_INCIDENT_LOG_EVIDENCE` (`on`/`off`), `KUBRON_INCIDENT_FRAGMENT_RETENTION_DAYS` (1–15), `KUBRON_INCIDENT_RETENTION_DAYS` (1–365), `KUBRON_INCIDENT_EXCLUDED_NAMESPACES` (comma-separated) and `KUBRON_INCIDENT_PURGE_INTERVAL` (default `1h`).
 
@@ -301,7 +300,7 @@ The limits are fixed in the code and are not settings.
 | Dependency graph | 200 objects, 600 links, 4 steps from the target, 40 additional reads. The new kinds do not raise the limits |
 | Metrics | Windows up to 24 hours; one query up to 10 s, 1 MiB and 500 series; up to 12 signal queries and 5 capability checks per operation |
 | Shared-source check | A 30-minute correlation window, up to 10 additional reads, up to 5 candidates, up to 50 workloads per candidate |
-| Problems | A 6-hour window, up to 100 members, 100 open problems searched |
+| Problems | A 6-hour window, up to 100 members |
 | Statistics | The last 200 closed investigations, percentages from 5 rated cases |
 | Recurrence | 30 days after the fix, among the last 100 closed investigations |
 
