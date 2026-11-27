@@ -447,7 +447,7 @@ func TestFile_ShortWriteNeverReachesStateFile(t *testing.T) {
 	if readState(t, dir) != nil {
 		t.Fatal("partial write reached the state file")
 	}
-	if errors.Is(io.ErrShortWrite, ErrUnavailable) {
+	if errors.Is(ErrUnavailable, io.ErrShortWrite) {
 		t.Fatal("sentinel confusion")
 	}
 }
