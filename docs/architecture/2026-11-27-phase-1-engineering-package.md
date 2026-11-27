@@ -2,7 +2,9 @@
 
 - Статус: **engineering package / implementation handoff**
 - Дата: 2026-11-27
-- Base: актуальный refactor, SHA f102f31ce79b9fdffb8762c5b7ba1655574343f4
+- Исходная проверенная code baseline при подготовке handoff: refactor SHA f102f31ce79b9fdffb8762c5b7ba1655574343f4
+- Contract Freeze follow-up подготовлен поверх refactor SHA d0dbbe5f978af96aa05de17b5523a4a812102f8b; промежуточное изменение затронуло только docs-site
+- Контракты Go и границы четырёх lanes: [Phase 1 Contract Freeze](2026-11-27-phase-1-contract-freeze.md)
 - Нормативные документы:
   - Executable Platform Architecture Specification
   - Phase 0 Executable Contracts
@@ -203,10 +205,11 @@ Acceptance:
 Scope:
 - Расширить credential.Scope/Subject/Key/Meta типизированным Service principal kind (и при необходимости Team principal reference без коллизий).
 - Определить backward-compatible storage key/migration semantics для существующих user/team records.
-- Subject-aware Broker request path; no fake AuthSession.
+- Subject-aware Broker request path; no fake AuthSession. Separate admin-assisted provisioning flow may complete IdP challenges for a technical identity, but the challenge is bound to the authenticated admin actor/session while the resulting credential is stored only under the technical principal. Runtime Acquire/Token remains non-interactive and never inherits the admin's user credentials.
 - Principal-aware ConnPlan construction/credential resolution; единственная точка rest.Config остаётся ConfigFor.
 - Connection pool isolation по principal kind + ID + cluster + binding/version.
 - Rotation/revocation/version conflict semantics.
+- Critical audit intent/outcome around credential assignment, replacement and revoke; pending binding stays unusable until durable success is confirmed.
 - Contract tests for credential store, broker, token refresh, concurrent rotation, wrong-subject denial, no fallback.
 - Проверить call graph: Manager, ForSession, ConnectionFor, health/ops clients and all ConfigFor consumers.
 
@@ -227,7 +230,7 @@ Acceptance:
 - User credential path остаётся behavior-compatible.
 - Existing user/team credential records читаются без потери данных.
 - Service credential storage проходит envelope encryption, rekey, keycheck, backup/restore and plaintext leak checks.
-- No fake session; no ConfigFor bypass.
+- No fake session; no ConfigFor bypass. ProvisioningContext is separate from the technical Subject and cannot become the runtime principal.
 - Rotation/revocation tests prove no stale fallback.
 
 ### Lane C — Authorization Grants & Cross-Team Delegation
