@@ -94,6 +94,16 @@ async function copyAddress(wallet: Wallet) {
 
 <template>
   <div class="donations-panel">
+    <section class="donations-section donations-alerts" aria-labelledby="donationalerts-title">
+      <div class="donations-alerts-copy">
+        <h3 id="donationalerts-title">{{ isRussian ? 'Поддержать через DonationAlerts' : 'Support via DonationAlerts' }}</h3>
+        <p class="donations-muted">{{ isRussian ? 'Вы можете отправить разовое пожертвование через DonationAlerts. Поступления будут автоматически попадать в публичный реестр.' : 'Send a one-time contribution through DonationAlerts. Contributions are automatically added to the public ledger.' }}</p>
+      </div>
+      <a class="donations-alerts-button" href="https://dalink.to/kubron" target="_blank" rel="noopener noreferrer">
+        {{ isRussian ? 'Поддержать на DonationAlerts ↗' : 'Donate with DonationAlerts ↗' }}
+      </a>
+    </section>
+
     <section class="donations-section" aria-labelledby="donation-wallets-title">
       <h3 id="donation-wallets-title">{{ isRussian ? 'Криптовалютные кошельки' : 'Crypto wallets' }}</h3>
       <p class="donations-muted">{{ isRussian ? 'Выбирайте строго указанную ниже монету и сеть. Отправка средств через другую сеть может привести к их безвозвратной потере.' : 'Choose the exact asset and network shown below. Sending an asset over a different network may result in a permanent loss.' }}</p>
@@ -146,7 +156,7 @@ async function copyAddress(wallet: Wallet) {
               <td :title="tx.donorName || tx.fromAddress || (isRussian ? 'Не указан' : 'Not provided')">{{ tx.donorName || (tx.fromAddress ? shortAddress(tx.fromAddress) : '—') }}</td>
               <td>
                 <a v-if="tx.explorerTxUrl && tx.txHash" :href="tx.explorerTxUrl" target="_blank" rel="noopener noreferrer">{{ shortAddress(tx.txHash) }} ↗</a>
-                <a v-else-if="tx.source === 'donationalerts'" href="https://www.donationalerts.com/r/kubron" target="_blank" rel="noopener noreferrer">DonationAlerts ↗</a>
+                <a v-else-if="tx.source === 'donationalerts'" href="https://dalink.to/kubron" target="_blank" rel="noopener noreferrer">DonationAlerts ↗</a>
                 <span v-else>—</span>
               </td>
             </tr>
