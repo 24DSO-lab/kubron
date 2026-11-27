@@ -388,12 +388,37 @@ Canonicalization:
         RevokeDelegation(ctx context.Context, id string, expectedRevision uint64) (Delegation, error)
     }
 
+    type TargetFacts struct {
+        OrgID       string
+        TeamID      string
+        Environment string
+    }
+
     type OwnershipResolver interface {
-        ResolveTargetOwner(ctx context.Context, target TargetRef) (orgID, teamID string, err error)
+        ResolveTargetFacts(ctx context.Context, target TargetRef) (TargetFacts, error)
     }
 
     type IdentityStateReader interface {
         GetPrincipalState(ctx context.Context, principal identity.PrincipalRef) (identity.IdentityState, error)
+    }
+
+    type ActionFacts struct {
+        Destructive bool
+    }
+
+    type ActionFactsResolver interface {
+        ResolveActionFacts(ctx context.Context, operationID, actionID string) (ActionFacts, error)
+    }
+
+    type Clock interface {
+        Now() time.Time
+    }
+
+    type AdminAuthorizer interface {
+        AuthorizeGrantAdmin(ctx context.Context, actor identity.ActorRef,
+            principal identity.PrincipalRef, action string) error
+        AuthorizeDelegationAdmin(ctx context.Context, actor identity.ActorRef,
+            ownerTeamID string, action string) error
     }
 
     type GrantRequest struct {
