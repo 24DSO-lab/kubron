@@ -44,7 +44,7 @@ const copied = ref('')
 
 onMounted(async () => {
   try {
-    const response = await fetch(withBase('/donations.json'), { headers: { Accept: 'application/json' } })
+    const response = await fetch(withBase('/api/donations'), { headers: { Accept: 'application/json' } })
     if (!response.ok) throw new Error(`HTTP ${response.status}`)
     const payload = await response.json() as DonationData
     if (payload.schemaVersion !== 1 || !Array.isArray(payload.wallets) || !Array.isArray(payload.transactions)) {
