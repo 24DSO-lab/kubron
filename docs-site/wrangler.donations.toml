@@ -2,6 +2,7 @@
 name = "kubron-donations"
 main = "workers/donations/index.ts"
 compatibility_date = "2026-11-27"
+workers_dev = true
 
 [triggers]
 crons = ["*/15 * * * *"]
