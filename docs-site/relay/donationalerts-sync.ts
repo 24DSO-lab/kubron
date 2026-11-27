@@ -1,7 +1,7 @@
 // Copyright 2026 The Kubron Authors
 // SPDX-License-Identifier: Apache-2.0
 
-import type { DonationAlertsEnv, KVNamespaceLike } from './donationalerts.ts'
+import type { DonationAlertsEnv } from './donationalerts.ts'
 
 interface SyncEnv extends DonationAlertsEnv {
   DONATIONALERTS_SYNC_SECRET?: string
@@ -12,7 +12,6 @@ const DONATIONS_URL = 'https://www.donationalerts.com/api/v1/alerts/donations'
 const TOKEN_KEY = 'oauth:donationalerts:tokens'
 const SCOPE = 'oauth-donation-index'
 const MAX_PAGES = 20
-const PAGE_SIZE = 30
 
 function json(status: number, body: Record<string, unknown>): Response {
   return new Response(JSON.stringify(body), {
