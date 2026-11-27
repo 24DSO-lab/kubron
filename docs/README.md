@@ -27,7 +27,7 @@
 
 | Документ | О чём |
 |---|---|
-| [adr/](adr/README.md) | Архитектурные решения (ADR-0001…0034): почему устроено так |
+| [adr/](adr/README.md) | Архитектурные решения (ADR-0001…0038): почему устроено так |
 | [intelligence-rule-improvement.md](intelligence-rule-improvement.md) | Как мантейнеры улучшают правила Intelligence по выгруженной статистике (ADR-0034 §9) |
 | [architecture-reviews/2026-11-26-intelligence-lifecycle-stabilization.md](architecture-reviews/2026-11-26-intelligence-lifecycle-stabilization.md) | Техническая фиксация исправлений LIFE-01 и INT-01 |
 | [architecture-reviews/2026-11-26-stage-closure.md](architecture-reviews/2026-11-26-stage-closure.md) | Итог этапа: стабилизация Intelligence и Lifecycle, закрытие замечаний и очистка устаревших промптов |
@@ -44,6 +44,7 @@
 | [architecture/2026-11-26-phase-0-executable-contracts.md](architecture/2026-11-26-phase-0-executable-contracts.md) | Phase 0: границы пакетов, целевые интерфейсы, atomic persistence, critical audit, Desktop/Web contract tests и критерии готовности |
 | [architecture/2026-11-27-phase-1-engineering-package.md](architecture/2026-11-27-phase-1-engineering-package.md) | Phase 1: проверенная база, технические principals, credential resolution, grants/delegation, critical audit, четыре developer lanes, integration ownership и acceptance criteria |
 | [architecture/2026-11-27-phase-1-contract-freeze.md](architecture/2026-11-27-phase-1-contract-freeze.md) | Phase 1 Contract Freeze: canonical Go types, backend/evaluator interfaces, subject compatibility, critical audit protocol, dependency graph и file ownership |
+| [prompts/phase-1/](prompts/phase-1/README.md) | Четыре изолированных developer prompts для Identity, Credential Resolution, Authorization и Critical Audit; общий порядок интеграции и ограничения |
 | [e2e.md](e2e.md) | Smoke-e2e |
 | [authentication-lab.md](authentication-lab.md) | Ручной стенд входа в облачные кластеры (EKS, GKE, AKS) без создания кластеров |
 | [releasing.md](releasing.md) | Как выпускается релиз |
