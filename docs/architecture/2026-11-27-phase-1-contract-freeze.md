@@ -136,12 +136,14 @@ Validation:
         CreatedBy      ActorRef
         CreatedAt      time.Time
         UpdatedAt      time.Time
-        LastMutationID string
+        LastMutationID   string
+        LastAuditEventID string
     }
 
     type BindingState string
 
     const (
+        BindingPending BindingState = "pending"
         BindingActive  BindingState = "active"
         BindingRevoked BindingState = "revoked"
     )
@@ -155,7 +157,8 @@ Validation:
         CreatedBy      ActorRef
         CreatedAt      time.Time
         UpdatedAt      time.Time
-        LastMutationID string
+        LastMutationID   string
+        LastAuditEventID string
     }
 
     type Backend interface {
@@ -163,14 +166,16 @@ Validation:
         Get(ctx context.Context, ref PrincipalRef) (Identity, error)
         List(ctx context.Context, owner OwnerScope) ([]Identity, error)
         SetState(ctx context.Context, ref PrincipalRef, expectedRevision uint64,
-            next IdentityState, mutationID string) (Identity, error)
+            next IdentityState, mutationID, auditEventID string) (Identity, error)
 
         PutBinding(ctx context.Context, in CredentialBinding,
-            expectedRevision uint64, mutationID string) (CredentialBinding, error)
+            expectedRevision uint64, mutationID, auditEventID string) (CredentialBinding, error)
         GetBinding(ctx context.Context, principal PrincipalRef, clusterID string) (CredentialBinding, error)
         ListBindings(ctx context.Context, principal PrincipalRef) ([]CredentialBinding, error)
+        ActivateBinding(ctx context.Context, id string, expectedRevision uint64,
+            mutationID, auditEventID string) (CredentialBinding, error)
         RevokeBinding(ctx context.Context, id string, expectedRevision uint64,
-            mutationID string) (CredentialBinding, error)
+            mutationID, auditEventID string) (CredentialBinding, error)
     }
 
     type AdminAction string
@@ -195,9 +200,9 @@ Rules:
 - TeamPrincipal cannot receive cross-Team delegation. ServicePrincipal can receive Team-issued delegation.
 - Identity creation, binding assignment, credential mutation, grants, delegation and schedule/operation assignment are independent audited actions.
 - State transitions: active ↔ suspended; active/suspended → revoked; revoked is terminal. Re-enable requires a new principal ID.
-- CredentialBinding is one explicit assignment of one principal to one cluster. It contains no secret and does not imply a Kubron grant.
+- CredentialBinding is one explicit assignment of one principal to one cluster. It contains no secret and does not imply a Kubron grant. Initial assignment creates BindingPending; it becomes BindingActive only after credential provisioning has durably completed. Pending/revoked bindings cannot be used for execution.
 - Binding creation requires trusted server-side cluster ownership resolution. TeamPrincipal binding must target its owner Team. ServicePrincipal binding alone does not grant cross-Team access.
-- One active binding per (principal, cluster) in Phase 1. Ambiguous binding resolution → deny.
+- One active binding per (principal, cluster) in Phase 1. Ambiguous binding resolution → deny. A pending binding reserves the principal/cluster tuple and cannot be used as an execution identity.
 - Hard delete is not part of Phase 1; retain provenance and audit.
 
 Errors (package-local sentinels, checked with errors.Is):
@@ -228,10 +233,16 @@ Normative extension:
         ClusterID string
         Scope     Scope
         OwnerID   string // legacy ScopeUser/ScopeTeam only
-        SessionID string // interactive challenge context only
+        SessionID string // legacy interactive challenge context only
 
         Principal identity.PrincipalRef // ScopePrincipal only
         BindingID string                // ScopePrincipal only
+    }
+
+    type ProvisioningContext struct {
+        Actor     identity.ActorRef // authenticated UserPrincipal
+        SessionID string            // active Kubron session for this setup challenge
+        EventID   string            // durable CriticalIntent created before provisioning starts
     }
 
     type Key struct {
@@ -243,6 +254,23 @@ Normative extension:
         BindingID string
     }
 
+    type Meta struct {
+        Key
+        Kind             Kind
+        Principal        string
+        ExpiresAt        *time.Time
+        Version          int64
+        UpdatedAt        time.Time
+        KeyID            string
+        EncFormat        string
+        LastAuditEventID string
+    }
+
+    type Record struct {
+        Meta
+        Secret []byte
+    }
+
 Validation is an exclusive tagged union:
 - Legacy ScopeUser: OwnerID=user ID; Principal zero; BindingID empty. SessionID may be present for interactive Web challenge.
 - Legacy ScopeTeam: OwnerID=Team ID; Principal zero; BindingID empty. This remains the old shared Team account, **not** TeamPrincipal. Existing positional Go struct literals for Subject/Key must be updated to keyed literals as part of the compile migration; persisted key/AAD semantics must not change.
@@ -251,9 +279,11 @@ Validation is an exclusive tagged union:
 - UserPrincipal continues using existing user credential path; Phase 1 does not create a technical User credential kind.
 - Never infer principal kind from OwnerID or provider Kind.
 
-The existing CredentialStore.List(ownerID) remains for legacy owners; add a typed ListPrincipal(ctx, PrincipalRef) path for technical principals. Extend RevokeFilter with typed PrincipalRef and BindingID fields. A normal principal revoke must supply an exact principal/binding scope; wildcard filters are not accepted from ordinary management calls.\n\n### 5.2. Encryption and key compatibility
+The existing CredentialStore.List(ownerID) remains for legacy owners; add a typed ListPrincipal(ctx, PrincipalRef) path for technical principals. Extend RevokeFilter with typed PrincipalRef and BindingID fields. A normal principal revoke must supply an exact principal/binding scope; wildcard filters are not accepted from ordinary management calls.
 
-- Existing legacy records retain exact old AAD/key interpretation. Never reinterpret ScopeTeam records as TeamPrincipal.
+### 5.2. Encryption and key compatibility
+
+- Existing legacy records retain exact old AAD/key interpretation. Never reinterpret ScopeTeam records as TeamPrincipal. Legacy user/team Meta may have empty LastAuditEventID and retain legacy behavior; every technical ScopePrincipal record must carry LastAuditEventID.
 - Technical records use a distinct canonical AAD encoding containing format/version marker, ClusterID, ScopePrincipal, Principal.Kind, Principal.ID, OrgID, TeamID (when applicable) and BindingID.
 - Canonical encoding is length-delimited or otherwise unambiguous; never concatenate unescaped strings.
 - Technical key uniqueness: (ClusterID, Principal.Kind, Principal.ID, BindingID). BindingID cannot be rebound to another principal or cluster.
@@ -263,13 +293,25 @@ The existing CredentialStore.List(ownerID) remains for legacy owners; add a type
 
 ### 5.3. Broker and ConfigFor path
 
-Existing credential.Broker remains the only provider orchestrator. Extend it to accept validated typed Subject for Acquire/Answer/Poll/Cancel/Token and revocation, and add typed principal listing rather than overloading legacy List(ownerID). The CredentialStore contract gains ListPrincipal(ctx, principal identity.PrincipalRef) ([]Meta, error). RevokeFilter gains Principal identity.PrincipalRef and BindingID string. No caller may invoke Provider directly.
+Existing credential.Broker remains the only provider orchestrator. Extend it to accept validated typed Subject for Acquire/Answer/Poll/Cancel/Token and revocation, and add typed principal listing rather than overloading legacy List(ownerID). The CredentialStore contract gains ListPrincipal(ctx, principal identity.PrincipalRef) ([]Meta, error). Technical Meta.LastAuditEventID is mandatory for ScopePrincipal; legacy user/team records may leave it empty. RevokeFilter gains Principal identity.PrincipalRef and BindingID string. No caller may invoke Provider directly.
+
+Dedicated provisioning API (the Broker implementation must satisfy this interface; exact method names may follow existing Broker naming, semantics may not change):
+
+    type ProvisioningBroker interface {
+        BeginProvisioning(ctx context.Context, subject Subject, by ProvisioningContext, d Descriptor) (Result, error)
+        AnswerProvisioning(ctx context.Context, subject Subject, by ProvisioningContext, challengeID string, answer Answer) (Result, error)
+        CancelProvisioning(ctx context.Context, subject Subject, by ProvisioningContext, challengeID string) error
+    }
+
+ProvisioningContext is never part of Subject, CredentialStore.Key, encryption AAD or runtime pool key. Every challenge is bound to the exact technical Subject + BindingID + authenticated actor + active session + CriticalIntent EventID. Continuation rechecks the actor's current permission to manage that identity/binding; a lost role/session invalidates the challenge. The Broker stores the resulting token only under the technical Subject and persists LastAuditEventID in its Meta. Technical Token/Acquire refuses to return a credential unless CriticalRecorder.GetOutcome(orgID, Meta.LastAuditEventID) is CriticalSucceeded. This also gates a newly rotated credential version if its audit outcome is pending. A pending binding is activated only after the credential record is durably stored. Its LastAuditEventID is persisted with the state transition; it is usable only after GetOutcome confirms the matching CriticalSucceeded outcome. Missing, failed or unknown outcome keeps the binding unusable.
 
 Required behavior:
 - User challenge methods require valid User scope and session binding where Web semantics require it.
-- Technical Team/Service subjects are non-interactive: stored credential/refresh flow may run; if human challenge is required, return ErrChallengeRequired/blocked. Never attach a user session or emit a challenge to another user.
+- Technical Team/Service subjects are non-interactive during execution: stored credential/refresh flow may run; if a human challenge is required, Acquire/Token returns ErrChallengeRequired and the background operation is blocked. Never attach a user session or fall back to another credential.
+- Initial provisioning and explicit credential rotation are different from execution. An authorized human administrator may complete an IdP challenge on behalf of a Team/Service identity through dedicated provisioning methods. The resulting credential is stored under the technical Subject, never under the administrator's User scope. The administrator's session is authorization/provenance for setup only, not the Kubernetes Execution Identity.
 - Revoke filters for technical subjects specify exact principal kind, principal ID, cluster/binding as required. Empty wildcard filters are reserved for explicitly authorized administrative maintenance, never normal principal revocation.
-- Existing Broker methods and old RPC behavior remain compatible. Technical credential management APIs are not exposed through legacy user-facing RPC accidentally.\n- Credential assignment, administrative credential replacement/rotation and revoke use CriticalRecorder intent/outcome. Routine provider token refresh is not an identity/grant mutation, but secrets still never enter audit.
+- Existing Broker methods and old RPC behavior remain compatible. Technical credential management APIs are not exposed through legacy user-facing RPC accidentally.
+- Credential assignment, administrative credential replacement/rotation and revoke use CriticalRecorder intent/outcome. Provisioning intent is durable before starting an IdP challenge; success/failure/expiry/cancellation is durably recorded. Routine provider token refresh is not a new identity assignment, but secrets still never enter audit.
 
 In internal/k8s:
 - Keep ConfigFor(ConnPlan) as the **only** constructor of stored-cluster rest.Config.
@@ -345,8 +387,9 @@ Package: internal/authorization. It owns Kubron grants/delegations, not Kubernet
         State          GrantState
         Revision       uint64
         ExpiresAt      time.Time
-        CreatedBy      identity.ActorRef
-        LastMutationID string
+        CreatedBy        identity.ActorRef
+        LastMutationID   string
+        LastAuditEventID string
     }
 
     type DelegationState string
@@ -369,6 +412,7 @@ Package: internal/authorization. It owns Kubron grants/delegations, not Kubernet
         ExpiresAt        time.Time
         CreatedBy        identity.ActorRef
         LastMutationID   string
+        LastAuditEventID string
     }
 
 Canonicalization:
@@ -378,9 +422,10 @@ Canonicalization:
 - TeamPrincipal grant TargetScope may include only its own Team; evaluator rejects any other Team even if malformed data exists.
 - ServicePrincipal has no implicit Team/Cluster membership or target rights.
 - Phase 1 target scopes use explicit organization/team/cluster/namespace/object references only. No scripts, executable selectors, external queries or user-defined functions. Label-selector/TargetGroup resolution belongs to later Target phase.
-- Existing-object ObjectRef requires UID. Name alone is not object identity.
+- Target selectors combine by union: a matching explicit Team subtree, Cluster subtree, exact NamespaceRef or exact ObjectRef may satisfy the target portion. Lists within one selector are OR; OrgID remains an outer boundary.
+- Existing-object ObjectRef and object-specific TargetRef require UID. Name alone is not object identity.
 - Empty child lists mean all descendants only within explicitly supplied parent scope; empty OrgID or entirely empty TargetScope is invalid, never “all tenants”.
-- Constraints are typed fields, not arbitrary map/expressions. Unknown future constraint kinds/versions fail closed. A constraint that cannot be evaluated is not ignored.
+- Constraints are typed fields, not arbitrary map/expressions. Phase 1 supports AllowedEnvironments (matched against trusted cluster metadata), DenyDestructive (matched against trusted action catalog facts) and NotBefore (inclusive UTC instant). Grant/Delegation ExpiresAt is exclusive. MaxConcurrency, MaxBudget and other execution-time constraints are deferred until an Operation runtime can enforce them; Phase 1 must reject, not silently accept, unsupported constraints. Unknown future constraint kinds/versions fail closed.
 
 ### 6.2. Backend and evaluator boundaries
 
@@ -389,7 +434,7 @@ Canonicalization:
         GetGrant(ctx context.Context, id string) (Grant, error)
         ListGrants(ctx context.Context, principal identity.PrincipalRef) ([]Grant, error)
         UpdateGrant(ctx context.Context, in Grant, expectedRevision uint64) (Grant, error)
-        RevokeGrant(ctx context.Context, id string, expectedRevision uint64, mutationID string) (Grant, error)
+        RevokeGrant(ctx context.Context, id string, expectedRevision uint64, mutationID, auditEventID string) (Grant, error)
     }
 
     type DelegationBackend interface {
@@ -398,7 +443,7 @@ Canonicalization:
         ListDelegations(ctx context.Context, service identity.PrincipalRef,
             ownerTeamID string) ([]Delegation, error)
         UpdateDelegation(ctx context.Context, in Delegation, expectedRevision uint64) (Delegation, error)
-        RevokeDelegation(ctx context.Context, id string, expectedRevision uint64, mutationID string) (Delegation, error)
+        RevokeDelegation(ctx context.Context, id string, expectedRevision uint64, mutationID, auditEventID string) (Delegation, error)
     }
 
     type TargetFacts struct {
@@ -479,7 +524,7 @@ GrantDecision.Granted means **only** that Kubron technical grants + required Tea
 8. Intersect with identity scope, tenant ownership and required delegation. No grant/delegation, ambiguity, stale revision, missing ownership or unavailable dependency → deny.
 9. Return stable safe reason code and IDs/revisions needed for audit. Do not reveal metadata of foreign targets.
 
-No explicit user Deny grants, precedence ordering or last-grant-wins. OperationAction pairs are exact pairs; separate Operation and Action lists must not be interpreted as an unintended Cartesian product. Kubernetes RBAC and Autonomy Policy remain mandatory independent gates, implemented outside this package. Evaluator must not fetch credentials, construct a Kubernetes client or call Kubernetes API.
+The evaluator also verifies that the principal, each qualifying grant and the required delegation have a durable successful CriticalOutcome for their LastAuditEventID. Missing, failed, unknown or unavailable outcome → deny. No explicit user Deny grants, precedence ordering or last-grant-wins. OperationAction pairs are exact pairs; separate Operation and Action lists must not be interpreted as an unintended Cartesian product. Kubernetes RBAC and Autonomy Policy remain mandatory independent gates, implemented outside this package. Evaluator must not fetch credentials, construct a Kubernetes client or call Kubernetes API.
 
 Admin write authorization:
 - Team Admin may create/update/suspend/revoke delegation only for their own Team and its clusters.
@@ -530,10 +575,11 @@ Package: internal/audit. Do not change legacy Logger.Record(Event) best-effort c
     type CriticalRecorder interface {
         AppendIntent(ctx context.Context, in CriticalIntent) error
         AppendOutcome(ctx context.Context, out CriticalOutcome) error
+        GetOutcome(ctx context.Context, orgID, eventID string) (CriticalOutcome, error)
         ListPending(ctx context.Context, orgID string, limit int) ([]CriticalIntent, error)
     }
 
-EventID identifies one immutable intent/outcome pair; MutationID identifies requested domain mutation. Same EventID + same canonical payload is idempotent. Same EventID + different payload is a conflict. Outcome requires a known intent and is unique; conflicting second outcome is an error. Pending means durable intent exists but no durable outcome exists.
+EventID identifies one immutable intent/outcome pair; MutationID identifies requested domain mutation. The resource mutation persists LastAuditEventID=EventID. A technical identity, binding, grant or delegation is usable only when GetOutcome(orgID, LastAuditEventID) returns CriticalSucceeded; missing, failed or unknown outcome means deny. GetOutcome and ListPending are organization-scoped. Same EventID + same canonical payload is idempotent. Same EventID + different payload is a conflict. Outcome requires a known intent and is unique; conflicting second outcome is an error. Pending means durable intent exists but no durable outcome exists.
 
 ### 7.2. Required call protocol
 
@@ -545,7 +591,7 @@ Every protected Identity/Grant/Delegation/Binding mutation uses this order:
 5. Append CriticalOutcome (succeeded or failed). If outcome append fails after mutation attempt, return typed ErrOutcomeUnknown; do not report success and do not blindly repeat mutation.
 6. Pending intents are reconciled by reading resource and comparing mutation ID/revision/request digest. If result cannot be proven, retain unknown and require explicit safe resolution.
 
-A helper may centralize this protocol, but must not hide errors or automatically retry mutation after unknown outcome. The same protocol applies to credential assignment/replacement/revoke operations; Lane B must inject CriticalRecorder at the trusted credential-management use-case boundary (credential may import audit; audit must not import credential). Provider token refresh itself is not a new identity assignment.
+A helper may centralize this protocol, but must not hide errors or automatically retry mutation after unknown outcome. The same protocol applies to credential assignment/replacement/revoke operations; Lane B must inject CriticalRecorder at the trusted credential-management use-case boundary (credential may import audit; audit must not import credential). The technical credential Meta stores LastAuditEventID, and Broker.Token verifies its successful outcome before returning the token. If outcome persistence fails, the new version is unusable until reconciliation. Provider token refresh itself is not a new identity assignment. If outcome persistence fails, the binding/resource remains unusable until GetOutcome confirms success or reconciliation resolves the pending intent.
 
 ### 7.3. Durability and persistence
 
