@@ -104,6 +104,16 @@ async function copyAddress(wallet: Wallet) {
       </a>
     </section>
 
+    <section class="donations-section donations-alerts donations-boosty" aria-labelledby="boosty-title">
+      <div class="donations-alerts-copy">
+        <h3 id="boosty-title">{{ isRussian ? 'Поддержать через Boosty' : 'Support via Boosty' }}</h3>
+        <p class="donations-muted">{{ isRussian ? 'Подписка или разовое пожертвование помогают развивать Kubron.' : 'A subscription or one-time contribution helps support the development of Kubron.' }}</p>
+      </div>
+      <a class="donations-alerts-button donations-boosty-button" href="https://boosty.to/kubron" target="_blank" rel="noopener noreferrer">
+        {{ isRussian ? 'Поддержать на Boosty ↗' : 'Support on Boosty ↗' }}
+      </a>
+    </section>
+
     <section class="donations-section" aria-labelledby="donation-wallets-title">
       <h3 id="donation-wallets-title">{{ isRussian ? 'Криптовалютные кошельки' : 'Crypto wallets' }}</h3>
       <p class="donations-muted">{{ isRussian ? 'Выбирайте строго указанную ниже монету и сеть. Отправка средств через другую сеть может привести к их безвозвратной потере.' : 'Choose the exact asset and network shown below. Sending an asset over a different network may result in a permanent loss.' }}</p>
