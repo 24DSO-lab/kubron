@@ -260,6 +260,7 @@ var (
 )
 
 type env struct {
+	mu       sync.Mutex
 	t        *testing.T
 	svc      *identity.Service
 	be       *spyBackend
@@ -276,7 +277,11 @@ type env struct {
 func newEnv(t *testing.T) *env {
 	t.Helper()
 	e := &env{t: t, dir: t.TempDir(), now: time.Date(2026, 11, 27, 10, 0, 0, 0, time.UTC)}
-	fb, err := identity.OpenFile(e.dir, identity.WithFileClock(func() time.Time { return e.now }))
+	fb, err := identity.OpenFile(e.dir, identity.WithFileClock(func() time.Time {
+		e.mu.Lock()
+		defer e.mu.Unlock()
+		return e.now
+	}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -291,8 +296,18 @@ func newEnv(t *testing.T) *env {
 		"cl-other-org": {Kind: identity.OwnerTeam, OrgID: "org-x", TeamID: "team-x"},
 	}}
 	e.svc, err = identity.NewService(e.be, e.rec, e.authz, e.clusters,
-		identity.WithClock(func() time.Time { e.now = e.now.Add(time.Second); return e.now }),
-		identity.WithEventIDs(func() (string, error) { e.seq++; return fmt.Sprintf("evt-%04d", e.seq), nil }))
+		identity.WithClock(func() time.Time {
+			e.mu.Lock()
+			defer e.mu.Unlock()
+			e.now = e.now.Add(time.Second)
+			return e.now
+		}),
+		identity.WithEventIDs(func() (string, error) {
+			e.mu.Lock()
+			defer e.mu.Unlock()
+			e.seq++
+			return fmt.Sprintf("evt-%04d", e.seq), nil
+		}))
 	if err != nil {
 		t.Fatal(err)
 	}
