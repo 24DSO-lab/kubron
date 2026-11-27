@@ -277,8 +277,6 @@ Package: internal/authorization. It owns Kubron grants/delegations, not Kubernet
 ### 6.1. Types
 
     type TargetRef struct {
-        OrgID     string
-        TeamID    string
         ClusterID string
         Group     string
         Version   string
@@ -315,9 +313,6 @@ Package: internal/authorization. It owns Kubron grants/delegations, not Kubernet
         AllowedEnvironments []string
         DenyDestructive     bool
         NotBefore           *time.Time
-        ExpiresAt           *time.Time
-        MaxConcurrency      *int
-        MaxBudget            *int64
     }
 
     type GrantState string
@@ -406,7 +401,6 @@ Canonicalization:
         OperationID string
         ActionID    string
         Target      TargetRef
-        At          time.Time
     }
 
     type GrantDecision struct {
