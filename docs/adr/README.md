@@ -13,6 +13,11 @@ ADR-0031 предложен 2026-11-14.
 ADR-0032 предложен 2026-11-14.
 ADR-0033 предложен 2026-11-14.
 ADR-0034 предложен 2026-11-14.
+| [0035](0035-technical-principals-and-identity-lifecycle.md) | Технические principals и жизненный цикл Identity |
+| [0036](0036-subject-aware-credential-resolution.md) | Subject-aware credentials и безопасный путь через ConfigFor |
+| [0037](0037-technical-authorization-grants-and-delegation.md) | Grants технических principals и Cross-Team Delegation |
+| [0038](0038-critical-audit-durability.md) | Durable Critical Audit для защищённых mutations |
+
 Новое решение — новый файл `NNNN-slug.md`; принятые ADR не переписываются, а заменяются новыми.
 
 | № | Решение |
