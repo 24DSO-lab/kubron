@@ -1,0 +1,16 @@
+# Deploy from docs-site: npx wrangler deploy --config wrangler.donations.toml
+name = "kubron-donations"
+main = "workers/donations/index.ts"
+compatibility_date = "2026-11-27"
+workers_dev = true
+
+[triggers]
+crons = ["*/15 * * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "kubron-donations"
+database_id = "ae982583-fe45-4929-b698-681195e972f2"
+
+[vars]
+DONATIONALERTS_SYNC_URL = "https://kubron.pages.dev/api/donationalerts/sync"
