@@ -1,11 +1,11 @@
 # Kubron Phase 1 — Contract Amendment 01
 
-- Status: **proposed normative amendment; effective only after merge**
+- Status: **accepted normative amendment; effective** (merged via PR #273 at `9a2998f83147d1c79c4a4aef3b5c9504e1aa416b`).
 - Date: 2026-11-27
 - Parent contract: [Phase 1 Contract Freeze](2026-11-27-phase-1-contract-freeze.md)
 - Scope: identity cluster ownership, identity display-name mutation, pending-intent reconciliation ownership, and cross-package implementation clarifications.
 
-This amendment is additive. It does not reopen unrelated Phase 1 contracts, authorize Kubernetes write actions, or change the four-lane ownership model. If merged, this document and the parent Contract Freeze must be read together. Where this amendment is more specific, it takes precedence.
+This amendment is additive. It does not reopen unrelated Phase 1 contracts, authorize Kubernetes write actions, or change the four-lane ownership model. This document and the parent Contract Freeze must be read together. Where this amendment is more specific, it takes precedence.
 
 ## 1. Trusted cluster ownership resolution
 
@@ -111,7 +111,7 @@ Validation must occur at the owning domain boundary before an intent is appended
 ## 5. Lane ownership and implementation sequence
 
 - Lane A's already-merged implementation is not reopened by this amendment. Its current `ClusterOwnerResolver` implementation is the intended narrow port; confirm its exact signature against §1 and report any mechanical mismatch. The Integration Owner supplies the production catalog adapter.
-- The DisplayName Backend/service use case is a focused Identity follow-up. It must be implemented against this amendment before Phase 1 identity functionality is considered complete. It may be assigned to the original Lane A developer or the Integration Owner, but must not be hidden inside Lane B or C.
+- The DisplayName Backend/service use case is a focused Identity follow-up, separate from Lanes B and C. It was implemented against this amendment and merged in PR #276 (`fix(identity): implement audited DisplayName updates`). PostgreSQL parity remains Integration Owner work.
 - Lane B consumes the canonical identity types and binding-resolution service. It must not create its own cluster ownership catalog or duplicate the `ClusterOwnerResolver` adapter.
 - Lane C's `OwnershipResolver` remains a separate authorization-domain port for resolving target ownership facts. It must not be conflated with `identity.ClusterOwnerResolver`; both adapters may read the same trusted catalog.
 - Integration Owner owns PostgreSQL parity, migration, composition/wiring, explicit pending-intent reconciliation workflow, cross-platform integration and audit-safe identifier validation across boundaries.
