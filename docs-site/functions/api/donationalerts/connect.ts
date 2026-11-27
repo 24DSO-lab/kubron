@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { handleConnect, type DonationAlertsEnv } from '../../../relay/donationalerts.ts'
+import { handleOwnerConnect, type OwnerAuthEnv } from '../../../relay/donationalerts-auth.ts'
 
-interface Context { request: Request; env: DonationAlertsEnv }
-export const onRequest = ({ request, env }: Context): Promise<Response> => handleConnect(request, env)
+interface Context { request: Request; env: DonationAlertsEnv & OwnerAuthEnv }
+export const onRequest = ({ request, env }: Context): Promise<Response> =>
+  handleOwnerConnect(request, env, () => handleConnect(request, env))
