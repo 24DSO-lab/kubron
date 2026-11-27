@@ -173,9 +173,19 @@ Validation:
             mutationID string) (CredentialBinding, error)
     }
 
+    type AdminAction string
+
+    const (
+        AdminCreate   AdminAction = "create"
+        AdminUpdate   AdminAction = "update"
+        AdminSuspend  AdminAction = "suspend"
+        AdminRevoke   AdminAction = "revoke"
+        AdminAssignCredential AdminAction = "assign-credential"
+    )
+
     type AdminAuthorizer interface {
         AuthorizeIdentityAdmin(ctx context.Context, actor ActorRef,
-            action string, owner OwnerScope) error
+            action AdminAction, owner OwnerScope) error
     }
 
 Rules:
@@ -235,7 +245,7 @@ Normative extension:
 
 Validation is an exclusive tagged union:
 - Legacy ScopeUser: OwnerID=user ID; Principal zero; BindingID empty. SessionID may be present for interactive Web challenge.
-- Legacy ScopeTeam: OwnerID=Team ID; Principal zero; BindingID empty. This remains the old shared Team account, **not** TeamPrincipal.
+- Legacy ScopeTeam: OwnerID=Team ID; Principal zero; BindingID empty. This remains the old shared Team account, **not** TeamPrincipal. Existing positional Go struct literals for Subject/Key must be updated to keyed literals as part of the compile migration; persisted key/AAD semantics must not change.
 - Technical ScopePrincipal: Principal.Kind is Team or Service; Principal.ID and OrgID required; TeamID required only for Team; OwnerID empty; BindingID non-empty; SessionID empty.
 - No mixed legacy+technical fields.
 - UserPrincipal continues using existing user credential path; Phase 1 does not create a technical User credential kind.
@@ -253,7 +263,7 @@ The existing CredentialStore.List(ownerID) remains for legacy owners; add a type
 
 ### 5.3. Broker and ConfigFor path
 
-Existing credential.Broker remains the only provider orchestrator. Extend it to accept validated typed Subject for Acquire/Answer/Poll/Cancel/Token and revocation, and add typed principal listing rather than overloading legacy List(ownerID). No caller may invoke Provider directly.
+Existing credential.Broker remains the only provider orchestrator. Extend it to accept validated typed Subject for Acquire/Answer/Poll/Cancel/Token and revocation, and add typed principal listing rather than overloading legacy List(ownerID). The CredentialStore contract gains ListPrincipal(ctx, principal identity.PrincipalRef) ([]Meta, error). RevokeFilter gains Principal identity.PrincipalRef and BindingID string. No caller may invoke Provider directly.
 
 Required behavior:
 - User challenge methods require valid User scope and session binding where Web semantics require it.
@@ -315,6 +325,11 @@ Package: internal/authorization. It owns Kubron grants/delegations, not Kubernet
         NotBefore           *time.Time
     }
 
+    type OperationAction struct {
+        OperationID string
+        ActionID    string
+    }
+
     type GrantState string
     const (
         GrantActive  GrantState = "active"
@@ -324,8 +339,7 @@ Package: internal/authorization. It owns Kubron grants/delegations, not Kubernet
     type Grant struct {
         ID             string
         Principal      identity.PrincipalRef
-        OperationIDs   []string
-        ActionIDs      []string
+        Actions        []OperationAction
         Targets        TargetScope
         Constraints    ConstraintSet
         State          GrantState
@@ -347,8 +361,7 @@ Package: internal/authorization. It owns Kubron grants/delegations, not Kubernet
         OrgID            string
         OwnerTeamID      string
         ServicePrincipal identity.PrincipalRef
-        OperationIDs     []string
-        ActionIDs        []string
+        Actions          []OperationAction
         Targets          TargetScope
         Constraints      ConstraintSet
         State            DelegationState
@@ -360,7 +373,7 @@ Package: internal/authorization. It owns Kubron grants/delegations, not Kubernet
 
 Canonicalization:
 - ID lists are sorted, deduplicated and validated before persistence/digesting.
-- Grant requires explicit OrgID, principal, at least one Operation ID and Action ID, finite expiry, and at least one explicit target selector (TeamIDs, ClusterIDs, Namespaces or Objects). OrgID alone is not a wildcard.
+- Grant requires explicit OrgID, principal, at least one explicit OperationAction pair, finite expiry, and at least one explicit target selector (TeamIDs, ClusterIDs, Namespaces or Objects). OrgID alone is not a wildcard.
 - Delegation requires explicit OrgID, owner Team, one same-Organization ServicePrincipal, finite expiry and explicit operations/actions/targets restricted to owner Team.
 - TeamPrincipal grant TargetScope may include only its own Team; evaluator rejects any other Team even if malformed data exists.
 - ServicePrincipal has no implicit Team/Cluster membership or target rights.
@@ -376,7 +389,7 @@ Canonicalization:
         GetGrant(ctx context.Context, id string) (Grant, error)
         ListGrants(ctx context.Context, principal identity.PrincipalRef) ([]Grant, error)
         UpdateGrant(ctx context.Context, in Grant, expectedRevision uint64) (Grant, error)
-        RevokeGrant(ctx context.Context, id string, expectedRevision uint64) (Grant, error)
+        RevokeGrant(ctx context.Context, id string, expectedRevision uint64, mutationID string) (Grant, error)
     }
 
     type DelegationBackend interface {
@@ -385,7 +398,7 @@ Canonicalization:
         ListDelegations(ctx context.Context, service identity.PrincipalRef,
             ownerTeamID string) ([]Delegation, error)
         UpdateDelegation(ctx context.Context, in Delegation, expectedRevision uint64) (Delegation, error)
-        RevokeDelegation(ctx context.Context, id string, expectedRevision uint64) (Delegation, error)
+        RevokeDelegation(ctx context.Context, id string, expectedRevision uint64, mutationID string) (Delegation, error)
     }
 
     type TargetFacts struct {
@@ -414,11 +427,23 @@ Canonicalization:
         Now() time.Time
     }
 
+    type AdminAction string
+
+    const (
+        AdminGrantCreate AdminAction = "grant-create"
+        AdminGrantUpdate AdminAction = "grant-update"
+        AdminGrantRevoke AdminAction = "grant-revoke"
+        AdminDelegationCreate AdminAction = "delegation-create"
+        AdminDelegationUpdate AdminAction = "delegation-update"
+        AdminDelegationSuspend AdminAction = "delegation-suspend"
+        AdminDelegationRevoke AdminAction = "delegation-revoke"
+    )
+
     type AdminAuthorizer interface {
         AuthorizeGrantAdmin(ctx context.Context, actor identity.ActorRef,
-            principal identity.PrincipalRef, action string) error
+            principal identity.PrincipalRef, action AdminAction) error
         AuthorizeDelegationAdmin(ctx context.Context, actor identity.ActorRef,
-            ownerTeamID string, action string) error
+            ownerTeamID string, action AdminAction) error
     }
 
     type GrantRequest struct {
@@ -448,13 +473,13 @@ GrantDecision.Granted means **only** that Kubron technical grants + required Tea
 2. Require target Organization to equal principal Organization. Require target Cluster to belong to exactly one current Team according to ADR-0012. TargetRef carries no client-supplied owner or environment fields.
 3. For TeamPrincipal, require target Team == principal.TeamID. No delegation can expand it.
 4. For ServicePrincipal, require an active, unexpired delegation issued by target Team for this exact ServicePrincipal. ServicePrincipal is Organization-owned, not Team-owned; therefore every Team-owned cluster target requires explicit consent from that target Team. Organization Admin cannot substitute for Team Admin.
-5. Find active, unexpired grants for the principal matching Operation, Action and target.
+5. Find active, unexpired grants for the principal matching exact OperationAction pair and target.
 6. Grants combine by union: at least one applicable grant may cover the tuple. All constraints within the qualifying grant are ANDed.
 7. Resolve ActionFacts from the trusted versioned Operation/Action catalogue and use injected Clock for time checks. Evaluate every supported ConstraintSet field using trusted target/action facts. If a stored constraint cannot be evaluated by this Phase 1 evaluator, deny; never skip it.
 8. Intersect with identity scope, tenant ownership and required delegation. No grant/delegation, ambiguity, stale revision, missing ownership or unavailable dependency → deny.
 9. Return stable safe reason code and IDs/revisions needed for audit. Do not reveal metadata of foreign targets.
 
-No explicit user Deny grants, precedence ordering or last-grant-wins. Kubernetes RBAC and Autonomy Policy remain mandatory independent gates, implemented outside this package. Evaluator must not fetch credentials, construct a Kubernetes client or call Kubernetes API.
+No explicit user Deny grants, precedence ordering or last-grant-wins. OperationAction pairs are exact pairs; separate Operation and Action lists must not be interpreted as an unintended Cartesian product. Kubernetes RBAC and Autonomy Policy remain mandatory independent gates, implemented outside this package. Evaluator must not fetch credentials, construct a Kubernetes client or call Kubernetes API.
 
 Admin write authorization:
 - Team Admin may create/update/suspend/revoke delegation only for their own Team and its clusters.
