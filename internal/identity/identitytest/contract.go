@@ -406,14 +406,14 @@ func Run(t *testing.T, newHarness Factory) {
 		}
 	})
 
-		sub("display name update: CAS, idempotency and immutable fields", func(t *testing.T, h Harness) {
+	sub("display name update: CAS, idempotency and immutable fields", func(t *testing.T, h Harness) {
 		b := h.Backend
 		ref := TeamRef(orgA, teamA, "tid-display")
 		created := mustCreate(t, b, ref)
 		for _, tc := range []struct {
 			name, displayName, mutationID string
-			revision uint64
-			want error
+			revision                      uint64
+			want                          error
 		}{
 			{"zero revision", "new-name", next("mut"), 0, identity.ErrInvalid},
 			{"invalid name", "", next("mut"), 1, identity.ErrInvalid},
@@ -445,7 +445,7 @@ func Run(t *testing.T, newHarness Factory) {
 		}
 	})
 
-sub("revoked is terminal", func(t *testing.T, h Harness) {
+	sub("revoked is terminal", func(t *testing.T, h Harness) {
 		b := h.Backend
 		ref := TeamRef(orgA, teamA, "tid-1")
 		mustCreate(t, b, ref)
