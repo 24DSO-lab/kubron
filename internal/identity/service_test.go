@@ -494,8 +494,23 @@ func TestService_Create_ConcurrentIdenticalRequestsConverge(t *testing.T) {
 	}
 	wg.Wait()
 	for i := range res {
-		if errs[i] != nil || res[i].Ref != res[0].Ref {
+		if errs[i] != nil && !errors.Is(errs[i], audit.ErrOutcomeUnknown) {
 			t.Fatalf("call %d: %+v %v", i, res[i], errs[i])
+		}
+	}
+	// A replay that arrived before the winning request's durable outcome must report
+	// unknown rather than write that outcome on the winner's behalf. Once all calls
+	// have settled, retrying reconciles against the winner's completed audit record.
+	for i := range res {
+		if errors.Is(errs[i], audit.ErrOutcomeUnknown) {
+			var err error
+			res[i], err = e.svc.Create(ctx, identity.CreateRequest{Actor: adminA, Kind: identity.PrincipalTeam, OrgID: "org-a", TeamID: "team-a", DisplayName: "deploy-bot", MutationID: "req-1"})
+			if err != nil {
+				t.Fatalf("call %d replay reconciliation: %+v %v", i, res[i], err)
+			}
+		}
+		if res[i].Ref != res[0].Ref {
+			t.Fatalf("call %d returned a different identity: %+v", i, res[i])
 		}
 	}
 	list, _ := e.file.List(ctx, teamAScope)
