@@ -79,7 +79,7 @@ Phase 1 реализует безопасный фундамент технич�
 Effective authorization — пересечение всех обязательных ограничений:
 1. Tenant ownership / membership.
 2. Собственные Kubron grants principal.
-3. Активный Cross-Team Delegation от Team-владельца, если target принадлежит другой Team.
+3. Для ServicePrincipal — активный Cross-Team Delegation от Team-владельца каждого Team-owned target; Organization Admin не может заменить согласие Team. TeamPrincipal остаётся ограничен своей Team.
 4. Credential assignment и его актуальная версия.
 5. Kubernetes RBAC фактического credential.
 6. Autonomy Policy / operation constraints на последующих фазах.
