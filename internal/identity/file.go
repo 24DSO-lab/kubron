@@ -565,7 +565,6 @@ func (b *FileBackend) UpdateDisplayName(ctx context.Context, ref PrincipalRef, e
 	return out, nil
 }
 
-
 // PutBinding — см. Backend.
 func (b *FileBackend) PutBinding(ctx context.Context, in CredentialBinding,
 	expectedRevision uint64, mutationID, auditEventID string) (CredentialBinding, error) {
