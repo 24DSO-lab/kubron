@@ -32,7 +32,11 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          DONATIONALERTS_SYNC_SECRET: ${{ secrets.DONATIONALERTS_SYNC_SECRET }}
+          TRONGRID_API_KEY: ${{ secrets.TRONGRID_API_KEY }}
         run: |
           test -n "$CLOUDFLARE_API_TOKEN" || { echo "CLOUDFLARE_API_TOKEN is required"; exit 1; }
           test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "CLOUDFLARE_ACCOUNT_ID is required"; exit 1; }
+          printf "%s" "$DONATIONALERTS_SYNC_SECRET" | npx wrangler secret put DONATIONALERTS_SYNC_SECRET --config wrangler.donations.toml
+          printf "%s" "$TRONGRID_API_KEY" | npx wrangler secret put TRONGRID_API_KEY --config wrangler.donations.toml
           npx wrangler deploy --config wrangler.donations.toml
