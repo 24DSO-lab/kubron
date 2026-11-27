@@ -455,6 +455,12 @@ func TestService_Create_IdempotentReplayAndConflict(t *testing.T) {
 
 func TestService_Create_ConcurrentIdenticalRequestsConverge(t *testing.T) {
 	e := newEnv(t)
+	// This test exercises concurrent service calls; event ordering is covered separately.
+	// Disable the shared, intentionally non-concurrent event trace to avoid racing
+	// between fakeRec and spyBackend while they append to the same slice.
+	e.rec.events = nil
+	e.be.events = nil
+
 	const n = 16
 	var wg sync.WaitGroup
 	res := make([]identity.Identity, n)
