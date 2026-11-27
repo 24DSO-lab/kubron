@@ -33,7 +33,7 @@ Choose any amount. The amounts below are suggestions, not membership tiers or pa
   <div class="contribution-amount"><strong>$500+</strong><span>Large contribution</span></div>
 </div>
 
-## Contribute with cryptocurrency
+## Contribute
 
 <DonationsPanel />
 
