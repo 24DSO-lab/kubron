@@ -43,6 +43,7 @@
 | [architecture/kubron-executable-platform-architecture-specification.md](architecture/kubron-executable-platform-architecture-specification.md) | Сводная инженерная спецификация A+B+C: identity/authz, targets, autonomy, durable execution, scheduler, persistence, audit, тесты и roadmap |
 | [architecture/2026-11-26-phase-0-executable-contracts.md](architecture/2026-11-26-phase-0-executable-contracts.md) | Phase 0: границы пакетов, целевые интерфейсы, atomic persistence, critical audit, Desktop/Web contract tests и критерии готовности |
 | [architecture/2026-11-27-phase-1-engineering-package.md](architecture/2026-11-27-phase-1-engineering-package.md) | Phase 1: проверенная база, технические principals, credential resolution, grants/delegation, critical audit, четыре developer lanes, integration ownership и acceptance criteria |
+| [architecture/2026-11-27-phase-1-contract-freeze.md](architecture/2026-11-27-phase-1-contract-freeze.md) | Phase 1 Contract Freeze: canonical Go types, backend/evaluator interfaces, subject compatibility, critical audit protocol, dependency graph и file ownership |
 | [e2e.md](e2e.md) | Smoke-e2e |
 | [authentication-lab.md](authentication-lab.md) | Ручной стенд входа в облачные кластеры (EKS, GKE, AKS) без создания кластеров |
 | [releasing.md](releasing.md) | Как выпускается релиз |
