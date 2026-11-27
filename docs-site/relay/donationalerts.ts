@@ -54,7 +54,8 @@ function config(env: DonationAlertsEnv): { clientId: string; clientSecret: strin
 
 function redirectUri(request: Request, env: DonationAlertsEnv): string {
   const configured = env.DONATIONALERTS_REDIRECT_URI?.trim()
-  const uri = configured || new URL('/api/donationalerts/callback', request.url).toString()
+  if (!configured) throw new Error('Redirect URI must be configured explicitly')
+  const uri = configured
   const parsed = new URL(uri)
   if (parsed.protocol !== 'https:' || parsed.pathname !== '/api/donationalerts/callback' || parsed.search || parsed.hash) {
     throw new Error('Invalid redirect URI configuration')
