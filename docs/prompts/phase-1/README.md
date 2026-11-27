@@ -3,6 +3,7 @@
 **Frozen contract commit:** `71b2706a3fb29fcf8a5277fef7c7895d6c2c199e` (merge commit PR #267).
 
 **Normative contract:** [Phase 1 Contract Freeze](../../architecture/2026-11-27-phase-1-contract-freeze.md).  
+**Normative amendment:** [Phase 1 Contract Amendment 01](../../architecture/2026-11-27-phase-1-contract-amendment-01.md). If merged, it is read together with the Freeze and takes precedence on the topics it clarifies.  
 **Parent engineering package:** [Phase 1 Engineering Package](../../architecture/2026-11-27-phase-1-engineering-package.md).  
 **Formal decisions:** ADR-0035 through ADR-0038 in this directory's parent `docs/adr/`.
 
@@ -10,6 +11,7 @@
 
 - Work only on the assigned lane and its explicit file allowlist.
 - Do not change frozen domain types, interface signatures, semantics, error meanings, or dependency direction. If a mismatch is found, stop and send a focused proposal to the integration owner.
+- Apply Contract Amendment 01 together with the Freeze once the amendment is merged. Do not treat the amendment as effective before merge.
 - Do not edit `internal/store/**`, `internal/pgstore/**`, migration files/registry, `internal/app/**`, RPC/Wails bindings, frontend, docs indexes, or another lane's files.
 - Do not create a new `internal/core`, generic CRUD repository, universal transaction manager, second secret store, background daemon, scheduler, Operation Runner, Plan/Approval/Run executor, Autonomy engine, or Kubernetes write action.
 - Do not weaken existing authorization, tenancy, cluster-address, TLS, exec-plugin, encryption, or audit behavior.
@@ -28,11 +30,12 @@
 The lanes are separate ownership areas, but not all compile-time independent:
 
 1. **D — Critical Audit** can be implemented first and merged independently.
-2. **A — Identity Domain** consumes `audit.CriticalRecorder`; integrate after D.
-3. **B — Credential Resolution** and **C — Authorization** both consume canonical `identity` types. They may develop in parallel after the frozen identity contract is available; integrate/rebase after A.
-4. Integration owner alone handles PostgreSQL adapters/migrations, Store composition, app/RPC wiring and cross-platform integration tests.
+2. **A — Identity Domain** consumes `audit.CriticalRecorder`; its implementation is merged.
+3. **Contract Amendment 01** must be reviewed and merged before B/C proceed. The additive DisplayName use case is a focused Identity follow-up; it is not part of Lane B or C and is owned by the Integration Owner (who may delegate it to the original Lane A developer).
+4. **B — Credential Resolution** and **C — Authorization** both consume canonical `identity` types. They may develop in parallel after the amendment is merged, using the same current `refactor` base SHA.
+5. Integration owner alone handles PostgreSQL adapters/migrations, Store composition, app/RPC wiring, explicit pending-intent reconciliation orchestration, and cross-platform integration tests.
 
-Developers may prepare work in parallel using the frozen contract. Do not merge a dependent lane before its prerequisite is present on `refactor`. All lane branches must start from the same current `refactor` commit when implementation is authorized; the integration owner records that SHA in each task before branch creation. The frozen contract SHA above is the semantic reference, not a permanent branch base if `refactor` advances.
+Developers may prepare work in parallel using the normative contracts. Do not merge a dependent lane before its prerequisite is present on `refactor`. All lane branches must start from the same current `refactor` commit when implementation is authorized; the integration owner records that SHA in each task. The frozen contract SHA above is the semantic reference, not a permanent branch base if `refactor` advances.
 
 ## Required PR checklist
 
