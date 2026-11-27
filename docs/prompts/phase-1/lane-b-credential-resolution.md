@@ -1,6 +1,6 @@
 # Developer B — Subject-aware Credential Resolution
 
-You implement Lane B from the Phase 1 Contract Freeze. Read the common instructions in [README](README.md) and the complete normative contract before editing code.
+You implement Lane B from the Phase 1 Contract Freeze and Contract Amendment 01. Read the common instructions in [README](README.md), the complete normative Freeze, and Amendment 01 before editing code.
 
 ## Goal
 
@@ -18,12 +18,13 @@ Extend the existing credential Broker/Provider/Store and Kubernetes connection p
 2. Add the frozen technical subject kind and typed `identity.PrincipalRef` + `CredentialBindingID`. Enforce an exclusive tagged union; reject mixed legacy/technical fields.
 3. Technical subject must have no User SessionID. A separate provisioning context may bind the interactive admin actor/session to a one-time challenge; the resulting secret is saved only under the technical subject and binding.
 4. Resolve only active identity and active binding; validate principal/tenant/scope before credential use. Pending/revoked binding is denied.
-5. Continue using existing Broker and Provider for token acquisition, refresh, challenge, revoke and secret scrubbing. No direct provider bypass.
-6. Extend typed ConnPlan creation for technical principals. Preserve `ConfigFor` as the sole stored-cluster `rest.Config` constructor. No fake AuthSession and no direct rest.Config/client construction.
-7. Pool/cache key includes principal kind + principal ID + cluster + binding ID/revision. Prove no collisions with legacy user/team keys or another technical principal.
-8. Rotation uses the current validated credential version; stale writers cannot overwrite newer versions. Revoke blocks new token issuance; never fallback to revoked, user or legacy team credentials.
-9. Include technical records in rekey, keycheck, backup/restore and plaintext scans. Do not change PostgreSQL adapters/migrations; provide exact schema/AAD requirements to integration owner.
-10. Inject the frozen critical audit contract at the trusted credential assignment/provision/revoke use-case boundary. Do not make provider token refresh a new identity mutation.
+5. Use the canonical Identity binding-resolution path and the trusted cluster ownership facts defined by Amendment 01. Do not create a second cluster catalog, accept owner IDs from the client, or duplicate `identity.ClusterOwnerResolver`/its adapter. The concrete catalog adapter is Integration Owner work.
+6. Continue using existing Broker and Provider for token acquisition, refresh, challenge, revoke and secret scrubbing. No direct provider bypass.
+7. Extend typed ConnPlan creation for technical principals. Preserve `ConfigFor` as the sole stored-cluster `rest.Config` constructor. No fake AuthSession and no direct rest.Config/client construction.
+8. Pool/cache key includes principal kind + principal ID + cluster + binding ID/revision. Prove no collisions with legacy user/team keys or another technical principal.
+9. Rotation uses the current validated credential version; stale writers cannot overwrite newer versions. Revoke blocks new token issuance; never fallback to revoked, user or legacy team credentials.
+10. Include technical records in rekey, keycheck, backup/restore and plaintext scans. Do not change PostgreSQL adapters/migrations; provide exact schema/AAD requirements to integration owner.
+11. Inject the frozen critical audit contract at the trusted credential assignment/provision/revoke use-case boundary. Do not make provider token refresh a new identity mutation.
 
 ## Explicit non-goals
 
@@ -31,6 +32,7 @@ Extend the existing credential Broker/Provider/Store and Kubernetes connection p
 - No grants/delegation evaluation (consume an injected authorization result at use-case boundary; never implement policy here).
 - No `internal/store`, `internal/pgstore`, migrations, `internal/app`, RPC/Wails, frontend.
 - No new secrets subsystem, scheduler, Run executor or Kubernetes write action.
+- No pending-intent reconciliation daemon or automatic retry loop.
 
 ## Required tests
 
