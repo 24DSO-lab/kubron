@@ -239,7 +239,6 @@ func (s *snapshot) updateDisplayName(ref PrincipalRef, expected uint64, displayN
 	return cur, true, nil
 }
 
-
 func (s *snapshot) liveBinding(principal PrincipalRef, clusterID string) (live []CredentialBinding, revoked []CredentialBinding) {
 	for _, b := range s.bindings {
 		if b.Principal != principal || b.ClusterID != clusterID {
