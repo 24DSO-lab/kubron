@@ -52,7 +52,7 @@ function config(env: DonationAlertsEnv): { clientId: string; clientSecret: strin
   return { clientId, clientSecret, encryptionKey }
 }
 
-function redirectUri(request: Request, env: DonationAlertsEnv): string {
+function redirectUri(env: DonationAlertsEnv): string {
   const configured = env.DONATIONALERTS_REDIRECT_URI?.trim()
   if (!configured) throw new Error('Redirect URI must be configured explicitly')
   const uri = configured
@@ -91,7 +91,7 @@ export async function handleConnect(request: Request, env: DonationAlertsEnv, ru
   const cfg = config(env)
   if (!cfg) return json(503, { error: 'integration_not_configured' })
   let callback: string
-  try { callback = redirectUri(request, env) } catch { return json(503, { error: 'integration_not_configured' }) }
+  try { callback = redirectUri(env) } catch { return json(503, { error: 'integration_not_configured' }) }
 
   const stateBytes = runtime.crypto.getRandomValues(new Uint8Array(32))
   const state = toBase64(stateBytes).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '')
