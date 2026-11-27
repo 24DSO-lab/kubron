@@ -562,6 +562,7 @@ func TestService_Authorization_FailClosedWithoutSideEffects(t *testing.T) {
 func TestService_UpdateDisplayName_UsesAuditedCASAndPreservesImmutableFields(t *testing.T) {
 	e := newEnv(t)
 	created := e.createTeam("req-1")
+	e.events = nil // isolate the update's intent → mutation → outcome ordering
 	got, err := e.svc.UpdateDisplayName(ctx, adminA, created.Ref, created.Revision, "  renamed-bot  ", "rename-1")
 	if err != nil {
 		t.Fatal(err)
