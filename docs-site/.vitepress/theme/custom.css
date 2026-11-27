@@ -245,3 +245,13 @@
   .donations-qr-wrap { flex-direction: row; justify-content: flex-start; }
   .donations-qr { width: 104px; height: 104px; }
 }
+
+
+/* DonationAlerts contribution call to action */
+.donations-alerts { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px 24px; }
+.donations-alerts-copy { flex: 1 1 320px; min-width: 0; }
+.donations-alerts-copy h3 { margin-bottom: 6px; }
+.donations-alerts-copy p { margin: 0; }
+.donations-alerts-button { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 18px; border: 1px solid var(--vp-c-brand-1); border-radius: 9px; color: #fff !important; background: var(--vp-c-brand-1); font-size: 13px; font-weight: 700; text-decoration: none !important; transition: background-color 160ms ease, border-color 160ms ease, transform 160ms ease; }
+.donations-alerts-button:hover { border-color: var(--vp-c-brand-2); background: var(--vp-c-brand-2); transform: translateY(-1px); }
+.donations-alerts-button:focus-visible { outline: 3px solid var(--vp-c-brand-soft); outline-offset: 3px; }
