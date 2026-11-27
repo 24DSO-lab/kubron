@@ -43,6 +43,7 @@ for (const [index, tx] of (data.transactions ?? []).entries()) {
   for (const field of ['id', 'asset', 'network', 'amount', 'receivedAt']) {
     if (typeof tx[field] !== 'string' || !tx[field].trim()) errors.push(`${label}.${field} is required`)
   }
+  if (tx.source !== undefined && tx.source !== 'donationalerts') errors.push(`${label}.source is unsupported`)
   if (tx.source === 'donationalerts') {
     if (typeof tx.txHash !== 'string' || !tx.txHash.trim()) errors.push(`${label}.txHash is required for DonationAlerts records`)
     if (tx.explorerTxUrl !== undefined) errors.push(`${label}.explorerTxUrl must be omitted for DonationAlerts records`)
