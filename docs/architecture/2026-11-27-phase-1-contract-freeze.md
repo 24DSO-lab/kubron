@@ -450,7 +450,8 @@ GrantDecision.Granted means **only** that Kubron technical grants + required Tea
 4. For ServicePrincipal, require an active, unexpired delegation issued by target Team for this exact ServicePrincipal. ServicePrincipal is Organization-owned, not Team-owned; therefore every Team-owned cluster target requires explicit consent from that target Team. Organization Admin cannot substitute for Team Admin.
 5. Find active, unexpired grants for the principal matching Operation, Action and target.
 6. Grants combine by union: at least one applicable grant may cover the tuple. All constraints within the qualifying grant are ANDed.
-7. Resolve ActionFacts from the trusted versioned Operation/Action catalogue and use injected Clock for time checks. Evaluate every supported ConstraintSet field using trusted target/action facts. If a stored constraint cannot be evaluated by this Phase 1 evaluator, deny; never skip it.\n8. Intersect with identity scope, tenant ownership and required delegation. No grant/delegation, ambiguity, stale revision, missing ownership or unavailable dependency → deny.
+7. Resolve ActionFacts from the trusted versioned Operation/Action catalogue and use injected Clock for time checks. Evaluate every supported ConstraintSet field using trusted target/action facts. If a stored constraint cannot be evaluated by this Phase 1 evaluator, deny; never skip it.
+8. Intersect with identity scope, tenant ownership and required delegation. No grant/delegation, ambiguity, stale revision, missing ownership or unavailable dependency → deny.
 9. Return stable safe reason code and IDs/revisions needed for audit. Do not reveal metadata of foreign targets.
 
 No explicit user Deny grants, precedence ordering or last-grant-wins. Kubernetes RBAC and Autonomy Policy remain mandatory independent gates, implemented outside this package. Evaluator must not fetch credentials, construct a Kubernetes client or call Kubernetes API.
