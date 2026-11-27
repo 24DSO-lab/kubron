@@ -292,6 +292,61 @@ func (s *Service) transition(ctx context.Context, req TransitionRequest, next Id
 	return out, nil
 }
 
+// UpdateDisplayName changes only the display name. Ownership and all identity/lifecycle metadata remain immutable.
+func (s *Service) UpdateDisplayName(ctx context.Context, actor ActorRef, ref PrincipalRef,
+	expectedRevision uint64, displayName, mutationID string) (Identity, error) {
+	name := strings.TrimSpace(displayName)
+	if !validID(mutationID) {
+		return Identity{}, invalid("MutationID")
+	}
+	if expectedRevision == 0 {
+		return Identity{}, invalid("ExpectedRevision")
+	}
+	if !validDisplayName(name) {
+		return Identity{}, invalid("DisplayName")
+	}
+	owner, err := ref.Owner()
+	if err != nil {
+		return Identity{}, err
+	}
+	if err := s.authorize(ctx, actor, AdminUpdate, owner); err != nil {
+		return Identity{}, err
+	}
+	cur, err := s.backend.Get(ctx, ref)
+	if err != nil {
+		return Identity{}, normalize(err)
+	}
+	if cur.Owner != owner {
+		return Identity{}, fmt.Errorf("%w: %s", ErrUnavailable, "stored owner mismatch")
+	}
+	if cur.LastMutationID == mutationID {
+		if cur.DisplayName == name && cur.Revision == expectedRevision+1 {
+			return s.replayed(ctx, cur, cur.Ref.OrgID, cur.LastAuditEventID, cur.Revision)
+		}
+		return Identity{}, fmt.Errorf("%w: %s", ErrConflict, "mutation id reused")
+	}
+
+	var out Identity
+	err = s.protect(ctx, protected{
+		actor: actor, action: "identity.display_name.update", resourceType: "identity",
+		resourceID: ref.ID, principal: ref, mutationID: mutationID, expectedRev: expectedRevision,
+		digest: requestDigest("identity.display_name.update", string(ref.Kind), ref.ID,
+			ref.OrgID, ref.TeamID, name, fmt.Sprint(expectedRevision),
+			string(actor.Kind), actor.ID, mutationID),
+	}, func(eventID string) (uint64, string, error) {
+		got, err := s.backend.UpdateDisplayName(ctx, ref, expectedRevision, name, mutationID, eventID)
+		if err != nil {
+			return 0, "", err
+		}
+		out = got
+		return got.Revision, got.LastAuditEventID, nil
+	})
+	if err != nil {
+		return Identity{}, err
+	}
+	return out, nil
+}
+
 // ---------- use cases: binding ----------
 
 // AssignBinding назначает principal кластеру: создаёт pending-привязку, которая резервирует кортеж, но не
@@ -567,7 +622,20 @@ func (s *Service) protect(ctx context.Context, p protected, apply func(eventID s
 		if aerr := s.rec.AppendOutcome(octx, out); aerr != nil {
 			return fmt.Errorf("%w: %w", audit.ErrOutcomeUnknown, aerr)
 		}
-		return s.confirm(octx, p.principal.OrgID, lastEvent, rev)
+		// The backend may return a mutation committed by a concurrent request. Only that
+		// request owns lastEvent and may append its outcome; this replay must not race it
+		// by synthesizing a second succeeded outcome with a different completion time.
+		existing, getErr := s.rec.GetOutcome(octx, p.principal.OrgID, lastEvent)
+		switch {
+		case getErr == nil && existing.Result == audit.CriticalSucceeded:
+			return nil
+		case errors.Is(getErr, audit.ErrCriticalNotFound):
+			return fmt.Errorf("%w: %s", audit.ErrOutcomeUnknown, "concurrent mutation is not yet audited")
+		case getErr != nil:
+			return fmt.Errorf("%w: %w", ErrUnavailable, getErr)
+		default:
+			return fmt.Errorf("%w: %s", audit.ErrOutcomeUnknown, "concurrent mutation has a non-succeeded outcome")
+		}
 	}
 	out := audit.CriticalOutcome{EventID: eventID, Result: audit.CriticalSucceeded, ResourceRevision: rev, CompletedAt: s.now()}
 	if aerr := s.rec.AppendOutcome(octx, out); aerr != nil {

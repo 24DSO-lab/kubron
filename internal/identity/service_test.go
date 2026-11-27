@@ -197,6 +197,11 @@ func (s *spyBackend) RevokeBinding(c context.Context, id string, rev uint64, m, 
 	return
 }
 
+func (s *spyBackend) UpdateDisplayName(c context.Context, r identity.PrincipalRef, rev uint64, name, m, e string) (out identity.Identity, err error) {
+	err = s.mutate("update_display_name", func() (x error) { out, x = s.Backend.UpdateDisplayName(c, r, rev, name, m, e); return })
+	return
+}
+
 func (s *spyBackend) count() int { s.mu.Lock(); defer s.mu.Unlock(); return s.mutations }
 
 // fakeAuthz — модель app-RBAC: Team Admin управляет Team identity только своей команды, Organization Admin —
@@ -255,6 +260,7 @@ var (
 )
 
 type env struct {
+	mu       sync.Mutex
 	t        *testing.T
 	svc      *identity.Service
 	be       *spyBackend
@@ -271,7 +277,11 @@ type env struct {
 func newEnv(t *testing.T) *env {
 	t.Helper()
 	e := &env{t: t, dir: t.TempDir(), now: time.Date(2026, 11, 27, 10, 0, 0, 0, time.UTC)}
-	fb, err := identity.OpenFile(e.dir, identity.WithFileClock(func() time.Time { return e.now }))
+	fb, err := identity.OpenFile(e.dir, identity.WithFileClock(func() time.Time {
+		e.mu.Lock()
+		defer e.mu.Unlock()
+		return e.now
+	}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -286,8 +296,18 @@ func newEnv(t *testing.T) *env {
 		"cl-other-org": {Kind: identity.OwnerTeam, OrgID: "org-x", TeamID: "team-x"},
 	}}
 	e.svc, err = identity.NewService(e.be, e.rec, e.authz, e.clusters,
-		identity.WithClock(func() time.Time { e.now = e.now.Add(time.Second); return e.now }),
-		identity.WithEventIDs(func() (string, error) { e.seq++; return fmt.Sprintf("evt-%04d", e.seq), nil }))
+		identity.WithClock(func() time.Time {
+			e.mu.Lock()
+			defer e.mu.Unlock()
+			e.now = e.now.Add(time.Second)
+			return e.now
+		}),
+		identity.WithEventIDs(func() (string, error) {
+			e.mu.Lock()
+			defer e.mu.Unlock()
+			e.seq++
+			return fmt.Sprintf("evt-%04d", e.seq), nil
+		}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -474,8 +494,23 @@ func TestService_Create_ConcurrentIdenticalRequestsConverge(t *testing.T) {
 	}
 	wg.Wait()
 	for i := range res {
-		if errs[i] != nil || res[i].Ref != res[0].Ref {
+		if errs[i] != nil && !errors.Is(errs[i], audit.ErrOutcomeUnknown) {
 			t.Fatalf("call %d: %+v %v", i, res[i], errs[i])
+		}
+	}
+	// A replay that arrived before the winning request's durable outcome must report
+	// unknown rather than write that outcome on the winner's behalf. Once all calls
+	// have settled, retrying reconciles against the winner's completed audit record.
+	for i := range res {
+		if errors.Is(errs[i], audit.ErrOutcomeUnknown) {
+			var err error
+			res[i], err = e.svc.Create(ctx, identity.CreateRequest{Actor: adminA, Kind: identity.PrincipalTeam, OrgID: "org-a", TeamID: "team-a", DisplayName: "deploy-bot", MutationID: "req-1"})
+			if err != nil {
+				t.Fatalf("call %d replay reconciliation: %+v %v", i, res[i], err)
+			}
+		}
+		if res[i].Ref != res[0].Ref {
+			t.Fatalf("call %d returned a different identity: %+v", i, res[i])
 		}
 	}
 	list, _ := e.file.List(ctx, teamAScope)
@@ -552,6 +587,39 @@ func TestService_Authorization_FailClosedWithoutSideEffects(t *testing.T) {
 			t.Fatal("state changed")
 		}
 	})
+}
+
+func TestService_UpdateDisplayName_UsesAuditedCASAndPreservesImmutableFields(t *testing.T) {
+	e := newEnv(t)
+	created := e.createTeam("req-1")
+	e.events = nil // isolate the update's intent → mutation → outcome ordering
+	got, err := e.svc.UpdateDisplayName(ctx, adminA, created.Ref, created.Revision, "  renamed-bot  ", "rename-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.DisplayName != "renamed-bot" || got.Revision != created.Revision+1 ||
+		got.Ref != created.Ref || got.Owner != created.Owner || got.State != created.State ||
+		got.CreatedBy != created.CreatedBy || !got.CreatedAt.Equal(created.CreatedAt) {
+		t.Fatalf("unexpected updated identity: before=%+v after=%+v", created, got)
+	}
+	if strings.Join(e.events, ",") != "intent:identity.display_name.update,backend:update_display_name,outcome:succeeded" {
+		t.Fatalf("audit/mutation order: %v", e.events)
+	}
+	in := e.rec.byAction("identity.display_name.update")[0]
+	raw, _ := json.Marshal(in)
+	if strings.Contains(string(raw), "renamed-bot") {
+		t.Fatalf("display name leaked into audit: %s", raw)
+	}
+	mutations := e.be.count()
+	again, err := e.svc.UpdateDisplayName(ctx, adminA, created.Ref, created.Revision, "renamed-bot", "rename-1")
+	if err != nil || again.Revision != got.Revision || again.LastAuditEventID != got.LastAuditEventID {
+		t.Fatalf("replay: %+v %v", again, err)
+	}
+	if e.be.count() != mutations {
+		t.Fatal("replay repeated backend mutation")
+	}
+	_, err = e.svc.UpdateDisplayName(ctx, adminA, created.Ref, created.Revision, "other-name", "rename-1")
+	is(t, "same mutation with different display name", err, identity.ErrConflict)
 }
 
 func TestService_CreatorDepartureChangesNothing(t *testing.T) {

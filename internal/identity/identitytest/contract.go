@@ -406,6 +406,45 @@ func Run(t *testing.T, newHarness Factory) {
 		}
 	})
 
+	sub("display name update: CAS, idempotency and immutable fields", func(t *testing.T, h Harness) {
+		b := h.Backend
+		ref := TeamRef(orgA, teamA, "tid-display")
+		created := mustCreate(t, b, ref)
+		for _, tc := range []struct {
+			name, displayName, mutationID string
+			revision                      uint64
+			want                          error
+		}{
+			{"zero revision", "new-name", next("mut"), 0, identity.ErrInvalid},
+			{"invalid name", "", next("mut"), 1, identity.ErrInvalid},
+			{"invalid mutation", "new-name", "bad/id", 1, identity.ErrInvalid},
+			{"stale revision", "new-name", next("mut"), 9, identity.ErrConflict},
+		} {
+			_, err := b.UpdateDisplayName(ctx, ref, tc.revision, tc.displayName, tc.mutationID, next("ev"))
+			wantErr(t, tc.name, err, tc.want)
+		}
+		mutID := next("mut")
+		updated, err := b.UpdateDisplayName(ctx, ref, 1, "new-name", mutID, next("ev"))
+		if err != nil || updated.DisplayName != "new-name" || updated.Revision != 2 {
+			t.Fatalf("update: %+v %v", updated, err)
+		}
+		if updated.Ref != created.Ref || updated.Owner != created.Owner || updated.State != created.State ||
+			updated.CreatedBy != created.CreatedBy || !updated.CreatedAt.Equal(created.CreatedAt) {
+			t.Fatalf("immutable fields changed: before=%+v after=%+v", created, updated)
+		}
+		again, err := b.UpdateDisplayName(ctx, ref, 1, "new-name", mutID, next("ev"))
+		if err != nil || !sameIdentity(updated, again) {
+			t.Fatalf("idempotent replay: %+v %v", again, err)
+		}
+		_, err = b.UpdateDisplayName(ctx, ref, 1, "different-name", mutID, next("ev"))
+		wantErr(t, "same mutation with different payload", err, identity.ErrConflict)
+		_, err = b.UpdateDisplayName(ctx, ref, 1, "stale-name", next("mut"), next("ev"))
+		wantErr(t, "stale writer", err, identity.ErrConflict)
+		if got, err := b.Get(ctx, ref); err != nil || !sameIdentity(updated, got) {
+			t.Fatalf("stored identity: %+v %v", got, err)
+		}
+	})
+
 	sub("revoked is terminal", func(t *testing.T, h Harness) {
 		b := h.Backend
 		ref := TeamRef(orgA, teamA, "tid-1")
