@@ -60,9 +60,10 @@ are in `relay/donationalerts.ts` and `relay/donationalerts.test.ts`.
 1. Register an OAuth app at https://www.donationalerts.com/application/clients.
 2. Set its redirect URI to exactly `https://kubron.pages.dev/api/donationalerts/callback`.
 3. Request the least-privilege scope `oauth-donation-index` (read donation history).
-4. In Cloudflare Pages → project `kubron` → **Settings → Bindings**, create a dedicated KV namespace binding named
+4. In Cloudflare Zero Trust → Access → Applications, create a Self-hosted application for the exact path `kubron.pages.dev/api/donationalerts/connect` and allow only your own Cloudflare Access identity. Do **not** protect `/api/donationalerts/callback`: DonationAlerts must reach it directly. The `connect` route starts an account-linking flow and must not be public, or an arbitrary visitor could replace the connected account's tokens.
+5. In Cloudflare Pages → project `kubron` → **Settings → Bindings**, create a dedicated KV namespace binding named
    `DONATIONALERTS`. Do not reuse the bug-report `RATE` namespace.
-5. In **Settings → Variables and Secrets** (production), configure:
+6. In **Settings → Variables and Secrets** (production), configure:
    - `DONATIONALERTS_CLIENT_ID`: numeric OAuth client ID;
    - `DONATIONALERTS_CLIENT_SECRET`: secret OAuth client secret;
    - `DONATIONALERTS_TOKEN_ENCRYPTION_KEY`: random secret of at least 32 characters;
@@ -71,7 +72,7 @@ are in `relay/donationalerts.ts` and `relay/donationalerts.test.ts`.
 Generate the encryption key with `openssl rand -base64 48`. The OAuth tokens are encrypted with AES-GCM before storage in KV.
 Never commit or share OAuth credentials.
 
-After deployment and configuration, open `https://kubron.pages.dev/api/donationalerts/connect` to authorize the Kubron
+After deployment and configuration, sign in through Cloudflare Access and open `https://kubron.pages.dev/api/donationalerts/connect` to authorize the Kubron
 account. The callback confirms success without exposing tokens. `GET /api/donationalerts/status` returns only a boolean
 connection status.
 
