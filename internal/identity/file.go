@@ -212,6 +212,34 @@ func (s *snapshot) setState(ref PrincipalRef, expected uint64, next IdentityStat
 	return cur, true, nil
 }
 
+func (s *snapshot) updateDisplayName(ref PrincipalRef, expected uint64, displayName,
+	mutationID, auditEventID string, now time.Time) (Identity, bool, error) {
+	if expected == 0 || !validDisplayName(displayName) || !validID(mutationID) || !validID(auditEventID) {
+		return Identity{}, false, invalid("UpdateDisplayName arguments")
+	}
+	cur, err := s.identity(ref)
+	if err != nil {
+		return Identity{}, false, err
+	}
+	if cur.LastMutationID == mutationID {
+		if cur.DisplayName == displayName && cur.Revision == expected+1 {
+			return cur, false, nil
+		}
+		return Identity{}, false, fmt.Errorf("%w: %s", ErrConflict, "mutation id reused")
+	}
+	if cur.Revision != expected {
+		return Identity{}, false, fmt.Errorf("%w: %s", ErrConflict, "stale revision")
+	}
+	cur.DisplayName = displayName
+	cur.Revision++
+	cur.UpdatedAt = laterOf(canon(now), cur.UpdatedAt)
+	cur.LastMutationID = mutationID
+	cur.LastAuditEventID = auditEventID
+	s.identities[keyOf(ref)] = cur
+	return cur, true, nil
+}
+
+
 func (s *snapshot) liveBinding(principal PrincipalRef, clusterID string) (live []CredentialBinding, revoked []CredentialBinding) {
 	for _, b := range s.bindings {
 		if b.Principal != principal || b.ClusterID != clusterID {
@@ -522,6 +550,22 @@ func (b *FileBackend) SetState(ctx context.Context, ref PrincipalRef, expectedRe
 	}
 	return out, nil
 }
+
+// UpdateDisplayName — см. Backend.
+func (b *FileBackend) UpdateDisplayName(ctx context.Context, ref PrincipalRef, expectedRevision uint64,
+	displayName, mutationID, auditEventID string) (Identity, error) {
+	var out Identity
+	err := b.mutate(ctx, func(s *snapshot) (bool, error) {
+		got, changed, err := s.updateDisplayName(ref, expectedRevision, displayName, mutationID, auditEventID, b.now())
+		out = got
+		return changed, err
+	})
+	if err != nil {
+		return Identity{}, err
+	}
+	return out, nil
+}
+
 
 // PutBinding — см. Backend.
 func (b *FileBackend) PutBinding(ctx context.Context, in CredentialBinding,

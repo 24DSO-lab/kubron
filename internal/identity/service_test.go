@@ -197,6 +197,11 @@ func (s *spyBackend) RevokeBinding(c context.Context, id string, rev uint64, m, 
 	return
 }
 
+func (s *spyBackend) UpdateDisplayName(c context.Context, r identity.PrincipalRef, rev uint64, name, m, e string) (out identity.Identity, err error) {
+	err = s.mutate("update_display_name", func() (x error) { out, x = s.Backend.UpdateDisplayName(c, r, rev, name, m, e); return })
+	return
+}
+
 func (s *spyBackend) count() int { s.mu.Lock(); defer s.mu.Unlock(); return s.mutations }
 
 // fakeAuthz — модель app-RBAC: Team Admin управляет Team identity только своей команды, Organization Admin —

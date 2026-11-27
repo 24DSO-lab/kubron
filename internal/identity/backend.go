@@ -47,6 +47,10 @@ type Backend interface {
 	SetState(ctx context.Context, ref PrincipalRef, expectedRevision uint64,
 		next IdentityState, mutationID, auditEventID string) (Identity, error)
 
+	// UpdateDisplayName изменяет только человекочитаемое имя. Использует CAS и mutation/audit IDs.
+	UpdateDisplayName(ctx context.Context, ref PrincipalRef, expectedRevision uint64,
+		displayName, mutationID, auditEventID string) (Identity, error)
+
 	// PutBinding создаёт pending-привязку (in.State=pending, in.Revision=0, expectedRevision=0). Принципал
 	// должен существовать и быть active (revoked → ErrRevoked, suspended → ErrInvalid). Не более одной
 	// pending/active привязки на (principal, cluster): иначе ErrConflict. ID привязки не переиспользуется

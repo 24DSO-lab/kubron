@@ -292,6 +292,71 @@ func (s *Service) transition(ctx context.Context, req TransitionRequest, next Id
 	return out, nil
 }
 
+// UpdateDisplayNameRequest describes an audited, revision-checked display-name change.
+type UpdateDisplayNameRequest struct {
+	Actor            ActorRef
+	Ref              PrincipalRef
+	ExpectedRevision uint64
+	DisplayName      string
+	MutationID       string
+}
+
+// UpdateDisplayName changes only the display name. Ownership and all identity/lifecycle metadata remain immutable.
+func (s *Service) UpdateDisplayName(ctx context.Context, req UpdateDisplayNameRequest) (Identity, error) {
+	name := strings.TrimSpace(req.DisplayName)
+	if !validID(req.MutationID) {
+		return Identity{}, invalid("MutationID")
+	}
+	if req.ExpectedRevision == 0 {
+		return Identity{}, invalid("ExpectedRevision")
+	}
+	if !validDisplayName(name) {
+		return Identity{}, invalid("DisplayName")
+	}
+	owner, err := req.Ref.Owner()
+	if err != nil {
+		return Identity{}, err
+	}
+	if err := s.authorize(ctx, req.Actor, AdminUpdate, owner); err != nil {
+		return Identity{}, err
+	}
+	cur, err := s.backend.Get(ctx, req.Ref)
+	if err != nil {
+		return Identity{}, normalize(err)
+	}
+	if cur.Owner != owner {
+		return Identity{}, fmt.Errorf("%w: %s", ErrUnavailable, "stored owner mismatch")
+	}
+	if cur.LastMutationID == req.MutationID {
+		if cur.DisplayName == name && cur.Revision == req.ExpectedRevision+1 {
+			return s.replayed(ctx, cur, cur.Ref.OrgID, cur.LastAuditEventID, cur.Revision)
+		}
+		return Identity{}, fmt.Errorf("%w: %s", ErrConflict, "mutation id reused")
+	}
+
+	var out Identity
+	err = s.protect(ctx, protected{
+		actor: req.Actor, action: "identity.display_name.update", resourceType: "identity",
+		resourceID: req.Ref.ID, principal: req.Ref, mutationID: req.MutationID,
+		expectedRev: req.ExpectedRevision,
+		digest: requestDigest("identity.display_name.update", string(req.Ref.Kind), req.Ref.ID,
+			req.Ref.OrgID, req.Ref.TeamID, name, fmt.Sprint(req.ExpectedRevision),
+			string(req.Actor.Kind), req.Actor.ID, req.MutationID),
+	}, func(eventID string) (uint64, string, error) {
+		got, err := s.backend.UpdateDisplayName(ctx, req.Ref, req.ExpectedRevision, name, req.MutationID, eventID)
+		if err != nil {
+			return 0, "", err
+		}
+		out = got
+		return got.Revision, got.LastAuditEventID, nil
+	})
+	if err != nil {
+		return Identity{}, err
+	}
+	return out, nil
+}
+
+
 // ---------- use cases: binding ----------
 
 // AssignBinding назначает principal кластеру: создаёт pending-привязку, которая резервирует кортеж, но не
