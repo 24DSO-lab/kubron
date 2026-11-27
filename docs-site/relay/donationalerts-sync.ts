@@ -119,7 +119,7 @@ async function validAccessToken(env: SyncEnv, tokens: Record<string, unknown>): 
 export function parseDonationTimestamp(value: unknown): number | null {
   if (typeof value !== 'string' || !value.trim()) return null
   const normalized = value.includes('T') ? value : value.replace(' ', 'T')
-  const hasTimezone = /(?:Z|[+-]\\d{2}:?\\d{2})$/i.test(normalized)
+  const hasTimezone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(normalized)
   const timestamp = Date.parse(hasTimezone ? normalized : `${normalized}Z`)
   return Number.isFinite(timestamp) ? timestamp : null
 }
