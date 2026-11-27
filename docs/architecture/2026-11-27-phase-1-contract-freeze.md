@@ -241,7 +241,7 @@ Validation is an exclusive tagged union:
 - UserPrincipal continues using existing user credential path; Phase 1 does not create a technical User credential kind.
 - Never infer principal kind from OwnerID or provider Kind.
 
-### 5.2. Encryption and key compatibility
+The existing CredentialStore.List(ownerID) remains for legacy owners; add a typed ListPrincipal(ctx, PrincipalRef) path for technical principals. Extend RevokeFilter with typed PrincipalRef and BindingID fields. A normal principal revoke must supply an exact principal/binding scope; wildcard filters are not accepted from ordinary management calls.\n\n### 5.2. Encryption and key compatibility
 
 - Existing legacy records retain exact old AAD/key interpretation. Never reinterpret ScopeTeam records as TeamPrincipal.
 - Technical records use a distinct canonical AAD encoding containing format/version marker, ClusterID, ScopePrincipal, Principal.Kind, Principal.ID, OrgID, TeamID (when applicable) and BindingID.
@@ -253,7 +253,7 @@ Validation is an exclusive tagged union:
 
 ### 5.3. Broker and ConfigFor path
 
-Existing credential.Broker remains the only provider orchestrator. Extend it to accept validated typed Subject for Acquire/Answer/Poll/Cancel/Token and revocation. No caller may invoke Provider directly.
+Existing credential.Broker remains the only provider orchestrator. Extend it to accept validated typed Subject for Acquire/Answer/Poll/Cancel/Token and revocation, and add typed principal listing rather than overloading legacy List(ownerID). No caller may invoke Provider directly.
 
 Required behavior:
 - User challenge methods require valid User scope and session binding where Web semantics require it.
@@ -426,12 +426,12 @@ GrantDecision.Granted means **only** that Kubron technical grants + required Tea
 ### 6.3. Normative evaluation algorithm
 
 1. Validate principal kind/state and resolve target ownership from trusted server-side catalog. Never trust client-supplied OrgID/TeamID as ownership proof.
-2. Require target Organization to equal principal Organization. Require target Cluster to belong to exactly one current Team according to ADR-0012.
+2. Require target Organization to equal principal Organization. Require target Cluster to belong to exactly one current Team according to ADR-0012. TargetRef carries no client-supplied owner or environment fields.
 3. For TeamPrincipal, require target Team == principal.TeamID. No delegation can expand it.
 4. For ServicePrincipal, require an active, unexpired delegation issued by target Team for this exact ServicePrincipal. ServicePrincipal is Organization-owned, not Team-owned; therefore every Team-owned cluster target requires explicit consent from that target Team. Organization Admin cannot substitute for Team Admin.
 5. Find active, unexpired grants for the principal matching Operation, Action and target.
 6. Grants combine by union: at least one applicable grant may cover the tuple. All constraints within the qualifying grant are ANDed.
-7. Evaluate every supported ConstraintSet field using trusted target/action facts and server time. If a stored constraint cannot be evaluated by this Phase 1 evaluator, deny; never skip it.\n8. Intersect with identity scope, tenant ownership and required delegation. No grant/delegation, ambiguity, stale revision, missing ownership or unavailable dependency → deny.
+7. Resolve ActionFacts from the trusted versioned Operation/Action catalogue and use injected Clock for time checks. Evaluate every supported ConstraintSet field using trusted target/action facts. If a stored constraint cannot be evaluated by this Phase 1 evaluator, deny; never skip it.\n8. Intersect with identity scope, tenant ownership and required delegation. No grant/delegation, ambiguity, stale revision, missing ownership or unavailable dependency → deny.
 9. Return stable safe reason code and IDs/revisions needed for audit. Do not reveal metadata of foreign targets.
 
 No explicit user Deny grants, precedence ordering or last-grant-wins. Kubernetes RBAC and Autonomy Policy remain mandatory independent gates, implemented outside this package. Evaluator must not fetch credentials, construct a Kubernetes client or call Kubernetes API.
@@ -500,7 +500,7 @@ Every protected Identity/Grant/Delegation/Binding mutation uses this order:
 5. Append CriticalOutcome (succeeded or failed). If outcome append fails after mutation attempt, return typed ErrOutcomeUnknown; do not report success and do not blindly repeat mutation.
 6. Pending intents are reconciled by reading resource and comparing mutation ID/revision/request digest. If result cannot be proven, retain unknown and require explicit safe resolution.
 
-A helper may centralize this protocol, but must not hide errors or automatically retry mutation after unknown outcome. The same protocol applies to credential assignment/replacement/revoke operations; Lane B must inject CriticalRecorder at the trusted credential-management use-case boundary. Provider token refresh itself is not a new identity assignment.
+A helper may centralize this protocol, but must not hide errors or automatically retry mutation after unknown outcome. The same protocol applies to credential assignment/replacement/revoke operations; Lane B must inject CriticalRecorder at the trusted credential-management use-case boundary (credential may import audit; audit must not import credential). Provider token refresh itself is not a new identity assignment.
 
 ### 7.3. Durability and persistence
 
