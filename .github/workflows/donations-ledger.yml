@@ -35,6 +35,8 @@ jobs:
         working-directory: docs-site
         env:
           TRONGRID_API_KEY: ${{ secrets.TRONGRID_API_KEY }}
+          DONATIONALERTS_SYNC_SECRET: ${{ secrets.DONATIONALERTS_SYNC_SECRET }}
+          DONATIONALERTS_SYNC_URL: https://kubron.pages.dev/api/donationalerts/sync
         run: npm run donations:sync
 
       - name: Validate public ledger
