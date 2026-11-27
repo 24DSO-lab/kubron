@@ -66,7 +66,7 @@ are in `relay/donationalerts.ts` and `relay/donationalerts.test.ts`.
    - `DONATIONALERTS_CLIENT_ID`: numeric OAuth client ID;
    - `DONATIONALERTS_CLIENT_SECRET`: secret OAuth client secret;
    - `DONATIONALERTS_TOKEN_ENCRYPTION_KEY`: random secret of at least 32 characters;
-   - `DONATIONALERTS_REDIRECT_URI`: optional, but if set it must exactly match the callback URI above.
+   - `DONATIONALERTS_REDIRECT_URI`: must exactly equal the callback URI above.
 
 Generate the encryption key with `openssl rand -base64 48`. The OAuth tokens are encrypted with AES-GCM before storage in KV.
 Never commit or share OAuth credentials.
