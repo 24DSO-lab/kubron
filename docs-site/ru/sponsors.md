@@ -33,7 +33,7 @@ import DonationsPanel from '@theme/components/DonationsPanel.vue'
   <div class="contribution-amount"><strong>$500+</strong><span>Крупный вклад</span></div>
 </div>
 
-## Поддержать криптовалютой
+## Поддержать
 
 <DonationsPanel />
 
