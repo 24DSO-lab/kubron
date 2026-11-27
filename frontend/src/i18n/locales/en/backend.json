@@ -1067,5 +1067,11 @@
   "criticalQuarantineCreateError": "audit: create quarantine file: {p0}",
   "criticalTailQuarantineError": "audit: quarantine tail: {p0}",
   "criticalJournalTruncateError": "audit: truncate critical journal: {p0}",
-  "criticalJournalFinalSyncError": "audit: sync critical journal: {p0}"
+  "criticalJournalFinalSyncError": "audit: sync critical journal: {p0}",
+  "identityNotFound": "identity: not found",
+  "identityRevisionConflict": "identity: revision conflict",
+  "identityInvalid": "identity: invalid",
+  "identityForbidden": "identity: forbidden",
+  "identityRevoked": "identity: revoked",
+  "identityDependencyUnavailable": "identity: dependency unavailable"
 }
