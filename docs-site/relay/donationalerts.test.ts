@@ -17,6 +17,7 @@ const cryptoImpl = webcrypto as unknown as Crypto
 const env = (): DonationAlertsEnv & { DONATIONALERTS: MemoryKV } => ({
   DONATIONALERTS: new MemoryKV(),
   DONATIONALERTS_CLIENT_ID: '123456',
+  DONATIONALERTS_REDIRECT_URI: 'https://kubron.pages.dev/api/donationalerts/callback',
   DONATIONALERTS_CLIENT_SECRET: 'client-secret-canary',
   DONATIONALERTS_TOKEN_ENCRYPTION_KEY: 'a-long-test-encryption-secret-value',
 })
