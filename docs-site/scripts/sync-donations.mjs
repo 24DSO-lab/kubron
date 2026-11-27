@@ -26,7 +26,7 @@ async function donationAlerts() {
   const secret = process.env.DONATIONALERTS_SYNC_SECRET ?? ''
   if (!secret) return []
   const endpoint = process.env.DONATIONALERTS_SYNC_URL ?? 'https://kubron.pages.dev/api/donationalerts/sync'
-  const result = await fetchJson(endpoint, { Authorization: `Bearer ${secret}`, 'Content-Type': 'application/json' })
+  const response = await fetch(endpoint, { method: 'POST', headers: { Accept: 'application/json', Authorization: `Bearer ${secret}` }, signal: AbortSignal.timeout(20000) })\n  if (!response.ok) throw new Error(`DonationAlerts sync endpoint returned HTTP ${response.status}`)\n  const result = await response.json()
   if (!Array.isArray(result.data)) throw new Error('Invalid DonationAlerts sync response')
   return result.data.flatMap(item => {
     const id = String(item.id ?? '')
