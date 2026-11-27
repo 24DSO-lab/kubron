@@ -5,6 +5,8 @@ import { fileURLToPath } from 'node:url'
 const DATA_PATH = fileURLToPath(new URL('../public/donations.json', import.meta.url))
 const BTC_CONFIRMATIONS = Number(process.env.BTC_CONFIRMATIONS ?? 3)
 const EVM_CONFIRMATIONS = Number(process.env.EVM_CONFIRMATIONS ?? 12)
+const SCAN_WINDOW_MS = 30 * 24 * 60 * 60 * 1000
+const MAX_SCAN_PAGES = 20
 const TRONGRID_API_KEY = process.env.TRONGRID_API_KEY ?? ''
 const USDC = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'
 const USDT = 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t'
@@ -46,10 +48,61 @@ async function donationAlerts() {
     }]
   })
 }
+
+async function fetchBitcoinHistory(initialUrl) {
+  const items = []
+  let url = new URL(initialUrl)
+  let hasMore = false
+  for (let page = 0; page < MAX_SCAN_PAGES; page++) {
+    const batch = await fetchJson(url)
+    if (!Array.isArray(batch) || batch.length === 0) break
+    items.push(...batch)
+    const confirmed = batch.filter(item => item.status?.confirmed && Number.isFinite(item.status.block_time))
+    if (confirmed.some(item => item.status.block_time * 1000 < Date.now() - SCAN_WINDOW_MS)) break
+    const lastConfirmed = confirmed.at(-1)
+    if (!lastConfirmed || confirmed.length < 25) break
+    if (page === MAX_SCAN_PAGES - 1) {
+      hasMore = true
+      break
+    }
+    url = new URL(initialUrl)
+    url.searchParams.set('after_txid', lastConfirmed.txid)
+  }
+  if (hasMore) throw new Error(`Bitcoin history exceeded the ${MAX_SCAN_PAGES}-page safety limit`)
+  return items
+}
+
+async function fetchBlockscoutHistory(initialUrl) {
+  const items = []
+  let url = new URL(initialUrl)
+  let hasMore = false
+  for (let page = 0; page < MAX_SCAN_PAGES; page++) {
+    const result = await fetchJson(url)
+    const batch = Array.isArray(result.items) ? result.items : []
+    if (!batch.length) break
+    items.push(...batch)
+    const timestamps = batch.map(item => Date.parse(item.timestamp ?? item.transaction?.timestamp ?? '')).filter(Number.isFinite)
+    if (timestamps.length && Math.min(...timestamps) < Date.now() - SCAN_WINDOW_MS) break
+    const cursor = result.next_page_params
+    if (!cursor || typeof cursor !== 'object' || !Object.keys(cursor).length) break
+    if (page === MAX_SCAN_PAGES - 1) {
+      hasMore = true
+      break
+    }
+    url = new URL(initialUrl)
+    for (const [key, value] of Object.entries(cursor)) {
+      if (value !== null && value !== undefined) url.searchParams.set(key, String(value))
+    }
+  }
+  if (hasMore) throw new Error(`Ethereum history exceeded the ${MAX_SCAN_PAGES}-page safety limit`)
+  return items
+}
+
 async function bitcoin(wallet) {
-  const [items, tip] = await Promise.all([
-    fetchJson(`https://mempool.space/api/address/${encodeURIComponent(wallet.address)}/txs`),
-    fetchJson('https://mempool.space/api/blocks/tip/height')
+  const addressUrl = `https://mempool.space/api/address/${encodeURIComponent(wallet.address)}/txs`
+  const [tip, items] = await Promise.all([
+    fetchJson('https://mempool.space/api/blocks/tip/height'),
+    fetchBitcoinHistory(addressUrl),
   ])
   return items.flatMap(item => {
     if (!item.status?.confirmed || tip - item.status.block_height + 1 < BTC_CONFIRMATIONS) return []
@@ -63,18 +116,18 @@ async function bitcoin(wallet) {
 async function ethereum(wallet, asset) {
   const addr = wallet.address, base = `https://eth.blockscout.com/api/v2/addresses/${encodeURIComponent(addr)}`
   const [native, tokens, blocks] = await Promise.all([
-    fetchJson(`${base}/transactions?filter=to`),
-    fetchJson(`${base}/token-transfers?type=ERC-20&filter=to&token=${USDC}`),
+    asset === 'ETH' ? fetchBlockscoutHistory(`${base}/transactions?filter=to`) : Promise.resolve([]),
+    asset === 'USDC' ? fetchBlockscoutHistory(`${base}/token-transfers?type=ERC-20&filter=to&token=${USDC}`) : Promise.resolve([]),
     fetchJson('https://eth.blockscout.com/api/v2/blocks?type=block')
   ])
   const height = Number(blocks.items?.[0]?.height ?? 0)
-  if (asset === 'ETH') return (native.items ?? []).flatMap(item => {
+  if (asset === 'ETH') return native.flatMap(item => {
     if (item.status !== 'ok' || item.to?.hash?.toLowerCase() !== addr.toLowerCase() || !item.block_number ||
       height - Number(item.block_number) + 1 < EVM_CONFIRMATIONS || BigInt(item.value ?? 0) <= 0n) return []
     return [tx('ETH', 'Ethereum', item.hash, decimalFromUnits(item.value, 18), item.from?.hash, Date.parse(item.timestamp),
       `https://etherscan.io/tx/${item.hash}`)]
   })
-  return (tokens.items ?? []).flatMap(item => {
+  return tokens.flatMap(item => {
     const t = item.transaction, contract = item.token?.address?.toLowerCase()
     if (contract !== USDC.toLowerCase() || item.to?.hash?.toLowerCase() !== addr.toLowerCase() || t?.status !== 'ok' ||
       !item.block_number || height - Number(item.block_number) + 1 < EVM_CONFIRMATIONS) return []
@@ -86,10 +139,26 @@ async function ethereum(wallet, asset) {
 }
 async function tron(wallet) {
   const u = new URL(`https://api.trongrid.io/v1/accounts/${encodeURIComponent(wallet.address)}/transactions/trc20`)
-  for (const [k, v] of Object.entries({ only_confirmed: 'true', limit: '200', contract_address: USDT, only_to: 'true' })) u.searchParams.set(k, v)
+  for (const [k, v] of Object.entries({
+    only_confirmed: 'true', limit: '200', contract_address: USDT, only_to: 'true',
+    min_timestamp: String(Date.now() - SCAN_WINDOW_MS),
+  })) u.searchParams.set(k, v)
   const headers = TRONGRID_API_KEY ? { 'TRON-PRO-API-KEY': TRONGRID_API_KEY } : {}
-  const result = await fetchJson(u, headers)
-  return (result.data ?? []).flatMap(item => {
+  const items = []
+  let hasMore = false
+  for (let page = 0; page < MAX_SCAN_PAGES; page++) {
+    const result = await fetchJson(u, headers)
+    items.push(...(result.data ?? []))
+    const fingerprint = result.meta?.fingerprint
+    if (!fingerprint || !result.data?.length) break
+    if (page === MAX_SCAN_PAGES - 1) {
+      hasMore = true
+      break
+    }
+    u.searchParams.set('fingerprint', fingerprint)
+  }
+  if (hasMore) throw new Error(`TRON history exceeded the ${MAX_SCAN_PAGES}-page safety limit`)
+  return items.flatMap(item => {
     if (item.to !== wallet.address || item.token_info?.address !== USDT || item.type !== 'Transfer' || !item.block_timestamp || BigInt(item.value ?? 0) <= 0n) return []
     return [tx('USDT', 'TRON (TRC-20)', item.transaction_id, decimalFromUnits(item.value, Number(item.token_info.decimals ?? 6)),
       item.from, item.block_timestamp, `https://tronscan.org/#/transaction/${item.transaction_id}`)]
