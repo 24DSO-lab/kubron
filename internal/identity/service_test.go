@@ -559,6 +559,38 @@ func TestService_Authorization_FailClosedWithoutSideEffects(t *testing.T) {
 	})
 }
 
+func TestService_UpdateDisplayName_UsesAuditedCASAndPreservesImmutableFields(t *testing.T) {
+	e := newEnv(t)
+	created := e.createTeam("req-1")
+	got, err := e.svc.UpdateDisplayName(ctx, adminA, created.Ref, created.Revision, "  renamed-bot  ", "rename-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.DisplayName != "renamed-bot" || got.Revision != created.Revision+1 ||
+		got.Ref != created.Ref || got.Owner != created.Owner || got.State != created.State ||
+		got.CreatedBy != created.CreatedBy || !got.CreatedAt.Equal(created.CreatedAt) {
+		t.Fatalf("unexpected updated identity: before=%+v after=%+v", created, got)
+	}
+	if strings.Join(e.events, ",") != "intent:identity.display_name.update,backend:update_display_name,outcome:succeeded" {
+		t.Fatalf("audit/mutation order: %v", e.events)
+	}
+	in := e.rec.byAction("identity.display_name.update")[0]
+	raw, _ := json.Marshal(in)
+	if strings.Contains(string(raw), "renamed-bot") {
+		t.Fatalf("display name leaked into audit: %s", raw)
+	}
+	mutations := e.be.count()
+	again, err := e.svc.UpdateDisplayName(ctx, adminA, created.Ref, created.Revision, "renamed-bot", "rename-1")
+	if err != nil || again.Revision != got.Revision || again.LastAuditEventID != got.LastAuditEventID {
+		t.Fatalf("replay: %+v %v", again, err)
+	}
+	if e.be.count() != mutations {
+		t.Fatal("replay repeated backend mutation")
+	}
+	_, err = e.svc.UpdateDisplayName(ctx, adminA, created.Ref, created.Revision, "other-name", "rename-1")
+	is(t, "same mutation with different display name", err, identity.ErrConflict)
+}
+
 func TestService_CreatorDepartureChangesNothing(t *testing.T) {
 	e := newEnv(t)
 	created := e.createTeam("req-1")
