@@ -6,6 +6,7 @@ package autonomy
 import (
 	"reflect"
 	"testing"
+	"time"
 )
 
 func TestEmptyAllowedActionIntersectionRemainsDenyAll(t *testing.T) {
@@ -143,5 +144,28 @@ func TestUnknownScopeFactsFailClosed(t *testing.T) {
 	d := Evaluate(in)
 	if d.Mode != Observe || d.Allowed || !containsString(d.UnknownInputs, "scope_facts") {
 		t.Fatalf("unknown scope facts must fail closed: %+v", d)
+	}
+}
+
+func TestTimeWindowCanonicalizationIsDeterministicAndDoesNotMutateInput(t *testing.T) {
+	in := baseInput()
+	in.Policies[0].Constraints.AllowedTimeWindows = []TimeWindow{
+		{StartMinute: 60, EndMinute: 120, Days: []time.Weekday{time.Friday, time.Monday}},
+		{StartMinute: 180, EndMinute: 240, Days: []time.Weekday{time.Wednesday}},
+	}
+	before := append([]time.Weekday(nil), in.Policies[0].Constraints.AllowedTimeWindows[0].Days...)
+
+	first := Evaluate(in)
+	if !reflect.DeepEqual(before, in.Policies[0].Constraints.AllowedTimeWindows[0].Days) {
+		t.Fatal("Evaluate mutated the caller's time-window day slice")
+	}
+	in.Policies[0].Constraints.AllowedTimeWindows[0], in.Policies[0].Constraints.AllowedTimeWindows[1] =
+		in.Policies[0].Constraints.AllowedTimeWindows[1], in.Policies[0].Constraints.AllowedTimeWindows[0]
+	second := Evaluate(in)
+	if !reflect.DeepEqual(first, second) {
+		t.Fatalf("time-window order changed the decision: %#v != %#v", first, second)
+	}
+	if got := first.Effective.AllowedTimeWindows[0].Days; !reflect.DeepEqual(got, []time.Weekday{time.Monday, time.Friday}) {
+		t.Fatalf("effective window days are not canonical: %v", got)
 	}
 }
