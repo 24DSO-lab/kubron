@@ -24,12 +24,19 @@ import (
 	"time"
 
 	"github.com/24DSO-lab/kubron/internal/credential"
+	"github.com/24DSO-lab/kubron/internal/identity"
 )
 
 const (
+	// formatVersion is the version of a file that holds legacy (user/team) records only: it stays byte-compatible
+	// with every earlier release, which can still read and rewrite it.
 	formatVersion = 1
-	lockTimeout   = 5 * time.Second
-	lockStale     = 30 * time.Second
+	// formatVersionPrincipal is written as soon as the file holds a technical (ScopePrincipal) record. A release that
+	// does not know technical records refuses such a file (unsupported format version) instead of reading it and
+	// rewriting it without the principal and binding fields of those records: a downgrade fails closed.
+	formatVersionPrincipal = 2
+	lockTimeout            = 5 * time.Second
+	lockStale              = 30 * time.Second
 )
 
 type doc struct {
@@ -49,16 +56,30 @@ type rec struct {
 	KeyID     string     `json:"keyId"`
 	EncFormat string     `json:"encFormat"`
 	SecretEnc []byte     `json:"secretEnc"`
+
+	// Technical (ScopePrincipal) records only. omitempty keeps legacy records byte-identical to earlier releases.
+	PrincipalKind    string `json:"principalKind,omitempty"`
+	PrincipalID      string `json:"principalId,omitempty"`
+	PrincipalOrgID   string `json:"principalOrgId,omitempty"`
+	PrincipalTeamID  string `json:"principalTeamId,omitempty"`
+	BindingID        string `json:"bindingId,omitempty"`
+	LastAuditEventID string `json:"lastAuditEventId,omitempty"`
 }
 
 func (r rec) key() credential.Key {
-	return credential.Key{ClusterID: r.ClusterID, Scope: credential.Scope(r.Scope), OwnerID: r.OwnerID}
+	return credential.Key{ClusterID: r.ClusterID, Scope: credential.Scope(r.Scope), OwnerID: r.OwnerID,
+		Principal: identity.PrincipalRef{Kind: identity.PrincipalKind(r.PrincipalKind), ID: r.PrincipalID,
+			OrgID: r.PrincipalOrgID, TeamID: r.PrincipalTeamID},
+		BindingID: r.BindingID}
 }
 
 func (r rec) meta() credential.Meta {
 	return credential.Meta{Key: r.key(), Kind: credential.Kind(r.Kind), Principal: r.Principal,
-		ExpiresAt: r.ExpiresAt, Version: r.Version, UpdatedAt: r.UpdatedAt, KeyID: r.KeyID, EncFormat: r.EncFormat}
+		ExpiresAt: r.ExpiresAt, Version: r.Version, UpdatedAt: r.UpdatedAt, KeyID: r.KeyID, EncFormat: r.EncFormat,
+		LastAuditEventID: r.LastAuditEventID}
 }
+
+func (r rec) isPrincipal() bool { return credential.Scope(r.Scope) == credential.ScopePrincipal }
 
 var pathLocks sync.Map // absolute path -> *sync.Mutex
 
@@ -69,7 +90,10 @@ type Store struct {
 	now    func() time.Time
 }
 
-var _ credential.CredentialStore = (*Store)(nil)
+var (
+	_ credential.CredentialStore = (*Store)(nil)
+	_ credential.PrincipalStore  = (*Store)(nil)
+)
 
 // New returns a Store that keeps its data in path. The directory is created with mode 0700.
 func New(path string, sealer *credential.Sealer) (*Store, error) {
@@ -95,13 +119,20 @@ func (s *Store) load() (doc, error) {
 	if err := json.Unmarshal(raw, &d); err != nil {
 		return doc{}, errors.New("the credentials file is damaged")
 	}
-	if d.Version != formatVersion {
+	if d.Version != formatVersion && d.Version != formatVersionPrincipal {
 		return doc{}, errors.New("the credentials file has an unsupported format version")
 	}
 	return d, nil
 }
 
 func (s *Store) save(d doc) error {
+	d.Version = formatVersion
+	for _, r := range d.Records {
+		if r.isPrincipal() {
+			d.Version = formatVersionPrincipal
+			break
+		}
+	}
 	raw, err := json.Marshal(d)
 	if err != nil {
 		return err
@@ -202,7 +233,7 @@ func (s *Store) find(d doc, k credential.Key) int {
 
 // Get implements credential.CredentialStore.
 func (s *Store) Get(_ context.Context, k credential.Key) (credential.Record, error) {
-	if err := k.Validate(); err != nil {
+	if err := k.ValidateAny(); err != nil {
 		return credential.Record{}, err
 	}
 	d, err := s.load()
@@ -222,7 +253,7 @@ func (s *Store) Get(_ context.Context, k credential.Key) (credential.Record, err
 
 // Put implements credential.CredentialStore.
 func (s *Store) Put(ctx context.Context, r credential.Record, expected int64) (credential.Meta, error) {
-	if err := r.Validate(); err != nil {
+	if err := r.Meta.ValidateAny(); err != nil {
 		return credential.Meta{}, err
 	}
 	blob, keyID, err := s.sealer.Seal(r.Key, r.Secret)
@@ -240,8 +271,12 @@ func (s *Store) Put(ctx context.Context, r credential.Record, expected int64) (c
 	}
 	i := s.find(d, r.Key)
 	next := rec{ClusterID: r.ClusterID, Scope: string(r.Scope), OwnerID: r.OwnerID, Kind: string(r.Kind),
-		Principal: r.Principal, ExpiresAt: r.ExpiresAt, KeyID: keyID, EncFormat: credential.EncEnvelopeV1, SecretEnc: blob,
-		UpdatedAt: s.now().UTC().Truncate(time.Microsecond)}
+		Principal: r.Meta.Principal, ExpiresAt: r.ExpiresAt, KeyID: keyID, EncFormat: credential.EncEnvelopeV1, SecretEnc: blob,
+		UpdatedAt: s.now().UTC().Truncate(time.Microsecond), LastAuditEventID: r.LastAuditEventID}
+	if r.Scope == credential.ScopePrincipal {
+		next.PrincipalKind, next.PrincipalID = string(r.Key.Principal.Kind), r.Key.Principal.ID
+		next.PrincipalOrgID, next.PrincipalTeamID, next.BindingID = r.Key.Principal.OrgID, r.Key.Principal.TeamID, r.BindingID
+	}
 	switch {
 	case i < 0 && (expected == 0 || expected == credential.AnyVersion):
 		next.Version = 1
@@ -260,7 +295,7 @@ func (s *Store) Put(ctx context.Context, r credential.Record, expected int64) (c
 
 // Delete implements credential.CredentialStore.
 func (s *Store) Delete(ctx context.Context, k credential.Key) error {
-	if err := k.Validate(); err != nil {
+	if err := k.ValidateAny(); err != nil {
 		return err
 	}
 	_, err := s.revoke(ctx, func(r rec) bool { return r.key() == k })
@@ -269,7 +304,7 @@ func (s *Store) Delete(ctx context.Context, k credential.Key) error {
 
 // DeleteIfVersion implements credential.CredentialStore. The version check and deletion share one file lock.
 func (s *Store) DeleteIfVersion(ctx context.Context, k credential.Key, expectedVersion int64) error {
-	if err := k.Validate(); err != nil {
+	if err := k.ValidateAny(); err != nil {
 		return err
 	}
 	unlock, err := s.lock(ctx)
@@ -302,7 +337,7 @@ func (s *Store) List(_ context.Context, ownerID string) ([]credential.Meta, erro
 	}
 	var out []credential.Meta
 	for _, r := range d.Records {
-		if r.OwnerID == ownerID {
+		if r.OwnerID == ownerID && !r.isPrincipal() { // technical records have no owner id: see ListPrincipal
 			out = append(out, r.meta())
 		}
 	}
@@ -315,13 +350,34 @@ func (s *Store) List(_ context.Context, ownerID string) ([]credential.Meta, erro
 	return out, nil
 }
 
+// ListPrincipal implements credential.PrincipalStore: the records of one technical principal, without decrypting.
+// Legacy records never appear here, whatever their owner id.
+func (s *Store) ListPrincipal(_ context.Context, principal identity.PrincipalRef) ([]credential.Meta, error) {
+	if !principal.IsTechnical() || principal.Validate() != nil {
+		return nil, credential.ErrInvalidKey
+	}
+	d, err := s.load()
+	if err != nil {
+		return nil, err
+	}
+	var out []credential.Meta
+	for _, r := range d.Records {
+		if r.isPrincipal() && r.key().Principal == principal {
+			out = append(out, r.meta())
+		}
+	}
+	slices.SortFunc(out, func(a, b credential.Meta) int {
+		if c := strings.Compare(a.ClusterID, b.ClusterID); c != 0 {
+			return c
+		}
+		return strings.Compare(a.BindingID, b.BindingID)
+	})
+	return out, nil
+}
+
 // Revoke implements credential.CredentialStore.
 func (s *Store) Revoke(ctx context.Context, f credential.RevokeFilter) (int, error) {
-	return s.revoke(ctx, func(r rec) bool {
-		return (f.ClusterID == "" || r.ClusterID == f.ClusterID) &&
-			(f.OwnerID == "" || r.OwnerID == f.OwnerID) &&
-			(f.Scope == "" || r.Scope == string(f.Scope))
-	})
+	return s.revoke(ctx, func(r rec) bool { return f.Matches(r.key()) })
 }
 
 func (s *Store) revoke(ctx context.Context, match func(rec) bool) (int, error) {
@@ -374,6 +430,35 @@ func (s *Store) Rekey(ctx context.Context) (credential.RekeyReport, error) {
 	}
 	if len(rep.Failed) > 0 {
 		return rep, credential.ErrRekeyIncomplete
+	}
+	return rep, nil
+}
+
+// CheckReport is the outcome of Verify.
+type CheckReport struct {
+	Total      int              // records examined
+	Technical  int              // of them, technical (ScopePrincipal) records
+	Unreadable []credential.Key // records that cannot be decrypted with the current key ring and their own key identity
+}
+
+// Verify decrypts every record (legacy and technical) with its own key identity and reports the ones that cannot be
+// read. Nothing is written and no secret is returned. An unreadable record is reported, never treated as absent.
+func (s *Store) Verify(_ context.Context) (CheckReport, error) {
+	d, err := s.load()
+	if err != nil {
+		return CheckReport{}, err
+	}
+	rep := CheckReport{Total: len(d.Records)}
+	for _, r := range d.Records {
+		if r.isPrincipal() {
+			rep.Technical++
+		}
+		plain, err := s.sealer.Open(r.key(), r.SecretEnc, r.KeyID, r.EncFormat)
+		if err != nil {
+			rep.Unreadable = append(rep.Unreadable, r.key())
+			continue
+		}
+		clear(plain)
 	}
 	return rep, nil
 }
