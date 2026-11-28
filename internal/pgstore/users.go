@@ -49,7 +49,8 @@ func (b userBackend) Load() (*ext.UserData, error) {
 	defer cancel()
 	out := &ext.UserData{}
 	rows, err := b.s.pool.Query(ctx, `
-		SELECT id, username, role, password_hash, disabled, must_change_password, created_at, updated_at, last_login_at
+		SELECT id, username, role, password_hash, disabled, must_change_password, created_at, updated_at, last_login_at,
+		       COALESCE(external_issuer, ''), COALESCE(external_subject, '')
 		FROM users WHERE org_id = $1 ORDER BY created_at, id`, b.s.orgID)
 	if err != nil {
 		return nil, err
@@ -58,7 +59,7 @@ func (b userBackend) Load() (*ext.UserData, error) {
 	for rows.Next() {
 		var u ext.UserRecord
 		if err := rows.Scan(&u.ID, &u.Username, &u.Role, &u.PasswordHash, &u.Disabled, &u.MustChangePassword,
-			&u.CreatedAt, &u.UpdatedAt, &u.LastLoginAt); err != nil {
+			&u.CreatedAt, &u.UpdatedAt, &u.LastLoginAt, &u.ExternalIssuer, &u.ExternalSubject); err != nil {
 			return nil, err
 		}
 		out.Users = append(out.Users, u)
@@ -94,6 +95,9 @@ func (b userBackend) Save(d *ext.UserData) error {
 		case "admin", "operator", "user":
 		default:
 			return fmt.Errorf("unknown role %q", u.Role)
+		}
+		if (u.ExternalIssuer == "") != (u.ExternalSubject == "") {
+			return ErrConflict
 		}
 		ids = append(ids, u.ID)
 	}
@@ -161,6 +165,9 @@ func (b userBackend) Save(d *ext.UserData) error {
 
 // upsertUser записывает одного пользователя (создание или обновление). Конфликт имени — ErrConflict.
 func upsertUser(ctx context.Context, tx pgx.Tx, orgID string, u ext.UserRecord, now time.Time) error {
+	if (u.ExternalIssuer == "") != (u.ExternalSubject == "") {
+		return ErrConflict
+	}
 	created, updated := u.CreatedAt, u.UpdatedAt
 	if created.IsZero() {
 		created = now
@@ -173,15 +180,16 @@ func upsertUser(ctx context.Context, tx pgx.Tx, orgID string, u ext.UserRecord, 
 		orgRole = "org-admin"
 	}
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO users (id, org_id, username, password_hash, org_role, role, disabled, must_change_password, created_at, updated_at, last_login_at)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+		INSERT INTO users (id, org_id, username, password_hash, org_role, role, disabled, must_change_password, created_at, updated_at, last_login_at, external_issuer, external_subject)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,NULLIF($12, ''),NULLIF($13, ''))
 		ON CONFLICT (id) DO UPDATE SET username = EXCLUDED.username, password_hash = EXCLUDED.password_hash,
 			org_role = EXCLUDED.org_role, role = EXCLUDED.role, disabled = EXCLUDED.disabled,
 			must_change_password = EXCLUDED.must_change_password, updated_at = EXCLUDED.updated_at,
-			last_login_at = EXCLUDED.last_login_at
+			last_login_at = EXCLUDED.last_login_at, external_issuer = EXCLUDED.external_issuer,
+			external_subject = EXCLUDED.external_subject
 		WHERE users.org_id = EXCLUDED.org_id`,
 		u.ID, orgID, u.Username, u.PasswordHash, orgRole, u.Role, u.Disabled, u.MustChangePassword,
-		created, updated, u.LastLoginAt); err != nil {
+		created, updated, u.LastLoginAt, u.ExternalIssuer, u.ExternalSubject); err != nil {
 		if isUnique(err) {
 			return fmt.Errorf("%w: user %q", ErrConflict, u.Username)
 		}

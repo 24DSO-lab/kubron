@@ -92,7 +92,7 @@ func TestUsersRoundTrip(t *testing.T) {
 	in := &ext.UserData{
 		Users: []ext.UserRecord{
 			{ID: "u1", Username: "Admin", Role: "admin", PasswordHash: "h1", CreatedAt: now, UpdatedAt: now},
-			{ID: "u2", Username: "bob", Role: "operator", PasswordHash: "h2", Disabled: true, MustChangePassword: true, CreatedAt: now.Add(time.Second), UpdatedAt: now, LastLoginAt: &now},
+			{ID: "u2", Username: "bob", Role: "operator", PasswordHash: "h2", Disabled: true, MustChangePassword: true, CreatedAt: now.Add(time.Second), UpdatedAt: now, LastLoginAt: &now, ExternalIssuer: "https://id.example.test", ExternalSubject: "sub-bob"},
 		},
 		Settings: ext.SecuritySettings{IdleTimeoutMinutes: &idle},
 	}
@@ -104,7 +104,8 @@ func TestUsersRoundTrip(t *testing.T) {
 		t.Fatalf("%+v %v", got, err)
 	}
 	if got.Users[0].ID != "u1" || got.Users[1].Username != "bob" || !got.Users[1].Disabled || !got.Users[1].MustChangePassword ||
-		got.Users[1].LastLoginAt == nil || !got.Users[1].LastLoginAt.Equal(now) {
+		got.Users[1].LastLoginAt == nil || !got.Users[1].LastLoginAt.Equal(now) ||
+		got.Users[1].ExternalIssuer != "https://id.example.test" || got.Users[1].ExternalSubject != "sub-bob" {
 		t.Errorf("поля не сохранились: %+v", got.Users)
 	}
 	if got.Settings.IdleTimeoutMinutes == nil || *got.Settings.IdleTimeoutMinutes != 0 {
@@ -136,6 +137,14 @@ func TestUsersValidation(t *testing.T) {
 	}})
 	if !errors.Is(err, ErrConflict) {
 		t.Errorf("повтор имени: %v", err)
+	}
+	// Одна внешняя идентичность не может быть привязана к двум пользователям.
+	err = u.Save(&ext.UserData{Users: []ext.UserRecord{
+		{ID: "u1", Username: "alice", Role: "user", ExternalIssuer: "https://id.example.test", ExternalSubject: "sub-1"},
+		{ID: "u2", Username: "bob", Role: "user", ExternalIssuer: "https://id.example.test", ExternalSubject: "sub-1"},
+	}})
+	if !errors.Is(err, ErrConflict) {
+		t.Errorf("duplicate external identity: %v", err)
 	}
 	// Неудачное сохранение не оставляет частичных данных (транзакция).
 	if d, _ := u.Load(); len(d.Users) != 0 {

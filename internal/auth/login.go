@@ -92,11 +92,15 @@ func (s *Service) Login(ctx context.Context, username, password string) (*UserIn
 
 	// Хеширование — вне блокировки. Для несуществующего логина считаем фиктивный хеш,
 	// чтобы время ответа не выдавало, существует ли пользователь.
+	hasPassword := snapshot != nil && snapshot.PasswordHash != ""
 	hash := s.dummy()
-	if snapshot != nil {
+	if hasPassword {
 		hash = snapshot.PasswordHash
 	}
 	ok, rehash := verifyPassword(password, hash)
+	if !hasPassword {
+		ok, rehash = false, false
+	}
 
 	var newHash string
 	if ok && snapshot != nil && rehash {

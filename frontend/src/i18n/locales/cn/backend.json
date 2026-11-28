@@ -1117,5 +1117,9 @@
   "oidcProviderUnavailable": "OIDC 提供方不可用",
   "oidcAuthorizationRejected": "OIDC 授权被拒绝",
   "oidcAuthorizationCodeMissing": "缺少 OIDC 授权码",
-  "oidcRedirectURLInvalid": "OIDC 重定向 URL 无效"
+  "oidcRedirectURLInvalid": "OIDC 重定向 URL 无效",
+  "externalAccountIsNotProvisioned": "外部账户尚未配置",
+  "failedToSaveExternalIdentity": "无法保存外部身份：{p0}",
+  "failedToSaveExternalUser": "无法保存外部用户：{p0}",
+  "failedToSaveMappedRole": "无法保存 SSO 映射角色：{p0}"
 }

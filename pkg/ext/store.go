@@ -24,6 +24,8 @@ type UserRecord struct {
 	CreatedAt          time.Time  `json:"createdAt"`
 	UpdatedAt          time.Time  `json:"updatedAt"`
 	LastLoginAt        *time.Time `json:"lastLoginAt,omitempty"`
+	ExternalIssuer     string     `json:"externalIssuer,omitempty"`
+	ExternalSubject    string     `json:"externalSubject,omitempty"`
 }
 
 // SecuritySettings — настройки безопасности, общие для всех пользователей.

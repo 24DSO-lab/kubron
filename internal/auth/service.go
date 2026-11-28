@@ -31,6 +31,7 @@ var (
 	ErrSamePassword           = errors.New("new password must differ from the current one")
 	ErrWeakPassword           = errors.New("password must not match the username")
 	ErrInvalidIdleTimeout     = errors.New("idle timeout must be 0 (disabled) or between 1 and 1440 minutes")
+	ErrExternalNotProvisioned = errors.New("external account is not provisioned")
 )
 
 const (

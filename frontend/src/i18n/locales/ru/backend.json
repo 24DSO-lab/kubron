@@ -1117,5 +1117,9 @@
   "oidcProviderUnavailable": "Провайдер OIDC недоступен",
   "oidcAuthorizationRejected": "Провайдер отклонил авторизацию OIDC",
   "oidcAuthorizationCodeMissing": "Отсутствует код авторизации OIDC",
-  "oidcRedirectURLInvalid": "Недопустимый URL перенаправления OIDC"
+  "oidcRedirectURLInvalid": "Недопустимый URL перенаправления OIDC",
+  "externalAccountIsNotProvisioned": "внешняя учётная запись не зарегистрирована",
+  "failedToSaveExternalIdentity": "не удалось сохранить внешнюю идентичность: {p0}",
+  "failedToSaveExternalUser": "не удалось сохранить внешнего пользователя: {p0}",
+  "failedToSaveMappedRole": "не удалось сохранить роль, полученную от SSO: {p0}"
 }
