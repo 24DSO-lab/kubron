@@ -1,6 +1,6 @@
 # ADR-0053: Доверенный каталог целей и разрешение ownership
 
-- Статус: принято
+- Статус: Accepted
 - Дата: 2026-11-28
 - Область: Phase 2 — Target & Policy Foundation
 - Связано: ADR-0012, ADR-0035, ADR-0037, ADR-0040, ADR-0041
@@ -43,7 +43,7 @@ Ownership observation в Phase 2 не является долгоживущей 
 
 ## Последствия и ограничения
 
-- Integration owner должен определить адаптер к существующему k8s.ClusterStore и закрепить точную сигнатуру resolver-а в Phase 2 Contract Freeze.
-- Нужны contract tests: unknown cluster, missing owner, stale owner, cross-org target, Team-owned target, resolver unavailable, spoofed client owner.
-- Требуется проверить, как ownership changes отражаются на уже сохранённых Target Groups и ранее созданных snapshots. Предлагаемый безопасный default: новые resolution блокируются до согласованного ownership; существующий snapshot не переписывается задним числом, но перед будущим side effect будет заново авторизован.
+- Integration adapter реализует resolver через существующие cluster-catalog, tenant и Directory seams; его Go-сигнатура является деталью внутреннего интерфейса и не меняет нормативную семантику этого ADR.
+- Contract tests обязательны для unknown cluster, missing/stale owner, cross-organization target, Team-owned target, unavailable resolver и spoofed client owner.
+- При изменении ownership новые resolutions блокируются до повторного подтверждения ownership. Существующий immutable snapshot не переписывается; перед любым будущим side effect ownership и authorization проверяются заново.
 - Этот ADR не меняет существующую модель tenant и не выдаёт permissions.
