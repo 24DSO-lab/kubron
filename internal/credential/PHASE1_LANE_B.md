@@ -1,7 +1,7 @@
 # Phase 1, Lane B — subject-aware credential resolution: note for the integration owner
 
-Scope: `internal/credential/**`, `internal/k8s/configfor.go` (+ tests). PostgreSQL adapters, migrations, `internal/app`,
-RPC and the frontend are untouched. Contract: Phase 1 Contract Freeze + Amendment 01, ADR-0036.
+Scope: `internal/credential/**`, `internal/k8s/configfor.go` (+ tests), and the PostgreSQL challenge-store adapter's
+non-destructive expiry listing. Credential PostgreSQL schema/migrations, `internal/app`, RPC and the frontend are untouched. Contract: Phase 1 Contract Freeze + Amendment 01, ADR-0036.
 
 ## What changed
 
@@ -66,8 +66,12 @@ scan cover technical records (tests in `principal_test.go`).
   stays unusable until reconciliation.
 * Routine refresh keeps `LastAuditEventID` (it is not a new assignment). A rotation whose outcome is pending blocks the
   token even though the old version was valid.
-* Known gaps: challenges that expire without any continuation are removed by `Sweep` without a failed outcome (the intent
-  stays pending for reconciliation); a watch opened before a binding is revoked lives until it reconnects (every new
-  request is denied); `Revoke` with a wildcard legacy filter still removes technical rows (administrative maintenance).
+* Expired provisioning challenges are audited by `Sweep`: it writes `CriticalFailed` (`expired`) before deleting the
+  challenge. If the outcome cannot be confirmed, `Sweep` returns `audit.ErrOutcomeUnknown` and leaves the challenge for retry.
+* Integration constraints: browser-callback provisioning is not supported; choose only IdP flows that can complete without
+  that callback. A Kubernetes watch opened before binding revocation may remain alive; integration must either close that
+  stream on revocation or impose a bounded stream lifetime with periodic binding revalidation. Do not treat per-request
+  authorization as sufficient for an already-open watch.
+* `Revoke` with a wildcard legacy filter still removes technical rows (administrative maintenance).
 * `audit.CriticalIntent` token alphabet (`critical.go`) allows `/`, Amendment 01 does not; Lane B only produces ids
   from `identity.ValidID` (no `/`).
