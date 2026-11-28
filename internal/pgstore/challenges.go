@@ -115,6 +115,27 @@ func (c *Challenges) DeleteBy(ctx context.Context, f credential.RevokeFilter) (i
 	return int(tag.RowsAffected()), err
 }
 
+// ListExpired implements credential.ChallengeStore. State remains opaque to PostgreSQL.
+func (c *Challenges) ListExpired(ctx context.Context, before time.Time) ([]credential.ChallengeRecord, error) {
+	rows, err := c.s.pool.Query(ctx, `SELECT `+chColumns+` FROM credential_challenges WHERE expires_at < $1 ORDER BY expires_at, id`, before.UTC())
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []credential.ChallengeRecord
+	for rows.Next() {
+		r, err := scanChallenge(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, r)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // DeleteExpired implements credential.ChallengeStore.
 func (c *Challenges) DeleteExpired(ctx context.Context, before time.Time) (int, error) {
 	tag, err := c.s.pool.Exec(ctx, `DELETE FROM credential_challenges WHERE expires_at < $1`, before.UTC())
