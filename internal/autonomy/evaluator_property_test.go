@@ -111,9 +111,7 @@ func TestEvaluatorOutputIsDeterministicAcrossAllAggregatePermutations(t *testing
 	in.Bindings[0], in.Bindings[1] = in.Bindings[1], in.Bindings[0]
 	actual := Evaluate(in)
 	if !reflect.DeepEqual(expected, actual) {
-		t.Fatalf("aggregate order changed the full decision:
-expected: %#v
-actual: %#v", expected, actual)
+		t.Fatalf("aggregate order changed the full decision:\nexpected: %#v\nactual: %#v", expected, actual)
 	}
 }
 
