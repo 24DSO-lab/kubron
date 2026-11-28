@@ -253,7 +253,7 @@ func (s *Store) Get(_ context.Context, k credential.Key) (credential.Record, err
 
 // Put implements credential.CredentialStore.
 func (s *Store) Put(ctx context.Context, r credential.Record, expected int64) (credential.Meta, error) {
-	if err := r.Meta.ValidateAny(); err != nil {
+	if err := r.ValidateAny(); err != nil {
 		return credential.Meta{}, err
 	}
 	blob, keyID, err := s.sealer.Seal(r.Key, r.Secret)
@@ -271,7 +271,7 @@ func (s *Store) Put(ctx context.Context, r credential.Record, expected int64) (c
 	}
 	i := s.find(d, r.Key)
 	next := rec{ClusterID: r.ClusterID, Scope: string(r.Scope), OwnerID: r.OwnerID, Kind: string(r.Kind),
-		Principal: r.Meta.Principal, ExpiresAt: r.ExpiresAt, KeyID: keyID, EncFormat: credential.EncEnvelopeV1, SecretEnc: blob,
+		Principal: r.Principal, ExpiresAt: r.ExpiresAt, KeyID: keyID, EncFormat: credential.EncEnvelopeV1, SecretEnc: blob,
 		UpdatedAt: s.now().UTC().Truncate(time.Microsecond), LastAuditEventID: r.LastAuditEventID}
 	if r.Scope == credential.ScopePrincipal {
 		next.PrincipalKind, next.PrincipalID = string(r.Key.Principal.Kind), r.Key.Principal.ID
