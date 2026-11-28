@@ -1122,5 +1122,9 @@
   "externalAccountIsNotProvisioned": "внешняя учётная запись не зарегистрирована",
   "failedToSaveExternalIdentity": "не удалось сохранить внешнюю идентичность: {p0}",
   "failedToSaveExternalUser": "не удалось сохранить внешнего пользователя: {p0}",
-  "failedToSaveMappedRole": "не удалось сохранить роль, полученную от SSO: {p0}"
+  "failedToSaveMappedRole": "не удалось сохранить роль, полученную от SSO: {p0}",
+  "kubronOIDCConfig": "KUBRON_OIDC: {p0}",
+  "kubronPublicURLRequiredForOIDC": "Для входа через OIDC необходимо задать KUBRON_PUBLIC_URL",
+  "kubronOIDCDisableLocalLoginRequiresOIDC": "KUBRON_OIDC_DISABLE_LOCAL_LOGIN требует включённого входа через OIDC"
+
 }
