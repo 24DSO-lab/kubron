@@ -221,18 +221,21 @@ func (m MutationMeta) Validate() error {
 type PolicyRepository interface {
 	CreatePolicy(ctx context.Context, value Policy) error
 	GetPolicy(ctx context.Context, owner OwnerScope, id string) (Policy, error)
+	GetPolicyRevision(ctx context.Context, owner OwnerScope, id string, revision uint64) (Policy, error)
 	UpdatePolicy(ctx context.Context, owner OwnerScope, id string, expectedRevision uint64, next Policy) (Policy, error)
 	DeactivatePolicy(ctx context.Context, owner OwnerScope, id string, expectedRevision uint64, meta MutationMeta) (Policy, error)
 }
 type ProfileRepository interface {
 	CreateProfile(ctx context.Context, value Profile) error
 	GetProfile(ctx context.Context, owner OwnerScope, id string) (Profile, error)
+	GetProfileRevision(ctx context.Context, owner OwnerScope, id string, revision uint64) (Profile, error)
 	UpdateProfile(ctx context.Context, owner OwnerScope, id string, expectedRevision uint64, next Profile) (Profile, error)
 	DeactivateProfile(ctx context.Context, owner OwnerScope, id string, expectedRevision uint64, meta MutationMeta) (Profile, error)
 }
 type BindingRepository interface {
 	CreateBinding(ctx context.Context, value Binding) error
 	GetBinding(ctx context.Context, owner OwnerScope, id string) (Binding, error)
+	GetBindingRevision(ctx context.Context, owner OwnerScope, id string, revision uint64) (Binding, error)
 	UpdateBinding(ctx context.Context, owner OwnerScope, id string, expectedRevision uint64, next Binding) (Binding, error)
 	DeactivateBinding(ctx context.Context, owner OwnerScope, id string, expectedRevision uint64, meta MutationMeta) (Binding, error)
 }
