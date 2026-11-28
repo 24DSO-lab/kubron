@@ -121,7 +121,6 @@ func TestRoleFor(t *testing.T) {
 	}
 }
 
-
 func TestNormalizeUsername(t *testing.T) {
 	cases := []struct {
 		name      string
@@ -167,7 +166,7 @@ func newFakeIDP(t *testing.T) *fakeIDP {
 			"issuer": issuer, "authorization_endpoint": issuer + "/authorize",
 			"token_endpoint": issuer + "/token", "jwks_uri": issuer + "/jwks",
 			"response_types_supported": []string{"code"}, "subject_types_supported": []string{"public"},
-			"id_token_signing_alg_values_supported": []string{"RS256"},
+			"id_token_signing_alg_values_supported":          []string{"RS256"},
 			"authorization_response_iss_parameter_supported": true,
 		})
 	})
