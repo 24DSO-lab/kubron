@@ -114,7 +114,7 @@ Kubron is an open-source **Kubernetes Operations Workspace** for desktop and web
 - **Flux CD** — Kustomizations and HelmReleases with state, revision, managed resources and release history, plus sources, notifications and image automation (read-only); reconcile, suspend, resume and delete with confirmation. Flux 2.3 or newer; no diff or rollback (use Git)
 
 ### Security & access control
-- **Architecture and security decisions** — [ADR index](docs/adr/README.md) (including [password hashing](docs/adr/0019-password-hashing.md) and [HTTP security](docs/adr/0020-http-security.md)) and [implementation decisions](docs/decisions/README.md) such as the [OIDC browser callback](docs/decisions/2026-11-04-oidc-browser-callback.md)
+- **Architecture and security decisions** — [ADR index](docs/adr/README.md), including [password hashing](docs/adr/0019-password-hashing.md) and [HTTP security](docs/adr/0020-http-security.md)
 - **Local users & roles** — `admin`, `operator` and `user` roles built on fine-grained permissions (read, secrets, operate, write, exec, port-forward, cluster and user management, audit)
 - **Safe defaults** — Argon2id password hashing (old PBKDF2 hashes are upgraded on the next login), lockout after failed attempts, auto-logout on inactivity that closes terminals and port forwards
 - **Audit log** — track who did what, with log rotation
@@ -161,13 +161,12 @@ On Linux add `-tags webkit2_41` to `wails dev` / `wails build` (WebKitGTK 4.1, a
 
 ## Documentation
 
-- **User guides** (PDF): Helm — [English](docs/DOCS/EN/Kubron-Helm-User-Guide-EN.pdf), [Русский](docs/DOCS/RU/Kubron-Helm-User-Guide.pdf); GitOps — [English](docs/DOCS/EN/Kubron-ArgoCD-User-Guide-EN.pdf), [Русский](docs/DOCS/RU/Kubron-ArgoCD-User-Guide.pdf)
-- **Server deployment** (Russian) — [docs/deploy.md](docs/deploy.md), [high availability](docs/ha.md), [backup and restore](docs/backup.md), [logging](docs/logging.md), [metrics](docs/metrics.md), [HTTP security](docs/http-security.md)
-- **Server security** (Russian) — [threat model](docs/threat-model.md), [security review](docs/security-review.md)
-- **Cluster sign-in** (Russian) — [which dialogs you will see and what to do](docs/cluster-sign-in.md); [manual cloud sign-in lab](docs/authentication-lab.md)
-- **Documentation map and project status** — [docs/README.md](docs/README.md) (open work is in [docs/tickets](docs/tickets); closed work stays in the git history and the [changelog](CHANGELOG.md))
-- **Localization** — [docs/i18n.md](docs/i18n.md), [ADR-0014](docs/adr/0014-i18n.md)
-- **Releasing** — [docs/releasing.md](docs/releasing.md), [supply chain (ADR-0021)](docs/adr/0021-release-supply-chain.md)
+- **Server deployment** — [deployment](docs/deploy.md), [high availability](docs/ha.md), [backup and restore](docs/backup.md), [logging](docs/logging.md), [metrics](docs/metrics.md), [HTTP security](docs/http-security.md)
+- **Cluster sign-in** — [sign-in guide](docs/cluster-sign-in.md), [manual cloud sign-in lab](docs/authentication-lab.md)
+- **Architecture and security** — [ADR index](docs/adr/README.md), [password hashing](docs/adr/0019-password-hashing.md), [HTTP security](docs/adr/0020-http-security.md)
+- **Localization** — [i18n guide](docs/i18n.md), [ADR-0014](docs/adr/0014-i18n.md)
+- **Releasing** — [release guide](docs/releasing.md), [supply chain (ADR-0021)](docs/adr/0021-release-supply-chain.md)
+- **Documentation index** — [docs/README.md](docs/README.md); change history — [CHANGELOG.md](CHANGELOG.md)
 
 ## Server mode
 
@@ -203,7 +202,7 @@ go run ./cmd/kubron-server --listen 127.0.0.1:8080
 - [x] Shared, persistent Helm catalog in server mode
 - [x] Publish the signed container image and Helm chart to a registry
 - [x] HTTP port-forward and terminals in web mode
-- [ ] Independent review and pentest of the cluster sign-in flows (credential broker, AKS, EKS, GKE); the review and pentest of 2026-11-03 cover the rest of the server ([status](docs/security-review.md))
+- [ ] Independent review and pentest of the cluster sign-in flows (credential broker, AKS, EKS, GKE)
 - [ ] Code-signed Windows and macOS builds
 - [ ] SSO/OIDC login for organizations
 
