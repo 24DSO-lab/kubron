@@ -101,3 +101,28 @@ func TestProfileAndBindingDeactivationAreRevisionedTombstones(t *testing.T) {
 		t.Fatalf("binding tombstone failed: %+v %v", deactivatedBinding, err)
 	}
 }
+
+func TestProfileCannotBeSharedAcrossOwnerScopes(t *testing.T) {
+	now := time.Now().UTC()
+	orgOwner := OwnerScope{Kind: OwnerOrganization, OrganizationID: "org"}
+	teamOwner := OwnerScope{Kind: OwnerTeam, OrganizationID: "org", TeamID: "team"}
+	prov, _ := NewProvenance("user", "actor", now)
+	profile := Profile{ID: "profile", Owner: orgOwner, Constraints: Constraints{ModeCeiling: Observe, MaxRisk: 0}, Revision: 1, Lifecycle: Active, Provenance: prov}
+	binding := Binding{ID: "binding", ProfileID: profile.ID, Owner: teamOwner, Scope: ScopeRef{Kind: ScopeCluster, OrganizationID: "org", TeamID: "team", ClusterID: "cluster"}, Revision: 1, Lifecycle: Active, Provenance: prov}
+	if err := ValidateBindingProfile(binding, profile); !errors.Is(err, ErrForbidden) {
+		t.Fatalf("cross-owner profile sharing must be forbidden: %v", err)
+	}
+}
+
+func TestOrganizationProfileCanBindWithinItsOrganizationTeamScope(t *testing.T) {
+	in := baseInput()
+	teamOwner := OwnerScope{Kind: OwnerTeam, OrganizationID: "org", TeamID: "team"}
+	in.TargetOwner = teamOwner
+	in.Scope.TeamID = "team"
+	in.Bindings[0].Scope.TeamID = "team"
+
+	decision := Evaluate(in)
+	if !decision.Allowed || decision.Mode != Autonomous {
+		t.Fatalf("organization-owned profile should apply within its organization team scope: %+v", decision)
+	}
+}
