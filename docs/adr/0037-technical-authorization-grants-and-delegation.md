@@ -2,7 +2,7 @@
 
 - Статус: Implemented (2026-11-28)
 - Дата: 2026-11-27
-- Связано: ADR-0012, ADR-0026, ADR-0035; Phase 1 Contract Freeze; Cross-Team Delegation decision
+- Связано: ADR-0012, ADR-0026, ADR-0035
 
 ## Контекст
 
