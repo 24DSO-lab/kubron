@@ -11,6 +11,7 @@ package authorization
 //     владение и обязательная delegation только сужают результат (пересечение);
 //   - никакого кеша положительных решений: каждый вызов заново читает состояние из доверенных источников,
 //     а перед выдачей решения проверяет, что принципал и использованные записи не изменились (TOCTOU);
+//     это проверка снимка перед возвратом, а не атомарная гарантия до Plan Commit;
 //   - не раскрывает метаданные чужих целей: цель вне видимости principal'а неотличима от несуществующей;
 //   - не загружает credentials, не строит Kubernetes-клиентов и не вызывает Kubernetes API.
 
@@ -428,7 +429,8 @@ func (e *GrantEvaluator) recheck(ctx context.Context, p identity.PrincipalRef, g
 		// ID, principal, owner Team and revision must describe the exact record selected from the list.
 		// Never copy the revision from the stale list result into GrantDecision.
 		if cur.ID != del.ID || cur.ServicePrincipal != p || cur.OrgID != p.OrgID ||
-			cur.OwnerTeamID != del.OwnerTeamID || cur.Revision != del.Revision {
+			cur.OwnerTeamID != del.OwnerTeamID || cur.Revision != del.Revision ||
+			cur.LastMutationID != del.LastMutationID || cur.LastAuditEventID != del.LastAuditEventID {
 			return stale(ReasonStaleRevision)
 		}
 		if cur.State != DelegationActive {

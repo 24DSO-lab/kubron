@@ -166,7 +166,9 @@ type GrantRequest struct {
 // Granted=true гарантированно только при err == nil; при любой ошибке Granted=false.
 // Для ServicePrincipal положительное решение содержит ID и revision одной delegation,
 // подтверждённой повторным чтением через DelegationReader.GetDelegation. Для TeamPrincipal
-// delegation не требуется, поэтому оба поля остаются нулевыми.
+// delegation не требуется, поэтому оба поля остаются нулевыми. Revision фиксирует наблюдённую
+// версию на момент Evaluate, но не резервирует delegation и не закрывает гонку до Plan Commit:
+// commit обязан атомарно проверить эту версию через CAS/fencing.
 type GrantDecision struct {
 	Granted            bool
 	ReasonCode         string
