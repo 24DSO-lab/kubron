@@ -87,7 +87,7 @@ func Evaluate(in Input) Decision {
 		}
 		return finalize(d)
 	}
-	if in.ProfileSource == SourceUnavailable || in.BindingSource == SourceUnavailable || in.TargetGroupSource == SourceUnavailable {
+	if (in.ProfileSource != SourceAvailable && in.ProfileSource != SourceMissing && in.ProfileSource != SourceUnavailable && in.ProfileSource != SourceAmbiguous && in.ProfileSource != SourceStale) || (in.BindingSource != SourceAvailable && in.BindingSource != SourceMissing && in.BindingSource != SourceUnavailable && in.BindingSource != SourceAmbiguous && in.BindingSource != SourceStale) {\n\t\taddReason("binding_ambiguous"); addUnknown("profile_or_binding_source"); return finalize(d)\n\t}\n\tif in.ProfileSource == SourceUnavailable || in.BindingSource == SourceUnavailable || in.TargetGroupSource == SourceUnavailable {
 		addReason("policy_unavailable"); addUnknown("profile_or_binding_or_target_group"); return finalize(d)
 	}
 	if in.ProfileSource == SourceMissing && len(in.Profiles) > 0 || in.BindingSource == SourceMissing && len(in.Bindings) > 0 {
