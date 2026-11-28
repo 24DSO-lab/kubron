@@ -102,7 +102,7 @@ func (a ActionRef) Equal(b ActionRef) bool { return a.ID == b.ID && a.Version ==
 
 type TimeWindow struct { StartMinute int; EndMinute int; Days []time.Weekday }
 func (w TimeWindow) Validate() error {
-	if w.StartMinute < 0 || w.StartMinute >= 1440 || w.EndMinute < 0 || w.EndMinute >= 1440 || w.StartMinute == w.EndMinute { return invalid("TimeWindow") }
+	if w.StartMinute < 0 || w.StartMinute >= 1440 || w.EndMinute < 0 || w.EndMinute >= 1440 || w.StartMinute >= w.EndMinute { return invalid("TimeWindow") }
 	seen := map[time.Weekday]bool{}
 	for _, d := range w.Days { if d < time.Sunday || d > time.Saturday || seen[d] { return invalid("TimeWindow.Days") }; seen[d] = true }
 	return nil
