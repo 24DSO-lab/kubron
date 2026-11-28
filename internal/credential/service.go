@@ -651,10 +651,10 @@ func (s *Service) recordExpiredProvisioningOutcome(ctx context.Context, prov *pr
 	}
 	out, err := s.crit.GetOutcome(ctx, prov.Principal.OrgID, prov.EventID)
 	if err == nil {
-		if out.Result == audit.CriticalFailed {
-			return nil // already durably failed by an earlier Sweep or terminal provisioning path
+		if out.Result == audit.CriticalFailed || out.Result == audit.CriticalSucceeded {
+			return nil // a durable terminal outcome from Sweep or an interactive path permits cleanup
 		}
-		return fmt.Errorf("%w: provisioning intent already has a non-failed outcome", audit.ErrOutcomeUnknown)
+		return fmt.Errorf("%w: provisioning intent already has a non-terminal outcome", audit.ErrOutcomeUnknown)
 	}
 	if !errors.Is(err, audit.ErrCriticalNotFound) {
 		return fmt.Errorf("%w: %w", audit.ErrOutcomeUnknown, err)
