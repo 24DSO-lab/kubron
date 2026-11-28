@@ -102,7 +102,11 @@ func (s *Service) track(id string, sub Subject, d Descriptor, pending []byte, ex
 		return
 	}
 	if c, ok := p.(Canceller); ok {
-		s.live.track(id, liveRequest{p: c, pending: pending, key: sub.key(), expires: exp})
+		r := liveRequest{id: id, p: c, pending: pending, key: sub.key(), expires: exp, provisioning: sub.IsPrincipal()}
+		if len(provisioning) > 0 {
+			r.prov = provisioning[0]
+		}
+		s.live.track(id, r)
 	}
 }
 
