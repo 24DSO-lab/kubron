@@ -42,6 +42,29 @@ Web-версия (`kubron-server`) настраивается переменны
 | `KUBRON_CSP_REPORT_ONLY` | выкл. | Отдавать Content-Security-Policy как Report-Only на время обкатки: нарушения фиксирует браузер, ничего не блокируется. |
 | `KUBRON_SESSION_TTL` | `12h` | Срок жизни веб-сессии, длительность Go, например `8h` или `24h`. |
 
+### Единый вход OIDC
+
+| Переменная | По умолчанию | Назначение |
+|---|---|---|
+| `KUBRON_OIDC_ISSUER` | — | URL issuer провайдера OpenID. При заданном значении включается браузерный SSO. |
+| `KUBRON_OIDC_CLIENT_ID` | — | Идентификатор OAuth-клиента; обязателен при заданном issuer. |
+| `KUBRON_OIDC_CLIENT_SECRET` | — | Секрет OAuth-клиента. Храните его в окружении сервера; в журналах он маскируется. |
+| `KUBRON_OIDC_SCOPES` | `openid profile email` | Области OIDC через пробел. |
+| `KUBRON_OIDC_USERNAME_CLAIM` | `preferred_username` | Claim ID-токена, используемый как логин Kubron. |
+| `KUBRON_OIDC_GROUPS_CLAIM` | `groups` | Claim ID-токена со списком групп. |
+| `KUBRON_OIDC_ADMIN_GROUPS` | — | Группы IdP через запятую, которым назначается роль администратора Kubron. |
+| `KUBRON_OIDC_OPERATOR_GROUPS` | — | Группы IdP через запятую, которым назначается роль оператора. Роль администратора имеет приоритет. |
+| `KUBRON_OIDC_DEFAULT_ROLE` | `user` | Роль при отсутствии привилегированной группы: `admin`, `operator` или `user`. |
+| `KUBRON_OIDC_AUTO_CREATE` | вкл. | Автоматически создавать passwordless-учётную запись Kubron для новой внешней identity. |
+| `KUBRON_OIDC_LINK_EXISTING` | выкл. | Связывать внешнюю identity с существующей учётной записью с таким же логином. |
+| `KUBRON_OIDC_DISABLE_LOCAL_LOGIN` | выкл. | Отключить вход в браузере по паролю. Требует включённого OIDC; первичное создание администратора остаётся доступным. |
+| `KUBRON_OIDC_BUTTON_LABEL` | — | Необязательная подпись кнопки входа. |
+| `KUBRON_OIDC_CA_FILE` | — | Дополнительный CA bundle для закрытого центра сертификации IdP. |
+
+При включённом OIDC обязателен `KUBRON_PUBLIC_URL`; redirect URI в IdP:
+`<KUBRON_PUBLIC_URL>/auth/sso/callback`. В установке с несколькими репликами задайте одинаковый
+`KUBRON_SECRET_KEY` на каждой: он используется для шифрования cookie потока входа.
+
 ### Ограничения доступа
 
 | Переменная | По умолчанию | Назначение |
