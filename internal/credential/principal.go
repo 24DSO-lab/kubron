@@ -1048,7 +1048,7 @@ func (s *Service) CancelProvisioning(ctx context.Context, sub Subject, by Provis
 	}
 	rec, err := s.chal.Get(ctx, challengeID)
 	if errors.Is(err, ErrChallengeNotFound) {
-		return nil
+		return ErrChallengeExpired
 	}
 	if err != nil {
 		return err
