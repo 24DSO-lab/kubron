@@ -255,3 +255,22 @@ func TestUnavailableTargetGroupSourceIsIgnoredWhenNoGroupApplies(t *testing.T) {
 		t.Fatalf("unrequested target-group source must not block an unrelated evaluation: %+v", decision)
 	}
 }
+
+func TestTargetGroupScopeRequiresMatchingVersionedGroupInput(t *testing.T) {
+	in := baseInput()
+	in.Scope = ScopeRef{Kind: ScopeTargetGroup, OrganizationID: "org", TargetGroupID: "group"}
+	in.Bindings[0].Scope = ScopeRef{Kind: ScopeTargetGroup, OrganizationID: "org", TargetGroupID: "group"}
+
+	decision := Evaluate(in)
+	if decision.Mode != Observe || decision.Allowed || !containsString(decision.UnknownInputs, "target_group_identity") {
+		t.Fatalf("target group scope without matching group identity/revision must fail closed: %+v", decision)
+	}
+
+	in.TargetGroupID = "group"
+	in.TargetGroupSource = SourceAvailable
+	in.TargetGroupRevision = 3
+	decision = Evaluate(in)
+	if !decision.Allowed || decision.RevisionVector.TargetGroupID != "group" || decision.RevisionVector.TargetGroupRevision != 3 {
+		t.Fatalf("matching versioned target group should be included in the decision: %+v", decision)
+	}
+}
