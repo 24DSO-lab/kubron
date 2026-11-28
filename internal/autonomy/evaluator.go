@@ -94,8 +94,11 @@ func Evaluate(in Input) Decision {
 	if in.ProfileSource == SourceAmbiguous || in.BindingSource == SourceAmbiguous {
 		addReason("binding_ambiguous"); addUnknown("bindings"); return finalize(d)
 	}
-	if in.PolicySource == SourceStale || in.ProfileSource == SourceStale || in.BindingSource == SourceStale || in.TargetGroupSource == SourceStale {
+	if in.ProfileSource == SourceStale || in.BindingSource == SourceStale || in.TargetGroupSource == SourceStale {
 		addReason("policy_stale_revision"); addUnknown("revision_vector"); return finalize(d)
+	}
+	if len(in.Profiles) == 0 || len(in.Bindings) == 0 {
+		addReason("policy_missing"); addUnknown("profile_binding"); return finalize(d)
 	}
 	for _, p := range in.Policies {
 		if p.Validate() != nil || p.Lifecycle != Active || !ownerApplies(p.Owner, in.TargetOwner) || !scopeApplies(p.Scope, in.Scope) {
