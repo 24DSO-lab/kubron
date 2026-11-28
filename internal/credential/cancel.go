@@ -33,7 +33,8 @@ type liveRequest struct {
 	p       Canceller
 	pending []byte
 	key     Key
-	expires time.Time
+	expires       time.Time
+	provisioning bool // technical provisioning requests must be audited before provider cancellation
 }
 
 func (l *liveSet) track(id string, r liveRequest) {
