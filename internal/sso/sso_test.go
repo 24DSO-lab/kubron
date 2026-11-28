@@ -299,6 +299,7 @@ func TestOIDCCompleteSuccessAndSecurityFailures(t *testing.T) {
 	}
 	flow5, query5 := f.begin(t, p)
 	f.claims["preferred_username"] = "bad name"
+	delete(f.claims, "email") // Prevent the valid email-local-part fallback.
 	if _, err := p.Complete(context.Background(), flow5, query5); err != ErrNoUsername {
 		t.Fatalf("username error = %v", err)
 	}
