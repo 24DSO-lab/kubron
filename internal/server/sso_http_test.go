@@ -60,8 +60,8 @@ func TestSSOLoginCallbackCreatesWebSession(t *testing.T) {
 	bound := false
 	g := &Guard{
 		Sessions: sessions,
-		NewView: func(string) any { return &struct{}{} },
-		Bind: func(any, string) { bound = true },
+		NewView:  func(string) any { return &struct{}{} },
+		Bind:     func(any, string) { bound = true },
 	}
 	login := func(_ context.Context, _ any, id sso.Identity) (*auth.UserInfo, error) {
 		if id.Subject != "subject-1" {
@@ -186,7 +186,7 @@ func TestSSOCallbackMapsDisabledAndProvisioningErrors(t *testing.T) {
 
 func TestSSOLoginUsesAnonymousRateLimit(t *testing.T) {
 	provider := newFakeSSOProvider()
-	g := &Guard{Sessions: NewSessions(time.Hour, false), AnonLimiter: NewRateLimiter(1, 1)}
+	g := &Guard{Sessions:  NewSessions(time.Hour, false), AnonLimiter: NewRateLimiter(1, 1)}
 	h := ssoLoginHandler(g, &ssoHandlerConfig{
 		provider: provider, flowKey: []byte("key"), publicURL: "https://kubron.example.test",
 	})
@@ -260,7 +260,7 @@ func TestSSOHTTPFlowReturnsAuthenticatedStatus(t *testing.T) {
 	sessions.Release = func(any) {}
 	g := &Guard{
 		Sessions: sessions,
-		NewView: func(string) any { return &ssoStatusTarget{} },
+		NewView:  func(string) any { return &ssoStatusTarget{} },
 	}
 	login := func(_ context.Context, view any, _ sso.Identity) (*auth.UserInfo, error) {
 		user := &auth.UserInfo{ID: "user-1", Username: "alice"}
