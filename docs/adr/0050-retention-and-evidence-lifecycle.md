@@ -10,7 +10,7 @@ Operation history, evidence и audit имеют разные цели, чувс�
 
 ## Решение
 
-1. Organization задаёт настраиваемую retention policy для Run/Step history и связанных execution records. Team-level policy может дополнительно ограничивать срок/объём в пределах организационной политики, но не ослаблять обязательные ограничения Organization.
+1. Organization задаёт настраиваемую retention policy для Run/Step history и связанных execution records. В этой модели retention ownership находится на уровне Organization; отдельная Team-level настройка не вводится без нового архитектурного решения.
 2. Retention учитывает классы данных, срок, объём, завершённость Run, активные approvals и необходимость reconciliation. Незавершённые Run, unknown outcomes, активные approvals и записи, нужные для recovery, не удаляются обычной retention cleanup.
 3. Evidence — отдельный доменный поток/объект со своим owner, access checks и retention policy. Run хранит references и provenance, а не произвольные копии больших payloads.
 4. Critical Audit — отдельный обязательный поток с собственными правилами retention. Удаление/архивация Run, Step или Evidence никогда не удаляет обязательные audit records.
