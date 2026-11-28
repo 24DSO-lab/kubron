@@ -1074,14 +1074,12 @@
   "identityForbidden": "identity: 禁止访问",
   "identityRevoked": "identity: 已撤销",
   "identityDependencyUnavailable": "identity: 依赖不可用",
-
   "authorizationNotFound": "authorization: 未找到",
   "authorizationRevisionConflict": "authorization: 版本冲突",
   "authorizationInvalid": "authorization: 无效",
   "authorizationForbidden": "authorization: 禁止访问",
   "authorizationRevoked": "authorization: 已撤销",
   "authorizationDependencyUnavailable": "authorization: 依赖不可用",
-
   "credentialBindingCannotBeUsed": "凭据绑定不可用",
   "credentialAssignmentNotConfirmed": "凭据分配尚未确认",
   "credentialSetupNotAuthorized": "未获准设置凭据",
@@ -1107,5 +1105,17 @@
   "autonomyRevisionConflict": "autonomy: 版本冲突",
   "autonomyDependencyUnavailable": "autonomy: 依赖不可用",
   "autonomyScopeForbidden": "autonomy: 无权访问此范围",
-  "autonomyProfileBindingOwnerMismatch": "{p0}: 配置文件所有者与绑定所有者不匹配"
+  "autonomyProfileBindingOwnerMismatch": "{p0}: 配置文件所有者与绑定所有者不匹配",
+  "oidcSignInDisabled": "OIDC 登录已禁用",
+  "oidcConfigurationInvalid": "OIDC 配置无效",
+  "oidcStateMismatch": "OIDC state 不匹配",
+  "oidcIssuerMismatch": "OIDC issuer 不匹配",
+  "oidcIDTokenInvalid": "OIDC ID 令牌无效",
+  "oidcUsernameInvalid": "OIDC 身份中没有有效的用户名",
+  "oidcFlowExpired": "OIDC 登录流程已过期",
+  "oidcFlowInvalid": "OIDC 登录流程状态无效",
+  "oidcProviderUnavailable": "OIDC 提供方不可用",
+  "oidcAuthorizationRejected": "OIDC 授权被拒绝",
+  "oidcAuthorizationCodeMissing": "缺少 OIDC 授权码",
+  "oidcRedirectURLInvalid": "OIDC 重定向 URL 无效"
 }

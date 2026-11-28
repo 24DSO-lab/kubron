@@ -1074,14 +1074,12 @@
   "identityForbidden": "identity: forbidden",
   "identityRevoked": "identity: revoked",
   "identityDependencyUnavailable": "identity: dependency unavailable",
-
   "authorizationNotFound": "authorization: not found",
   "authorizationRevisionConflict": "authorization: revision conflict",
   "authorizationInvalid": "authorization: invalid",
   "authorizationForbidden": "authorization: forbidden",
   "authorizationRevoked": "authorization: revoked",
   "authorizationDependencyUnavailable": "authorization: dependency unavailable",
-
   "credentialBindingCannotBeUsed": "the credential binding cannot be used",
   "credentialAssignmentNotConfirmed": "the credential assignment is not confirmed",
   "credentialSetupNotAuthorized": "the credential setup is not authorized",
@@ -1107,5 +1105,17 @@
   "autonomyRevisionConflict": "autonomy: revision conflict",
   "autonomyDependencyUnavailable": "autonomy: dependency unavailable",
   "autonomyScopeForbidden": "autonomy: scope forbidden",
-  "autonomyProfileBindingOwnerMismatch": "{p0}: profile binding owner mismatch"
+  "autonomyProfileBindingOwnerMismatch": "{p0}: profile binding owner mismatch",
+  "oidcSignInDisabled": "OIDC sign-in is disabled",
+  "oidcConfigurationInvalid": "OIDC configuration is invalid",
+  "oidcStateMismatch": "OIDC state does not match",
+  "oidcIssuerMismatch": "OIDC issuer does not match",
+  "oidcIDTokenInvalid": "OIDC ID token is invalid",
+  "oidcUsernameInvalid": "OIDC identity has no valid username",
+  "oidcFlowExpired": "OIDC sign-in flow has expired",
+  "oidcFlowInvalid": "OIDC sign-in flow is invalid",
+  "oidcProviderUnavailable": "OIDC provider is unavailable",
+  "oidcAuthorizationRejected": "OIDC authorization was rejected",
+  "oidcAuthorizationCodeMissing": "OIDC authorization code is missing",
+  "oidcRedirectURLInvalid": "OIDC redirect URL is invalid"
 }
