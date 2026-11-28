@@ -1321,3 +1321,35 @@ func TestConcurrentProvisioningCancelWithinOneService(t *testing.T) {
 	out, err := tr.rec.GetOutcome(bg, "o1", by.EventID)
 	if err != nil || out.Result != audit.CriticalFailed { t.Fatalf("outcome = %+v, %v", out, err) }
 }
+
+
+func TestProvisioningSuccessOutcomeSurvivesChallengeDeleteFailure(t *testing.T) {
+	tr := newTechRig(t)
+	sub, _ := tr.principal(identity.PrincipalTeam, "success-delete-failure")
+	by := tr.by("sess-1")
+	store := &deleteFailChallengeStore{ChallengeStore: tr.chal, AttemptLimiter: tr.chal}
+	svc := tr.serviceWithChallenges(tr.store, store)
+	res, err := svc.BeginProvisioning(bg, sub, by, desc)
+	if err != nil || res.Challenge == nil { t.Fatalf("BeginProvisioning = %+v, %v", res, err) }
+
+	store.fail.Store(true)
+	_, err = svc.AnswerProvisioning(bg, sub, by, res.Challenge.ID, answer("alice", pwCanary))
+	if err == nil { t.Fatal("expected challenge deletion failure after successful outcome") }
+	out, err := tr.rec.GetOutcome(bg, "o1", by.EventID)
+	if err != nil || out.Result != audit.CriticalSucceeded {
+		t.Fatalf("successful outcome must be durable before challenge deletion: %+v %v", out, err)
+	}
+	if _, err := tr.chal.Get(bg, res.Challenge.ID); err != nil {
+		t.Fatalf("challenge must remain when deletion fails: %v", err)
+	}
+
+	// The retry recognizes CriticalSucceeded and performs cleanup without re-running the provider.
+	_, err = svc.PollProvisioning(bg, sub, by, res.Challenge.ID)
+	if !errors.Is(err, credential.ErrChallengeExpired) { t.Fatalf("cleanup retry = %v", err) }
+	if _, err := tr.chal.Get(bg, res.Challenge.ID); !errors.Is(err, credential.ErrChallengeNotFound) {
+		t.Fatalf("challenge still exists: %v", err)
+	}
+	if _, err := svc.Token(bg, sub, desc); err != nil {
+		t.Fatalf("the confirmed credential must remain usable: %v", err)
+	}
+}
