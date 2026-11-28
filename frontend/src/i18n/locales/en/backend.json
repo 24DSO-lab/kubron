@@ -1107,5 +1107,5 @@
   "autonomyRevisionConflict": "autonomy: revision conflict",
   "autonomyDependencyUnavailable": "autonomy: dependency unavailable",
   "autonomyScopeForbidden": "autonomy: scope forbidden",
-  "autonomyProfileBindingOwnerMismatch": "autonomy: profile binding owner mismatch"
+  "autonomyProfileBindingOwnerMismatch": "{p0}: profile binding owner mismatch"
 }
