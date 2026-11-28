@@ -1101,6 +1101,11 @@
   "provisioningAlreadyHasNonFailedOutcome": "{p0}: 凭据配置已存在非失败结果",
   "deleteProvisioningChallenge": "删除凭据配置挑战失败：{p0}",
   "provisioningOutcomeIsNotTerminal": "{p0}: 凭据配置结果尚非终态",
-  "provisioningIntentAlreadyHasNonTerminalOutcome": "{p0}: 凭据配置操作已有非终态结果"
-
+  "provisioningIntentAlreadyHasNonTerminalOutcome": "{p0}: 凭据配置操作已有非终态结果",
+  "autonomyInvalid": "autonomy: 无效",
+  "autonomyNotFound": "autonomy: 未找到",
+  "autonomyRevisionConflict": "autonomy: 版本冲突",
+  "autonomyDependencyUnavailable": "autonomy: 依赖不可用",
+  "autonomyScopeForbidden": "autonomy: 无权访问此范围",
+  "autonomyProfileBindingOwnerMismatch": "autonomy: 配置文件所有者与绑定所有者不匹配"
 }
