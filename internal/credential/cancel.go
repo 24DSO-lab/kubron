@@ -83,7 +83,6 @@ func (l *liveSet) listIf(match func(liveRequest) bool) []liveRequest {
 	var out []liveRequest
 	for _, r := range l.m {
 		if match(r) {
-			r.pending = append([]byte(nil), r.pending...)
 			out = append(out, r)
 		}
 	}
