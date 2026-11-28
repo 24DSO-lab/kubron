@@ -371,6 +371,15 @@ func (a *App) Login(username, password string) (*auth.UserInfo, error) {
 	return a.auth.Login(a.baseContext(), username, password)
 }
 
+// LoginSSO opens the current application view's session for an identity already verified by an external IdP.
+// It is a package function, not an App method, so it is not exposed through Wails bindings or RPC.
+func LoginSSO(v *App, id auth.ExternalIdentity, pol auth.ExternalPolicy) (*auth.UserInfo, error) {
+	if v == nil || v.auth == nil {
+		return nil, auth.ErrNotAuthenticated
+	}
+	return v.auth.LoginExternal(v.baseContext(), id, pol)
+}
+
 // Logout закрывает сессию.
 func (a *App) Logout() {
 	if a.auth != nil {

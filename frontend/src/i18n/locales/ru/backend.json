@@ -1117,5 +1117,6 @@
   "oidcProviderUnavailable": "Провайдер OIDC недоступен",
   "oidcAuthorizationRejected": "Провайдер отклонил авторизацию OIDC",
   "oidcAuthorizationCodeMissing": "Отсутствует код авторизации OIDC",
-  "oidcRedirectURLInvalid": "Недопустимый URL перенаправления OIDC"
+  "oidcRedirectURLInvalid": "Недопустимый URL перенаправления OIDC",
+  "externalAccountIsNotProvisioned": "внешняя учётная запись не зарегистрирована"
 }

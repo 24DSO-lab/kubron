@@ -1117,5 +1117,6 @@
   "oidcProviderUnavailable": "OIDC provider is unavailable",
   "oidcAuthorizationRejected": "OIDC authorization was rejected",
   "oidcAuthorizationCodeMissing": "OIDC authorization code is missing",
-  "oidcRedirectURLInvalid": "OIDC redirect URL is invalid"
+  "oidcRedirectURLInvalid": "OIDC redirect URL is invalid",
+  "externalAccountIsNotProvisioned": "external account is not provisioned"
 }

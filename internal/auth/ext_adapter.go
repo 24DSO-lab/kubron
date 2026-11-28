@@ -21,6 +21,7 @@ func (e extBackend) Load() (*Data, error) {
 			ID: u.ID, Username: u.Username, Role: Role(u.Role), PasswordHash: u.PasswordHash,
 			Disabled: u.Disabled, MustChangePassword: u.MustChangePassword,
 			CreatedAt: u.CreatedAt, UpdatedAt: u.UpdatedAt, LastLoginAt: u.LastLoginAt,
+			ExternalIssuer: u.ExternalIssuer, ExternalSubject: u.ExternalSubject,
 		})
 	}
 	return out, nil
@@ -33,6 +34,7 @@ func (e extBackend) Save(d *Data) error {
 			ID: u.ID, Username: u.Username, Role: string(u.Role), PasswordHash: u.PasswordHash,
 			Disabled: u.Disabled, MustChangePassword: u.MustChangePassword,
 			CreatedAt: u.CreatedAt, UpdatedAt: u.UpdatedAt, LastLoginAt: u.LastLoginAt,
+			ExternalIssuer: u.ExternalIssuer, ExternalSubject: u.ExternalSubject,
 		})
 	}
 	return e.b.Save(out)
