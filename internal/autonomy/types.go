@@ -209,7 +209,7 @@ func (m MutationMeta) Validate() error {
 // ExpectedRevision compare-and-swap; successful semantic updates increment Revision exactly once.
 // Deactivate writes a tombstone; physical deletion is forbidden while references exist.
 type PolicyRepository interface {
-	CreatePolicy(ctx Context, value Policy) error
+	CreatePolicy(ctx context.Context, value Policy) error
 	GetPolicy(ctx Context, owner OwnerScope, id string) (Policy, error)
 	UpdatePolicy(ctx Context, owner OwnerScope, id string, expectedRevision uint64, next Policy) (Policy, error)
 	DeactivatePolicy(ctx Context, owner OwnerScope, id string, expectedRevision uint64, meta MutationMeta) (Policy, error)
