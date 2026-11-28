@@ -1,6 +1,6 @@
 # ADR-0054: Target Group aggregate и жизненный цикл Revision
 
-- Статус: принято
+- Статус: Accepted
 - Дата: 2026-11-28
 - Область: Phase 2 — Target & Policy Foundation
 - Связано: ADR-0026, ADR-0037, ADR-0040, ADR-0041, ADR-0053
@@ -42,6 +42,6 @@ ADR-0041 закрепляет семантику Target Group: один неиз
 
 ## Последствия и ограничения
 
-- До реализации integration owner должен подтвердить место композиции Target backend в internal/store.Store и соответствие существующим File/PostgreSQL conventions.
-- Нужно определить tombstone/archival semantics и retention без удаления обязательного audit.
-- Нужны одинаковые contract suites для File и PostgreSQL: create collision, immutable owner, stale update, revision increments, concurrent updates, sharing isolation, delete with references.
+- Target backend компонуется через узкий интерфейс в существующий store composition root; доменная модель не зависит от File или PostgreSQL.
+- Tombstone сохраняется, пока существуют ссылки; retention не удаляет Critical Audit. Физическое удаление и повторная активация не входят в Phase 2.
+- Одинаковый contract suite для File и PostgreSQL проверяет create collision, immutable owner, stale update, revision increments, concurrent updates, sharing isolation и deactivation with references.
