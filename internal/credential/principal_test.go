@@ -1290,7 +1290,7 @@ func TestAbandonProvisioningAuditsBeforeDelete(t *testing.T) {
 	if _, err := tr.chal.Get(bg, res.Challenge.ID); err != nil { t.Fatalf("challenge must remain: %v", err) }
 	tr.rec.failOutcome.Store(false)
 	_, err = tr.svc.AnswerProvisioning(bg, sub, by, res.Challenge.ID, answer("alice", pwCanary))
-	if !errors.Is(err, credential.ErrChallengeExpired) { t.Fatalf("retry after authority loss = %v", err) }
+	if !errors.Is(err, credential.ErrProvisioningDenied) { t.Fatalf("retry after authority loss = %v", err) }
 	out, err := tr.rec.GetOutcome(bg, "o1", by.EventID)
 	if err != nil || out.Result != audit.CriticalFailed || out.ReasonCode != "authority_lost" {
 		t.Fatalf("outcome = %+v, %v", out, err)
