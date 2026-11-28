@@ -495,6 +495,81 @@ func TestCancelAndExpiryAreRecorded(t *testing.T) {
 	}
 }
 
+func TestSweepProvisioningExpiryRecordsCriticalFailed(t *testing.T) {
+	tr := newTechRig(t)
+	sub, _ := tr.principal(identity.PrincipalTeam, "sweep-success")
+	by := tr.by("sess-1")
+	res, err := tr.svc.BeginProvisioning(bg, sub, by, desc)
+	if err != nil || res.Challenge == nil {
+		t.Fatalf("BeginProvisioning = %+v, %v", res, err)
+	}
+
+	tr.clk.Advance(credential.ChallengeTTL + time.Second)
+	n, err := tr.svc.Sweep(bg)
+	if err != nil || n != 1 {
+		t.Fatalf("Sweep = %d, %v", n, err)
+	}
+	out, err := tr.rec.GetOutcome(bg, "o1", by.EventID)
+	if err != nil || out.Result != audit.CriticalFailed || out.ReasonCode != "expired" {
+		t.Fatalf("outcome = %+v, %v", out, err)
+	}
+	if _, err := tr.chal.Get(bg, res.Challenge.ID); !errors.Is(err, credential.ErrChallengeNotFound) {
+		t.Fatalf("challenge must be deleted only after its outcome is durable: %v", err)
+	}
+}
+
+func TestSweepProvisioningExpiryKeepsChallengeWhenOutcomeFails(t *testing.T) {
+	tr := newTechRig(t)
+	sub, _ := tr.principal(identity.PrincipalTeam, "sweep-failure")
+	by := tr.by("sess-1")
+	res, err := tr.svc.BeginProvisioning(bg, sub, by, desc)
+	if err != nil || res.Challenge == nil {
+		t.Fatalf("BeginProvisioning = %+v, %v", res, err)
+	}
+
+	tr.clk.Advance(credential.ChallengeTTL + time.Second)
+	tr.rec.failOutcome.Store(true)
+	n, err := tr.svc.Sweep(bg)
+	if n != 0 || !errors.Is(err, audit.ErrOutcomeUnknown) || errors.Is(err, credential.ErrChallengeExpired) {
+		t.Fatalf("Sweep = %d, %v; want ErrOutcomeUnknown only", n, err)
+	}
+	if _, err := tr.chal.Get(bg, res.Challenge.ID); err != nil {
+		t.Fatalf("challenge must remain for retry after outcome failure: %v", err)
+	}
+
+	tr.rec.failOutcome.Store(false)
+	n, err = tr.svc.Sweep(bg)
+	if err != nil || n != 1 {
+		t.Fatalf("retry Sweep = %d, %v", n, err)
+	}
+	out, err := tr.rec.GetOutcome(bg, "o1", by.EventID)
+	if err != nil || out.Result != audit.CriticalFailed || out.ReasonCode != "expired" {
+		t.Fatalf("retry outcome = %+v, %v", out, err)
+	}
+}
+
+func TestSweepProvisioningExpiryIsIdempotent(t *testing.T) {
+	tr := newTechRig(t)
+	sub, _ := tr.principal(identity.PrincipalTeam, "sweep-idempotent")
+	by := tr.by("sess-1")
+	res, err := tr.svc.BeginProvisioning(bg, sub, by, desc)
+	if err != nil || res.Challenge == nil {
+		t.Fatalf("BeginProvisioning = %+v, %v", res, err)
+	}
+
+	tr.clk.Advance(credential.ChallengeTTL + time.Second)
+	if n, err := tr.svc.Sweep(bg); err != nil || n != 1 {
+		t.Fatalf("first Sweep = %d, %v", n, err)
+	}
+	if n, err := tr.svc.Sweep(bg); err != nil || n != 0 {
+		t.Fatalf("second Sweep = %d, %v; want no-op", n, err)
+	}
+	out, err := tr.rec.GetOutcome(bg, "o1", by.EventID)
+	if err != nil || out.Result != audit.CriticalFailed || out.ReasonCode != "expired" {
+		t.Fatalf("outcome after repeated Sweep = %+v, %v", out, err)
+	}
+}
+
 func TestWrongPasswordsEndTheSetupAndAreRecorded(t *testing.T) {
 	tr := newTechRig(t)
 	sub, _ := tr.principal(identity.PrincipalTeam, "ci")
