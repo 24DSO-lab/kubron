@@ -470,19 +470,27 @@ func (p *Provider) Complete(ctx context.Context, flow FlowState, query url.Value
 	if identity.Issuer == "" || identity.Subject == "" {
 		return Identity{}, ErrIDToken
 	}
-	identity.Username = claimString(claims, p.cfg.UsernameClaim)
+	identity.Email = claimString(claims, "email")
+	identity.Username = normalizeUsername(claimString(claims, p.cfg.UsernameClaim), identity.Email)
 	if identity.Username == "" {
-		identity.Username = claimString(claims, "email")
-	}
-	identity.Username = strings.TrimSpace(identity.Username)
-	if err := auth.ValidateUsername(identity.Username); err != nil {
 		return Identity{}, ErrNoUsername
 	}
-	identity.Email = claimString(claims, "email")
 	identity.EmailVerified, _ = claims["email_verified"].(bool)
 	identity.Name = claimString(claims, "name")
 	identity.Groups = claimStrings(claims[p.cfg.GroupsClaim])
 	return identity, nil
+}
+
+func normalizeUsername(candidate, email string) string {
+	candidate = strings.TrimSpace(candidate)
+	if auth.ValidateUsername(candidate) == nil {
+		return candidate
+	}
+	email = strings.TrimSpace(email)
+	if local, _, ok := strings.Cut(email, "@"); ok && auth.ValidateUsername(local) == nil {
+		return local
+	}
+	return ""
 }
 
 func claimString(claims map[string]any, key string) string {

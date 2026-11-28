@@ -121,6 +121,28 @@ func TestRoleFor(t *testing.T) {
 	}
 }
 
+
+func TestNormalizeUsername(t *testing.T) {
+	cases := []struct {
+		name      string
+		candidate string
+		email     string
+		want      string
+	}{
+		{name: "preferred claim", candidate: "alice", email: "alice@example.test", want: "alice"},
+		{name: "trim preferred claim", candidate: " alice ", want: "alice"},
+		{name: "email local part fallback", candidate: "not a username", email: "alice@example.test", want: "alice"},
+		{name: "no valid source", candidate: "bad name", email: "a@b", want: ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := normalizeUsername(tc.candidate, tc.email); got != tc.want {
+				t.Fatalf("normalizeUsername() = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
 type fakeIDP struct {
 	server            *httptest.Server
 	key               *rsa.PrivateKey
