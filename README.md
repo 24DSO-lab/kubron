@@ -14,7 +14,7 @@
 [![Downloads](https://img.shields.io/github/downloads/24DSO-lab/kubron/total)](https://github.com/24DSO-lab/kubron/releases)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/24DSO-lab/kubron/badge)](https://scorecard.dev/viewer/?uri=github.com/24DSO-lab/kubron)
 
-[Download](#download) · [Features](#features) · [Documentation](#documentation) · [Build from source](#build-from-source) · [Server mode](#server-mode) · [Roadmap](#roadmap) · [Русский](README.ru.md)
+[Download](#download) · [Features](#features) · [Documentation](https://kubron.pages.dev/) · [Build from source](#build-from-source) · [Server mode](#server-mode) · [Русский](README.ru.md)
 
 </div>
 
@@ -159,14 +159,6 @@ wails build                   # production build into build/bin
 
 On Linux add `-tags webkit2_41` to `wails dev` / `wails build` (WebKitGTK 4.1, as in CI and releases).
 
-## Documentation
-
-- **Server deployment** — [deployment](docs/deploy.md), [high availability](docs/ha.md), [backup and restore](docs/backup.md), [logging](docs/logging.md), [metrics](docs/metrics.md), [HTTP security](docs/http-security.md)
-- **Cluster sign-in** — [sign-in guide](docs/cluster-sign-in.md), [manual cloud sign-in lab](docs/authentication-lab.md)
-- **Architecture and security** — [ADR index](docs/adr/README.md), [password hashing](docs/adr/0019-password-hashing.md), [HTTP security](docs/adr/0020-http-security.md)
-- **Localization** — [i18n guide](docs/i18n.md), [ADR-0014](docs/adr/0014-i18n.md)
-- **Releasing** — [release guide](docs/releasing.md), [supply chain (ADR-0021)](docs/adr/0021-release-supply-chain.md)
-- **Documentation index** — [docs/README.md](docs/README.md); change history — [CHANGELOG.md](CHANGELOG.md)
 
 ## Server mode
 
@@ -191,22 +183,6 @@ go run ./cmd/kubron-server --listen 127.0.0.1:8080
 
 > Listening on a non-loopback address requires `KUBRON_ALLOW_REMOTE=1` and a TLS proxy in front.
 
-## Roadmap
-
-- [x] Desktop app (Wails + Go + Vue) with local auth and audit log
-- [x] Helm releases management
-- [x] GitOps applications management
-- [ ] Support for more GitOps tools
-- [x] Web mode with multi-user support, teams and session auth
-- [x] High availability for the server (more than one replica)
-- [x] Shared, persistent Helm catalog in server mode
-- [x] Publish the signed container image and Helm chart to a registry
-- [x] HTTP port-forward and terminals in web mode
-- [ ] Independent review and pentest of the cluster sign-in flows (credential broker, AKS, EKS, GKE)
-- [ ] Code-signed Windows and macOS builds
-- [ ] SSO/OIDC login for organizations
-
-Have an idea? Open a [feature request](https://github.com/24DSO-lab/kubron/issues/new/choose).
 
 ## License
 
