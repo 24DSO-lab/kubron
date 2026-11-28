@@ -97,7 +97,7 @@ func (b userBackend) Save(d *ext.UserData) error {
 			return fmt.Errorf("unknown role %q", u.Role)
 		}
 		if (u.ExternalIssuer == "") != (u.ExternalSubject == "") {
-			return fmt.Errorf("external issuer and subject must be set together")
+			return ErrConflict
 		}
 		ids = append(ids, u.ID)
 	}
@@ -166,7 +166,7 @@ func (b userBackend) Save(d *ext.UserData) error {
 // upsertUser записывает одного пользователя (создание или обновление). Конфликт имени — ErrConflict.
 func upsertUser(ctx context.Context, tx pgx.Tx, orgID string, u ext.UserRecord, now time.Time) error {
 	if (u.ExternalIssuer == "") != (u.ExternalSubject == "") {
-		return fmt.Errorf("external issuer and subject must be set together")
+		return ErrConflict
 	}
 	created, updated := u.CreatedAt, u.UpdatedAt
 	if created.IsZero() {
