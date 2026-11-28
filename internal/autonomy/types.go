@@ -151,9 +151,16 @@ const (
 	Deactivated Lifecycle = "deactivated"
 )
 
-type Provenance struct { ActorKind string; ActorID string; CreatedAt time.Time; UpdatedAt time.Time }
+type Provenance struct {
+	CreatedByKind string
+	CreatedByID string
+	UpdatedByKind string
+	UpdatedByID string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
 func (p Provenance) Validate() error {
-	if !validID(p.ActorKind) || !validID(p.ActorID) || p.CreatedAt.IsZero() || p.UpdatedAt.Before(p.CreatedAt) { return invalid("Provenance") }
+	if !validID(p.CreatedByKind) || !validID(p.CreatedByID) || !validID(p.UpdatedByKind) || !validID(p.UpdatedByID) || p.CreatedAt.IsZero() || p.UpdatedAt.Before(p.CreatedAt) { return invalid("Provenance") }
 	return nil
 }
 
