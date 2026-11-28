@@ -154,6 +154,25 @@ func TestSSOCallbackRejectsMissingAndInvalidFlowCookies(t *testing.T) {
 	}
 }
 
+func TestSafeSSOReturn(t *testing.T) {
+	for _, tc := range []struct {
+		raw  string
+		want string
+	}{
+		{raw: "/clusters", want: "/clusters"},
+		{raw: "/clusters?tab=nodes", want: "/clusters?tab=nodes"},
+		{raw: "", want: ""},
+		{raw: "https://attacker.example", want: ""},
+		{raw: "//attacker.example", want: ""},
+		{raw: "/\\attacker.example", want: ""},
+		{raw: "/%2f%2fattacker.example", want: ""},
+	} {
+		if got := safeSSOReturn(tc.raw); got != tc.want {
+			t.Errorf("safeSSOReturn(%q) = %q, want %q", tc.raw, got, tc.want)
+		}
+	}
+}
+
 func TestSSOLoginSetsHostCookieOnSecureRequests(t *testing.T) {
 	g := &Guard{Sessions: NewSessions(time.Hour, false)}
 	rec := httptest.NewRecorder()
@@ -270,7 +289,7 @@ func TestSSOHTTPFlowReturnsAuthenticatedStatus(t *testing.T) {
 	h := NewHandler(d, nil, g, WithSSO(provider, []byte("flow-key"), "https://kubron.example.test", login, true, "Company SSO"))
 
 	start := httptest.NewRecorder()
-	h.ServeHTTP(start, httptest.NewRequest(http.MethodGet, "/auth/sso/login", nil))
+	h.ServeHTTP(start, httptest.NewRequest(http.MethodGet, "/auth/sso/login?return=/clusters", nil))
 	var flowCookie *http.Cookie
 	for _, cookie := range start.Result().Cookies() {
 		if cookie.Name == ssoFlowCookie {
@@ -285,7 +304,7 @@ func TestSSOHTTPFlowReturnsAuthenticatedStatus(t *testing.T) {
 	callbackReq := httptest.NewRequest(http.MethodGet, "/auth/sso/callback?state=test-state&code=authorization-code", nil)
 	callbackReq.AddCookie(flowCookie)
 	h.ServeHTTP(callback, callbackReq)
-	if callback.Code != http.StatusFound || callback.Header().Get("Location") != "/" {
+	if callback.Code != http.StatusFound || callback.Header().Get("Location") != "/clusters" {
 		t.Fatalf("callback = %d, %q", callback.Code, callback.Header().Get("Location"))
 	}
 	var sessionCookie *http.Cookie
