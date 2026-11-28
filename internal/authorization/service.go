@@ -868,20 +868,15 @@ func derivedID(prefix string, parts ...string) string {
 }
 
 func requestDigest(parts ...string) string {
-	sum := sha256.New()
-	writeParts(sum, parts)
-	return "sha256:" + hex.EncodeToString(sum.Sum(nil))
-}
-
-type byteWriter interface{ Write(p []byte) (int, error) }
-
-func writeParts(w byteWriter, parts []string) {
-	var n [4]byte
+	// Encode each part with its length to keep the digest unambiguous without
+	// relying on writes to a hash.Hash (whose Write method cannot fail).
+	var encoded []byte
 	for _, p := range parts {
-		binary.BigEndian.PutUint32(n[:], uint32(len(p)))
-		w.Write(n[:])
-		w.Write([]byte(p))
+		encoded = binary.BigEndian.AppendUint32(encoded, uint32(len(p)))
+		encoded = append(encoded, p...)
 	}
+	sum := sha256.Sum256(encoded)
+	return "sha256:" + hex.EncodeToString(sum[:])
 }
 
 // contentParts — каноническое однозначное представление изменяемого содержимого для digest (списки с
