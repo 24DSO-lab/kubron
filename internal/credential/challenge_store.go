@@ -133,8 +133,9 @@ func (m *MemoryChallengeStore) DeleteBy(_ context.Context, f RevokeFilter) (int,
 	defer m.mu.Unlock()
 	n := 0
 	for id, r := range m.recs {
-		if (f.ClusterID == "" || r.ClusterID == f.ClusterID) && (f.OwnerID == "" || r.OwnerID == f.OwnerID) &&
-			(f.Scope == "" || r.Scope == f.Scope) {
+		// Challenge records are keyed by cluster, scope and owner only; a filter that names a technical principal or
+		// binding matches none of them (provisioning challenges are the administrator's, see principal.go).
+		if f.Matches(Key{ClusterID: r.ClusterID, Scope: r.Scope, OwnerID: r.OwnerID}) {
 			delete(m.recs, id)
 			n++
 		}
