@@ -1074,14 +1074,12 @@
   "identityForbidden": "identity: доступ запрещён",
   "identityRevoked": "identity: отозвана",
   "identityDependencyUnavailable": "identity: зависимость недоступна",
-
   "authorizationNotFound": "authorization: не найдено",
   "authorizationRevisionConflict": "authorization: конфликт ревизии",
   "authorizationInvalid": "authorization: некорректно",
   "authorizationForbidden": "authorization: доступ запрещён",
   "authorizationRevoked": "authorization: отозвано",
   "authorizationDependencyUnavailable": "authorization: зависимость недоступна",
-
   "credentialBindingCannotBeUsed": "учётная привязка не может быть использована",
   "credentialAssignmentNotConfirmed": "назначение учётных данных не подтверждено",
   "credentialSetupNotAuthorized": "настройка учётных данных не разрешена",
@@ -1107,5 +1105,17 @@
   "autonomyRevisionConflict": "autonomy: конфликт ревизии",
   "autonomyDependencyUnavailable": "autonomy: зависимость недоступна",
   "autonomyScopeForbidden": "autonomy: недостаточно прав для этой области",
-  "autonomyProfileBindingOwnerMismatch": "{p0}: владелец профиля не совпадает с владельцем привязки"
+  "autonomyProfileBindingOwnerMismatch": "{p0}: владелец профиля не совпадает с владельцем привязки",
+  "oidcSignInDisabled": "Вход через OIDC отключён",
+  "oidcConfigurationInvalid": "Некорректная конфигурация OIDC",
+  "oidcStateMismatch": "Параметр state OIDC не совпадает",
+  "oidcIssuerMismatch": "Издатель OIDC не совпадает",
+  "oidcIDTokenInvalid": "Недействительный ID-токен OIDC",
+  "oidcUsernameInvalid": "В OIDC-идентичности нет допустимого имени пользователя",
+  "oidcFlowExpired": "Срок действия входа через OIDC истёк",
+  "oidcFlowInvalid": "Состояние входа через OIDC недействительно",
+  "oidcProviderUnavailable": "Провайдер OIDC недоступен",
+  "oidcAuthorizationRejected": "Провайдер отклонил авторизацию OIDC",
+  "oidcAuthorizationCodeMissing": "Отсутствует код авторизации OIDC",
+  "oidcRedirectURLInvalid": "Недопустимый URL перенаправления OIDC"
 }

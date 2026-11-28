@@ -77,3 +77,4 @@
 | [0056](0056-deterministic-autonomy-policy-evaluation.md) | Детерминированная оценка Autonomy Policy |
 | [0057](0057-autonomy-profile-versioning-and-binding.md) | Версионирование Autonomy Profiles и правила binding |
 | [0058](0058-phase-2-scope-and-exit-gates.md) | Границы Phase 2 и критерии завершения |
+| [0059](0059-oidc-sign-in.md) | Универсальный OIDC-вход и ядро SSO |

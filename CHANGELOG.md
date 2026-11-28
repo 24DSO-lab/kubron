@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **SSO core:** universal OIDC Authorization Code + PKCE core, encrypted stateless sign-in flow, identity and group-role extraction (ADR-0059).
+
 ## [1.3.0] - 2026-11-26
 
 ### Added
