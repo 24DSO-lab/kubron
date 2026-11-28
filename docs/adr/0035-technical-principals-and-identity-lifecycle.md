@@ -2,7 +2,7 @@
 
 - Статус: Implemented (2026-11-28)
 - Дата: 2026-11-27
-- Связано: ADR-0007, ADR-0008, ADR-0012, ADR-0018, ADR-0026; Phase 1 Contract Freeze
+- Связано: ADR-0007, ADR-0008, ADR-0012, ADR-0018, ADR-0026
 
 ## Контекст
 
