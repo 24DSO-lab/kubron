@@ -205,7 +205,7 @@ func TestSSOCallbackMapsDisabledAndProvisioningErrors(t *testing.T) {
 
 func TestSSOLoginUsesAnonymousRateLimit(t *testing.T) {
 	provider := newFakeSSOProvider()
-	g := &Guard{Sessions:  NewSessions(time.Hour, false), AnonLimiter: NewRateLimiter(1, 1)}
+	g := &Guard{Sessions: NewSessions(time.Hour, false), AnonLimiter: NewRateLimiter(1, 1)}
 	h := ssoLoginHandler(g, &ssoHandlerConfig{
 		provider: provider, flowKey: []byte("key"), publicURL: "https://kubron.example.test",
 	})
@@ -249,7 +249,7 @@ func TestSSOStatusIsAddedToAuthStatus(t *testing.T) {
 		t.Fatal(err)
 	}
 	g := &Guard{
-		Sessions: NewSessions(time.Hour, false),
+		Sessions:  NewSessions(time.Hour, false),
 		SSOStatus: &auth.SSOStatus{Enabled: true, Label: "Company SSO", LoginURL: "/auth/sso/login", LocalLoginDisabled: true},
 	}
 	h := NewHandler(d, nil, g)
