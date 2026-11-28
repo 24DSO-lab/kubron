@@ -1,10 +1,5 @@
--- Store canonical issuer and subject separately from legacy provider/external_id fields.
-ALTER TABLE users
-    ADD COLUMN external_issuer text,
-    ADD COLUMN external_subject text,
-    ADD CONSTRAINT users_external_identity_pair
-        CHECK ((external_issuer IS NULL) = (external_subject IS NULL));
-
-CREATE UNIQUE INDEX users_external_identity_key
-    ON users (org_id, external_issuer, external_subject)
-    WHERE external_subject IS NOT NULL;
+-- Give the existing SSO identity columns canonical names without dropping linked identities.
+ALTER TABLE users RENAME COLUMN provider TO external_issuer;
+ALTER TABLE users RENAME COLUMN external_id TO external_subject;
+ALTER TABLE users RENAME CONSTRAINT users_external_pair TO users_external_identity_pair;
+ALTER INDEX users_external_key RENAME TO users_external_identity_key;
