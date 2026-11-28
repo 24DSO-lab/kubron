@@ -14,11 +14,11 @@
 [![Downloads](https://img.shields.io/github/downloads/24DSO-lab/kubron/total)](https://github.com/24DSO-lab/kubron/releases)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/24DSO-lab/kubron/badge)](https://scorecard.dev/viewer/?uri=github.com/24DSO-lab/kubron)
 
-[Download](#download) · [Features](#features) · [Documentation](#documentation) · [Build from source](#build-from-source) · [Server mode](#server-mode) · [Roadmap](#roadmap)
+[Download](#download) · [Features](#features) · [Documentation](#documentation) · [Build from source](#build-from-source) · [Server mode](#server-mode) · [Roadmap](#roadmap) · [Русский](README.ru.md)
 
 </div>
 
-Kubron is an open-source **Kubernetes Operations Workspace** for desktop and web, built with **Go**, **Wails** and **Vue**. Bring cluster visibility, troubleshooting and day-to-day operations together with Helm and GitOps built in. No telemetry or mandatory account. In desktop mode, kubeconfig stays on your machine; web mode stores it encrypted on the server.
+Kubron is an open-source **Kubernetes Operations Workspace** for desktop and web, built with **Go**, **Wails** and **Vue**. Manage clusters, investigate workload issues, and work with Helm and GitOps from one place — without switching between disconnected tools. Choose a local desktop app or a self-hosted web workspace for your team. There is no telemetry or mandatory cloud account. In desktop mode, kubeconfig stays on your machine; in web mode, kubeconfig is stored encrypted on your server.
 
 <p align="center">
   <img src="docs/images/screenshots/overview.png" alt="Kubron cluster overview: node and pod counts, CPU and memory usage, pods closest to their limits, workloads, recent changes, blockers and certificate expiry" width="100%">
@@ -42,6 +42,18 @@ Kubron is an open-source **Kubernetes Operations Workspace** for desktop and web
 <img src="docs/images/screenshots/gitops-applications.png" alt="Kubron GitOps applications list with sync and health status" width="100%">
 
 </details>
+
+
+## Choose your workspace
+
+| Desktop | Web / self-hosted |
+|---|---|
+| Runs locally on your workstation | Runs on infrastructure you control |
+| Uses your local kubeconfig; it does not upload it to a Kubron service | Stores kubeconfigs encrypted at rest on your server |
+| Best for individual engineers who want a native desktop workflow | Best for teams that need a shared, multi-user workspace |
+| No Kubron account or hosted control plane required | Local users, roles, permissions and audit log |
+
+**Get started:** [download the desktop app](#download) or follow the [server deployment guide](docs/deploy.md).
 
 ## Why Kubron
 
