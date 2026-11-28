@@ -673,7 +673,7 @@ func (s *Service) recordExpiredProvisioningOutcome(ctx context.Context, prov *pr
 // Sweep removes expired requests. The server calls it periodically.
 func (s *Service) Sweep(ctx context.Context) (int, error) {
 	now := s.now()
-	for _, r := range s.live.takeIf(func(r liveRequest) bool { return !now.Before(r.expires) }) {
+	for _, r := range s.live.takeIf(func(r liveRequest) bool { return !r.provisioning && !now.Before(r.expires) }) {
 		r.cancel()
 	}
 	expired, err := s.chal.ListExpired(ctx, now)
