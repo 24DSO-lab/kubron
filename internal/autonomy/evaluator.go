@@ -570,6 +570,27 @@ func equalWeekdays(a, b []time.Weekday) bool {
 	return true
 }
 
+func canonicalizeRevisions(revisions []Revision) []Revision {
+	sort.Slice(revisions, func(i, j int) bool {
+		if revisions[i].ID != revisions[j].ID {
+			return revisions[i].ID < revisions[j].ID
+		}
+		return revisions[i].Revision < revisions[j].Revision
+	})
+	if len(revisions) < 2 {
+		return revisions
+	}
+	out := revisions[:1]
+	for _, revision := range revisions[1:] {
+		last := out[len(out)-1]
+		if last.ID == revision.ID {
+			continue
+		}
+		out = append(out, revision)
+	}
+	return out
+}
+
 func finalize(d Decision) Decision {
 	d.ReasonCodes = uniqueStrings(d.ReasonCodes)
 	d.UnknownInputs = uniqueStrings(d.UnknownInputs)
@@ -584,8 +605,8 @@ func finalize(d Decision) Decision {
 		return a.MaxConcurrent < b.MaxConcurrent
 	})
 	d.Effective.AllowedTimeWindows = canonicalizeWindows(d.Effective.AllowedTimeWindows)
-	sort.Slice(d.RevisionVector.Policies, func(i, j int) bool { return d.RevisionVector.Policies[i].ID < d.RevisionVector.Policies[j].ID })
-	sort.Slice(d.RevisionVector.Profiles, func(i, j int) bool { return d.RevisionVector.Profiles[i].ID < d.RevisionVector.Profiles[j].ID })
-	sort.Slice(d.RevisionVector.Bindings, func(i, j int) bool { return d.RevisionVector.Bindings[i].ID < d.RevisionVector.Bindings[j].ID })
+	d.RevisionVector.Policies = canonicalizeRevisions(d.RevisionVector.Policies)
+	d.RevisionVector.Profiles = canonicalizeRevisions(d.RevisionVector.Profiles)
+	d.RevisionVector.Bindings = canonicalizeRevisions(d.RevisionVector.Bindings)
 	return d
 }
