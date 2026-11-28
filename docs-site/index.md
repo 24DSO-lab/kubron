@@ -5,7 +5,7 @@ hero:
   name: Kubron
   text: Kubernetes, under control.
 
-  tagline: A private Kubernetes Operations Workspace for desktop and web. Manage clusters, workloads, Helm and GitOps from one focused workspace.
+  tagline: A Kubernetes operations workspace for DevOps and SRE engineers. Manage multiple clusters, troubleshoot workloads, and run Helm and GitOps workflows from one place.
 
   actions:
     - theme: brand
