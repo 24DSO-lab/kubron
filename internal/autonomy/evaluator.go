@@ -75,8 +75,14 @@ func Evaluate(in Input) Decision {
 	if in.At.IsZero() || in.Scope.Validate() != nil || in.TargetOwner.Validate() != nil || !in.ScopeFactsKnown {
 		addReason("fact_unknown"); addUnknown("scope_facts"); return finalize(d)
 	}
+	if in.PolicySource == SourceStale {
+		addReason("policy_stale_revision"); addUnknown("policies"); return finalize(d)
+	}
 	if in.PolicySource != SourceAvailable || len(in.Policies) == 0 {
-		switch in.PolicySource { case SourceUnavailable: addReason("policy_unavailable"); addUnknown("policies"); default: addReason("policy_missing"); addUnknown("policies") }
+		switch in.PolicySource {
+		case SourceUnavailable, SourceAmbiguous: addReason("policy_unavailable"); addUnknown("policies")
+		default: addReason("policy_missing"); addUnknown("policies")
+		}
 		return finalize(d)
 	}
 	if in.ProfileSource == SourceUnavailable || in.BindingSource == SourceUnavailable || in.TargetGroupSource == SourceUnavailable {
