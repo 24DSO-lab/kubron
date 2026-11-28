@@ -1,6 +1,6 @@
 # ADR-0055: Согласованное разрешение целей и immutable Target Snapshots
 
-- Статус: принято
+- Статус: Accepted
 - Дата: 2026-11-28
 - Область: Phase 2 — Target & Policy Foundation
 - Связано: ADR-0040, ADR-0041, ADR-0044, ADR-0045, ADR-0053, ADR-0054
@@ -48,7 +48,7 @@ Outcome имеет значения `complete` и `partial`; ошибки, пр�
 
 ## Последствия и ограничения
 
-- Contract Freeze должен определить формат partial/complete resolution outcome и какие причины допустимо раскрывать без утечки сведений о чужих tenant targets.
-- Нужно определить минимальный Kubernetes read capability, не обходя существующий Broker/Provider/ConfigFor путь.
-- Нужны tests на Group revision race, delete/recreate UID change, partial cluster outage, timeout, selector budget, empty result и cross-tenant metadata leakage.
+- `ResolutionReport` и `TargetSnapshot` имеют разные типы и разные гарантии: partial report — только диагностика; snapshot — только полный успешный результат с UID для каждого target.
+- Kubernetes read path использует существующие Broker/Provider/`ConfigFor` seams. Никакой прямой доступ к kubeconfig или создание `rest.Config` из Target domain не допускаются.
+- Обязательные tests: Group revision race, atomic publish, delete/recreate UID change, partial cluster outage, timeout, selector budget, empty result и cross-tenant metadata leakage.
 - Atomic Plan Commit из ADR-0045 остаётся отдельной будущей задачей; snapshot creation не обещает атомарность с будущим Plan.
