@@ -55,6 +55,9 @@ type ChallengeStore interface {
 	Delete(ctx context.Context, id string) error
 	// DeleteBy removes the records matching the filter (empty fields match anything).
 	DeleteBy(ctx context.Context, f RevokeFilter) (int, error)
+	// ListExpired returns a snapshot of records that expired before the given time without deleting them.
+	// Callers that need to audit a record must do so before Delete.
+	ListExpired(ctx context.Context, before time.Time) ([]ChallengeRecord, error)
 	// DeleteExpired removes the records that expired before the given time.
 	DeleteExpired(ctx context.Context, before time.Time) (int, error)
 }
@@ -141,6 +144,19 @@ func (m *MemoryChallengeStore) DeleteBy(_ context.Context, f RevokeFilter) (int,
 		}
 	}
 	return n, nil
+}
+
+// ListExpired implements ChallengeStore.
+func (m *MemoryChallengeStore) ListExpired(_ context.Context, before time.Time) ([]ChallengeRecord, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	var out []ChallengeRecord
+	for _, r := range m.recs {
+		if r.ExpiresAt.Before(before) {
+			out = append(out, cloneRec(r))
+		}
+	}
+	return out, nil
 }
 
 // DeleteExpired implements ChallengeStore.
