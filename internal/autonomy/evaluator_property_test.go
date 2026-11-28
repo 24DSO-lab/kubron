@@ -176,17 +176,17 @@ func TestConstraintRequirementsAreCombinedAndCanonical(t *testing.T) {
 	effective, conflict := intersect([]Constraints{
 		{
 			ModeCeiling: Autonomous, MaxRisk: 80,
-			DeniedActions: []ActionRef{deniedA},
-			RequiredApprovals: []string{"z-approval", "a-approval"},
-			Budgets: []Budget{{MaxExecutions: 5, Period: time.Hour}},
+			DeniedActions:       []ActionRef{deniedA},
+			RequiredApprovals:   []string{"z-approval", "a-approval"},
+			Budgets:             []Budget{{MaxExecutions: 5, Period: time.Hour}},
 			RequireVerification: true,
 		},
 		{
 			ModeCeiling: Assisted, MaxRisk: 40,
-			DeniedActions: []ActionRef{deniedB, deniedA},
+			DeniedActions:     []ActionRef{deniedB, deniedA},
 			RequiredApprovals: []string{"b-approval", "a-approval"},
-			Budgets: []Budget{{MaxExecutions: 2, Period: time.Hour}},
-			RequireRecovery: true, RequireAudit: true,
+			Budgets:           []Budget{{MaxExecutions: 2, Period: time.Hour}},
+			RequireRecovery:   true, RequireAudit: true,
 		},
 	})
 	if conflict {
