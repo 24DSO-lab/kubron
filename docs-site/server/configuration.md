@@ -42,6 +42,29 @@ Durations use Go syntax (`30s`, `15m`, `12h`). Boolean variables accept `1`, `tr
 | `KUBRON_CSP_REPORT_ONLY` | off | Send the Content-Security-Policy as Report-Only while rolling it out: violations are reported by the browser, nothing is blocked. |
 | `KUBRON_SESSION_TTL` | `12h` | Lifetime of a web session, a Go duration such as `8h` or `24h`. |
 
+### OIDC single sign-on
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `KUBRON_OIDC_ISSUER` | — | OpenID Provider issuer URL. Setting it enables browser SSO. |
+| `KUBRON_OIDC_CLIENT_ID` | — | OAuth client ID; required when an issuer is configured. |
+| `KUBRON_OIDC_CLIENT_SECRET` | — | OAuth client secret. Keep it in the server environment; it is redacted from logs. |
+| `KUBRON_OIDC_SCOPES` | `openid profile email` | Space-separated OIDC scopes. |
+| `KUBRON_OIDC_USERNAME_CLAIM` | `preferred_username` | ID-token claim used as the Kubron username. |
+| `KUBRON_OIDC_GROUPS_CLAIM` | `groups` | ID-token claim containing group names. |
+| `KUBRON_OIDC_ADMIN_GROUPS` | — | Comma-separated IdP groups mapped to the Kubron administrator role. |
+| `KUBRON_OIDC_OPERATOR_GROUPS` | — | Comma-separated IdP groups mapped to the Kubron operator role. Administrator mapping takes precedence. |
+| `KUBRON_OIDC_DEFAULT_ROLE` | `user` | Kubron role assigned when no privileged group matches: `admin`, `operator` or `user`. |
+| `KUBRON_OIDC_AUTO_CREATE` | on | Automatically provision a passwordless Kubron account for a new external identity. |
+| `KUBRON_OIDC_LINK_EXISTING` | off | Link an external identity to an existing account with the same username. |
+| `KUBRON_OIDC_DISABLE_LOCAL_LOGIN` | off | Disable password-based browser login. Requires OIDC to be enabled; initial administrator setup remains available. |
+| `KUBRON_OIDC_BUTTON_LABEL` | — | Optional label shown by the sign-in interface. |
+| `KUBRON_OIDC_CA_FILE` | — | Additional CA bundle for a private IdP certificate authority. |
+
+When OIDC is enabled, `KUBRON_PUBLIC_URL` is required and the IdP redirect URI is
+`<KUBRON_PUBLIC_URL>/auth/sso/callback`. For deployments with multiple replicas, set the same
+`KUBRON_SECRET_KEY` on every replica so the encrypted sign-in flow cookie can be read by any replica.
+
 ### Access limits
 
 | Variable | Default | Purpose |

@@ -11,6 +11,8 @@ import (
 	"net/http"
 	"path"
 	"strings"
+
+	"github.com/24DSO-lab/kubron/internal/auth"
 )
 
 // NewHandler собирает маршруты: RPC, служебные ручки, статика фронтенда с SPA-fallback.
@@ -25,6 +27,12 @@ func NewHandler(d *Dispatcher, static fs.FS, g *Guard, opts ...HandlerOption) ht
 	mux.Handle("GET /api/session", SessionHandler(g))
 	if g != nil && o.webOIDCCallback != nil {
 		mux.Handle("GET /auth/cluster/callback", webOIDCCallbackHandler(g, o.webOIDCCallback))
+	}
+	if g != nil && o.sso != nil {
+		g.DisableLocalLogin = o.sso.localLoginDisabled
+		g.SSOStatus = &auth.SSOStatus{Enabled: true, Label: o.sso.label, LoginURL: "/auth/sso/login", LocalLoginDisabled: o.sso.localLoginDisabled}
+		mux.Handle("GET /auth/sso/login", ssoLoginHandler(g, o.sso))
+		mux.Handle("GET /auth/sso/callback", ssoCallbackHandler(g, o.sso))
 	}
 	if g != nil && g.Hub != nil {
 		mux.Handle("GET /api/ws", contractGuard(o.build, WSHandler(g)))

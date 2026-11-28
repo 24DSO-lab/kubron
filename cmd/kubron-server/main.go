@@ -9,6 +9,7 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"flag"
 	"fmt"
@@ -21,6 +22,7 @@ import (
 
 	"github.com/24DSO-lab/kubron/frontend"
 	"github.com/24DSO-lab/kubron/internal/app"
+	"github.com/24DSO-lab/kubron/internal/auth"
 	"github.com/24DSO-lab/kubron/internal/jobs"
 	"github.com/24DSO-lab/kubron/internal/k8s"
 	"github.com/24DSO-lab/kubron/internal/pgstore"
@@ -28,6 +30,7 @@ import (
 	"github.com/24DSO-lab/kubron/internal/replicaevents"
 	"github.com/24DSO-lab/kubron/internal/secrets"
 	"github.com/24DSO-lab/kubron/internal/server"
+	"github.com/24DSO-lab/kubron/internal/sso"
 	"github.com/24DSO-lab/kubron/internal/store"
 	"github.com/24DSO-lab/kubron/internal/websession"
 )
@@ -58,6 +61,22 @@ func main() {
 	}
 
 	registerSecrets(cfg)
+
+	var oidcProvider *sso.Provider
+	var ssoFlowKey []byte
+	if cfg.SSO.Issuer != "" {
+		oidcProvider, err = sso.NewProvider(cfg.SSO)
+		if err != nil {
+			fatal("OIDC configuration", err)
+		}
+		if cfg.SecretKey != "" {
+			key := sha256.Sum256([]byte(cfg.SecretKey))
+			ssoFlowKey = key[:]
+		} else {
+			slog.Warn("sso: KUBRON_SECRET_KEY is not configured; flow cookies are only valid on this process")
+		}
+	}
+
 	if enableAuditStdout(os.Getenv, os.Stdout) {
 		slog.Info("audit: records are also written to stdout as JSON lines (type=audit)")
 	}
@@ -242,7 +261,7 @@ func main() {
 	}()
 	defer terminals.CloseAll()
 
-	handler := server.NewHandler(dispatcher, dist, guard,
+	handlerOptions := []server.HandlerOption{
 		server.WithCSPReportOnly(cfg.CSPReportOnly), server.WithContractBuild(version), readyzOption(pgStore, lifecycle),
 		server.WithWebOIDCCallback(func(ctx context.Context, view any, state, redirectURL string) error {
 			v, ok := view.(*app.App)
@@ -250,7 +269,26 @@ func main() {
 				return errors.New("sign-in session is unavailable")
 			}
 			return app.CompleteWebOIDCCallback(ctx, v, state, redirectURL)
-		}))
+		}),
+	}
+	if oidcProvider != nil {
+		handlerOptions = append(handlerOptions, server.WithSSO(oidcProvider, ssoFlowKey, cfg.PublicURL,
+			func(ctx context.Context, view any, identity sso.Identity) (*auth.UserInfo, error) {
+				v, ok := view.(*app.App)
+				if !ok {
+					return nil, auth.ErrNotAuthenticated
+				}
+				role, mapped := oidcProvider.RoleFor(identity.Groups)
+				return app.LoginSSO(v, auth.ExternalIdentity{
+					Issuer: identity.Issuer, Subject: identity.Subject, Username: identity.Username,
+					Email: identity.Email, Role: role, RoleMapped: mapped,
+				}, auth.ExternalPolicy{
+					AutoCreate: cfg.SSO.AutoCreate, LinkExisting: cfg.SSO.LinkExisting,
+					DefaultRole: auth.Role(cfg.SSO.DefaultRole),
+				})
+			}, cfg.SSO.DisableLocalLogin, cfg.SSO.ButtonLabel))
+	}
+	handler := server.NewHandler(dispatcher, dist, guard, handlerOptions...)
 	handler = setupMetrics(ctx, cfg, metricsDeps{Core: core, Sessions: sessions, Hub: hub, Terminals: terminals,
 		PG: pgStore, Lifecycle: lifecycle}, handler, dispatcher)
 	if pf != nil {
