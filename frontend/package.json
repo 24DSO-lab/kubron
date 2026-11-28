@@ -17,9 +17,9 @@
     "i18n:check": "node ../scripts/i18n-check.mjs"
   },
   "dependencies": {
-    "chart.js": "^4.5.1",
+    "chart.js": "^4.6.2",
     "modern-screenshot": "4.7.0",
-    "monaco-editor": "^0.57.0",
+    "monaco-editor": "^0.58.0",
     "vue": "^3.5.45",
     "vue-chartjs": "^5.3.4",
     "vue-i18n": "^11.4.22",
@@ -34,7 +34,7 @@
     "@vitejs/plugin-vue": "^6.0.11",
     "typescript": "~5.9.3",
     "vite": "^8.3.8",
-    "vitest": "^5.1.0",
+    "vitest": "^5.1.1",
     "vue-tsc": "^3.3.14"
   }
 }
