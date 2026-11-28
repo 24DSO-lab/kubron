@@ -1118,5 +1118,8 @@
   "oidcAuthorizationRejected": "OIDC authorization was rejected",
   "oidcAuthorizationCodeMissing": "OIDC authorization code is missing",
   "oidcRedirectURLInvalid": "OIDC redirect URL is invalid",
-  "externalAccountIsNotProvisioned": "external account is not provisioned"
+  "externalAccountIsNotProvisioned": "external account is not provisioned",
+  "failedToSaveExternalIdentity": "failed to save external identity: {p0}",
+  "failedToSaveExternalUser": "failed to save external user: {p0}",
+  "failedToSaveMappedRole": "failed to save mapped role: {p0}"
 }
