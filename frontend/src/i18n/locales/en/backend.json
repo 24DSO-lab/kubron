@@ -1122,5 +1122,9 @@
   "externalAccountIsNotProvisioned": "external account is not provisioned",
   "failedToSaveExternalIdentity": "failed to save external identity: {p0}",
   "failedToSaveExternalUser": "failed to save external user: {p0}",
-  "failedToSaveMappedRole": "failed to save mapped role: {p0}"
+  "failedToSaveMappedRole": "failed to save mapped role: {p0}",
+  "kubronOIDCConfig": "KUBRON_OIDC: {p0}",
+  "kubronPublicURLRequiredForOIDC": "KUBRON_PUBLIC_URL is required when OIDC sign-in is enabled",
+  "kubronOIDCDisableLocalLoginRequiresOIDC": "KUBRON_OIDC_DISABLE_LOCAL_LOGIN requires OIDC sign-in to be enabled"
+
 }
