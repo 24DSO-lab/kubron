@@ -23,6 +23,10 @@ Kubron — это open-source **рабочее пространство для �
 Выберите локальное Desktop-приложение или собственный Web-сервер для команды. Kubron не отправляет телеметрию и не требует облачной учётной записи. В Desktop-режиме kubeconfig остаётся на вашем компьютере; в Web-режиме конфигурации кластеров хранятся на вашем сервере в зашифрованном виде.
 
 <p align="center">
+  <img src="docs-site/public/images/kubron-demo.gif" alt="Демонстрация Kubron: обзор кластера, поды и приложения Argo CD" width="100%">
+</p>
+
+<p align="center">
   <img src="docs/images/screenshots/overview.png" alt="Обзор кластера Kubron: узлы, поды, использование CPU и памяти, workloads, недавние изменения и предупреждения" width="100%">
 </p>
 
