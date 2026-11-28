@@ -32,6 +32,7 @@ var (
 	ErrWeakPassword           = errors.New("password must not match the username")
 	ErrInvalidIdleTimeout     = errors.New("idle timeout must be 0 (disabled) or between 1 and 1440 minutes")
 	ErrExternalNotProvisioned = errors.New("external account is not provisioned")
+	ErrLocalLoginDisabled      = errors.New("local password sign-in is disabled")
 )
 
 const (
@@ -68,9 +69,18 @@ type UserInfo struct {
 	LastLoginAt        string       `json:"lastLoginAt"`
 }
 
+// SSOStatus — public SSO metadata added by the web server layer only.
+type SSOStatus struct {
+	Enabled            bool   `json:"enabled"`
+	Label              string `json:"label,omitempty"`
+	LoginURL           string `json:"loginUrl"`
+	LocalLoginDisabled bool   `json:"localLoginDisabled"`
+}
+
 // Status — состояние аутентификации при старте интерфейса.
 type Status struct {
-	NeedsSetup bool `json:"needsSetup"`
+	NeedsSetup bool       `json:"needsSetup"`
+	SSO        *SSOStatus `json:"sso,omitempty"`
 	// SetupTokenRequired — первичная настройка по сети требует токен (заполняет серверный слой в сервисном режиме).
 	SetupTokenRequired bool      `json:"setupTokenRequired,omitempty"`
 	User               *UserInfo `json:"user"`

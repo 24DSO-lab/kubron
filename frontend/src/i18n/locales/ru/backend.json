@@ -29,6 +29,7 @@
   "operator": "Оператор",
   "user": "Пользователь",
   "authenticationRequired": "требуется вход в систему",
+  "localPasswordSignInIsDisabled": "вход по локальному паролю отключён",
   "insufficientPermissionsForThisAction": "недостаточно прав для этого действия",
   "invalidUsernameOrPassword": "неверный логин или пароль",
   "accountIsDisabled": "учётная запись отключена",

@@ -29,6 +29,7 @@
   "operator": "Operator",
   "user": "User",
   "authenticationRequired": "authentication required",
+  "localPasswordSignInIsDisabled": "local password sign-in is disabled",
   "insufficientPermissionsForThisAction": "insufficient permissions for this action",
   "invalidUsernameOrPassword": "invalid username or password",
   "accountIsDisabled": "account is disabled",
