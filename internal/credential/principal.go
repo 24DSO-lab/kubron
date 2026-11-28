@@ -808,7 +808,7 @@ func (s *Service) continueProvisioning(ctx context.Context, ps PrincipalStore, s
 	return Result{}, s.finishProvisioningFailure(ctx, prov, "nothing_to_store", cause, ids...)
 }
 
-// deleteProvisioningChallenges is called only after a terminal outcome has been confirmed.
+// deleteProvisioningChallenges is called only after a terminal outcome has been confirmed; unknown audit results must retain every challenge.
 func (s *Service) deleteProvisioningChallenges(ctx context.Context, ids ...string) error {
 	for _, id := range ids {
 		if id == "" {
