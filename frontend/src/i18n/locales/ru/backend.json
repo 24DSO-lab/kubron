@@ -1073,5 +1073,11 @@
   "identityInvalid": "identity: некорректные данные",
   "identityForbidden": "identity: доступ запрещён",
   "identityRevoked": "identity: отозвана",
-  "identityDependencyUnavailable": "identity: зависимость недоступна"
+  "identityDependencyUnavailable": "identity: зависимость недоступна",
+  "authorizationNotFound": "authorization: не найдено",
+  "authorizationRevisionConflict": "authorization: конфликт ревизии",
+  "authorizationInvalid": "authorization: некорректно",
+  "authorizationForbidden": "authorization: доступ запрещён",
+  "authorizationRevoked": "authorization: отозвано",
+  "authorizationDependencyUnavailable": "authorization: зависимость недоступна"
 }
