@@ -360,8 +360,17 @@ func (p *Provider) provider(_ context.Context) (*gooidc.Provider, error) {
 	if err != nil {
 		return nil, ErrProvider
 	}
+	endpoint := provider.Endpoint()
+	if !validEndpoint(endpoint.AuthURL, p.cfg.Desktop) || !validEndpoint(endpoint.TokenURL, p.cfg.Desktop) {
+		return nil, ErrProvider
+	}
 	p.discovered = provider
 	return provider, nil
+}
+
+func validEndpoint(raw string, desktop bool) bool {
+	u, err := url.Parse(raw)
+	return err == nil && validRedirect(u, desktop)
 }
 
 func validRedirect(u *url.URL, desktop bool) bool {
