@@ -188,11 +188,12 @@ func scopeApplies(binding, target ScopeRef) bool {
 	case ScopeNamespace:return binding.ClusterID==target.ClusterID && binding.Namespace==target.Namespace
 	case ScopeWorkload:return binding.ClusterID==target.ClusterID && binding.Namespace==target.Namespace && binding.Workload==target.Workload
 	case ScopeObject:return binding.ClusterID==target.ClusterID && binding.ObjectUID==target.ObjectUID
-	case ScopeAction:return binding.ClusterID==target.ClusterID && binding.ObjectUID==target.ObjectUID && binding.ActionID==target.ActionID && binding.ActionVersion==target.ActionVersion
+	case ScopeAction:return binding.ClusterID==target.ClusterID && binding.ObjectUID==target.ObjectUID && binding.ActionID==target.ActionID && binding.ActionVersion==target.ActionVersion && inActionScopeMatches(binding,target)
 	case ScopeTargetGroup:return binding.TargetGroupID==target.TargetGroupID
 	}
 	return false
 }
+func inActionScopeMatches(binding,target ScopeRef) bool { return binding.ActionID == target.ActionID && binding.ActionVersion == target.ActionVersion }
 func ownerApplies(owner,target OwnerScope) bool {
 	if owner.OrganizationID != target.OrganizationID { return false }
 	if owner.Kind == OwnerOrganization { return owner.TeamID == "" }
