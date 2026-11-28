@@ -894,7 +894,7 @@ func (s *Service) storeProvisioningChallenge(ctx context.Context, sub Subject, b
 			next := *old
 			next.Status, next.LockedUntil, next.State, next.KeyID = ChallengeActive, time.Time{}, blob, keyID
 			if _, err := s.chal.Swap(ctx, next, old.Version); err != nil { return Challenge{}, mapChallengeErr(err) }
-			s.track(old.ID, sub, d, res.Pending, old.ExpiresAt)
+			s.track(old.ID, sub, d, res.Pending, old.ExpiresAt, prov)
 			return pub, nil
 		}
 	}
@@ -906,7 +906,7 @@ func (s *Service) storeProvisioningChallenge(ctx context.Context, sub Subject, b
 	err = s.chal.Create(ctx, ChallengeRecord{ID: id, ClusterID: sub.ClusterID, Scope: ScopeUser, OwnerID: by.Actor.ID,
 		SessionID: by.SessionID, Status: ChallengeActive, ExpiresAt: exp, CreatedAt: now, KeyID: keyID, State: blob})
 	if err != nil { return Challenge{}, err }
-	s.track(id, sub, d, res.Pending, exp)
+	s.track(id, sub, d, res.Pending, exp, prov)
 	// Never remove the old challenge before the replacement is durable. If cleanup fails, return the new ID too:
 	// the caller will persist CriticalFailed first, then retry cleanup of both records.
 	if old != nil && old.ID != "" {
@@ -1088,6 +1088,13 @@ func (s *Service) RevokePrincipal(ctx context.Context, sub Subject, by Provision
 
 // revokeExact removes the cached tokens, the live requests and the stored record of one technical subject.
 func (s *Service) revokeExact(ctx context.Context, ps PrincipalStore, f RevokeFilter) error {
+	// A local provisioning request is terminalized in its own audit stream before its provider state or challenge
+	// is removed. If that outcome cannot be confirmed, abort the revoke rather than leave a live setup untracked.
+	for _, r := range s.live.listIf(func(r liveRequest) bool { return r.provisioning && f.Matches(r.key) }) {
+		if err := s.finishProvisioningFailure(ctx, r.prov, "binding_unusable", nil, r.id); err != nil {
+			return err
+		}
+	}
 	for _, r := range s.live.takeIf(func(r liveRequest) bool { return !r.provisioning && f.Matches(r.key) }) {
 		r.cancel()
 	}
