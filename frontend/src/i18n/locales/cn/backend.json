@@ -1122,5 +1122,9 @@
   "externalAccountIsNotProvisioned": "外部账户尚未配置",
   "failedToSaveExternalIdentity": "无法保存外部身份：{p0}",
   "failedToSaveExternalUser": "无法保存外部用户：{p0}",
-  "failedToSaveMappedRole": "无法保存 SSO 映射角色：{p0}"
+  "failedToSaveMappedRole": "无法保存 SSO 映射角色：{p0}",
+  "kubronOIDCConfig": "KUBRON_OIDC: {p0}",
+  "kubronPublicURLRequiredForOIDC": "启用 OIDC 登录时必须设置 KUBRON_PUBLIC_URL",
+  "kubronOIDCDisableLocalLoginRequiresOIDC": "设置 KUBRON_OIDC_DISABLE_LOCAL_LOGIN 需要先启用 OIDC 登录"
+
 }
