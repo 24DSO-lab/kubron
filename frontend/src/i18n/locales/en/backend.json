@@ -1073,5 +1073,11 @@
   "identityInvalid": "identity: invalid",
   "identityForbidden": "identity: forbidden",
   "identityRevoked": "identity: revoked",
-  "identityDependencyUnavailable": "identity: dependency unavailable"
+  "identityDependencyUnavailable": "identity: dependency unavailable",
+  "authorizationNotFound": "authorization: not found",
+  "authorizationRevisionConflict": "authorization: revision conflict",
+  "authorizationInvalid": "authorization: invalid",
+  "authorizationForbidden": "authorization: forbidden",
+  "authorizationRevoked": "authorization: revoked",
+  "authorizationDependencyUnavailable": "authorization: dependency unavailable"
 }
