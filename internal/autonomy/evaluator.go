@@ -104,7 +104,7 @@ func Evaluate(in Input) Decision {
 		addUnknown("profile_or_binding_source")
 		return finalize(d)
 	}
-	if in.ProfileSource == SourceUnavailable || in.BindingSource == SourceUnavailable || in.TargetGroupSource == SourceUnavailable {
+	if in.ProfileSource == SourceUnavailable || in.BindingSource == SourceUnavailable || (in.TargetGroupID != "" && in.TargetGroupSource == SourceUnavailable) {
 		addReason("policy_unavailable")
 		addUnknown("profile_or_binding_or_target_group")
 		return finalize(d)
@@ -119,7 +119,7 @@ func Evaluate(in Input) Decision {
 		addUnknown("bindings")
 		return finalize(d)
 	}
-	if in.ProfileSource == SourceStale || in.BindingSource == SourceStale || in.TargetGroupSource == SourceStale {
+	if in.ProfileSource == SourceStale || in.BindingSource == SourceStale || (in.TargetGroupID != "" && in.TargetGroupSource == SourceStale) {
 		addReason("policy_stale_revision")
 		addUnknown("revision_vector")
 		return finalize(d)
