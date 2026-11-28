@@ -462,7 +462,10 @@ func uniqueStrings(xs []string) []string {
 }
 func cloneWindows(xs []TimeWindow) []TimeWindow {
 	out := make([]TimeWindow, len(xs))
-	copy(out, xs)
+	for i, window := range xs {
+		out[i] = window
+		out[i].Days = append([]time.Weekday(nil), window.Days...)
+	}
 	return out
 }
 func intersectWindows(a, b []TimeWindow) []TimeWindow {
@@ -520,6 +523,53 @@ func withinWindows(at time.Time, ws []TimeWindow) bool {
 	}
 	return false
 }
+func canonicalizeWindows(windows []TimeWindow) []TimeWindow {
+	for i := range windows {
+		sort.Slice(windows[i].Days, func(a, b int) bool {
+			return windows[i].Days[a] < windows[i].Days[b]
+		})
+	}
+	sort.Slice(windows, func(i, j int) bool {
+		a, b := windows[i], windows[j]
+		if a.StartMinute != b.StartMinute {
+			return a.StartMinute < b.StartMinute
+		}
+		if a.EndMinute != b.EndMinute {
+			return a.EndMinute < b.EndMinute
+		}
+		for k := 0; k < len(a.Days) && k < len(b.Days); k++ {
+			if a.Days[k] != b.Days[k] {
+				return a.Days[k] < b.Days[k]
+			}
+		}
+		return len(a.Days) < len(b.Days)
+	})
+	if len(windows) < 2 {
+		return windows
+	}
+	out := windows[:1]
+	for _, window := range windows[1:] {
+		last := out[len(out)-1]
+		if last.StartMinute == window.StartMinute && last.EndMinute == window.EndMinute && equalWeekdays(last.Days, window.Days) {
+			continue
+		}
+		out = append(out, window)
+	}
+	return out
+}
+
+func equalWeekdays(a, b []time.Weekday) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
 func finalize(d Decision) Decision {
 	d.ReasonCodes = uniqueStrings(d.ReasonCodes)
 	d.UnknownInputs = uniqueStrings(d.UnknownInputs)
@@ -533,18 +583,7 @@ func finalize(d Decision) Decision {
 		}
 		return a.MaxConcurrent < b.MaxConcurrent
 	})
-	sort.Slice(d.Effective.AllowedTimeWindows, func(i, j int) bool {
-		a, b := d.Effective.AllowedTimeWindows[i], d.Effective.AllowedTimeWindows[j]
-		if a.StartMinute != b.StartMinute {
-			return a.StartMinute < b.StartMinute
-		}
-		return a.EndMinute < b.EndMinute
-	})
-	for i := range d.Effective.AllowedTimeWindows {
-		sort.Slice(d.Effective.AllowedTimeWindows[i].Days, func(a, b int) bool {
-			return d.Effective.AllowedTimeWindows[i].Days[a] < d.Effective.AllowedTimeWindows[i].Days[b]
-		})
-	}
+	d.Effective.AllowedTimeWindows = canonicalizeWindows(d.Effective.AllowedTimeWindows)
 	sort.Slice(d.RevisionVector.Policies, func(i, j int) bool { return d.RevisionVector.Policies[i].ID < d.RevisionVector.Policies[j].ID })
 	sort.Slice(d.RevisionVector.Profiles, func(i, j int) bool { return d.RevisionVector.Profiles[i].ID < d.RevisionVector.Profiles[j].ID })
 	sort.Slice(d.RevisionVector.Bindings, func(i, j int) bool { return d.RevisionVector.Bindings[i].ID < d.RevisionVector.Bindings[j].ID })
