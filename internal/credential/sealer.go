@@ -4,6 +4,8 @@
 package credential
 
 import (
+	"encoding/binary"
+
 	"github.com/24DSO-lab/kubron/internal/secrets"
 )
 
@@ -20,11 +22,30 @@ type Sealer struct {
 // NewSealer returns a Sealer on top of env.
 func NewSealer(env *secrets.Envelope) *Sealer { return &Sealer{env: env} }
 
-func aad(k Key) []byte { return secrets.AAD(k.ClusterID, string(k.Scope), k.OwnerID) }
+// principalAADMagic starts the associated data of every technical record: the format marker and version. Legacy
+// associated data starts with "cred/" (secrets.AAD), so the two encodings can never be equal.
+const principalAADMagic = "kubron.cred.principal.v1\x00"
+
+// aad returns the associated data of a record. Legacy keys keep the exact historical bytes (secrets.AAD). A technical
+// key gets a distinct canonical encoding: the marker, then ClusterID, Scope, Principal.Kind, Principal.ID, OrgID,
+// TeamID (empty for a Service principal) and BindingID, each as a 4-byte big-endian length followed by the bytes, so
+// no concatenation of different values can give the same output.
+func aad(k Key) []byte {
+	if k.Scope != ScopePrincipal {
+		return secrets.AAD(k.ClusterID, string(k.Scope), k.OwnerID)
+	}
+	b := []byte(principalAADMagic)
+	for _, f := range [...]string{k.ClusterID, string(k.Scope), string(k.Principal.Kind), k.Principal.ID,
+		k.Principal.OrgID, k.Principal.TeamID, k.BindingID} {
+		b = binary.BigEndian.AppendUint32(b, uint32(len(f)))
+		b = append(b, f...)
+	}
+	return b
+}
 
 // Seal encrypts the secret of a record in the envelope format.
 func (s *Sealer) Seal(k Key, plaintext []byte) (blob []byte, keyID string, err error) {
-	if err := k.Validate(); err != nil {
+	if err := k.ValidateAny(); err != nil {
 		return nil, "", err
 	}
 	if len(plaintext) > MaxSecretSize {
@@ -37,7 +58,7 @@ func (s *Sealer) Seal(k Key, plaintext []byte) (blob []byte, keyID string, err e
 // team scope only and is checked strictly against LegacyTeamAAD: there is no retry without it and no
 // fallback to the envelope reader. A blob that cannot be read is an error, never an empty value.
 func (s *Sealer) Open(k Key, blob []byte, keyID, format string) ([]byte, error) {
-	if err := k.Validate(); err != nil {
+	if err := k.ValidateAny(); err != nil {
 		return nil, err
 	}
 	switch format {
@@ -57,7 +78,7 @@ func (s *Sealer) Open(k Key, blob []byte, keyID, format string) ([]byte, error) 
 // the record is already current. A legacy record is opened strictly and sealed again.
 func (s *Sealer) Rewrap(k Key, blob []byte, keyID, format string) (out []byte, outKeyID string, changed bool, err error) {
 	if format == EncEnvelopeV1 {
-		if err := k.Validate(); err != nil {
+		if err := k.ValidateAny(); err != nil {
 			return nil, "", false, err
 		}
 		return s.env.Rewrap(blob, aad(k))
