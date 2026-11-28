@@ -1107,5 +1107,5 @@
   "autonomyRevisionConflict": "autonomy: конфликт ревизии",
   "autonomyDependencyUnavailable": "autonomy: зависимость недоступна",
   "autonomyScopeForbidden": "autonomy: недостаточно прав для этой области",
-  "autonomyProfileBindingOwnerMismatch": "autonomy: владелец профиля не совпадает с владельцем привязки"
+  "autonomyProfileBindingOwnerMismatch": "{p0}: владелец профиля не совпадает с владельцем привязки"
 }
