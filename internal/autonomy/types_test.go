@@ -16,7 +16,7 @@ func baseInput() Input {
 	p:=Policy{ID:"policy",Owner:owner,Scope:ScopeRef{Kind:ScopeOrganization,OrganizationID:"org"},Constraints:Constraints{ModeCeiling:Autonomous,MaxRisk:80,RequireAudit:true},Revision:1,Lifecycle:Active,Provenance:prov}
 	profile:=Profile{ID:"profile",Owner:owner,Constraints:Constraints{ModeCeiling:Autonomous,MaxRisk:80},Revision:1,Lifecycle:Active,Provenance:prov}
 	binding:=Binding{ID:"binding",ProfileID:profile.ID,Owner:owner,Scope:scope,Revision:1,Lifecycle:Active,Provenance:prov}
-	return Input{At:now,Scope:scope,TargetOwner:owner,ScopeFactsKnown:true,Policies:[]Policy{p},Profiles:[]Profile{profile},Bindings:[]Binding{binding},PolicySource:SourceAvailable,ProfileSource:SourceAvailable,BindingSource:SourceAvailable,TargetGroupSource:SourceAvailable,ApprovalFactsKnown:true,BudgetAvailable:true}
+	return Input{At:now,Scope:scope,TargetOwner:owner,ScopeFactsKnown:true,Policies:[]Policy{p},Profiles:[]Profile{profile},Bindings:[]Binding{binding},PolicySource:SourceAvailable,ProfileSource:SourceAvailable,BindingSource:SourceAvailable,TargetGroupSource:SourceAvailable,ApprovalFactsKnown:true,BudgetFactsKnown:true,BudgetAvailable:true}
 }
 func TestEvaluateRequiresExactActionForMutation(t *testing.T){
 	in:=baseInput();in.Mutating=true
