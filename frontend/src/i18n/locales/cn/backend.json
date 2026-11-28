@@ -1080,7 +1080,7 @@
   "authorizationInvalid": "authorization: 无效",
   "authorizationForbidden": "authorization: 禁止访问",
   "authorizationRevoked": "authorization: 已撤销",
-  "authorizationDependencyUnavailable": "authorization: 依赖不可用"
+  "authorizationDependencyUnavailable": "authorization: 依赖不可用",
 
   "credentialBindingCannotBeUsed": "凭据绑定不可用",
   "credentialAssignmentNotConfirmed": "凭据分配尚未确认",
