@@ -54,5 +54,4 @@ func TestMissingPolicyFailsClosed(t *testing.T){
 	d:=Evaluate(in)
 	if d.Mode!=Observe||d.Allowed||!containsString(d.ReasonCodes,"policy_missing"){t.Fatalf("not fail closed: %+v",d)}
 }
-func containsString(xs []string,s string)bool{for _,x:=range xs{if x==s{return true}};return false}
 func equalStrings(a,b []string)bool{if len(a)!=len(b){return false};for i:=range a{if a[i]!=b[i]{return false}};return true}
