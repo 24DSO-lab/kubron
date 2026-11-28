@@ -129,6 +129,11 @@ func Evaluate(in Input) Decision {
 		addUnknown("profile_binding")
 		return finalize(d)
 	}
+	if hasDuplicatePolicyIDs(in.Policies) || hasDuplicateProfileIDs(in.Profiles) || hasDuplicateBindingIDs(in.Bindings) {
+		addReason("binding_ambiguous")
+		addUnknown("duplicate_aggregate_identity")
+		return finalize(d)
+	}
 	for _, p := range in.Policies {
 		if p.Validate() != nil || p.Lifecycle != Active || !ownerApplies(p.Owner, in.TargetOwner) || !scopeApplies(p.Scope, in.Scope) {
 			addReason("fact_unknown")
@@ -379,6 +384,37 @@ func findProfile(ps []Profile, id string) (Profile, bool) {
 	}
 	return Profile{}, false
 }
+func hasDuplicatePolicyIDs(xs []Policy) bool {
+	seen := make(map[string]struct{}, len(xs))
+	for _, x := range xs {
+		if _, ok := seen[x.ID]; ok {
+			return true
+		}
+		seen[x.ID] = struct{}{}
+	}
+	return false
+}
+func hasDuplicateProfileIDs(xs []Profile) bool {
+	seen := make(map[string]struct{}, len(xs))
+	for _, x := range xs {
+		if _, ok := seen[x.ID]; ok {
+			return true
+		}
+		seen[x.ID] = struct{}{}
+	}
+	return false
+}
+func hasDuplicateBindingIDs(xs []Binding) bool {
+	seen := make(map[string]struct{}, len(xs))
+	for _, x := range xs {
+		if _, ok := seen[x.ID]; ok {
+			return true
+		}
+		seen[x.ID] = struct{}{}
+	}
+	return false
+}
+
 func containsString(xs []string, s string) bool {
 	for _, x := range xs {
 		if x == s {
