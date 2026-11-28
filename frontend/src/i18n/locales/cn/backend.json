@@ -1089,5 +1089,9 @@
   "provisioningOutcomeCannotBeIdentified": "{p0}: 无法识别凭据配置结果",
   "provisioningIntentHasNonFailedOutcome": "{p0}: 此凭据配置操作已有非失败结果",
   "provisioningChallengeOutcomeCannotBeIdentified": "{p0}: 无法识别凭据配置挑战的结果",
-  "technicalConnectionCannotBePlanned": "无法规划技术连接"
+  "technicalConnectionCannotBePlanned": "无法规划技术连接",
+  "provisioningAlreadyHasNonFailedOutcome": "{p0}: 凭据配置已存在非失败结果",
+  "deleteProvisioningChallenge": "删除凭据配置挑战失败：{p0}",
+  "provisioningOutcomeIsNotTerminal": "{p0}: 凭据配置结果尚非终态",
+  "provisioningIntentAlreadyHasNonTerminalOutcome": "{p0}: 凭据配置操作已有非终态结果"
 }
