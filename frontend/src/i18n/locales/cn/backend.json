@@ -1073,5 +1073,11 @@
   "identityInvalid": "identity: 无效",
   "identityForbidden": "identity: 禁止访问",
   "identityRevoked": "identity: 已撤销",
-  "identityDependencyUnavailable": "identity: 依赖不可用"
+  "identityDependencyUnavailable": "identity: 依赖不可用",
+  "authorizationNotFound": "authorization: 未找到",
+  "authorizationRevisionConflict": "authorization: 版本冲突",
+  "authorizationInvalid": "authorization: 无效",
+  "authorizationForbidden": "authorization: 禁止访问",
+  "authorizationRevoked": "authorization: 已撤销",
+  "authorizationDependencyUnavailable": "authorization: 依赖不可用"
 }
