@@ -14,7 +14,7 @@
 [![Downloads](https://img.shields.io/github/downloads/24DSO-lab/kubron/total)](https://github.com/24DSO-lab/kubron/releases)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/24DSO-lab/kubron/badge)](https://scorecard.dev/viewer/?uri=github.com/24DSO-lab/kubron)
 
-[Скачать](#загрузка) · [Возможности](#возможности) · [Документация](#документация) · [Сборка](#сборка-из-исходников) · [Серверный режим](#серверный-режим) · [Английская версия](README.md)
+[Скачать](#загрузка) · [Возможности](#возможности) · [Документация](https://kubron.pages.dev/ru/) · [Сборка](#сборка-из-исходников) · [Серверный режим](#серверный-режим) · [Английская версия](README.md)
 
 </div>
 
@@ -161,14 +161,6 @@ wails build
 
 В Linux добавляйте `-tags webkit2_41` к командам `wails dev` и `wails build`.
 
-## Документация
-
-- **Развёртывание сервера**: [установка](docs/deploy.md), [высокая доступность](docs/ha.md), [резервное копирование и восстановление](docs/backup.md), [логирование](docs/logging.md), [метрики](docs/metrics.md), [HTTP security](docs/http-security.md).
-- **Авторизация в кластерах**: [руководство](docs/cluster-sign-in.md), [лабораторная работа по облачной авторизации](docs/authentication-lab.md).
-- **Архитектура и безопасность**: [индекс ADR](docs/adr/README.md), [хеширование паролей](docs/adr/0019-password-hashing.md), [HTTP security](docs/adr/0020-http-security.md).
-- **Локализация**: [руководство i18n](docs/i18n.md), [ADR-0014](docs/adr/0014-i18n.md).
-- **Релизы**: [руководство](docs/releasing.md), [Supply Chain (ADR-0021)](docs/adr/0021-release-supply-chain.md).
-- **Карта документации**: [docs/README.md](docs/README.md); история изменений — [CHANGELOG.md](CHANGELOG.md).
 
 ## Серверный режим
 
@@ -189,22 +181,6 @@ go run ./cmd/kubron-server --listen 127.0.0.1:8080
 
 > Для прослушивания внешнего адреса требуется `KUBRON_ALLOW_REMOTE=1` и TLS proxy перед сервером.
 
-## Дорожная карта
-
-- [x] Desktop-приложение (Wails + Go + Vue) с локальной авторизацией и журналом аудита
-- [x] Управление релизами Helm
-- [x] Управление GitOps-приложениями
-- [ ] Поддержка дополнительных GitOps-инструментов
-- [x] Web-режим с несколькими пользователями, командами и сессионной авторизацией
-- [x] Высокая доступность сервера (несколько реплик)
-- [x] Общий постоянный каталог Helm в серверном режиме
-- [x] Публикация подписанных контейнерного образа и Helm chart в registry
-- [x] HTTP port-forward и терминалы в Web-режиме
-- [ ] Независимый аудит и pentest сценариев авторизации в кластерах (credential broker, AKS, EKS, GKE)
-- [ ] Подписанные сборки Windows и macOS
-- [ ] SSO/OIDC для организаций
-
-Есть идея или предложение? Создайте [Feature Request](https://github.com/24DSO-lab/kubron/issues/new/choose).
 
 ## Лицензия
 
