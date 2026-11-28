@@ -1143,9 +1143,3 @@ func (s *Service) revokeExact(ctx context.Context, ps PrincipalStore, f RevokeFi
 	_, err := ps.Revoke(ctx, f)
 	return err
 }
-
-	}
-}
-
-// deleteFailChallengeStore injects a one-shot failure into challenge deletion while retaining the shared store
-// and attempt limiter, as happens with a transient PostgreSQL failure.
