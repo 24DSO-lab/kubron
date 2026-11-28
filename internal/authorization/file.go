@@ -663,7 +663,7 @@ func fromPrincipalDTO(d principalDTO) identity.PrincipalRef {
 func toActionsDTO(in []OperationAction) []actionDTO {
 	out := make([]actionDTO, 0, len(in))
 	for _, a := range in {
-		out = append(out, actionDTO{OperationID: a.OperationID, ActionID: a.ActionID})
+		out = append(out, actionDTO(a))
 	}
 	return out
 }
@@ -671,7 +671,7 @@ func toActionsDTO(in []OperationAction) []actionDTO {
 func fromActionsDTO(in []actionDTO) []OperationAction {
 	out := make([]OperationAction, 0, len(in))
 	for _, a := range in {
-		out = append(out, OperationAction{OperationID: a.OperationID, ActionID: a.ActionID})
+		out = append(out, OperationAction(a))
 	}
 	return out
 }
@@ -679,7 +679,7 @@ func fromActionsDTO(in []actionDTO) []OperationAction {
 func toScopeDTO(s TargetScope) scopeDTO {
 	d := scopeDTO{OrgID: s.OrgID, TeamIDs: s.TeamIDs, ClusterIDs: s.ClusterIDs}
 	for _, n := range s.Namespaces {
-		d.Namespaces = append(d.Namespaces, namespaceDTO{ClusterID: n.ClusterID, Namespace: n.Namespace})
+		d.Namespaces = append(d.Namespaces, namespaceDTO(n))
 	}
 	for _, o := range s.Objects {
 		d.Objects = append(d.Objects, objectDTO(o))
@@ -690,7 +690,7 @@ func toScopeDTO(s TargetScope) scopeDTO {
 func fromScopeDTO(d scopeDTO) TargetScope {
 	s := TargetScope{OrgID: d.OrgID, TeamIDs: d.TeamIDs, ClusterIDs: d.ClusterIDs}
 	for _, n := range d.Namespaces {
-		s.Namespaces = append(s.Namespaces, NamespaceRef{ClusterID: n.ClusterID, Namespace: n.Namespace})
+		s.Namespaces = append(s.Namespaces, NamespaceRef(n))
 	}
 	for _, o := range d.Objects {
 		s.Objects = append(s.Objects, ObjectRef(o))
