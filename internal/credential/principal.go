@@ -535,6 +535,75 @@ func (s *Service) provisioningBinding(ctx context.Context, sub Subject) (identit
 	return identity.CredentialBinding{}, fmt.Errorf("%w: the binding was not found", ErrBindingUnusable)
 }
 
+// recordProvisioningFailureOutcome makes every terminal failure retry-safe. Critical outcomes are immutable:
+// an already recorded CriticalFailed is success; any other existing outcome is a conflict, never overwritten.
+func (s *Service) recordProvisioningFailureOutcome(ctx context.Context, prov *provState, reason string) error {
+	if prov == nil || prov.EventID == "" || prov.Principal.OrgID == "" || s.crit == nil {
+		return fmt.Errorf("%w: provisioning outcome cannot be identified", audit.ErrOutcomeUnknown)
+	}
+	out, err := s.crit.GetOutcome(ctx, prov.Principal.OrgID, prov.EventID)
+	if err == nil {
+		if out.Result == audit.CriticalFailed {
+			return nil
+		}
+		return fmt.Errorf("%w: provisioning already has a non-failed outcome", audit.ErrOutcomeUnknown)
+	}
+	if !errors.Is(err, audit.ErrCriticalNotFound) {
+		return fmt.Errorf("%w: %w", audit.ErrOutcomeUnknown, err)
+	}
+	if err := s.appendOutcome(ctx, prov.EventID, audit.CriticalFailed, 0, reason); err != nil {
+		out, readErr := s.crit.GetOutcome(context.WithoutCancel(ctx), prov.Principal.OrgID, prov.EventID)
+		if readErr == nil && out.Result == audit.CriticalFailed {
+			return nil
+		}
+		return fmt.Errorf("%w: %w", audit.ErrOutcomeUnknown, err)
+	}
+	return nil
+}
+
+// finishProvisioningFailure persists the immutable outcome before touching any challenge. It is safe across
+// replicas: concurrent writers converge on the same CriticalFailed and concurrent deletes treat not-found as success.
+func (s *Service) finishProvisioningFailure(ctx context.Context, prov *provState, reason string, cause error, ids ...string) error {
+	if err := s.recordProvisioningFailureOutcome(ctx, prov, reason); err != nil {
+		return errors.Join(err, cause)
+	}
+	for _, id := range ids {
+		if id == "" {
+			continue
+		}
+		if err := s.chal.Delete(ctx, id); err != nil && !errors.Is(err, ErrChallengeNotFound) {
+			return errors.Join(fmt.Errorf("delete provisioning challenge: %w", err), cause)
+		}
+		s.dropLive(id)
+	}
+	return cause
+}
+
+// provisioningOutcomeBlocksContinuation prevents a leftover challenge from being processed after a terminal outcome.
+// Failed/succeeded outcomes permit cleanup; unknown or unreadable outcomes preserve the challenge for recovery.
+func (s *Service) provisioningOutcomeBlocksContinuation(ctx context.Context, id string, prov *provState) error {
+	if prov == nil || prov.EventID == "" || s.crit == nil {
+		return fmt.Errorf("%w: provisioning outcome cannot be identified", audit.ErrOutcomeUnknown)
+	}
+	out, err := s.crit.GetOutcome(ctx, prov.Principal.OrgID, prov.EventID)
+	if errors.Is(err, audit.ErrCriticalNotFound) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("%w: %w", audit.ErrOutcomeUnknown, err)
+	}
+	switch out.Result {
+	case audit.CriticalFailed, audit.CriticalSucceeded:
+		if err := s.chal.Delete(ctx, id); err != nil && !errors.Is(err, ErrChallengeNotFound) {
+			return err
+		}
+		s.dropLive(id)
+		return ErrChallengeExpired
+	default:
+		return fmt.Errorf("%w: provisioning outcome is not terminal", audit.ErrOutcomeUnknown)
+	}
+}
+
 // BeginProvisioning implements ProvisioningBroker. The critical intent is durable before the identity provider is
 // contacted; if it cannot be recorded, nothing happens. The result is a challenge, or an empty Result when the
 // provider needed no answer and the credential was stored (completion: no token is returned either way).
@@ -617,23 +686,22 @@ func (s *Service) advanceProvisioning(ctx context.Context, sub Subject, by Provi
 	if err != nil {
 		return Result{}, err
 	}
+	if err := s.provisioningOutcomeBlocksContinuation(ctx, id, st.Prov); err != nil {
+		return Result{}, err
+	}
 	now := s.now()
 	if !now.Before(rec.ExpiresAt) {
-		_ = s.chal.Delete(ctx, id)
-		s.dropLive(id)
-		_ = s.failIntent(ctx, by.EventID, "expired", ErrChallengeExpired)
-		return Result{}, ErrChallengeExpired
+		return Result{}, s.finishProvisioningFailure(ctx, st.Prov, "expired", ErrChallengeExpired, id)
 	}
-	// Continuation re-checks the actor's current authority and the binding: a lost role or session, a revoked
-	// binding or identity ends the setup. The challenge is destroyed so it cannot be completed later.
+	// Re-check authority and binding on every continuation. A terminal denial is audited before challenge deletion.
 	if err := s.authz.AuthorizeProvisioning(ctx, by, sub.Principal); err != nil {
-		return Result{}, s.abandonProvisioning(ctx, id, by, fmt.Errorf("%w: %w", ErrProvisioningDenied, err))
+		cause := fmt.Errorf("%w: %w", ErrProvisioningDenied, err)
+		return Result{}, s.abandonProvisioning(ctx, id, st.Prov, cause)
 	}
 	b, err := s.provisioningBinding(ctx, sub)
 	if err != nil {
-		return Result{}, s.abandonProvisioning(ctx, id, by, err)
+		return Result{}, s.abandonProvisioning(ctx, id, st.Prov, err)
 	}
-
 	if !isAnswer && !st.Challenge.Poll {
 		c := publicChallenge(st.Challenge, rec.ID, rec.ExpiresAt)
 		return Result{Challenge: &c}, nil
@@ -660,7 +728,6 @@ func (s *Service) advanceProvisioning(ctx context.Context, sub Subject, by Provi
 		}
 		return Result{}, mapChallengeErr(err)
 	}
-
 	d := st.Descriptor
 	p, err := s.reg.Resolve(d)
 	if err != nil {
@@ -671,27 +738,25 @@ func (s *Service) advanceProvisioning(ctx context.Context, sub Subject, by Provi
 		Challenge: publicChallenge(st.Challenge, rec.ID, rec.ExpiresAt), Answer: a}
 	res, perr := p.Continue(ctx, s.penv, req)
 	if perr != nil {
-		out, ferr := s.failed(ctx, claimed, d, a, nil, perr, isAnswer)
-		if _, gerr := s.chal.Get(ctx, id); errors.Is(gerr, ErrChallengeNotFound) {
-			// The challenge ended (too many wrong answers, expired, invalid): the setup failed for good.
-			ferr = s.failIntent(ctx, by.EventID, reasonFor(perr), ferr)
-		}
-		return out, ferr
+		return s.failedProvisioning(ctx, claimed, st.Prov, d, a, perr, isAnswer)
 	}
 	out, err := s.continueProvisioning(ctx, ps, sub, by, d, st.Prov, b, res, &claimed)
 	if err != nil {
+		// If the audit result is unknown the claimed record remains recoverable. Releasing it only changes
+		// the lease; it never deletes or terminally completes the provisioning.
 		s.release(ctx, claimed)
 		return Result{}, err
 	}
 	return out, nil
 }
 
+
 // abandonProvisioning destroys a provisioning challenge whose setup can no longer continue and records the failure.
-func (s *Service) abandonProvisioning(ctx context.Context, id string, by ProvisioningContext, cause error) error {
-	_ = s.chal.Delete(ctx, id)
-	s.dropLive(id)
-	return s.failIntent(ctx, by.EventID, reasonFor(cause), cause)
+// abandonProvisioning terminates a provisioning only after its failed outcome is durable.
+func (s *Service) abandonProvisioning(ctx context.Context, id string, prov *provState, cause error) error {
+	return s.finishProvisioningFailure(ctx, prov, reasonFor(cause), cause, id)
 }
+
 
 // continueProvisioning turns a provider result into the next step: another challenge, or the final storage of the
 // credential. old is the claimed challenge being continued, if any.
@@ -701,31 +766,50 @@ func (s *Service) continueProvisioning(ctx context.Context, ps PrincipalStore, s
 	case res.Challenge != nil:
 		c, err := s.storeProvisioningChallenge(ctx, sub, by, d, prov, res, old)
 		if err != nil {
-			s.cancelPending(d, res.Pending)
-			if old != nil {
-				_ = s.chal.Delete(ctx, old.ID)
-				s.dropLive(old.ID)
+			ids := []string{}
+			if old != nil { ids = append(ids, old.ID) }
+			if c.ID != "" { ids = append(ids, c.ID) }
+			ferr := s.finishProvisioningFailure(ctx, prov, reasonFor(err), err, ids...)
+			if !errors.Is(ferr, audit.ErrOutcomeUnknown) {
+				s.cancelPending(d, res.Pending)
 			}
-			return Result{}, s.failIntent(ctx, by.EventID, reasonFor(err), err)
+			return Result{}, ferr
 		}
 		return Result{Challenge: &c}, nil
 	case res.Token != nil || len(res.Save) > 0:
 		err := s.storeProvisioned(ctx, ps, sub, by, d, prov, b, res)
-		if old != nil {
-			_ = s.chal.Delete(ctx, old.ID)
-			s.dropLive(old.ID)
-		}
 		if err != nil {
+			// A failed outcome is terminal and can consume the old challenge. Unknown/unknown-result outcomes
+			// deliberately leave it available for reconciliation.
+			if old != nil {
+				out, readErr := s.crit.GetOutcome(context.WithoutCancel(ctx), sub.Principal.OrgID, by.EventID)
+				if readErr == nil && out.Result == audit.CriticalFailed {
+					if delErr := s.deleteProvisioningChallenges(ctx, old.ID); delErr != nil { return Result{}, errors.Join(err, delErr) }
+				}
+			}
 			return Result{}, err
 		}
-		return Result{}, nil // completed: the credential is stored; no token goes to the administrator
+		if old != nil {
+			if err := s.deleteProvisioningChallenges(ctx, old.ID); err != nil { return Result{}, err }
+		}
+		return Result{}, nil
 	}
-	if old != nil {
-		_ = s.chal.Delete(ctx, old.ID)
-		s.dropLive(old.ID)
-	}
-	return Result{}, s.failIntent(ctx, by.EventID, "nothing_to_store", ErrUnsupported)
+	cause := ErrUnsupported
+	var ids []string
+	if old != nil { ids = append(ids, old.ID) }
+	return Result{}, s.finishProvisioningFailure(ctx, prov, "nothing_to_store", cause, ids...)
 }
+
+// deleteProvisioningChallenges is called only after a terminal outcome has been confirmed.
+func (s *Service) deleteProvisioningChallenges(ctx context.Context, ids ...string) error {
+	for _, id := range ids {
+		if id == "" { continue }
+		if err := s.chal.Delete(ctx, id); err != nil && !errors.Is(err, ErrChallengeNotFound) { return err }
+		s.dropLive(id)
+	}
+	return nil
+}
+
 
 // cancelPending releases what a provider holds for a request that will not be stored.
 func (s *Service) cancelPending(d Descriptor, pending []byte) {
@@ -742,50 +826,44 @@ func (s *Service) cancelPending(d Descriptor, pending []byte) {
 func (s *Service) storeProvisioningChallenge(ctx context.Context, sub Subject, by ProvisioningContext, d Descriptor, prov *provState,
 	res Result, old *ChallengeRecord) (Challenge, error) {
 	if res.Challenge.Kind == ChallengeBrowserCallback {
-		// The browser-callback route is bound to the ordinary user path; Phase 1 does not extend it to provisioning.
 		return Challenge{}, ErrUnsupported
 	}
 	now := s.now()
 	exp := now.Add(ChallengeTTL)
-	if c := res.Challenge; !c.ExpiresAt.IsZero() && c.ExpiresAt.Before(exp) {
-		exp = c.ExpiresAt
-	}
+	if c := res.Challenge; !c.ExpiresAt.IsZero() && c.ExpiresAt.Before(exp) { exp = c.ExpiresAt }
 	if old != nil && old.ID != "" {
 		prev, err := s.open(*old)
 		if err == nil && prev.Challenge.Kind == res.Challenge.Kind && res.Challenge.Poll {
 			pub := publicChallenge(*res.Challenge, old.ID, old.ExpiresAt)
 			blob, keyID, err := s.seal(old.ID, pendingState{Descriptor: d, Pending: res.Pending, Challenge: pub, Prov: prov})
-			if err != nil {
-				return Challenge{}, err
-			}
+			if err != nil { return Challenge{}, err }
 			next := *old
 			next.Status, next.LockedUntil, next.State, next.KeyID = ChallengeActive, time.Time{}, blob, keyID
-			if _, err := s.chal.Swap(ctx, next, old.Version); err != nil {
-				return Challenge{}, mapChallengeErr(err)
-			}
+			if _, err := s.chal.Swap(ctx, next, old.Version); err != nil { return Challenge{}, mapChallengeErr(err) }
 			s.track(old.ID, sub, d, res.Pending, old.ExpiresAt)
 			return pub, nil
 		}
-		_ = s.chal.Delete(ctx, old.ID)
-		s.dropLive(old.ID)
 	}
 	id, err := newProvisioningChallengeID()
-	if err != nil {
-		return Challenge{}, err
-	}
+	if err != nil { return Challenge{}, err }
 	pub := publicChallenge(*res.Challenge, id, exp)
 	blob, keyID, err := s.seal(id, pendingState{Descriptor: d, Pending: res.Pending, Challenge: pub, Prov: prov})
-	if err != nil {
-		return Challenge{}, err
-	}
+	if err != nil { return Challenge{}, err }
 	err = s.chal.Create(ctx, ChallengeRecord{ID: id, ClusterID: sub.ClusterID, Scope: ScopeUser, OwnerID: by.Actor.ID,
 		SessionID: by.SessionID, Status: ChallengeActive, ExpiresAt: exp, CreatedAt: now, KeyID: keyID, State: blob})
-	if err != nil {
-		return Challenge{}, err
-	}
+	if err != nil { return Challenge{}, err }
 	s.track(id, sub, d, res.Pending, exp)
+	// Never remove the old challenge before the replacement is durable. If cleanup fails, return the new ID too:
+	// the caller will persist CriticalFailed first, then retry cleanup of both records.
+	if old != nil && old.ID != "" {
+		if err := s.chal.Delete(ctx, old.ID); err != nil && !errors.Is(err, ErrChallengeNotFound) {
+			return pub, err
+		}
+		s.dropLive(old.ID)
+	}
 	return pub, nil
 }
+
 
 // storeProvisioned stores the finished credential under the technical subject and completes the audit. Order: the
 // binding is checked, the record is written conditionally on the version read at the start, the binding is checked
@@ -883,31 +961,23 @@ func (s *Service) ActivateProvisionedBinding(ctx context.Context, sub Subject, b
 // cancellation; anything else is ErrChallengeExpired. Cancelling is always allowed to the actor who started the setup
 // (it cannot widen anything), even after the actor lost the authority to continue.
 func (s *Service) CancelProvisioning(ctx context.Context, sub Subject, by ProvisioningContext, challengeID string) error {
-	if _, err := s.provisioningStore(); err != nil {
-		return err
-	}
-	if !sub.IsPrincipal() || sub.Validate() != nil || by.validate() != nil {
-		return ErrChallengeExpired
-	}
-	if !isProvisioningID(challengeID) {
-		return ErrChallengeExpired
-	}
+	if _, err := s.provisioningStore(); err != nil { return err }
+	if !sub.IsPrincipal() || sub.Validate() != nil || by.validate() != nil { return ErrChallengeExpired }
+	if !isProvisioningID(challengeID) { return ErrChallengeExpired }
 	rec, err := s.chal.Get(ctx, challengeID)
-	if errors.Is(err, ErrChallengeNotFound) {
-		return nil // cancelling something that is gone is not an error
-	}
-	if err != nil {
-		return err
-	}
-	if _, _, err := s.loadProvisioning(ctx, sub, by, rec.ID); err != nil {
-		return err
-	}
-	s.dropLive(challengeID)
-	if err := s.chal.Delete(ctx, challengeID); err != nil {
-		return err
-	}
-	return s.failIntent(ctx, by.EventID, "cancelled", nil)
+	if errors.Is(err, ErrChallengeNotFound) { return nil }
+	if err != nil { return err }
+	_, st, err := s.loadProvisioning(ctx, sub, by, rec.ID)
+	if err != nil { return err }
+	if err := s.provisioningOutcomeBlocksContinuation(ctx, challengeID, st.Prov); err != nil { return err }
+	// Claim before auditing so a concurrent Answer/Poll on another replica cannot race cancellation.
+	if rec.Status == ChallengeBusy && s.now().Before(rec.LockedUntil) { return ErrChallengeExpired }
+	claim := rec
+	claim.Status, claim.LockedUntil = ChallengeBusy, s.now().Add(claimTimeout)
+	if _, err := s.chal.Swap(ctx, claim, rec.Version); err != nil { return mapChallengeErr(err) }
+	return s.finishProvisioningFailure(ctx, st.Prov, "cancelled", nil, challengeID)
 }
+
 
 // ---------------------------------------------------------------------------------------------------------------
 // revoke
