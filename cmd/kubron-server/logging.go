@@ -47,6 +47,7 @@ func registerSecrets(cfg server.Config) {
 		logging.AddKeySecret(k)
 	}
 	logging.AddSecret(cfg.SetupToken)
+	logging.AddSecret(cfg.SSO.ClientSecret)
 	logging.AddURLSecrets(cfg.DatabaseURL)
 	logging.AddURLSecrets(cfg.DBListenURL)
 }
