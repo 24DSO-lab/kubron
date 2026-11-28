@@ -1353,3 +1353,41 @@ func TestProvisioningSuccessOutcomeSurvivesChallengeDeleteFailure(t *testing.T) 
 		t.Fatalf("the confirmed credential must remain usable: %v", err)
 	}
 }
+
+
+func TestConcurrentProvisioningAnswerAcrossServiceInstances(t *testing.T) {
+	tr := newTechRig(t)
+	sub, _ := tr.principal(identity.PrincipalTeam, "concurrent-answer")
+	by := tr.by("sess-1")
+	res, err := tr.svc.BeginProvisioning(bg, sub, by, desc)
+	if err != nil || res.Challenge == nil { t.Fatalf("BeginProvisioning = %+v, %v", res, err) }
+	replica := tr.service(tr.store)
+	started := make(chan struct{})
+	release := make(chan struct{})
+	tr.prov.OnContinue = func(context.Context, credential.Env, credential.Request) (credential.Result, error) {
+		close(started)
+		<-release
+		grant, err := tr.idp.Login("alice", pwCanary)
+		if err != nil { return credential.Result{}, err }
+		return credential.Result{Token: &credential.Token{Value: grant.Access, Expiry: grant.Expiry, Principal: grant.User},
+			Save: []byte(grant.Refresh)}, nil
+	}
+	done := make(chan error, 1)
+	go func() {
+		_, err := tr.svc.AnswerProvisioning(bg, sub, by, res.Challenge.ID, answer("alice", pwCanary))
+		done <- err
+	}()
+	<-started
+	if _, err := replica.AnswerProvisioning(bg, sub, by, res.Challenge.ID, answer("alice", pwCanary)); !errors.Is(err, credential.ErrChallengeExpired) {
+		t.Fatalf("concurrent replica must lose the claim: %v", err)
+	}
+	close(release)
+	if err := <-done; err != nil { t.Fatalf("winning answer: %v", err) }
+	_, continues := tr.prov.Calls()
+	if continues != 1 { t.Fatalf("provider Continue called %d times, want exactly once", continues) }
+	out, err := tr.rec.GetOutcome(bg, "o1", by.EventID)
+	if err != nil || out.Result != audit.CriticalSucceeded { t.Fatalf("outcome = %+v, %v", out, err) }
+	if _, err := tr.chal.Get(bg, res.Challenge.ID); !errors.Is(err, credential.ErrChallengeNotFound) {
+		t.Fatalf("completed challenge remains: %v", err)
+	}
+}
