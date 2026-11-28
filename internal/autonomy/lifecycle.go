@@ -45,17 +45,17 @@ func ApplyBindingUpdate(current, next Binding, meta MutationMeta) (Binding, erro
 }
 func DeactivatePolicy(current Policy, meta MutationMeta) (Policy, error) {
 	if err:=meta.Validate();err!=nil{return Policy{},err}; if err:=current.Validate();err!=nil{return Policy{},err}
-	if current.Revision!=meta.ExpectedRevision{return Policy{},ErrConflict};if current.Lifecycle!=Active{return Policy{},ErrNotFound}
+	if current.Revision!=meta.ExpectedRevision || current.Revision==^uint64(0){return Policy{},ErrConflict};if current.Lifecycle!=Active{return Policy{},ErrNotFound}
 	current.Lifecycle=Deactivated;current.Revision++;current.Provenance=updatedProvenance(current.Provenance,meta);return current,nil
 }
 func DeactivateProfile(current Profile, meta MutationMeta) (Profile, error) {
 	if err:=meta.Validate();err!=nil{return Profile{},err}; if err:=current.Validate();err!=nil{return Profile{},err}
-	if current.Revision!=meta.ExpectedRevision{return Profile{},ErrConflict};if current.Lifecycle!=Active{return Profile{},ErrNotFound}
+	if current.Revision!=meta.ExpectedRevision || current.Revision==^uint64(0){return Profile{},ErrConflict};if current.Lifecycle!=Active{return Profile{},ErrNotFound}
 	current.Lifecycle=Deactivated;current.Revision++;current.Provenance=updatedProvenance(current.Provenance,meta);return current,nil
 }
 func DeactivateBinding(current Binding, meta MutationMeta) (Binding, error) {
 	if err:=meta.Validate();err!=nil{return Binding{},err}; if err:=current.Validate();err!=nil{return Binding{},err}
-	if current.Revision!=meta.ExpectedRevision{return Binding{},ErrConflict};if current.Lifecycle!=Active{return Binding{},ErrNotFound}
+	if current.Revision!=meta.ExpectedRevision || current.Revision==^uint64(0){return Binding{},ErrConflict};if current.Lifecycle!=Active{return Binding{},ErrNotFound}
 	current.Lifecycle=Deactivated;current.Revision++;current.Provenance=updatedProvenance(current.Provenance,meta);return current,nil
 }
 func updatedProvenance(p Provenance,m MutationMeta) Provenance {
