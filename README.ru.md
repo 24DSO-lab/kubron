@@ -114,7 +114,7 @@ Kubron — это open-source **рабочее пространство для �
 - **Безопасные настройки по умолчанию** — хеширование паролей Argon2id, блокировка после неудачных попыток входа, автоматический выход при бездействии с закрытием терминалов и port forwarding.
 - **Журнал аудита** — запись действий пользователей и ротация журнала.
 - **Расширения** — публичный API `pkg/ext` для внешних модулей, например SSO/OIDC и пользовательских хранилищ.
-- **Архитектура и безопасность** — [ADR](docs/adr/README.md), [модель угроз](docs/threat-model.md) и [обзор безопасности](docs/security-review.md).
+- **Архитектура и безопасность** — [индекс ADR](docs/adr/README.md), включая решения по [хешированию паролей](docs/adr/0019-password-hashing.md) и [HTTP security](docs/adr/0020-http-security.md).
 
 ## Начало работы
 
@@ -163,13 +163,12 @@ wails build
 
 ## Документация
 
-- **Руководства пользователя (PDF)**: Helm — [English](docs/DOCS/EN/Kubron-Helm-User-Guide-EN.pdf), [Русский](docs/DOCS/RU/Kubron-Helm-User-Guide.pdf); GitOps — [English](docs/DOCS/EN/Kubron-ArgoCD-User-Guide-EN.pdf), [Русский](docs/DOCS/RU/Kubron-ArgoCD-User-Guide.pdf).
 - **Развёртывание сервера**: [установка](docs/deploy.md), [высокая доступность](docs/ha.md), [резервное копирование и восстановление](docs/backup.md), [логирование](docs/logging.md), [метрики](docs/metrics.md), [HTTP security](docs/http-security.md).
-- **Безопасность сервера**: [модель угроз](docs/threat-model.md), [обзор безопасности](docs/security-review.md).
 - **Авторизация в кластерах**: [руководство](docs/cluster-sign-in.md), [лабораторная работа по облачной авторизации](docs/authentication-lab.md).
-- **Карта документации и статус проекта**: [docs/README.md](docs/README.md); открытые задачи — [docs/tickets](docs/tickets), история изменений — [CHANGELOG.md](CHANGELOG.md).
-- **Локализация**: [docs/i18n.md](docs/i18n.md), [ADR-0014](docs/adr/0014-i18n.md).
-- **Релизы**: [docs/releasing.md](docs/releasing.md), [Supply Chain (ADR-0021)](docs/adr/0021-release-supply-chain.md).
+- **Архитектура и безопасность**: [индекс ADR](docs/adr/README.md), [хеширование паролей](docs/adr/0019-password-hashing.md), [HTTP security](docs/adr/0020-http-security.md).
+- **Локализация**: [руководство i18n](docs/i18n.md), [ADR-0014](docs/adr/0014-i18n.md).
+- **Релизы**: [руководство](docs/releasing.md), [Supply Chain (ADR-0021)](docs/adr/0021-release-supply-chain.md).
+- **Карта документации**: [docs/README.md](docs/README.md); история изменений — [CHANGELOG.md](CHANGELOG.md).
 
 ## Серверный режим
 
@@ -201,7 +200,7 @@ go run ./cmd/kubron-server --listen 127.0.0.1:8080
 - [x] Общий постоянный каталог Helm в серверном режиме
 - [x] Публикация подписанных контейнерного образа и Helm chart в registry
 - [x] HTTP port-forward и терминалы в Web-режиме
-- [ ] Независимый аудит и pentest сценариев авторизации в кластерах (credential broker, AKS, EKS, GKE); проверка остальной части сервера проведена 2026-11-03 ([статус](docs/security-review.md))
+- [ ] Независимый аудит и pentest сценариев авторизации в кластерах (credential broker, AKS, EKS, GKE)
 - [ ] Подписанные сборки Windows и macOS
 - [ ] SSO/OIDC для организаций
 
