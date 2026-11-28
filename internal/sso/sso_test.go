@@ -207,6 +207,7 @@ func newFakeIDP(t *testing.T) *fakeIDP {
 			http.Error(w, "signing failed", http.StatusInternalServerError)
 			return
 		}
+		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"access_token": "access", "token_type": "Bearer", "expires_in": 3600, "id_token": raw,
 		})
