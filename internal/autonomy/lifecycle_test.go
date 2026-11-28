@@ -68,7 +68,7 @@ func TestProfileAndBindingRevisionCASRaces(t *testing.T) {
 	if err != nil || updatedProfile.Revision != 2 {
 		t.Fatalf("profile update failed: %+v %v", updatedProfile, err)
 	}
-	if _, err := ApplyProfileUpdate(profile, nextProfile, meta); !errors.Is(err, ErrConflict) {
+	if _, err := ApplyProfileUpdate(updatedProfile, nextProfile, meta); !errors.Is(err, ErrConflict) {
 		t.Fatalf("stale profile revision must conflict: %v", err)
 	}
 
@@ -79,7 +79,7 @@ func TestProfileAndBindingRevisionCASRaces(t *testing.T) {
 	if err != nil || updatedBinding.Revision != 2 || updatedBinding.Scope.ClusterID != "cluster" {
 		t.Fatalf("binding update failed: %+v %v", updatedBinding, err)
 	}
-	if _, err := ApplyBindingUpdate(binding, nextBinding, meta); !errors.Is(err, ErrConflict) {
+	if _, err := ApplyBindingUpdate(updatedBinding, nextBinding, meta); !errors.Is(err, ErrConflict) {
 		t.Fatalf("stale binding revision must conflict: %v", err)
 	}
 }
