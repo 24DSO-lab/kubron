@@ -138,7 +138,9 @@ func Evaluate(in Input) Decision {
 			if effective.AllowedActions != nil && !containsAction(effective.AllowedActions,*in.Action) { addReason("action_not_allowed") }
 		}
 	}
-	if len(effective.RequiredApprovals)>0 {\n\t\tif !in.ApprovalFactsKnown { addReason("approval_required"); addUnknown("approval_facts") } else { for _, required := range effective.RequiredApprovals { if !containsString(in.SatisfiedApprovals,required) { addReason("approval_required"); break } } }\n\t}
+	if len(effective.RequiredApprovals)>0 {
+\t\tif !in.ApprovalFactsKnown { addReason("approval_required"); addUnknown("approval_facts") } else { for _, required := range effective.RequiredApprovals { if !containsString(in.SatisfiedApprovals,required) { addReason("approval_required"); break } } }
+\t}
 	if !in.BudgetAvailable { addReason("budget_exceeded") }
 	if !withinWindows(in.At,effective.AllowedTimeWindows) { addReason("time_window_closed") }
 	if in.Mutating && (d.Mode == Observe || d.Mode == "") { addReason("mode_restricted") }
@@ -185,15 +187,16 @@ func scopeApplies(binding, target ScopeRef) bool {
 	case ScopeCluster:return binding.ClusterID==target.ClusterID
 	case ScopeNamespace:return binding.ClusterID==target.ClusterID && binding.Namespace==target.Namespace
 	case ScopeWorkload:return binding.ClusterID==target.ClusterID && binding.Namespace==target.Namespace && binding.Workload==target.Workload
-	case ScopeObject:return binding.ClusterID==target.ClusterID && binding.ObjectUID==target.ObjectUID\n\tcase ScopeAction:return binding.ClusterID==target.ClusterID && binding.ObjectUID==target.ObjectUID && binding.ActionID==target.ActionID && binding.ActionVersion==target.ActionVersion
+	case ScopeObject:return binding.ClusterID==target.ClusterID && binding.ObjectUID==target.ObjectUID
+\tcase ScopeAction:return binding.ClusterID==target.ClusterID && binding.ObjectUID==target.ObjectUID && binding.ActionID==target.ActionID && binding.ActionVersion==target.ActionVersion
 	case ScopeTargetGroup:return binding.TargetGroupID==target.TargetGroupID
 	}
 	return false
 }
-func ownerApplies(owner,target OwnerScope) bool {\n\tif owner.OrganizationID != target.OrganizationID { return false }\n\tif owner.Kind == OwnerOrganization { return owner.TeamID == "" }\n\treturn owner.Kind == OwnerTeam && target.Kind == OwnerTeam && owner.TeamID == target.TeamID\n}\nfunc ownerApplies(owner,target OwnerScope) bool {
-	if owner.OrganizationID != target.OrganizationID { return false }
-	if owner.Kind == OwnerOrganization { return owner.TeamID == "" }
-	return owner.Kind == OwnerTeam && target.Kind == OwnerTeam && owner.TeamID == target.TeamID
+func ownerApplies(owner,target OwnerScope) bool {
+\tif owner.OrganizationID != target.OrganizationID { return false }
+\tif owner.Kind == OwnerOrganization { return owner.TeamID == "" }
+\treturn owner.Kind == OwnerTeam && target.Kind == OwnerTeam && owner.TeamID == target.TeamID
 }
 func compatibleOwner(profile,binding,target OwnerScope) bool {
 	if profile!=binding || profile.OrganizationID!=target.OrganizationID { return false }
@@ -223,7 +226,10 @@ func withinWindows(at time.Time,ws []TimeWindow)bool{
 }
 func finalize(d Decision)Decision{
 	d.ReasonCodes=uniqueStrings(d.ReasonCodes);d.UnknownInputs=uniqueStrings(d.UnknownInputs)
-	sort.Slice(d.Effective.Budgets,func(i,j int)bool { a,b:=d.Effective.Budgets[i],d.Effective.Budgets[j]; if a.Period!=b.Period{return a.Period<b.Period};if a.MaxExecutions!=b.MaxExecutions{return a.MaxExecutions<b.MaxExecutions};return a.MaxConcurrent<b.MaxConcurrent })\n\tsort.Slice(d.Effective.AllowedTimeWindows,func(i,j int)bool { a,b:=d.Effective.AllowedTimeWindows[i],d.Effective.AllowedTimeWindows[j];if a.StartMinute!=b.StartMinute{return a.StartMinute<b.StartMinute};return a.EndMinute<b.EndMinute })\n\tfor i:=range d.Effective.AllowedTimeWindows { sort.Slice(d.Effective.AllowedTimeWindows[i].Days,func(a,b int)bool{return d.Effective.AllowedTimeWindows[i].Days[a]<d.Effective.AllowedTimeWindows[i].Days[b]}) }\n\tsort.Slice(d.RevisionVector.Policies,func(i,j int)bool{return d.RevisionVector.Policies[i].ID<d.RevisionVector.Policies[j].ID})
+	sort.Slice(d.Effective.Budgets,func(i,j int)bool { a,b:=d.Effective.Budgets[i],d.Effective.Budgets[j]; if a.Period!=b.Period{return a.Period<b.Period};if a.MaxExecutions!=b.MaxExecutions{return a.MaxExecutions<b.MaxExecutions};return a.MaxConcurrent<b.MaxConcurrent })
+\tsort.Slice(d.Effective.AllowedTimeWindows,func(i,j int)bool { a,b:=d.Effective.AllowedTimeWindows[i],d.Effective.AllowedTimeWindows[j];if a.StartMinute!=b.StartMinute{return a.StartMinute<b.StartMinute};return a.EndMinute<b.EndMinute })
+\tfor i:=range d.Effective.AllowedTimeWindows { sort.Slice(d.Effective.AllowedTimeWindows[i].Days,func(a,b int)bool{return d.Effective.AllowedTimeWindows[i].Days[a]<d.Effective.AllowedTimeWindows[i].Days[b]}) }
+\tsort.Slice(d.RevisionVector.Policies,func(i,j int)bool{return d.RevisionVector.Policies[i].ID<d.RevisionVector.Policies[j].ID})
 	sort.Slice(d.RevisionVector.Profiles,func(i,j int)bool{return d.RevisionVector.Profiles[i].ID<d.RevisionVector.Profiles[j].ID})
 	sort.Slice(d.RevisionVector.Bindings,func(i,j int)bool{return d.RevisionVector.Bindings[i].ID<d.RevisionVector.Bindings[j].ID})
 	return d
