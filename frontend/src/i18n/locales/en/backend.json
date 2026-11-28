@@ -1089,5 +1089,9 @@
   "provisioningOutcomeCannotBeIdentified": "{p0}: provisioning outcome cannot be identified",
   "provisioningIntentHasNonFailedOutcome": "{p0}: provisioning intent already has a non-failed outcome",
   "provisioningChallengeOutcomeCannotBeIdentified": "{p0}: provisioning challenge outcome cannot be identified",
-  "technicalConnectionCannotBePlanned": "the technical connection cannot be planned"
+  "technicalConnectionCannotBePlanned": "the technical connection cannot be planned",
+  "provisioningAlreadyHasNonFailedOutcome": "{p0}: provisioning already has a non-failed outcome",
+  "deleteProvisioningChallenge": "delete provisioning challenge: {p0}",
+  "provisioningOutcomeIsNotTerminal": "{p0}: provisioning outcome is not terminal",
+  "provisioningIntentAlreadyHasNonTerminalOutcome": "{p0}: provisioning intent already has a non-terminal outcome"
 }
