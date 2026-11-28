@@ -24,9 +24,9 @@ import (
 	"sync"
 	"time"
 
-	gooidc "github.com/coreos/go-oidc/v3/oidc"
 	"github.com/24DSO-lab/kubron/internal/auth"
 	"github.com/24DSO-lab/kubron/internal/idpnet"
+	gooidc "github.com/coreos/go-oidc/v3/oidc"
 	"golang.org/x/crypto/hkdf"
 	"golang.org/x/oauth2"
 )
@@ -74,20 +74,20 @@ func LoadConfig(getenv func(string) string) (Config, error) {
 		getenv = func(string) string { return "" }
 	}
 	cfg := Config{
-		Issuer: strings.TrimSpace(getenv("KUBRON_OIDC_ISSUER")),
-		ClientID: strings.TrimSpace(getenv("KUBRON_OIDC_CLIENT_ID")),
-		ClientSecret: getenv("KUBRON_OIDC_CLIENT_SECRET"),
-		Scopes: strings.Fields(getenv("KUBRON_OIDC_SCOPES")),
-		UsernameClaim: strings.TrimSpace(getenv("KUBRON_OIDC_USERNAME_CLAIM")),
-		GroupsClaim: strings.TrimSpace(getenv("KUBRON_OIDC_GROUPS_CLAIM")),
-		AdminGroups: splitList(getenv("KUBRON_OIDC_ADMIN_GROUPS")),
-		OperatorGroups: splitList(getenv("KUBRON_OIDC_OPERATOR_GROUPS")),
-		DefaultRole: strings.TrimSpace(getenv("KUBRON_OIDC_DEFAULT_ROLE")),
-		AutoCreate: true,
-		LinkExisting: envBool(getenv("KUBRON_OIDC_LINK_EXISTING")),
+		Issuer:            strings.TrimSpace(getenv("KUBRON_OIDC_ISSUER")),
+		ClientID:          strings.TrimSpace(getenv("KUBRON_OIDC_CLIENT_ID")),
+		ClientSecret:      getenv("KUBRON_OIDC_CLIENT_SECRET"),
+		Scopes:            strings.Fields(getenv("KUBRON_OIDC_SCOPES")),
+		UsernameClaim:     strings.TrimSpace(getenv("KUBRON_OIDC_USERNAME_CLAIM")),
+		GroupsClaim:       strings.TrimSpace(getenv("KUBRON_OIDC_GROUPS_CLAIM")),
+		AdminGroups:       splitList(getenv("KUBRON_OIDC_ADMIN_GROUPS")),
+		OperatorGroups:    splitList(getenv("KUBRON_OIDC_OPERATOR_GROUPS")),
+		DefaultRole:       strings.TrimSpace(getenv("KUBRON_OIDC_DEFAULT_ROLE")),
+		AutoCreate:        true,
+		LinkExisting:      envBool(getenv("KUBRON_OIDC_LINK_EXISTING")),
 		DisableLocalLogin: envBool(getenv("KUBRON_OIDC_DISABLE_LOCAL_LOGIN")),
-		ButtonLabel: strings.TrimSpace(getenv("KUBRON_OIDC_BUTTON_LABEL")),
-		CAFile: strings.TrimSpace(getenv("KUBRON_OIDC_CA_FILE")),
+		ButtonLabel:       strings.TrimSpace(getenv("KUBRON_OIDC_BUTTON_LABEL")),
+		CAFile:            strings.TrimSpace(getenv("KUBRON_OIDC_CA_FILE")),
 		// Desktop builds set this process-mode flag before loading configuration.
 		Desktop: envBool(getenv("KUBRON_DESKTOP_MODE")),
 	}
@@ -350,11 +350,19 @@ func (p *Provider) provider(_ context.Context) (*gooidc.Provider, error) {
 }
 
 func validRedirect(u *url.URL, desktop bool) bool {
-	if u == nil || u.Host == "" || u.User != nil || u.Fragment != "" { return false }
-	if strings.EqualFold(u.Scheme, "https") { return true }
-	if !desktop || !strings.EqualFold(u.Scheme, "http") { return false }
+	if u == nil || u.Host == "" || u.User != nil || u.Fragment != "" {
+		return false
+	}
+	if strings.EqualFold(u.Scheme, "https") {
+		return true
+	}
+	if !desktop || !strings.EqualFold(u.Scheme, "http") {
+		return false
+	}
 	host := strings.Trim(u.Hostname(), "[]")
-	if host == "localhost" { return true }
+	if host == "localhost" {
+		return true
+	}
 	ip := net.ParseIP(host)
 	return ip != nil && ip.IsLoopback()
 }
