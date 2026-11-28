@@ -553,7 +553,7 @@ func (s *Service) recordProvisioningFailureOutcome(ctx context.Context, prov *pr
 	}
 	if err := s.appendOutcome(ctx, prov.EventID, audit.CriticalFailed, 0, reason); err != nil {
 		out, readErr := s.crit.GetOutcome(context.WithoutCancel(ctx), prov.Principal.OrgID, prov.EventID)
-		if readErr == nil && out.Result == audit.CriticalFailed {
+		if readErr == nil && (out.Result == audit.CriticalFailed || out.Result == audit.CriticalSucceeded) {
 			return nil
 		}
 		return fmt.Errorf("%w: %w", audit.ErrOutcomeUnknown, err)
