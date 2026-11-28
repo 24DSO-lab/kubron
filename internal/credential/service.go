@@ -642,6 +642,34 @@ func (s *Service) Cancel(ctx context.Context, sub Subject, challengeID string) e
 	return s.chal.Delete(ctx, challengeID)
 }
 
+// recordExpiredProvisioningOutcome makes the expiry outcome retry-safe. CriticalRecorder outcomes are immutable:
+// after a successful append followed by a failed challenge deletion, a later Sweep must recognize the already
+// durable failed outcome rather than append a new timestamp and conflict with itself.
+func (s *Service) recordExpiredProvisioningOutcome(ctx context.Context, prov *provState) error {
+	if prov == nil || prov.EventID == "" || prov.Principal.OrgID == "" || s.crit == nil {
+		return fmt.Errorf("%w: provisioning outcome cannot be identified", audit.ErrOutcomeUnknown)
+	}
+	out, err := s.crit.GetOutcome(ctx, prov.Principal.OrgID, prov.EventID)
+	if err == nil {
+		if out.Result == audit.CriticalFailed {
+			return nil // already durably failed by an earlier Sweep or terminal provisioning path
+		}
+		return fmt.Errorf("%w: provisioning intent already has a non-failed outcome", audit.ErrOutcomeUnknown)
+	}
+	if !errors.Is(err, audit.ErrCriticalNotFound) {
+		return fmt.Errorf("%w: %w", audit.ErrOutcomeUnknown, err)
+	}
+	if err := s.appendOutcome(ctx, prov.EventID, audit.CriticalFailed, 0, "expired"); err != nil {
+		// Resolve the narrow race where another replica wrote the immutable outcome first.
+		out, readErr := s.crit.GetOutcome(context.WithoutCancel(ctx), prov.Principal.OrgID, prov.EventID)
+		if readErr == nil && out.Result == audit.CriticalFailed {
+			return nil
+		}
+		return err
+	}
+	return nil
+}
+
 // Sweep removes expired requests. The server calls it periodically.
 func (s *Service) Sweep(ctx context.Context) (int, error) {
 	now := s.now()
@@ -661,7 +689,7 @@ func (s *Service) Sweep(ctx context.Context) (int, error) {
 				// challenge so an operator/recovery path can resolve it; never turn this into plain expiry.
 				return n, fmt.Errorf("%w: provisioning challenge outcome cannot be identified", audit.ErrOutcomeUnknown)
 			}
-			if err := s.appendOutcome(ctx, st.Prov.EventID, audit.CriticalFailed, 0, "expired"); err != nil {
+			if err := s.recordExpiredProvisioningOutcome(ctx, st.Prov); err != nil {
 				return n, err
 			}
 		}
