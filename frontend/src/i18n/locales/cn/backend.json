@@ -1107,5 +1107,5 @@
   "autonomyRevisionConflict": "autonomy: 版本冲突",
   "autonomyDependencyUnavailable": "autonomy: 依赖不可用",
   "autonomyScopeForbidden": "autonomy: 无权访问此范围",
-  "autonomyProfileBindingOwnerMismatch": "autonomy: 配置文件所有者与绑定所有者不匹配"
+  "autonomyProfileBindingOwnerMismatch": "{p0}: 配置文件所有者与绑定所有者不匹配"
 }
