@@ -1080,7 +1080,7 @@
   "authorizationInvalid": "authorization: некорректно",
   "authorizationForbidden": "authorization: доступ запрещён",
   "authorizationRevoked": "authorization: отозвано",
-  "authorizationDependencyUnavailable": "authorization: зависимость недоступна"
+  "authorizationDependencyUnavailable": "authorization: зависимость недоступна",
 
   "credentialBindingCannotBeUsed": "учётная привязка не может быть использована",
   "credentialAssignmentNotConfirmed": "назначение учётных данных не подтверждено",
