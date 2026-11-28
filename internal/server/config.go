@@ -14,6 +14,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/24DSO-lab/kubron/internal/sso"
 )
 
 // Config — параметры сервера. Источники: флаги и переменные окружения (флаг важнее).
@@ -23,8 +25,10 @@ type Config struct {
 	// AllowRemote разрешает слушать не на loopback (KUBRON_ALLOW_REMOTE=1).
 	// Без TLS cookie уходит открытым текстом: для сети нужен обратный прокси с TLS.
 	AllowRemote bool
-	// PublicURL — публичный origin сервера для browser-callback (KUBRON_PUBLIC_URL). Пусто — browser-callback выключен.
+	// PublicURL — публичный origin сервера для OIDC и browser-callback (KUBRON_PUBLIC_URL).
 	PublicURL string
+	// SSO — OpenID Connect sign-in configuration (KUBRON_OIDC_*).
+	SSO sso.Config
 	// GKEOAuthClientID и GKEOAuthClientSecret — OAuth-клиент Google для входа пользователя в GKE
 	// (KUBRON_GKE_OAUTH_CLIENT_ID, KUBRON_GKE_OAUTH_CLIENT_SECRET). Без идентификатора вход в GKE идёт только
 	// по ключу сервисного аккаунта. Секрет не логируется и не отдаётся в API.
@@ -167,6 +171,11 @@ func LoadConfig(args []string, getenv func(string) string, out io.Writer) (Confi
 	}
 	cfg.AllowRemote = truthy(getenv("KUBRON_ALLOW_REMOTE"))
 	cfg.PublicURL = strings.TrimSpace(getenv("KUBRON_PUBLIC_URL"))
+	oidcConfig, oidcErr := sso.LoadConfig(getenv)
+	if oidcErr != nil {
+		return Config{}, fmt.Errorf("KUBRON_OIDC: %w", oidcErr)
+	}
+	cfg.SSO = oidcConfig
 	cfg.GKEOAuthClientID = strings.TrimSpace(getenv("KUBRON_GKE_OAUTH_CLIENT_ID"))
 	cfg.GKEOAuthClientSecret = strings.TrimSpace(getenv("KUBRON_GKE_OAUTH_CLIENT_SECRET"))
 	cfg.ReplicaID = strings.TrimSpace(getenv("KUBRON_REPLICA_ID"))
@@ -324,6 +333,12 @@ func truthy(s string) bool {
 func (c Config) Validate() error {
 	if err := validatePublicURL(c.PublicURL); err != nil {
 		return fmt.Errorf("KUBRON_PUBLIC_URL: %w", err)
+	}
+	if c.SSO.Issuer != "" && c.PublicURL == "" {
+		return errors.New("KUBRON_PUBLIC_URL is required when OIDC sign-in is enabled")
+	}
+	if c.SSO.DisableLocalLogin && c.SSO.Issuer == "" {
+		return errors.New("KUBRON_OIDC_DISABLE_LOCAL_LOGIN requires OIDC sign-in to be enabled")
 	}
 	if c.GKEOAuthClientSecret != "" && c.GKEOAuthClientID == "" {
 		return errors.New("KUBRON_GKE_OAUTH_CLIENT_SECRET is set without KUBRON_GKE_OAUTH_CLIENT_ID")

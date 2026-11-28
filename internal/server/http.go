@@ -96,6 +96,10 @@ func RPCHandler(d *Dispatcher, g *Guard) http.Handler {
 		if method == "SetupAdmin" && g != nil && !g.checkSetup(w, r) {
 			return
 		}
+		if method == "Login" && g != nil && g.DisableLocalLogin {
+			writeError(w, http.StatusForbidden, "local_login_disabled", auth.ErrLocalLoginDisabled.Error())
+			return
+		}
 
 		var token string
 		var sess Session
@@ -251,6 +255,9 @@ func (g *Guard) afterCall(w http.ResponseWriter, r *http.Request, method string,
 			}
 			if cp.NeedsSetup && g.Setup != nil { // экран настройки запросит токен
 				cp.SetupTokenRequired, changed = true, true
+			}
+			if g.SSOStatus != nil {
+				cp.SSO, changed = g.SSOStatus, true
 			}
 			if changed {
 				return &cp, nil

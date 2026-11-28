@@ -29,6 +29,7 @@
   "operator": "运维人员",
   "user": "用户",
   "authenticationRequired": "需要身份验证",
+  "localPasswordSignInIsDisabled": "本地密码登录已禁用",
   "insufficientPermissionsForThisAction": "执行此操作权限不足",
   "invalidUsernameOrPassword": "用户名或密码无效",
   "accountIsDisabled": "账户已禁用",

@@ -17,6 +17,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/24DSO-lab/kubron/internal/auth"
 	"github.com/24DSO-lab/kubron/internal/replicaevents"
 	"github.com/24DSO-lab/kubron/internal/termbuf"
 	"github.com/24DSO-lab/kubron/internal/websession"
@@ -661,6 +662,10 @@ const (
 // Guard — защита веб-API: cookie-сессии, CSRF-токен, источник запроса.
 type Guard struct {
 	Sessions *Sessions
+	// DisableLocalLogin rejects password-based RPC login when SSO is the configured sign-in method.
+	DisableLocalLogin bool
+	// SSOStatus is added to AuthStatus by the HTTP layer; it is never populated by the auth core.
+	SSOStatus *auth.SSOStatus
 	// TrustProxy: доверять X-Forwarded-Proto от обратного прокси (TLS завершается на нём).
 	TrustProxy bool
 	// TrustedProxyHops — сколько доверенных прокси стоит перед сервером (по умолчанию 1): адрес клиента
