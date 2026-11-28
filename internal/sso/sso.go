@@ -73,6 +73,18 @@ func LoadConfig(getenv func(string) string) (Config, error) {
 	if getenv == nil {
 		getenv = func(string) string { return "" }
 	}
+	linkExisting, err := parseEnvBool(getenv("KUBRON_OIDC_LINK_EXISTING"))
+	if err != nil {
+		return Config{}, ErrInvalidConfig
+	}
+	disableLocalLogin, err := parseEnvBool(getenv("KUBRON_OIDC_DISABLE_LOCAL_LOGIN"))
+	if err != nil {
+		return Config{}, ErrInvalidConfig
+	}
+	desktop, err := parseEnvBool(getenv("KUBRON_DESKTOP_MODE"))
+	if err != nil {
+		return Config{}, ErrInvalidConfig
+	}
 	cfg := Config{
 		Issuer:            strings.TrimSpace(getenv("KUBRON_OIDC_ISSUER")),
 		ClientID:          strings.TrimSpace(getenv("KUBRON_OIDC_CLIENT_ID")),
@@ -84,12 +96,12 @@ func LoadConfig(getenv func(string) string) (Config, error) {
 		OperatorGroups:    splitList(getenv("KUBRON_OIDC_OPERATOR_GROUPS")),
 		DefaultRole:       strings.TrimSpace(getenv("KUBRON_OIDC_DEFAULT_ROLE")),
 		AutoCreate:        true,
-		LinkExisting:      envBool(getenv("KUBRON_OIDC_LINK_EXISTING")),
-		DisableLocalLogin: envBool(getenv("KUBRON_OIDC_DISABLE_LOCAL_LOGIN")),
+		LinkExisting:      linkExisting,
+		DisableLocalLogin: disableLocalLogin,
 		ButtonLabel:       strings.TrimSpace(getenv("KUBRON_OIDC_BUTTON_LABEL")),
 		CAFile:            strings.TrimSpace(getenv("KUBRON_OIDC_CA_FILE")),
 		// Desktop builds set this process-mode flag before loading configuration.
-		Desktop: envBool(getenv("KUBRON_DESKTOP_MODE")),
+		Desktop: desktop,
 	}
 	if raw := strings.TrimSpace(getenv("KUBRON_OIDC_AUTO_CREATE")); raw != "" {
 		v, err := strconv.ParseBool(raw)
@@ -167,9 +179,12 @@ func splitList(raw string) []string {
 	return out
 }
 
-func envBool(raw string) bool {
-	v, _ := strconv.ParseBool(strings.TrimSpace(raw))
-	return v
+func parseEnvBool(raw string) (bool, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return false, nil
+	}
+	return strconv.ParseBool(raw)
 }
 
 type Identity struct {

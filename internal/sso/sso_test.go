@@ -52,6 +52,11 @@ func TestLoadConfigDefaultsAndValidation(t *testing.T) {
 	if _, err := LoadConfig(func(k string) string { return env[k] }); err == nil {
 		t.Fatal("non-loopback HTTP issuer accepted")
 	}
+	env["KUBRON_OIDC_ISSUER"] = "https://id.example.test"
+	env["KUBRON_OIDC_LINK_EXISTING"] = "not-a-boolean"
+	if _, err := LoadConfig(func(k string) string { return env[k] }); err == nil {
+		t.Fatal("invalid boolean configuration accepted")
+	}
 }
 
 func TestFlowStateSealOpenAndTamper(t *testing.T) {
