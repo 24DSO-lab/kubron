@@ -9,6 +9,8 @@ import (
 	"errors"
 	"net/http"
 	"time"
+
+	"github.com/24DSO-lab/kubron/internal/identity"
 )
 
 type Scope string
@@ -16,6 +18,9 @@ type Scope string
 const (
 	ScopeUser Scope = "user" // личные данные пользователя
 	ScopeTeam Scope = "team" // общие данные команды
+	// ScopePrincipal: данные технической identity (TeamPrincipal / ServicePrincipal), Phase 1, ADR-0036.
+	// Это не ScopeTeam: ScopeTeam остаётся прежним общим аккаунтом команды и никогда не читается как TeamPrincipal.
+	ScopePrincipal Scope = "principal"
 )
 
 type Kind string
@@ -48,11 +53,41 @@ type Descriptor struct {
 	Exec   *ExecSpec // сохраняется и для известных плагинов (нужно десктопу)
 }
 
+// Subject is an exclusive tagged union (Phase 1 Contract Freeze, section 5.1):
+//
+//   - ScopeUser / ScopeTeam (legacy): ClusterID, Scope, OwnerID and, for an interactive web challenge, SessionID;
+//     Principal and BindingID stay empty;
+//   - ScopePrincipal (technical Team/Service identity): ClusterID, Scope, Principal and BindingID; OwnerID and
+//     SessionID stay empty. A technical subject never carries a user session.
+//
+// Mixed or partial combinations are rejected (Subject.Validate); the kind of a principal is never inferred from
+// OwnerID or from the provider kind.
 type Subject struct {
 	ClusterID string
 	Scope     Scope
-	OwnerID   string // id пользователя (ScopeUser) или команды (ScopeTeam)
-	SessionID string // веб-сессия; пусто на десктопе
+	OwnerID   string // id пользователя (ScopeUser) или команды (ScopeTeam); только legacy
+	SessionID string // веб-сессия; пусто на десктопе; только legacy
+
+	Principal identity.PrincipalRef // только ScopePrincipal
+	BindingID string                // только ScopePrincipal
+}
+
+// ProvisioningContext is the authorization and provenance of an interactive setup (initial provisioning or an
+// explicit rotation) of a technical credential. It is never part of Subject, Key, the encryption AAD or a runtime
+// pool key: the administrator's session is not the Kubernetes execution identity.
+type ProvisioningContext struct {
+	Actor     identity.ActorRef // authenticated UserPrincipal
+	SessionID string            // active Kubron session for this setup challenge
+	EventID   string            // identifier of the critical audit event of this setup
+}
+
+// ProvisioningBroker is the dedicated interactive path for technical credentials. A challenge is bound to the exact
+// technical Subject + BindingID + actor + session + EventID; every continuation re-checks the actor's authority.
+// The credential is stored only under the technical Subject; no token is handed to the administrator.
+type ProvisioningBroker interface {
+	BeginProvisioning(ctx context.Context, subject Subject, by ProvisioningContext, d Descriptor) (Result, error)
+	AnswerProvisioning(ctx context.Context, subject Subject, by ProvisioningContext, challengeID string, answer Answer) (Result, error)
+	CancelProvisioning(ctx context.Context, subject Subject, by ProvisioningContext, challengeID string) error
 }
 
 type ChallengeKind string
@@ -144,11 +179,17 @@ type WebCallbackBroker interface {
 	AnswerCallback(ctx context.Context, sub Subject, challengeID, redirectURL string) (Result, error)
 }
 
+// RevokeFilter selects stored sign-ins. Empty fields mean "any" (administrative maintenance). A filter for a
+// technical credential must be exact: Scope=ScopePrincipal, ClusterID, a valid Principal and BindingID, nothing
+// else (see RevokeFilter.ValidatePrincipal). A normal principal revoke never uses a wildcard.
 type RevokeFilter struct {
 	ClusterID string
 	OwnerID   string
 	Scope     Scope
-} // пустые поля означают «любой»
+
+	Principal identity.PrincipalRef
+	BindingID string
+}
 
 // Broker: оркестратор. Реализует разработчик 1, использует разработчик 2.
 type Broker interface {
