@@ -1,61 +1,23 @@
 # Architecture Decision Records
 
-Формат: контекст → решение → альтернативы → последствия. Статусы: предложено, принято, реализовано, заменено.
+**Единственный постоянный источник архитектурных решений Kubron.** Решение, его ограничения и текущий статус находятся в соответствующем ADR. Другие постоянные архитектурные спецификации и review-документы не ведутся.
 
-ADR-0001…ADR-0018 утверждены тимлидом; их статус — `принято`.
-ADR-0019…ADR-0022 оформлены ретроспективно 2026-11-05: проект начинался без ADR, а решения уже были реализованы и описаны в `docs/`, CHANGELOG и коде. Они фиксируют то, что есть в репозитории, и прямо отмечают, где причины выбора не записаны.
-ADR-0023 принят 2026-11-07 (Vadim).
-ADR-0029 предложен 2026-11-09. ADR-0030 предложен 2026-11-10 и заменяет его п. 3.
-ADR-0024…ADR-0027 предложены 2026-11-08, приняты и реализованы 2026-11-13 (статус — `реализовано`).
-ADR-0028 предложен 2026-11-09.
-ADR-0031 предложен 2026-11-14.
-ADR-0032 предложен 2026-11-14.
-ADR-0033 предложен 2026-11-14.
-ADR-0034 предложен 2026-11-14.
+## Жизненный цикл ADR
 
-## Решения после выпуска v1.3.0
+- **Proposed** — предложено, не согласовано.
+- **Accepted** — архитектурно принято, реализация не начата.
+- **In Progress** — реализация начата.
+- **Implemented** — реализация завершена, проверена и интегрирована.
+- **Rejected** — отклонено.
+- **Superseded** — заменено другим ADR (указать заменяющий ADR).
 
-v1.3.0 выпущена 2026-11-26. ADR-0035…0038 фиксируют архитектурные решения Phase 1. На момент подготовки этих ADR runtime implementation ещё не была выполнена. По состоянию на 2026-11-28 реализация Phase 1 (Identity, Credential Resolution, Authorization и Critical Audit lanes) интегрирована в ветку `refactor`; CI для интегрированного состояния зелёный. Это не означает, что Target/Policy, Plans, Run Engine или Kubernetes write actions уже реализованы.
+Статус изменяется непосредственно в ADR по мере разработки. Само слияние документационного PR не означает принятия решения. Реализация считается завершённой после проверки и интеграции изменений.
 
-ADR-0039…0052 — пакет архитектурной фиксации целевой модели после v1.3.0. Статус каждого ADR указан в самом документе. Принятые ранее решения записаны ретроспективно; новые технические механизмы, для которых ещё требуется доказательство или реализационный дизайн, имеют статус `предложено`.
+Промпты разработчикам — временные рабочие задания. Их храним только пока задача выполняется; после завершения обновляем статус связанных ADR и удаляем промпты.
 
-| № | Решение | Статус |
-|---|---|---|
-| [0035](0035-technical-principals-and-identity-lifecycle.md) | Технические principals и жизненный цикл Identity | принято |
-| [0036](0036-subject-aware-credential-resolution.md) | Subject-aware credentials и безопасный путь через ConfigFor | принято |
-| [0037](0037-technical-authorization-grants-and-delegation.md) | Grants технических principals и Cross-Team Delegation | принято |
-| [0038](0038-critical-audit-durability.md) | Durable Critical Audit для защищённых mutations | принято |
-| [0039](0039-platform-architecture-and-domain-boundaries.md) | Целевая архитектура Kubron и границы доменов | принято |
-| [0040](0040-operation-context-and-resource-identity.md) | Operation Context и Resource Identity | принято |
-| [0041](0041-target-groups-and-scope-resolution.md) | Target Groups и безопасное разрешение scope | принято |
-| [0042](0042-autonomy-policy-and-profiles.md) | Autonomy Policy, иерархия ограничений и Profiles | принято |
-| [0043](0043-typed-action-catalog-and-risk-model.md) | Typed Operation/Action Catalog и модель риска | предложено |
-| [0044](0044-immutable-plans-and-approval-binding.md) | Immutable Plans и привязка Approval | принято |
-| [0045](0045-atomic-plan-commit-and-revision-consistency.md) | Atomic Plan Commit и согласованность Revision | предложено |
-| [0046](0046-durable-run-step-execution-and-concurrency.md) | Durable Run/Step Execution, leases и fencing | принято |
-| [0047](0047-verification-recovery-and-cancellation.md) | Verification, Recovery и безопасная отмена операций | принято |
-| [0048](0048-cross-cluster-orchestration.md) | Cross-cluster Orchestration и независимые sub-runs | принято |
-| [0049](0049-schedule-ownership-and-runtime-semantics.md) | Ownership и runtime semantics расписаний | принято |
-| [0050](0050-retention-and-evidence-lifecycle.md) | Retention Run/Step, Evidence и Critical Audit | принято |
-| [0051](0051-goal-based-operations-and-ai-boundary.md) | Goal-based Operations и границы AI/Intelligence | предложено |
-| [0052](0052-phased-delivery-and-write-action-gates.md) | Поэтапная реализация и gates для Kubernetes write actions | принято |
+## Индекс
 
-## Предложения для Phase 2 — Target & Policy Foundation
-
-ADR-0053…0058 уточняют реализационные контракты Phase 2 поверх уже принятых семантических решений ADR-0041 и ADR-0042. Все шесть документов имеют статус **предложено** и требуют отдельного архитектурного согласования. Они не считаются принятыми только фактом открытия PR.
-
-| № | Решение | Статус |
-|---|---|---|
-| [0053](0053-trusted-target-catalog-and-ownership-resolution.md) | Доверенный каталог целей и разрешение ownership | предложено |
-| [0054](0054-target-group-aggregate-and-revision-lifecycle.md) | Target Group aggregate и жизненный цикл Revision | предложено |
-| [0055](0055-consistent-target-resolution-and-immutable-snapshots.md) | Согласованное разрешение целей и immutable Target Snapshots | предложено |
-| [0056](0056-deterministic-autonomy-policy-evaluation.md) | Детерминированная оценка Autonomy Policy | предложено |
-| [0057](0057-autonomy-profile-versioning-and-binding.md) | Версионирование Autonomy Profiles и правила binding | предложено |
-| [0058](0058-phase-2-scope-and-exit-gates.md) | Границы Phase 2 и критерии завершения | предложено |
-
-Новое решение — новый файл `NNNN-slug.md`; принятые ADR не переписываются, а заменяются новыми.
-
-| № | Решение |
+| ADR | Решение |
 |---|---|
 | [0001](0001-code-layout.md) | Структура кода: ядро в internal/app, две оболочки |
 | [0002](0002-platform-interface.md) | Интерфейс Platform вместо вызовов Wails из ядра |
@@ -91,3 +53,27 @@ ADR-0053…0058 уточняют реализационные контракты
 | [0032](0032-metrics-evidence.md) | Метрики как необязательный источник доказательств Kubron Intelligence |
 | [0033](0033-correlation-problems.md) | Корреляция расследований по живым данным и группировка в проблемы |
 | [0034](0034-feedback-loop.md) | Обратная связь по результатам расследований: детерминированная статистика правил |
+| [0035](0035-technical-principals-and-identity-lifecycle.md) | Технические principals и жизненный цикл Identity |
+| [0036](0036-subject-aware-credential-resolution.md) | Subject-aware credentials и безопасный путь через ConfigFor |
+| [0037](0037-technical-authorization-grants-and-delegation.md) | Grants технических principals и Cross-Team Delegation |
+| [0038](0038-critical-audit-durability.md) | Durable Critical Audit для защищённых mutations |
+| [0039](0039-platform-architecture-and-domain-boundaries.md) | Целевая архитектура Kubron и границы доменов |
+| [0040](0040-operation-context-and-resource-identity.md) | Operation Context и Resource Identity |
+| [0041](0041-target-groups-and-scope-resolution.md) | Target Groups и безопасное разрешение scope |
+| [0042](0042-autonomy-policy-and-profiles.md) | Autonomy Policy, иерархия ограничений и Profiles |
+| [0043](0043-typed-action-catalog-and-risk-model.md) | Typed Operation/Action Catalog и модель риска |
+| [0044](0044-immutable-plans-and-approval-binding.md) | Immutable Plans и привязка Approval |
+| [0045](0045-atomic-plan-commit-and-revision-consistency.md) | Atomic Plan Commit и согласованность Revision |
+| [0046](0046-durable-run-step-execution-and-concurrency.md) | Durable Run/Step Execution, leases и fencing |
+| [0047](0047-verification-recovery-and-cancellation.md) | Verification, Recovery и безопасная отмена операций |
+| [0048](0048-cross-cluster-orchestration.md) | Cross-cluster Orchestration и независимые sub-runs |
+| [0049](0049-schedule-ownership-and-runtime-semantics.md) | Ownership и runtime semantics расписаний |
+| [0050](0050-retention-and-evidence-lifecycle.md) | Retention Run/Step, Evidence и Critical Audit |
+| [0051](0051-goal-based-operations-and-ai-boundary.md) | Goal-based Operations и границы AI/Intelligence |
+| [0052](0052-phased-delivery-and-write-action-gates.md) | Поэтапная реализация и gates для Kubernetes write actions |
+| [0053](0053-trusted-target-catalog-and-ownership-resolution.md) | Доверенный каталог целей и разрешение ownership |
+| [0054](0054-target-group-aggregate-and-revision-lifecycle.md) | Target Group aggregate и жизненный цикл Revision |
+| [0055](0055-consistent-target-resolution-and-immutable-snapshots.md) | Согласованное разрешение целей и immutable Target Snapshots |
+| [0056](0056-deterministic-autonomy-policy-evaluation.md) | Детерминированная оценка Autonomy Policy |
+| [0057](0057-autonomy-profile-versioning-and-binding.md) | Версионирование Autonomy Profiles и правила binding |
+| [0058](0058-phase-2-scope-and-exit-gates.md) | Границы Phase 2 и критерии завершения |

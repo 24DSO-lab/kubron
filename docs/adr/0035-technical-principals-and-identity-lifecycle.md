@@ -1,6 +1,6 @@
 # ADR-0035: Технические principals и жизненный цикл Identity
 
-- Статус: принято (архитектурная модель; runtime-реализация не выполнена)
+- Статус: Implemented (2026-11-28)
 - Дата: 2026-11-27
 - Связано: ADR-0007, ADR-0008, ADR-0012, ADR-0018, ADR-0026; Phase 1 Contract Freeze
 
@@ -27,5 +27,5 @@
 - Создание технической identity не создаёт credentials, grants или Kubernetes permissions.
 - Неоднозначность owner, principal kind или lifecycle приводит к отказу.
 - Удаление не стирает provenance и audit trail.
-- Конкретные Go-типы и Backend contracts определены в Phase 1 Contract Freeze.
-- Реализация File/PostgreSQL и API wiring выполняется отдельными этапами; этот ADR не утверждает, что функция уже реализована.
+
+Реализация Phase 1 foundation интегрирована в `refactor`; по состоянию на 2026-11-28 владелец проекта подтвердил зелёный CI для завершённых lanes. Этот статус не разрешает Kubernetes write actions и не означает реализации Target/Policy, Plans или Run Engine.

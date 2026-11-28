@@ -1,6 +1,6 @@
 # ADR-0038: Durable Critical Audit
 
-- Статус: принято (архитектурная модель; runtime-реализация не выполнена)
+- Статус: Implemented (2026-11-28)
 - Дата: 2026-11-27
 - Связано: ADR-0007, ADR-0008, ADR-0022, ADR-0026, ADR-0035…0037; Phase 1 Contract Freeze
 
@@ -26,4 +26,5 @@
 - Critical audit — обязательный prerequisite для любых будущих protected Kubernetes side effects.
 - Нельзя заменять intent/outcome best-effort stdout mirror или legacy Logger.
 - Phase 1 реализует только foundation и security-sensitive identity/grant/credential mutations; новые Kubernetes write actions не добавляются.
-- Точные API и protocol contracts определены в Phase 1 Contract Freeze.
+
+Реализация Phase 1 foundation интегрирована в `refactor`; по состоянию на 2026-11-28 владелец проекта подтвердил зелёный CI для завершённых lanes. Этот статус не разрешает Kubernetes write actions и не означает реализации Target/Policy, Plans или Run Engine.
