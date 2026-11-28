@@ -177,6 +177,11 @@ func Evaluate(in Input) Decision {
 			return finalize(d)
 		}
 	}
+	if in.Scope.Kind == ScopeTargetGroup && in.TargetGroupID != in.Scope.TargetGroupID {
+		addReason("fact_unknown")
+		addUnknown("target_group_identity")
+		return finalize(d)
+	}
 	if in.TargetGroupID != "" {
 		if in.TargetGroupSource != SourceAvailable || in.TargetGroupRevision == 0 {
 			addReason("fact_unknown")
