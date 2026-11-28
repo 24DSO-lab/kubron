@@ -1088,7 +1088,7 @@ func (s *Service) RevokePrincipal(ctx context.Context, sub Subject, by Provision
 
 // revokeExact removes the cached tokens, the live requests and the stored record of one technical subject.
 func (s *Service) revokeExact(ctx context.Context, ps PrincipalStore, f RevokeFilter) error {
-	for _, r := range s.live.takeIf(func(r liveRequest) bool { return f.Matches(r.key) }) {
+	for _, r := range s.live.takeIf(func(r liveRequest) bool { return !r.provisioning && f.Matches(r.key) }) {
 		r.cancel()
 	}
 	s.pcache.drop(f.Matches)
