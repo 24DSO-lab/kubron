@@ -82,7 +82,7 @@ func (s ScopeRef) Validate() error {
 	case ScopeNamespace: if !validID(s.ClusterID) || s.Namespace == "" { return invalid("ScopeRef.Namespace") }
 	case ScopeWorkload: if !validID(s.ClusterID) || s.Namespace == "" || s.Workload == "" { return invalid("ScopeRef.Workload") }
 	case ScopeObject: if !validID(s.ClusterID) || !validID(s.ObjectUID) { return invalid("ScopeRef.ObjectUID") }
-	case ScopeAction: if !validID(s.ClusterID) || !validID(s.ObjectUID) { return invalid("ScopeRef.Action") }
+	case ScopeAction: if !validID(s.ClusterID) || !validID(s.ObjectUID) || !validID(s.ActionID) || s.ActionVersion == 0 { return invalid("ScopeRef.Action") }
 	case ScopeTargetGroup: if !validID(s.TargetGroupID) { return invalid("ScopeRef.TargetGroupID") }
 	default: return invalid("ScopeRef.Kind")
 	}
