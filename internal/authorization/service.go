@@ -862,21 +862,24 @@ func normalize(err error) error {
 // ---------- digest ----------
 
 func derivedID(prefix string, parts ...string) string {
-	sum := sha256.New()
-	writeParts(sum, parts)
-	return prefix + hex.EncodeToString(sum.Sum(nil)[:16])
+	sum := sha256.Sum256(encodeParts(parts))
+	return prefix + hex.EncodeToString(sum[:16])
 }
 
 func requestDigest(parts ...string) string {
-	// Encode each part with its length to keep the digest unambiguous without
-	// relying on writes to a hash.Hash (whose Write method cannot fail).
+	sum := sha256.Sum256(encodeParts(parts))
+	return "sha256:" + hex.EncodeToString(sum[:])
+}
+
+// encodeParts preserves the canonical length-prefixed representation used by
+// derived IDs and request digests.
+func encodeParts(parts []string) []byte {
 	var encoded []byte
 	for _, p := range parts {
 		encoded = binary.BigEndian.AppendUint32(encoded, uint32(len(p)))
 		encoded = append(encoded, p...)
 	}
-	sum := sha256.Sum256(encoded)
-	return "sha256:" + hex.EncodeToString(sum[:])
+	return encoded
 }
 
 // contentParts — каноническое однозначное представление изменяемого содержимого для digest (списки с
