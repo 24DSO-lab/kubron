@@ -227,3 +227,22 @@ func TestTimeWindowIntersectionIncludesDayIntersection(t *testing.T) {
 		t.Fatal("disjoint weekdays must produce an empty time-window intersection")
 	}
 }
+
+func TestRevisionVectorDeduplicatesSharedProfileRevision(t *testing.T) {
+	in := baseInput()
+	secondBinding := in.Bindings[0]
+	secondBinding.ID = "binding-2"
+	secondBinding.Scope = ScopeRef{Kind: ScopeOrganization, OrganizationID: "org"}
+	in.Bindings = append(in.Bindings, secondBinding)
+
+	decision := Evaluate(in)
+	if !decision.Allowed {
+		t.Fatalf("two valid bindings to the same profile should be evaluable: %+v", decision)
+	}
+	if len(decision.RevisionVector.Profiles) != 1 || decision.RevisionVector.Profiles[0] != (Revision{ID: "profile", Revision: 1}) {
+		t.Fatalf("profile revision vector should contain one entry per aggregate: %+v", decision.RevisionVector)
+	}
+	if len(decision.RevisionVector.Bindings) != 2 {
+		t.Fatalf("both binding revisions must remain represented: %+v", decision.RevisionVector)
+	}
+}
