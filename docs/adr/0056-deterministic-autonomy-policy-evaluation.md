@@ -1,6 +1,6 @@
 # ADR-0056: Детерминированная оценка Autonomy Policy
 
-- Статус: принято
+- Статус: Accepted
 - Дата: 2026-11-28
 - Область: Phase 2 — Target & Policy Foundation
 - Связано: ADR-0035, ADR-0037, ADR-0040, ADR-0042, ADR-0044, ADR-0053, ADR-0055
@@ -62,7 +62,7 @@ Policy evaluation не заменяет Kubron authorization, delegation, creden
 
 ## Последствия и ограничения
 
-- Contract Freeze должен зафиксировать policy rule schema, conflict model, reason code registry и revision vector.
-- Нужно определить, какие Kubernetes hierarchy facts берутся из trusted catalog и какие требуют read query.
-- Нужно определить поведение при нескольких одновременно применимых Target Group profiles/policies; базовое правило — пересечение ограничений без расширяющего приоритета.
-- Нужны property-based tests: permutation invariance, monotonic restriction, fail-closed, missing facts, stale revisions, cross-tenant isolation.
+- Canonical constraint schema, conflict model, reason codes и revision vector определены выше и являются нормативным контрактом Phase 2.
+- Ownership facts берутся из trusted resolver; Kubernetes hierarchy facts — из доверенного read result, привязанного к target identity.
+- Одновременно применимые policies и bindings всегда объединяются пересечением ограничений, независимо от порядка.
+- Обязательные property-based tests: permutation invariance, monotonic restriction, fail-closed, missing facts, stale revisions и cross-tenant isolation.
