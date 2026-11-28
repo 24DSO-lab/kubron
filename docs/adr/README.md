@@ -40,6 +40,19 @@ ADR-0039…0052 — пакет архитектурной фиксации це�
 | [0051](0051-goal-based-operations-and-ai-boundary.md) | Goal-based Operations и границы AI/Intelligence | предложено |
 | [0052](0052-phased-delivery-and-write-action-gates.md) | Поэтапная реализация и gates для Kubernetes write actions | принято |
 
+## Предложения для Phase 2 — Target & Policy Foundation
+
+ADR-0053…0058 уточняют реализационные контракты Phase 2 поверх уже принятых семантических решений ADR-0041 и ADR-0042. Все шесть документов имеют статус **предложено** и требуют отдельного архитектурного согласования. Они не считаются принятыми только фактом открытия PR.
+
+| № | Решение | Статус |
+|---|---|---|
+| [0053](0053-trusted-target-catalog-and-ownership-resolution.md) | Доверенный каталог целей и разрешение ownership | предложено |
+| [0054](0054-target-group-aggregate-and-revision-lifecycle.md) | Target Group aggregate и жизненный цикл Revision | предложено |
+| [0055](0055-consistent-target-resolution-and-immutable-snapshots.md) | Согласованное разрешение целей и immutable Target Snapshots | предложено |
+| [0056](0056-deterministic-autonomy-policy-evaluation.md) | Детерминированная оценка Autonomy Policy | предложено |
+| [0057](0057-autonomy-profile-versioning-and-binding.md) | Версионирование Autonomy Profiles и правила binding | предложено |
+| [0058](0058-phase-2-scope-and-exit-gates.md) | Границы Phase 2 и критерии завершения | предложено |
+
 Новое решение — новый файл `NNNN-slug.md`; принятые ADR не переписываются, а заменяются новыми.
 
 | № | Решение |
