@@ -802,7 +802,7 @@ func (s *Service) storeProvisioned(ctx context.Context, ps PrincipalStore, sub S
 	key := sub.key()
 	rec := Record{Meta: Meta{Key: key, Kind: d.Kind, LastAuditEventID: by.EventID}, Secret: res.Save}
 	if res.Token != nil {
-		rec.Meta.Principal = res.Token.Principal
+		rec.Principal = res.Token.Principal
 		if !res.Token.Expiry.IsZero() {
 			exp := res.Token.Expiry
 			rec.ExpiresAt = &exp
