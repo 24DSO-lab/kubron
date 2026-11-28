@@ -65,6 +65,10 @@ func ssoLoginHandler(g *Guard, cfg *ssoHandlerConfig) http.Handler {
 			http.Redirect(w, r, "/?sso_error=unavailable", http.StatusFound)
 			return
 		}
+		returns := r.URL.Query()["return"]
+		if len(returns) == 1 {
+			flow.ReturnTo = safeSSOReturn(returns[0])
+		}
 		sealed, err := flow.Seal(cfg.flowKey)
 		if err != nil {
 			slog.WarnContext(r.Context(), "sso: could not protect sign-in state", "error", err)
@@ -161,8 +165,25 @@ func ssoCallbackHandler(g *Guard, cfg *ssoHandlerConfig) http.Handler {
 			g.Bind(view, sess.ID)
 		}
 		g.setCookie(w, r, token, time.Until(sess.Expires))
-		http.Redirect(w, r, "/", http.StatusFound)
+		destination := safeSSOReturn(flow.ReturnTo)
+		if destination == "" {
+			destination = "/"
+		}
+		http.Redirect(w, r, destination, http.StatusFound)
 	})
+}
+
+func safeSSOReturn(raw string) string {
+	if raw == "" || !strings.HasPrefix(raw, "/") || strings.HasPrefix(raw, "//") ||
+		strings.Contains(raw, "\\") || strings.ContainsAny(raw, "\r\n") {
+		return ""
+	}
+	parsed, err := url.ParseRequestURI(raw)
+	if err != nil || parsed.IsAbs() || parsed.Host != "" || strings.HasPrefix(parsed.Path, "//") ||
+		strings.Contains(parsed.Path, "\\") || strings.ContainsAny(parsed.Path, "\r\n") {
+		return ""
+	}
+	return raw
 }
 
 func clearSSOFlowCookie(w http.ResponseWriter, r *http.Request, g *Guard) {
