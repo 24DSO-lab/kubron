@@ -180,6 +180,19 @@ func ChallengeStoreContract(t *testing.T, newHarness func(t *testing.T) Challeng
 		}
 	})
 
+	run("ListExpiredDoesNotDelete", func(t *testing.T, h ChallengeHarness) {
+		now := time.Now().UTC()
+		_ = h.Store.Create(ctx, chRec("old", "c1", "u1", "s", now.Add(-time.Minute)))
+		_ = h.Store.Create(ctx, chRec("new", "c1", "u1", "s", now.Add(time.Minute)))
+		got, err := h.Store.ListExpired(ctx, now)
+		if err != nil || len(got) != 1 || got[0].ID != "old" || string(got[0].State) != "state-old" {
+			t.Fatalf("ListExpired = %+v, %v", got, err)
+		}
+		if _, err := h.Store.Get(ctx, "old"); err != nil {
+			t.Fatalf("ListExpired must not delete the record: %v", err)
+		}
+	})
+
 	run("DeleteExpired", func(t *testing.T, h ChallengeHarness) {
 		now := time.Now().UTC()
 		_ = h.Store.Create(ctx, chRec("old", "c1", "u1", "s", now.Add(-time.Minute)))

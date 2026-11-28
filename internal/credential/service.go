@@ -16,6 +16,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/24DSO-lab/kubron/internal/audit"
 	"github.com/24DSO-lab/kubron/internal/secrets"
 )
 
@@ -49,6 +50,17 @@ type Config struct {
 	RefreshRecheck []time.Duration
 	// Logger receives ids, kinds and outcomes only, never secrets. Defaults to slog.Default().
 	Logger *slog.Logger
+
+	// The three ports below serve technical (ScopePrincipal) subjects only. Without all of them (and a Store that is
+	// a PrincipalStore, plus Provisioning for the interactive setup) every technical operation fails closed with
+	// ErrNotConfigured; legacy user/team behavior does not depend on them.
+	//
+	// Identities resolves the active identity and the active binding (use *identity.Service).
+	Identities IdentityResolver
+	// Audit is the critical audit recorder of the credential use cases and the confirmation of stored versions.
+	Audit audit.CriticalRecorder
+	// Provisioning is the injected authorization result of the setup use cases.
+	Provisioning ProvisioningAuthorizer
 }
 
 // Service implements Broker: it orchestrates providers, pending requests and token refresh.
@@ -66,6 +78,12 @@ type Service struct {
 	cache    tokenCache
 	flight   flightGroup
 	live     liveSet // pending requests of providers that implement Canceller (this process only)
+
+	ids     IdentityResolver
+	crit    audit.CriticalRecorder
+	authz   ProvisioningAuthorizer
+	pcache  principalCache
+	pflight flightGroup
 }
 
 // NewService validates the configuration and returns a Service.
@@ -94,7 +112,8 @@ func NewService(cfg Config) (*Service, error) {
 		recheck = []time.Duration{50 * time.Millisecond, 150 * time.Millisecond, 400 * time.Millisecond}
 	}
 	return &Service{reg: cfg.Registry, store: cfg.Store, chal: cfg.Challenges, attempts: attempts, envp: cfg.Envelope, penv: env, now: now, log: log,
-		recheck: recheck, cache: tokenCache{m: map[string]Token{}}}, nil
+		recheck: recheck, cache: tokenCache{m: map[string]Token{}},
+		ids: cfg.Identities, crit: cfg.Audit, authz: cfg.Provisioning}, nil
 }
 
 // Describe implements Broker.
@@ -103,7 +122,7 @@ func (s *Service) Describe(kubeconfig []byte, contextName string) (Descriptor, e
 }
 
 func (sub Subject) key() Key {
-	return Key{ClusterID: sub.ClusterID, Scope: sub.Scope, OwnerID: sub.OwnerID}
+	return Key{ClusterID: sub.ClusterID, Scope: sub.Scope, OwnerID: sub.OwnerID, Principal: sub.Principal, BindingID: sub.BindingID}
 }
 
 // pendingState is the private, encrypted part of a pending request.
@@ -111,6 +130,9 @@ type pendingState struct {
 	Descriptor Descriptor `json:"descriptor"`
 	Pending    []byte     `json:"pending,omitempty"`
 	Challenge  Challenge  `json:"challenge"`
+	// Prov is set only for the provisioning of a technical credential: it binds the challenge to the exact technical
+	// subject, binding, actor, session and critical audit event. Absent for every ordinary user challenge.
+	Prov *provState `json:"prov,omitempty"`
 }
 
 func newChallengeID() (string, error) {
@@ -164,7 +186,7 @@ func publicChallenge(c Challenge, id string, exp time.Time) Challenge {
 }
 
 func (s *Service) validSubject(sub Subject, d *Descriptor) error {
-	if err := sub.key().Validate(); err != nil {
+	if err := sub.Validate(); err != nil {
 		return err
 	}
 	if d != nil && d.Kind == "" {
@@ -177,6 +199,10 @@ func (s *Service) validSubject(sub Subject, d *Descriptor) error {
 // if that is impossible, creates a pending request and returns its challenge. For KindStatic nothing is
 // needed and the result is empty.
 func (s *Service) Acquire(ctx context.Context, sub Subject, d Descriptor) (Result, error) {
+	if sub.IsPrincipal() {
+		// A technical subject never starts an interactive request here: stored credential or ErrChallengeRequired.
+		return s.acquirePrincipal(ctx, sub, d)
+	}
 	if err := s.validSubject(sub, &d); err != nil {
 		return Result{}, err
 	}
@@ -382,6 +408,11 @@ func bound(rec ChallengeRecord, sub Subject) bool {
 // load fetches a request for a caller; every failure to get it is ErrChallengeExpired, so that a caller
 // cannot learn whether somebody else's request exists.
 func (s *Service) load(ctx context.Context, sub Subject, id string) (ChallengeRecord, error) {
+	if sub.IsPrincipal() || isProvisioningID(id) {
+		// A technical subject has no ordinary challenge, and a provisioning challenge is reachable only through the
+		// provisioning methods: the user path must never continue it (it would store the credential under the user).
+		return ChallengeRecord{}, ErrChallengeExpired
+	}
 	rec, err := s.chal.Get(ctx, id)
 	if errors.Is(err, ErrChallengeNotFound) {
 		return ChallengeRecord{}, ErrChallengeExpired
@@ -408,7 +439,7 @@ func (s *Service) Answer(ctx context.Context, sub Subject, challengeID string, a
 // CallbackSubject resolves a browser callback only when the challenge belongs to this user and web session.
 // Unknown, expired, foreign and non-callback challenges deliberately have the same error.
 func (s *Service) CallbackSubject(ctx context.Context, sessionID, challengeID string) (Subject, Descriptor, error) {
-	if sessionID == "" || challengeID == "" {
+	if sessionID == "" || challengeID == "" || isProvisioningID(challengeID) {
 		return Subject{}, Descriptor{}, ErrChallengeExpired
 	}
 	rec, err := s.chal.Get(ctx, challengeID)
@@ -594,6 +625,9 @@ func (s *Service) failed(ctx context.Context, claimed ChallengeRecord, d Descrip
 // Cancel implements Broker. It removes the caller's own request; anything else is ErrChallengeExpired
 // (the same answer as for an unknown id).
 func (s *Service) Cancel(ctx context.Context, sub Subject, challengeID string) error {
+	if sub.IsPrincipal() || isProvisioningID(challengeID) {
+		return ErrChallengeExpired // see load: provisioning has its own, audited cancel
+	}
 	rec, err := s.chal.Get(ctx, challengeID)
 	if errors.Is(err, ErrChallengeNotFound) {
 		return nil // cancelling something that is gone is not an error
@@ -608,15 +642,62 @@ func (s *Service) Cancel(ctx context.Context, sub Subject, challengeID string) e
 	return s.chal.Delete(ctx, challengeID)
 }
 
+// recordExpiredProvisioningOutcome makes the expiry outcome retry-safe. CriticalRecorder outcomes are immutable:
+// after a successful append followed by a failed challenge deletion, a later Sweep must recognize the already
+// durable failed outcome rather than append a new timestamp and conflict with itself.
+func (s *Service) recordExpiredProvisioningOutcome(ctx context.Context, prov *provState) error {
+	if prov == nil || prov.EventID == "" || prov.Principal.OrgID == "" || s.crit == nil {
+		return fmt.Errorf("%w: provisioning outcome cannot be identified", audit.ErrOutcomeUnknown)
+	}
+	out, err := s.crit.GetOutcome(ctx, prov.Principal.OrgID, prov.EventID)
+	if err == nil {
+		if out.Result == audit.CriticalFailed || out.Result == audit.CriticalSucceeded {
+			return nil // a durable terminal outcome from Sweep or an interactive path permits cleanup
+		}
+		return fmt.Errorf("%w: provisioning intent already has a non-terminal outcome", audit.ErrOutcomeUnknown)
+	}
+	if !errors.Is(err, audit.ErrCriticalNotFound) {
+		return fmt.Errorf("%w: %w", audit.ErrOutcomeUnknown, err)
+	}
+	if err := s.appendOutcome(ctx, prov.EventID, audit.CriticalFailed, 0, "expired"); err != nil {
+		// Resolve the narrow race where another replica wrote the immutable outcome first.
+		out, readErr := s.crit.GetOutcome(context.WithoutCancel(ctx), prov.Principal.OrgID, prov.EventID)
+		if readErr == nil && out.Result == audit.CriticalFailed {
+			return nil
+		}
+		return err
+	}
+	return nil
+}
+
 // Sweep removes expired requests. The server calls it periodically.
 func (s *Service) Sweep(ctx context.Context) (int, error) {
 	now := s.now()
-	for _, r := range s.live.takeIf(func(r liveRequest) bool { return !now.Before(r.expires) }) {
+	for _, r := range s.live.takeIf(func(r liveRequest) bool { return !r.provisioning && !now.Before(r.expires) }) {
 		r.cancel()
 	}
-	n, err := s.chal.DeleteExpired(ctx, now)
+	expired, err := s.chal.ListExpired(ctx, now)
 	if err != nil {
-		return n, err
+		return 0, err
+	}
+	n := 0
+	for _, rec := range expired {
+		if isProvisioningID(rec.ID) {
+			st, openErr := s.open(rec)
+			if openErr != nil || st.Prov == nil || st.Prov.EventID == "" {
+				// Without the encrypted event id we cannot safely write the matching outcome. Keep the
+				// challenge so an operator/recovery path can resolve it; never turn this into plain expiry.
+				return n, fmt.Errorf("%w: provisioning challenge outcome cannot be identified", audit.ErrOutcomeUnknown)
+			}
+			if err := s.recordExpiredProvisioningOutcome(ctx, st.Prov); err != nil {
+				return n, err
+			}
+		}
+		if err := s.chal.Delete(ctx, rec.ID); err != nil {
+			return n, err
+		}
+		s.dropLive(rec.ID)
+		n++
 	}
 	_, err = s.attempts.Sweep(ctx, now.Add(-2*AttemptWindow))
 	return n, err

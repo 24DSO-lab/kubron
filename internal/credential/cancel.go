@@ -30,10 +30,13 @@ type liveSet struct {
 }
 
 type liveRequest struct {
-	p       Canceller
-	pending []byte
-	key     Key
-	expires time.Time
+	id           string
+	p            Canceller
+	pending      []byte
+	key          Key
+	expires      time.Time
+	provisioning bool // provisioning requests must be audited before provider cancellation
+	prov         *provState
 }
 
 func (l *liveSet) track(id string, r liveRequest) {
@@ -72,19 +75,37 @@ func (l *liveSet) takeIf(match func(liveRequest) bool) []liveRequest {
 	return out
 }
 
+// listIf snapshots matching requests without removing them. Provisioning cleanup uses this so a failed audit
+// leaves the local provider resource registered and available for a later retry.
+func (l *liveSet) listIf(match func(liveRequest) bool) []liveRequest {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	var out []liveRequest
+	for _, r := range l.m {
+		if match(r) {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
 func (r liveRequest) cancel() {
 	r.p.Cancel(r.pending)
 	clear(r.pending)
 }
 
 // track remembers a pending request whose provider can be cancelled.
-func (s *Service) track(id string, sub Subject, d Descriptor, pending []byte, exp time.Time) {
+func (s *Service) track(id string, sub Subject, d Descriptor, pending []byte, exp time.Time, provisioning ...*provState) {
 	p, err := s.reg.Resolve(d)
 	if err != nil {
 		return
 	}
 	if c, ok := p.(Canceller); ok {
-		s.live.track(id, liveRequest{p: c, pending: pending, key: sub.key(), expires: exp})
+		r := liveRequest{id: id, p: c, pending: pending, key: sub.key(), expires: exp, provisioning: len(provisioning) > 0}
+		if len(provisioning) > 0 {
+			r.prov = provisioning[0]
+		}
+		s.live.track(id, r)
 	}
 }
 

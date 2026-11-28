@@ -8,6 +8,8 @@ import (
 	"errors"
 	"regexp"
 	"time"
+
+	"github.com/24DSO-lab/kubron/internal/identity"
 )
 
 var (
@@ -43,33 +45,78 @@ const (
 
 var clusterIDRe = regexp.MustCompile(`^[A-Za-z0-9_-]{1,80}$`)
 
-// Key identifies a record: one sign-in per cluster and owner.
+// Key identifies a record: one sign-in per cluster and owner (legacy) or per cluster, principal and binding
+// (technical). It is an exclusive tagged union, like Subject.
 type Key struct {
 	ClusterID string
 	Scope     Scope
-	OwnerID   string
+	OwnerID   string // legacy ScopeUser/ScopeTeam only
+
+	Principal identity.PrincipalRef // technical ScopePrincipal only
+	BindingID string                // technical ScopePrincipal only
 }
 
-// Validate checks the key. Identifiers end up in the associated data of the encryption, so they are
-// restricted to values that cannot be confused with each other.
+// Validate checks a LEGACY key (ScopeUser or ScopeTeam). Identifiers end up in the associated data of the
+// encryption, so they are restricted to values that cannot be confused with each other.
+//
+// Validate deliberately rejects every technical key and every key that mixes legacy and technical fields. Stores that
+// predate technical credentials (PostgreSQL until the integration owner adds them) call Validate, so a technical
+// key can never be written there with its principal and binding silently dropped: it fails closed with
+// ErrInvalidKey. Code that supports technical keys calls ValidateAny.
 func (k Key) Validate() error {
 	if !clusterIDRe.MatchString(k.ClusterID) || (k.Scope != ScopeUser && k.Scope != ScopeTeam) ||
-		k.OwnerID == "" || len(k.OwnerID) > maxOwnerIDLen {
+		k.OwnerID == "" || len(k.OwnerID) > maxOwnerIDLen || k.hasTechnicalFields() {
 		return ErrInvalidKey
 	}
 	return nil
+}
+
+// ValidateAny checks a key as the exclusive tagged union of the Phase 1 Contract Freeze: a legacy key (Validate) or
+// a technical ScopePrincipal key: a Team or Service principal with all identifiers valid, a binding id, and no
+// OwnerID. Partial or mixed combinations are ErrInvalidKey; nothing is inferred or defaulted.
+func (k Key) ValidateAny() error {
+	if k.Scope != ScopePrincipal {
+		return k.Validate()
+	}
+	if !clusterIDRe.MatchString(k.ClusterID) || k.OwnerID != "" || !identity.ValidID(k.BindingID) ||
+		!k.Principal.IsTechnical() || k.Principal.Validate() != nil {
+		return ErrInvalidKey
+	}
+	return nil
+}
+
+// IsPrincipal reports that the key is a technical (ScopePrincipal) key.
+func (k Key) IsPrincipal() bool { return k.Scope == ScopePrincipal }
+
+func (k Key) hasTechnicalFields() bool {
+	return k.Principal != (identity.PrincipalRef{}) || k.BindingID != ""
 }
 
 // Meta is everything about a record except the secret.
 type Meta struct {
 	Key
 	Kind      Kind
-	Principal string
+	Principal string // sub or login of the signed-in identity, for audit (not the technical PrincipalRef: that is Key.Principal)
 	ExpiresAt *time.Time
 	Version   int64
 	UpdatedAt time.Time
 	KeyID     string // identifier of the master key that protects the record
 	EncFormat string // EncEnvelopeV1 or EncLegacyV1
+	// LastAuditEventID is the critical audit event of the last assignment of the credential. Mandatory for every
+	// technical record (Token refuses it unless the event's outcome is CriticalSucceeded); legacy records may leave
+	// it empty. A routine token refresh keeps it: it is not a new assignment.
+	LastAuditEventID string
+}
+
+// ValidateAny checks the key (ValidateAny) and, for a technical record, that LastAuditEventID is a valid identifier.
+func (m Meta) ValidateAny() error {
+	if err := m.Key.ValidateAny(); err != nil {
+		return err
+	}
+	if m.Scope == ScopePrincipal && !identity.ValidID(m.LastAuditEventID) {
+		return ErrInvalidKey
+	}
+	return nil
 }
 
 // Record is a stored sign-in. Secret is the plaintext (refresh token, password, ...); the store encrypts it.
@@ -96,6 +143,37 @@ type CredentialStore interface {
 	List(ctx context.Context, ownerID string) ([]Meta, error)
 	// Revoke deletes all records matching the filter (empty fields match anything) and returns their number.
 	Revoke(ctx context.Context, f RevokeFilter) (int, error)
+}
+
+// PrincipalStore is a CredentialStore that also holds technical (ScopePrincipal) records. The file store implements it;
+// the Broker refuses every technical operation on a store that does not (fail closed), because a store without
+// support would drop the principal and the binding of a record.
+type PrincipalStore interface {
+	CredentialStore
+	// ListPrincipal returns the records of one technical principal without decrypting them, ordered by cluster
+	// id and binding id. It never returns legacy records, whatever their OwnerID.
+	ListPrincipal(ctx context.Context, principal identity.PrincipalRef) ([]Meta, error)
+}
+
+// Matches reports whether the key is selected by the filter: every non-empty field must be equal. For a legacy
+// store key the technical fields of the filter are empty, so they match nothing technical by accident.
+func (f RevokeFilter) Matches(k Key) bool {
+	return (f.ClusterID == "" || k.ClusterID == f.ClusterID) &&
+		(f.OwnerID == "" || k.OwnerID == f.OwnerID) &&
+		(f.Scope == "" || k.Scope == f.Scope) &&
+		(f.Principal == (identity.PrincipalRef{}) || k.Principal == f.Principal) &&
+		(f.BindingID == "" || k.BindingID == f.BindingID)
+}
+
+// IsPrincipal reports that the filter targets technical credentials (any technical field is set).
+func (f RevokeFilter) IsPrincipal() bool {
+	return f.Scope == ScopePrincipal || f.Principal != (identity.PrincipalRef{}) || f.BindingID != ""
+}
+
+// ValidatePrincipal checks that a technical filter is exact: ScopePrincipal, a cluster, a Team or Service principal and
+// a binding id, and no OwnerID. Wildcards are not accepted for technical credentials.
+func (f RevokeFilter) ValidatePrincipal() error {
+	return Key{ClusterID: f.ClusterID, Scope: f.Scope, OwnerID: f.OwnerID, Principal: f.Principal, BindingID: f.BindingID}.ValidateAny()
 }
 
 // RekeyReport is the outcome of re-encrypting the stored records with the current master key.
