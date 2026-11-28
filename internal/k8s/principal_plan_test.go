@@ -21,7 +21,6 @@ type principalBroker struct {
 	scriptBroker
 	mu       sync.Mutex
 	subjects []credential.Subject
-	asked    int
 }
 
 func (b *principalBroker) Token(ctx context.Context, s credential.Subject, d credential.Descriptor) (credential.Token, error) {
