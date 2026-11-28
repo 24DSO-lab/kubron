@@ -1,6 +1,6 @@
 # ADR-0057: Версионирование Autonomy Profiles и правила binding
 
-- Статус: принято
+- Статус: Accepted
 - Дата: 2026-11-28
 - Область: Phase 2 — Target & Policy Foundation
 - Связано: ADR-0041, ADR-0042, ADR-0044, ADR-0054, ADR-0056
@@ -46,6 +46,6 @@ Profile и Binding deactivation выполняются через tombstone с E
 
 ## Последствия и ограничения
 
-- Contract Freeze должен выбрать canonical schema/serialization и определить revision ownership для binding.
-- Нужно определить допустимые операции sharing для Profile без изменения owner scope и без выдачи доступа.
-- Нужны tests на profile revision race, binding revoke, scope mismatch, stale evaluation, deletion with references и monotonic restriction.
+- Profile использует canonical constraint schema ADR-0056; Binding имеет собственную revision. В Phase 2 cross-owner sharing запрещён.
+- Допустимые границы привязки Organization-owned и Team-owned Profiles определены в нормативном контракте выше.
+- Обязательные tests: profile revision race, binding revoke, scope mismatch, stale evaluation, deactivation with references и monotonic restriction.
