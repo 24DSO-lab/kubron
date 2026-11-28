@@ -648,9 +648,28 @@ func (s *Service) Sweep(ctx context.Context) (int, error) {
 	for _, r := range s.live.takeIf(func(r liveRequest) bool { return !now.Before(r.expires) }) {
 		r.cancel()
 	}
-	n, err := s.chal.DeleteExpired(ctx, now)
+	expired, err := s.chal.ListExpired(ctx, now)
 	if err != nil {
-		return n, err
+		return 0, err
+	}
+	n := 0
+	for _, rec := range expired {
+		if isProvisioningID(rec.ID) {
+			st, openErr := s.open(rec)
+			if openErr != nil || st.Prov == nil || st.Prov.EventID == "" {
+				// Without the encrypted event id we cannot safely write the matching outcome. Keep the
+				// challenge so an operator/recovery path can resolve it; never turn this into plain expiry.
+				return n, fmt.Errorf("%w: provisioning challenge outcome cannot be identified", audit.ErrOutcomeUnknown)
+			}
+			if err := s.appendOutcome(ctx, st.Prov.EventID, audit.CriticalFailed, 0, "expired"); err != nil {
+				return n, err
+			}
+		}
+		if err := s.chal.Delete(ctx, rec.ID); err != nil {
+			return n, err
+		}
+		s.dropLive(rec.ID)
+		n++
 	}
 	_, err = s.attempts.Sweep(ctx, now.Add(-2*AttemptWindow))
 	return n, err
