@@ -555,11 +555,11 @@ func Run(t *testing.T, newHarness Factory) {
 			t.Fatalf("want 2 delegations after reopen, got %d", len(l))
 		}
 		r := c.D(dels.GetDelegation(ctx, d.ID))
-		if r.State != authorization.DelegationRevoked {
-			t.Errorf("revoked state lost: %+v", r)
+		if r.State != authorization.DelegationRevoked || r.Revision != 2 {
+			t.Errorf("revoked state/revision lost: %+v", r)
 		}
-		if r2 := c.D(dels.GetDelegation(ctx, d2.ID)); r2.State != authorization.DelegationActive {
-			t.Errorf("active state lost: %+v", r2)
+		if r2 := c.D(dels.GetDelegation(ctx, d2.ID)); r2.State != authorization.DelegationActive || r2.Revision != 1 {
+			t.Errorf("active state/revision lost: %+v", r2)
 		}
 	})
 }

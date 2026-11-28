@@ -284,12 +284,15 @@ func (e *GrantEvaluator) evaluate(ctx context.Context, req GrantRequest) (GrantD
 	}
 
 	// 6. TOCTOU: перед выдачей убеждаемся, что principal и использованные записи не изменились.
-	if dec, err := e.recheck(ctx, p, grants, del); err != nil || dec != nil {
-		if err != nil {
-			return GrantDecision{}, err
-		}
+// Для delegation наружу возвращается только объект, заново прочитанный и подтверждённый ниже.
+	checkedDel, dec, err := e.recheck(ctx, p, grants, del)
+	if err != nil {
+		return GrantDecision{}, err
+	}
+	if dec != nil {
 		return *dec, nil
 	}
+	del = checkedDel
 
 	out := GrantDecision{Granted: true, ReasonCode: ReasonGranted}
 	for _, g := range grants {
@@ -298,6 +301,7 @@ func (e *GrantEvaluator) evaluate(ctx context.Context, req GrantRequest) (GrantD
 	}
 	if del != nil {
 		out.DelegationID = del.ID
+		out.DelegationRevision = del.Revision
 	}
 	return out, nil
 }
@@ -403,29 +407,57 @@ func (e *GrantEvaluator) qualifyingGrants(ctx context.Context, p identity.Princi
 
 // recheck повторно читает principal и использованные записи по ID: изменившаяся revision, отзыв,
 // приостановка, исчезновение или истечение за время оценки — отказ (stale_revision и т.п.).
-func (e *GrantEvaluator) recheck(ctx context.Context, p identity.PrincipalRef, grants []Grant, del *Delegation) (*GrantDecision, error) {
+func (e *GrantEvaluator) recheck(ctx context.Context, p identity.PrincipalRef, grants []Grant, del *Delegation) (*Delegation, *GrantDecision, error) {
 	if dec, err := e.checkPrincipal(ctx, p); err != nil || dec != nil {
-		return dec, err
+		return nil, dec, err
 	}
 	now := e.d.Clock.Now().UTC()
-	stale := func(reason string) (*GrantDecision, error) {
+	stale := func(reason string) (*Delegation, *GrantDecision, error) {
 		d := deny(reason)
-		return &d, nil
+		return nil, &d, nil
 	}
+	var checkedDel *Delegation
 	if del != nil {
 		cur, err := e.d.Delegations.GetDelegation(ctx, del.ID)
 		switch {
 		case errors.Is(err, ErrNotFound):
 			return stale(ReasonStaleRevision)
 		case err != nil:
-			return nil, unavailable("delegation store")
+			return nil, nil, unavailable("delegation store")
 		}
-		if cur.Revision != del.Revision || cur.State != DelegationActive {
+		// ID, principal, owner Team and revision must describe the exact record selected from the list.
+		// Never copy the revision from the stale list result into GrantDecision.
+		if cur.ID != del.ID || cur.ServicePrincipal != p || cur.OrgID != p.OrgID ||
+			cur.OwnerTeamID != del.OwnerTeamID || cur.Revision != del.Revision {
 			return stale(ReasonStaleRevision)
+		}
+		if cur.State != DelegationActive {
+			switch cur.State {
+			case DelegationRevoked:
+				return stale(ReasonDelegationRevoked)
+			case DelegationSuspended:
+				return stale(ReasonDelegationSuspended)
+			default:
+				return stale(ReasonDelegationInvalid)
+			}
+		}
+		if cur.validate(true) != nil {
+			return stale(ReasonDelegationInvalid)
 		}
 		if !now.Before(cur.ExpiresAt) {
 			return stale(ReasonDelegationExpired)
 		}
+		// Critical Audit is checked again for the exact object returned by GetDelegation.
+		// A successful list-time audit check alone is not sufficient for a positive decision.
+		ok, err := e.confirmed(ctx, cur.OrgID, cur.LastAuditEventID)
+		if err != nil {
+			return nil, nil, err
+		}
+		if !ok {
+			return stale(ReasonDelegationAuditUnconfirmed)
+		}
+		cur = cur.Canonical()
+		checkedDel = &cur
 	}
 	for _, g := range grants {
 		cur, err := e.d.Grants.GetGrant(ctx, g.ID)
@@ -433,7 +465,7 @@ func (e *GrantEvaluator) recheck(ctx context.Context, p identity.PrincipalRef, g
 		case errors.Is(err, ErrNotFound):
 			return stale(ReasonStaleRevision)
 		case err != nil:
-			return nil, unavailable("grant store")
+			return nil, nil, unavailable("grant store")
 		}
 		if cur.Revision != g.Revision || cur.State != GrantActive {
 			return stale(ReasonStaleRevision)
@@ -442,7 +474,7 @@ func (e *GrantEvaluator) recheck(ctx context.Context, p identity.PrincipalRef, g
 			return stale(ReasonGrantExpired)
 		}
 	}
-	return nil, nil
+	return checkedDel, nil, nil
 }
 
 // identityResolver — подмножество identity.Service, нужное адаптеру состояния.

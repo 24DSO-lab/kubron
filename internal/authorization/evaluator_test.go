@@ -27,7 +27,8 @@ func TestEvaluator_GrantAllowsExactTuple(t *testing.T) {
 	w := newWorld(t)
 	g := w.grant(tpA, []authorization.OperationAction{restart}, org("c-a1"), authorization.ConstraintSet{})
 	d := w.wantGranted(tpA, restart, "c-a1")
-	if len(d.GrantIDs) != 1 || d.GrantIDs[0] != g.ID || d.GrantRevisions[0] != g.Revision || d.DelegationID != "" {
+	if len(d.GrantIDs) != 1 || d.GrantIDs[0] != g.ID || d.GrantRevisions[0] != g.Revision ||
+		d.DelegationID != "" || d.DelegationRevision != 0 {
 		t.Fatalf("decision must carry grant ID/revision: %+v", d)
 	}
 	w.wantDenied(tpA, scale, "c-a1", authorization.ReasonGrantRequired)   // другое действие
@@ -294,7 +295,8 @@ func TestEvaluator_ServiceRequiresDelegationPerTeam(t *testing.T) {
 	// delegation только от team-a
 	dA := w.delegate("team-a", svc1, []authorization.OperationAction{restart}, authorization.TargetScope{OrgID: "org-a", TeamIDs: []string{"team-a"}})
 	d := w.wantGranted(svc1, restart, "c-a1")
-	if d.DelegationID != dA.ID || len(d.GrantIDs) != 1 || d.GrantIDs[0] != g.ID {
+	if d.DelegationID != dA.ID || d.DelegationRevision != dA.Revision ||
+		len(d.GrantIDs) != 1 || d.GrantIDs[0] != g.ID {
 		t.Fatalf("decision must carry delegation ID: %+v", d)
 	}
 	w.wantDenied(svc1, restart, "c-b1", authorization.ReasonDelegationRequired) // team-b не соглашалась
@@ -735,8 +737,8 @@ func TestEvaluator_RevisionRaceFailsClosed(t *testing.T) {
 			}
 		}})
 		got, err := ev.EvaluateKubronGrant(ctx, authorization.GrantRequest{Principal: svc1, OperationID: "workload", ActionID: "restart", Target: authorization.TargetRef{ClusterID: "c-a1"}})
-		if err != nil || got.Granted {
-			t.Fatalf("delegation revocation race must deny: %+v err=%v", got, err)
+		if err != nil || got.Granted || got.DelegationID != "" || got.DelegationRevision != 0 {
+			t.Fatalf("delegation revocation race must deny without permission metadata: %+v err=%v", got, err)
 		}
 	})
 	t.Run("principal revoked during evaluation", func(t *testing.T) {
@@ -754,6 +756,75 @@ func TestEvaluator_RevisionRaceFailsClosed(t *testing.T) {
 		d, err := w.eval(tpA, restart, "c-a1")
 		if err != nil || d.Granted {
 			t.Fatalf("principal revocation race must deny: %+v err=%v", d, err)
+		}
+	})
+
+	t.Run("delegation revision changes after listing", func(t *testing.T) {
+		w := newWorld(t)
+		w.grant(svc1, []authorization.OperationAction{restart}, org("c-a1"), authorization.ConstraintSet{})
+		d := w.delegate("team-a", svc1, []authorization.OperationAction{restart}, org("c-a1"))
+		ev := w.evaluator(w.backend, afterListDelegations{DelegationReader: w.backend, fn: func() {
+			if _, err := w.svc.UpdateDelegation(ctx, authorization.UpdateDelegationRequest{
+				Actor: adminA, ID: d.ID, ExpectedRevision: d.Revision, Actions: d.Actions, Targets: d.Targets,
+				Constraints: d.Constraints, ExpiresAt: d.ExpiresAt, MutationID: w.mut(),
+			}); err != nil {
+				t.Error(err)
+			}
+		}})
+		got, err := ev.EvaluateKubronGrant(ctx, authorization.GrantRequest{Principal: svc1, OperationID: "workload", ActionID: "restart", Target: authorization.TargetRef{ClusterID: "c-a1"}})
+		if err != nil || got.Granted || got.ReasonCode != authorization.ReasonStaleRevision ||
+			got.DelegationID != "" || got.DelegationRevision != 0 {
+			t.Fatalf("changed delegation revision must deny without permission metadata: %+v err=%v", got, err)
+		}
+	})
+
+	t.Run("delegation suspended after listing", func(t *testing.T) {
+		w := newWorld(t)
+		w.grant(svc1, []authorization.OperationAction{restart}, org("c-a1"), authorization.ConstraintSet{})
+		d := w.delegate("team-a", svc1, []authorization.OperationAction{restart}, org("c-a1"))
+		ev := w.evaluator(w.backend, afterListDelegations{DelegationReader: w.backend, fn: func() {
+			if _, err := w.svc.SuspendDelegation(ctx, authorization.DelegationTransitionRequest{Actor: adminA, ID: d.ID, ExpectedRevision: d.Revision, MutationID: w.mut()}); err != nil {
+				t.Error(err)
+			}
+		}})
+		got, err := ev.EvaluateKubronGrant(ctx, authorization.GrantRequest{Principal: svc1, OperationID: "workload", ActionID: "restart", Target: authorization.TargetRef{ClusterID: "c-a1"}})
+		if err != nil || got.Granted || got.DelegationID != "" || got.DelegationRevision != 0 {
+			t.Fatalf("suspended delegation must deny: %+v err=%v", got, err)
+		}
+	})
+
+	t.Run("delegation expires during evaluation", func(t *testing.T) {
+		w := newWorld(t)
+		w.grant(svc1, []authorization.OperationAction{restart}, org("c-a1"), authorization.ConstraintSet{})
+		d := w.delegate("team-a", svc1, []authorization.OperationAction{restart}, org("c-a1"))
+		ev := w.evaluator(w.backend, afterListDelegations{DelegationReader: w.backend, fn: func() { w.clk.Set(d.ExpiresAt) }})
+		got, err := ev.EvaluateKubronGrant(ctx, authorization.GrantRequest{Principal: svc1, OperationID: "workload", ActionID: "restart", Target: authorization.TargetRef{ClusterID: "c-a1"}})
+		if err != nil || got.Granted || got.ReasonCode != authorization.ReasonDelegationExpired ||
+			got.DelegationID != "" || got.DelegationRevision != 0 {
+			t.Fatalf("expired delegation must deny: %+v err=%v", got, err)
+		}
+	})
+
+	t.Run("unrelated delegation changes do not invalidate selected delegation", func(t *testing.T) {
+		w := newWorld(t)
+		w.grant(svc1, []authorization.OperationAction{restart}, org("c-a1"), authorization.ConstraintSet{})
+		d1 := w.delegate("team-a", svc1, []authorization.OperationAction{restart}, org("c-a1"))
+		d2 := w.delegate("team-a", svc1, []authorization.OperationAction{restart}, org("c-a1"))
+		selected, other := d1, d2
+		if other.ID < selected.ID {
+			selected, other = other, selected
+		}
+		ev := w.evaluator(w.backend, afterListDelegations{DelegationReader: w.backend, fn: func() {
+			if _, err := w.svc.UpdateDelegation(ctx, authorization.UpdateDelegationRequest{
+				Actor: adminA, ID: other.ID, ExpectedRevision: other.Revision, Actions: other.Actions, Targets: other.Targets,
+				Constraints: other.Constraints, ExpiresAt: other.ExpiresAt, MutationID: w.mut(),
+			}); err != nil {
+				t.Error(err)
+			}
+		}})
+		got, err := ev.EvaluateKubronGrant(ctx, authorization.GrantRequest{Principal: svc1, OperationID: "workload", ActionID: "restart", Target: authorization.TargetRef{ClusterID: "c-a1"}})
+		if err != nil || !got.Granted || got.DelegationID != selected.ID || got.DelegationRevision != selected.Revision {
+			t.Fatalf("unrelated delegation update must not invalidate selected one: %+v err=%v", got, err)
 		}
 	})
 }
@@ -778,6 +849,90 @@ func (a afterListDelegations) ListDelegations(c context.Context, s identity.Prin
 	l, err := a.DelegationReader.ListDelegations(c, s, team)
 	a.fn()
 	return l, err
+}
+
+// delegationGetHook injects a read failure or mutates a dependency after GetDelegation returns.
+type delegationGetHook struct {
+	authorization.DelegationReader
+	afterGet func(authorization.Delegation)
+	err      error
+}
+
+func (h delegationGetHook) GetDelegation(ctx context.Context, id string) (authorization.Delegation, error) {
+	d, err := h.DelegationReader.GetDelegation(ctx, id)
+	if h.afterGet != nil {
+		h.afterGet(d)
+	}
+	if h.err != nil {
+		return authorization.Delegation{}, h.err
+	}
+	return d, err
+}
+
+// reverseDelegations proves that selection is based on ID, not backend iteration order.
+type reverseDelegations struct{ authorization.DelegationReader }
+
+func (r reverseDelegations) ListDelegations(ctx context.Context, p identity.PrincipalRef, team string) ([]authorization.Delegation, error) {
+	list, err := r.DelegationReader.ListDelegations(ctx, p, team)
+	for i, j := 0, len(list)-1; i < j; i, j = i+1, j-1 {
+		list[i], list[j] = list[j], list[i]
+	}
+	return list, err
+}
+
+func TestEvaluator_DelegationDecisionRevisionUsesSelectedRecord(t *testing.T) {
+	w := newWorld(t)
+	w.grant(svc1, []authorization.OperationAction{restart}, org("c-a1"), authorization.ConstraintSet{})
+	d1 := w.delegate("team-a", svc1, []authorization.OperationAction{restart}, org("c-a1"))
+	d2 := w.delegate("team-a", svc1, []authorization.OperationAction{restart}, org("c-a1"))
+	selected := d1
+	if d2.ID < selected.ID {
+		selected = d2
+	}
+	updated, err := w.svc.UpdateDelegation(ctx, authorization.UpdateDelegationRequest{
+		Actor: adminA, ID: selected.ID, ExpectedRevision: selected.Revision, Actions: selected.Actions,
+		Targets: selected.Targets, Constraints: selected.Constraints, ExpiresAt: selected.ExpiresAt, MutationID: w.mut(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ev := w.evaluator(w.backend, reverseDelegations{DelegationReader: w.backend})
+	got, err := ev.EvaluateKubronGrant(ctx, authorization.GrantRequest{Principal: svc1, OperationID: "workload", ActionID: "restart", Target: authorization.TargetRef{ClusterID: "c-a1"}})
+	if err != nil || !got.Granted || got.DelegationID != selected.ID || got.DelegationRevision != updated.Revision {
+		t.Fatalf("ID and revision must come from the same deterministically selected record: %+v err=%v; selected=%+v", got, err, updated)
+	}
+}
+
+func TestEvaluator_DelegationRecheckFailsClosed(t *testing.T) {
+	t.Run("backend unavailable on repeated read", func(t *testing.T) {
+		w := newWorld(t)
+		w.grant(svc1, []authorization.OperationAction{restart}, org("c-a1"), authorization.ConstraintSet{})
+		w.delegate("team-a", svc1, []authorization.OperationAction{restart}, org("c-a1"))
+		ev := w.evaluator(w.backend, delegationGetHook{DelegationReader: w.backend, err: authorization.ErrUnavailable})
+		got, err := ev.EvaluateKubronGrant(ctx, authorization.GrantRequest{Principal: svc1, OperationID: "workload", ActionID: "restart", Target: authorization.TargetRef{ClusterID: "c-a1"}})
+		if !errors.Is(err, authorization.ErrUnavailable) || got.Granted || got.ReasonCode != authorization.ReasonDependencyUnavailable ||
+			got.DelegationID != "" || got.DelegationRevision != 0 {
+			t.Fatalf("repeated read failure must fail closed with ErrUnavailable: %+v err=%v", got, err)
+		}
+	})
+
+	t.Run("critical audit outcome changes before final confirmation", func(t *testing.T) {
+		w := newWorld(t)
+		w.grant(svc1, []authorization.OperationAction{restart}, org("c-a1"), authorization.ConstraintSet{})
+		w.delegate("team-a", svc1, []authorization.OperationAction{restart}, org("c-a1"})
+		ev := w.evaluator(w.backend, delegationGetHook{DelegationReader: w.backend, afterGet: func(cur authorization.Delegation) {
+			w.rec.mu.Lock()
+			out := w.rec.outcomes[cur.LastAuditEventID]
+			out.Result = audit.CriticalUnknown
+			w.rec.outcomes[cur.LastAuditEventID] = out
+			w.rec.mu.Unlock()
+		}})
+		got, err := ev.EvaluateKubronGrant(ctx, authorization.GrantRequest{Principal: svc1, OperationID: "workload", ActionID: "restart", Target: authorization.TargetRef{ClusterID: "c-a1"}})
+		if err != nil || got.Granted || got.ReasonCode != authorization.ReasonDelegationAuditUnconfirmed ||
+			got.DelegationID != "" || got.DelegationRevision != 0 {
+			t.Fatalf("unconfirmed final audit outcome must deny: %+v err=%v", got, err)
+		}
+	})
 }
 
 // ---------- критичный аудит и пригодность записей ----------

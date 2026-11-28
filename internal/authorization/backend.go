@@ -164,15 +164,16 @@ type GrantRequest struct {
 // передаваться/храниться как доказательство доступа: каждая защищённая операция обязана оценивать заново.
 //
 // Granted=true гарантированно только при err == nil; при любой ошибке Granted=false.
-// Структура заморожена Contract Freeze: revision delegation в ней не возвращается (используемая revision
-// проверяется Evaluator'ом внутри при перепроверке; расширение GrantDecision — предложение интеграционному
-// владельцу, см. known gaps).
+// Для ServicePrincipal положительное решение содержит ID и revision одной delegation,
+// подтверждённой повторным чтением через DelegationReader.GetDelegation. Для TeamPrincipal
+// delegation не требуется, поэтому оба поля остаются нулевыми.
 type GrantDecision struct {
-	Granted        bool
-	ReasonCode     string
-	GrantIDs       []string // отсортированы; GrantRevisions[i] — revision GrantIDs[i]
-	DelegationID   string   // для ServicePrincipal; при нескольких подходящих — наименьший ID
-	GrantRevisions []uint64
+	Granted            bool
+	ReasonCode         string
+	GrantIDs           []string // отсортированы; GrantRevisions[i] — revision GrantIDs[i]
+	GrantRevisions     []uint64
+	DelegationID       string // для ServicePrincipal; при нескольких подходящих — наименьший ID
+	DelegationRevision uint64 // revision именно DelegationID, подтверждённая повторным чтением
 }
 
 // Evaluator — вычисление Kubron grant eligibility.

@@ -406,7 +406,8 @@ func (w *world) wantDenied(p identity.PrincipalRef, a authorization.OperationAct
 	if err != nil {
 		w.t.Fatalf("deny must not be an error: %v", err)
 	}
-	if d.Granted || d.ReasonCode != reason || len(d.GrantIDs) != 0 || d.DelegationID != "" {
+	if d.Granted || d.ReasonCode != reason || len(d.GrantIDs) != 0 || len(d.GrantRevisions) != 0 ||
+		d.DelegationID != "" || d.DelegationRevision != 0 {
 		w.t.Fatalf("want denied with %q, got %+v", reason, d)
 	}
 	return d
