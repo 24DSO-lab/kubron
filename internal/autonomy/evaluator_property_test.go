@@ -246,3 +246,12 @@ func TestRevisionVectorDeduplicatesSharedProfileRevision(t *testing.T) {
 		t.Fatalf("both binding revisions must remain represented: %+v", decision.RevisionVector)
 	}
 }
+
+func TestUnavailableTargetGroupSourceIsIgnoredWhenNoGroupApplies(t *testing.T) {
+	in := baseInput()
+	in.TargetGroupSource = SourceUnavailable
+	decision := Evaluate(in)
+	if !decision.Allowed {
+		t.Fatalf("unrequested target-group source must not block an unrelated evaluation: %+v", decision)
+	}
+}
