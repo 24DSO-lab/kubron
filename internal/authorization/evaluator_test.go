@@ -919,7 +919,7 @@ func TestEvaluator_DelegationRecheckFailsClosed(t *testing.T) {
 	t.Run("critical audit outcome changes before final confirmation", func(t *testing.T) {
 		w := newWorld(t)
 		w.grant(svc1, []authorization.OperationAction{restart}, org("c-a1"), authorization.ConstraintSet{})
-		w.delegate("team-a", svc1, []authorization.OperationAction{restart}, org("c-a1"})
+		w.delegate("team-a", svc1, []authorization.OperationAction{restart}, org("c-a1"))
 		ev := w.evaluator(w.backend, delegationGetHook{DelegationReader: w.backend, afterGet: func(cur authorization.Delegation) {
 			w.rec.mu.Lock()
 			out := w.rec.outcomes[cur.LastAuditEventID]

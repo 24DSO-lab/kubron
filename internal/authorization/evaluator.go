@@ -285,7 +285,7 @@ func (e *GrantEvaluator) evaluate(ctx context.Context, req GrantRequest) (GrantD
 	}
 
 	// 6. TOCTOU: перед выдачей убеждаемся, что principal и использованные записи не изменились.
-// Для delegation наружу возвращается только объект, заново прочитанный и подтверждённый ниже.
+	// Для delegation наружу возвращается только объект, заново прочитанный и подтверждённый ниже.
 	checkedDel, dec, err := e.recheck(ctx, p, grants, del)
 	if err != nil {
 		return GrantDecision{}, err
