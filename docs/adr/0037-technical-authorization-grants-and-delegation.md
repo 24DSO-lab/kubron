@@ -1,6 +1,6 @@
 # ADR-0037: Grants технических principals и Cross-Team Delegation
 
-- Статус: принято (архитектурная модель; runtime-реализация не выполнена)
+- Статус: Implemented (2026-11-28)
 - Дата: 2026-11-27
 - Связано: ADR-0012, ADR-0026, ADR-0035; Phase 1 Contract Freeze; Cross-Team Delegation decision
 
@@ -29,4 +29,5 @@ Kubernetes RBAC не заменяет авторизацию внутри Kubron
 - Авторизация повторно вычисляется при каждой защищённой операции; stale positive cache запрещён.
 - Изменение grants/delegation влияет на последующие проверки; оно не расширяет старый immutable Plan.
 - Все изменения отдельно аудируются.
-- Точные Go-контракты и алгоритм evaluation определены в Phase 1 Contract Freeze.
+
+Реализация Phase 1 foundation интегрирована в `refactor`; по состоянию на 2026-11-28 владелец проекта подтвердил зелёный CI для завершённых lanes. Этот статус не разрешает Kubernetes write actions и не означает реализации Target/Policy, Plans или Run Engine.

@@ -1,6 +1,6 @@
 # ADR-0036: Subject-aware Credential Resolution и ConfigFor
 
-- Статус: принято (архитектурная модель; runtime-реализация не выполнена)
+- Статус: Implemented (2026-11-28)
 - Дата: 2026-11-27
 - Связано: ADR-0008, ADR-0018, ADR-0026; ADR-0035; Phase 1 Contract Freeze
 
@@ -26,5 +26,5 @@
 - Требуется проверить совместимость ключей и AAD до изменения формата хранилища.
 - Миграция legacy records не должна переинтерпретировать или терять их scope.
 - Credential resolution не принимает решение о Kubron grants; оно остаётся отдельной обязательной проверкой.
-- Точные Go-типы и ограничения совместимости определены в Phase 1 Contract Freeze.
-- Этот ADR не добавляет Kubernetes write actions и не утверждает, что технический credential path уже реализован.
+
+Реализация Phase 1 foundation интегрирована в `refactor`; по состоянию на 2026-11-28 владелец проекта подтвердил зелёный CI для завершённых lanes. Этот статус не разрешает Kubernetes write actions и не означает реализации Target/Policy, Plans или Run Engine.
