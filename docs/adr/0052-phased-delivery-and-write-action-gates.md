@@ -2,7 +2,7 @@
 
 - Статус: принято (ретроспективная фиксация согласованной последовательности)
 - Дата: 2026-11-28
-- Связано: ADR-0035…0051; Phase 0 Executable Contracts; Phase 1 Contract Freeze; Phase 1 Engineering Package; Executable Platform Architecture Specification
+- Связано: ADR-0035…0051
 
 ## Контекст
 
@@ -10,7 +10,7 @@
 
 ## Решение
 
-Реализация идёт через последовательные фазы с отдельными contract/ADR gates:
+Реализация идёт через последовательные фазы. Постоянные архитектурные решения и их статусы фиксируются в ADR; implementation handoff оформляется временными developer prompts:
 
 1. **Architecture baseline / Phase 0:** границы доменов, package dependency graph, operation context, persistence/atomicity requirements, Desktop/Web parity, failure/threat model.
 2. **Identity & Authorization / Phase 1:** User/Team/Service principals, subject-aware credentials, grants/delegation, durable critical audit. Phase 1 не разрешает новые Kubernetes write actions.
@@ -20,7 +20,7 @@
 6. **Restricted Assisted writes / Phase 5:** только ограниченный allowlist mutating Actions с action-specific preconditions, critical audit intent, verification, retry/recovery и security review.
 7. **Policy-based Autonomy / Phase 6:** только ограниченные low-risk Actions, scopes, budgets, time windows и explicit policy enablement; staged rollout и kill switch.
 8. **Cross-cluster and Goal-based / Phase 7:** parent/sub-runs, per-cluster identities, waves/blast-radius, partial outcomes и Goal decomposition в typed Actions.
-9. Фазы могут иметь параллельные implementation lanes только после заморозки shared contracts и явного file ownership. Параллельная работа не может менять frozen contracts независимо.
+9. Фазы могут иметь параллельные implementation lanes только после принятия общих ADR и явного file ownership. Параллельная работа не может менять принятые архитектурные решения независимо; изменения сначала вносятся в соответствующие ADR.
 10. Переход между фазами требует acceptance evidence: unit/contract/integration/E2E tests, failure injection, security review, Desktop/Web parity и подтверждённый CI. Зелёный CI сам по себе не доказывает архитектурную полноту, но является обязательным gate.
 11. Новая mutating Action не включается в production allowlist только потому, что её adapter реализован. Она должна пройти все применимые gates ADR-0043…0047 и иметь отдельный documented risk/verification/recovery contract.
 12. Никакой phase completion не означает автоматического включения Autonomous mode. Observe остаётся default; Assisted/Autonomous включаются только явной политикой и в поддерживаемом scope.
@@ -36,7 +36,7 @@
 
 ## Последствия
 
-- Каждая фаза имеет собственные ADR/contract freeze, implementation handoff и exit criteria.
-- Следующий engineering package после интеграции Phase 1 — Target & Policy Foundation.
-- Phase 3 включает нашу задачу Atomic Plan Commit, но не подменяет Phase 2 prerequisites.
+- Контракт фазы содержится в связанных принятых ADR. Отдельные Contract Freeze, Engineering Package и постоянные architecture documents не создаются.
+- Для активной реализации используются временные developer prompts; после review, зелёного CI и интеграции prompts удаляются, а статусы ADR обновляются.
+- Phase 3 включает задачу Atomic Plan Commit, но не подменяет Phase 2 prerequisites.
 - Write actions и Autonomous Mode остаются заблокированными до прохождения всех соответствующих gates.

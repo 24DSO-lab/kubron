@@ -2,7 +2,7 @@
 
 - Статус: предложено (требует реализации и concurrency proof)
 - Дата: 2026-11-28
-- Связано: ADR-0035, ADR-0037, ADR-0038, ADR-0040…0044; Phase 1 Contract Freeze; Lane C Authorization
+- Связано: ADR-0035, ADR-0037, ADR-0038, ADR-0040…0044; ADR-0035…0038
 
 ## Контекст
 
