@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **SSO core:** universal OIDC Authorization Code + PKCE core, encrypted stateless sign-in flow, identity and group-role extraction (ADR-0059).
+- **OIDC web sign-in:** the web server now supports browser OIDC login and callback, creates standard Kubron sessions, exposes SSO capabilities in `AuthStatus`, and can disable local password login.
 
 ## [1.3.0] - 2026-11-26
 
