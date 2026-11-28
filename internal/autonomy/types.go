@@ -186,7 +186,7 @@ type Binding struct {
 
 func (p Policy) Validate() error {
 	if !validID(p.ID) || p.Revision == 0 { return invalid("Policy") }
-	if err := p.Owner.Validate(); err != nil { return err }; if err := p.Scope.Validate(); err != nil { return err }
+	if err := p.Owner.Validate(); err != nil { return err }; if err := p.Scope.Validate(); err != nil { return err }; if !scopeWithinOwner(p.Scope,p.Owner) { return invalid("Policy.Owner/Scope") }
 	if err := p.Constraints.Validate(); err != nil { return err }; if err := p.Provenance.Validate(); err != nil { return err }
 	if p.Lifecycle != Active && p.Lifecycle != Deactivated { return invalid("Policy.Lifecycle") }; return nil
 }
@@ -198,7 +198,7 @@ func (p Profile) Validate() error {
 }
 func (b Binding) Validate() error {
 	if !validID(b.ID) || !validID(b.ProfileID) || b.Revision == 0 { return invalid("Binding") }
-	if err := b.Owner.Validate(); err != nil { return err }; if err := b.Scope.Validate(); err != nil { return err }
+	if err := b.Owner.Validate(); err != nil { return err }; if err := b.Scope.Validate(); err != nil { return err }; if !scopeWithinOwner(b.Scope,b.Owner) { return invalid("Binding.Owner/Scope") }
 	if err := b.Provenance.Validate(); err != nil { return err }
 	if b.Lifecycle != Active && b.Lifecycle != Deactivated { return invalid("Binding.Lifecycle") }; return nil
 }
@@ -214,22 +214,28 @@ func (m MutationMeta) Validate() error {
 type PolicyRepository interface {
 	CreatePolicy(ctx context.Context, value Policy) error
 	GetPolicy(ctx context.Context, owner OwnerScope, id string) (Policy, error)
-	UpdatePolicy(ctx Context, owner OwnerScope, id string, expectedRevision uint64, next Policy) (Policy, error)
-	DeactivatePolicy(ctx Context, owner OwnerScope, id string, expectedRevision uint64, meta MutationMeta) (Policy, error)
+	UpdatePolicy(ctx context.Context, owner OwnerScope, id string, expectedRevision uint64, next Policy) (Policy, error)
+	DeactivatePolicy(ctx context.Context, owner OwnerScope, id string, expectedRevision uint64, meta MutationMeta) (Policy, error)
 }
 type ProfileRepository interface {
-	CreateProfile(ctx Context, value Profile) error
-	GetProfile(ctx Context, owner OwnerScope, id string) (Profile, error)
-	UpdateProfile(ctx Context, owner OwnerScope, id string, expectedRevision uint64, next Profile) (Profile, error)
-	DeactivateProfile(ctx Context, owner OwnerScope, id string, expectedRevision uint64, meta MutationMeta) (Profile, error)
+	CreateProfile(ctx context.Context, value Profile) error
+	GetProfile(ctx context.Context, owner OwnerScope, id string) (Profile, error)
+	UpdateProfile(ctx context.Context, owner OwnerScope, id string, expectedRevision uint64, next Profile) (Profile, error)
+	DeactivateProfile(ctx context.Context, owner OwnerScope, id string, expectedRevision uint64, meta MutationMeta) (Profile, error)
 }
 type BindingRepository interface {
-	CreateBinding(ctx Context, value Binding) error
-	GetBinding(ctx Context, owner OwnerScope, id string) (Binding, error)
-	UpdateBinding(ctx Context, owner OwnerScope, id string, expectedRevision uint64, next Binding) (Binding, error)
-	DeactivateBinding(ctx Context, owner OwnerScope, id string, expectedRevision uint64, meta MutationMeta) (Binding, error)
+	CreateBinding(ctx context.Context, value Binding) error
+	GetBinding(ctx context.Context, owner OwnerScope, id string) (Binding, error)
+	UpdateBinding(ctx context.Context, owner OwnerScope, id string, expectedRevision uint64, next Binding) (Binding, error)
+	DeactivateBinding(ctx context.Context, owner OwnerScope, id string, expectedRevision uint64, meta MutationMeta) (Binding, error)
 }
 
+
+func scopeWithinOwner(scope ScopeRef, owner OwnerScope) bool {
+	if scope.OrganizationID != owner.OrganizationID { return false }
+	if owner.Kind == OwnerOrganization { return true }
+	return owner.Kind == OwnerTeam && scope.TeamID == owner.TeamID
+}
 
 func validID(s string) bool {
 	if s == "" || len(s) > 128 { return false }
