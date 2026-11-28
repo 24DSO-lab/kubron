@@ -40,8 +40,10 @@ type Input struct {
 	Action *ActionRef
 	Mutating bool
 	Risk uint8
+	RiskKnown bool
 	ApprovalFactsKnown bool
 	SatisfiedApprovals []string
+	BudgetFactsKnown bool
 	BudgetAvailable bool
 	TargetGroupID string
 	TargetGroupRevision uint64
@@ -139,10 +141,10 @@ func Evaluate(in Input) Decision {
 	if conflict { addReason("constraints_conflict"); return finalize(d) }
 	d.Effective = effective
 	d.Mode = effective.Mode
-	if in.Risk > effective.MaxRisk { addReason("risk_exceeded") }
+	if in.Mutating && !in.RiskKnown { addReason("risk_exceeded"); addUnknown("action_risk") } else if in.RiskKnown && in.Risk > effective.MaxRisk { addReason("risk_exceeded") }
 	if in.Mutating && in.Action == nil { addReason("action_not_allowed"); addUnknown("exact_action_reference") }
 	if in.Action != nil {
-		if in.Action.Validate() != nil { addReason("action_not_allowed"); addUnknown("action_reference") } else {
+		if in.Action.Validate() != nil || (in.Scope.Kind == ScopeAction && (in.Scope.ActionID != in.Action.ID || in.Scope.ActionVersion != in.Action.Version)) { addReason("action_not_allowed"); addUnknown("action_reference") } else {
 			for _, a := range effective.DeniedActions { if a.Equal(*in.Action) { addReason("action_not_allowed") } }
 			if effective.AllowedActions != nil && !containsAction(effective.AllowedActions,*in.Action) { addReason("action_not_allowed") }
 		}
@@ -150,7 +152,7 @@ func Evaluate(in Input) Decision {
 	if len(effective.RequiredApprovals)>0 {
 		if !in.ApprovalFactsKnown { addReason("approval_required"); addUnknown("approval_facts") } else { for _, required := range effective.RequiredApprovals { if !containsString(in.SatisfiedApprovals,required) { addReason("approval_required"); break } } }
 	}
-	if !in.BudgetAvailable { addReason("budget_exceeded") }
+	if len(effective.Budgets)>0 { if !in.BudgetFactsKnown { addReason("budget_exceeded"); addUnknown("budget_facts") } else if !in.BudgetAvailable { addReason("budget_exceeded") } }
 	if !withinWindows(in.At,effective.AllowedTimeWindows) { addReason("time_window_closed") }
 	if in.Mutating && (d.Mode == Observe || d.Mode == "") { addReason("mode_restricted") }
 	d.Allowed = len(d.ReasonCodes)==0
