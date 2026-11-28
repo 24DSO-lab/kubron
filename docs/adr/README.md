@@ -3,8 +3,7 @@
 Формат: контекст → решение → альтернативы → последствия. Статусы: предложено, принято, реализовано, заменено.
 
 ADR-0001…ADR-0018 утверждены тимлидом; их статус — `принято`.
-ADR-0019…ADR-0022 оформлены ретроспективно 2026-11-05: проект начинался без ADR, а решения уже были реализованы и описаны
-в `docs/`, CHANGELOG и коде. Они фиксируют то, что есть в репозитории, и прямо отмечают, где причины выбора не записаны.
+ADR-0019…ADR-0022 оформлены ретроспективно 2026-11-05: проект начинался без ADR, а решения уже были реализованы и описаны в `docs/`, CHANGELOG и коде. Они фиксируют то, что есть в репозитории, и прямо отмечают, где причины выбора не записаны.
 ADR-0023 принят 2026-11-07 (Vadim).
 ADR-0029 предложен 2026-11-09. ADR-0030 предложен 2026-11-10 и заменяет его п. 3.
 ADR-0024…ADR-0027 предложены 2026-11-08, приняты и реализованы 2026-11-13 (статус — `реализовано`).
@@ -13,10 +12,33 @@ ADR-0031 предложен 2026-11-14.
 ADR-0032 предложен 2026-11-14.
 ADR-0033 предложен 2026-11-14.
 ADR-0034 предложен 2026-11-14.
-| [0035](0035-technical-principals-and-identity-lifecycle.md) | Технические principals и жизненный цикл Identity |
-| [0036](0036-subject-aware-credential-resolution.md) | Subject-aware credentials и безопасный путь через ConfigFor |
-| [0037](0037-technical-authorization-grants-and-delegation.md) | Grants технических principals и Cross-Team Delegation |
-| [0038](0038-critical-audit-durability.md) | Durable Critical Audit для защищённых mutations |
+
+## Решения после выпуска v1.3.0
+
+v1.3.0 выпущена 2026-11-26. ADR-0035…0038 фиксируют архитектурные решения Phase 1. На момент подготовки этих ADR runtime implementation ещё не была выполнена. По состоянию на 2026-11-28 реализация Phase 1 (Identity, Credential Resolution, Authorization и Critical Audit lanes) интегрирована в ветку `refactor`; CI для интегрированного состояния зелёный. Это не означает, что Target/Policy, Plans, Run Engine или Kubernetes write actions уже реализованы.
+
+ADR-0039…0052 — пакет архитектурной фиксации целевой модели после v1.3.0. Статус каждого ADR указан в самом документе. Принятые ранее решения записаны ретроспективно; новые технические механизмы, для которых ещё требуется доказательство или реализационный дизайн, имеют статус `предложено`.
+
+| № | Решение | Статус |
+|---|---|---|
+| [0035](0035-technical-principals-and-identity-lifecycle.md) | Технические principals и жизненный цикл Identity | принято |
+| [0036](0036-subject-aware-credential-resolution.md) | Subject-aware credentials и безопасный путь через ConfigFor | принято |
+| [0037](0037-technical-authorization-grants-and-delegation.md) | Grants технических principals и Cross-Team Delegation | принято |
+| [0038](0038-critical-audit-durability.md) | Durable Critical Audit для защищённых mutations | принято |
+| [0039](0039-platform-architecture-and-domain-boundaries.md) | Целевая архитектура Kubron и границы доменов | принято |
+| [0040](0040-operation-context-and-resource-identity.md) | Operation Context и Resource Identity | принято |
+| [0041](0041-target-groups-and-scope-resolution.md) | Target Groups и безопасное разрешение scope | принято |
+| [0042](0042-autonomy-policy-and-profiles.md) | Autonomy Policy, иерархия ограничений и Profiles | принято |
+| [0043](0043-typed-action-catalog-and-risk-model.md) | Typed Operation/Action Catalog и модель риска | предложено |
+| [0044](0044-immutable-plans-and-approval-binding.md) | Immutable Plans и привязка Approval | принято |
+| [0045](0045-atomic-plan-commit-and-revision-consistency.md) | Atomic Plan Commit и согласованность Revision | предложено |
+| [0046](0046-durable-run-step-execution-and-concurrency.md) | Durable Run/Step Execution, leases и fencing | принято |
+| [0047](0047-verification-recovery-and-cancellation.md) | Verification, Recovery и безопасная отмена операций | принято |
+| [0048](0048-cross-cluster-orchestration.md) | Cross-cluster Orchestration и независимые sub-runs | принято |
+| [0049](0049-schedule-ownership-and-runtime-semantics.md) | Ownership и runtime semantics расписаний | принято |
+| [0050](0050-retention-and-evidence-lifecycle.md) | Retention Run/Step, Evidence и Critical Audit | принято |
+| [0051](0051-goal-based-operations-and-ai-boundary.md) | Goal-based Operations и границы AI/Intelligence | предложено |
+| [0052](0052-phased-delivery-and-write-action-gates.md) | Поэтапная реализация и gates для Kubernetes write actions | принято |
 
 Новое решение — новый файл `NNNN-slug.md`; принятые ADR не переписываются, а заменяются новыми.
 
