@@ -1275,3 +1275,49 @@ func TestConcurrentProvisioningCancelAcrossServiceInstances(t *testing.T) {
 	out, err := tr.rec.GetOutcome(bg, "o1", by.EventID)
 	if err != nil || out.Result != audit.CriticalFailed { t.Fatalf("outcome = %+v, %v", out, err) }
 }
+
+
+func TestAbandonProvisioningAuditsBeforeDelete(t *testing.T) {
+	tr := newTechRig(t)
+	sub, _ := tr.principal(identity.PrincipalTeam, "abandon-order")
+	by := tr.by("sess-1")
+	res, err := tr.svc.BeginProvisioning(bg, sub, by, desc)
+	if err != nil || res.Challenge == nil { t.Fatalf("BeginProvisioning = %+v, %v", res, err) }
+	tr.authz.deny.Store(true)
+	tr.rec.failOutcome.Store(true)
+	_, err = tr.svc.AnswerProvisioning(bg, sub, by, res.Challenge.ID, answer("alice", pwCanary))
+	if !errors.Is(err, audit.ErrOutcomeUnknown) { t.Fatalf("authority loss = %v, want ErrOutcomeUnknown", err) }
+	if _, err := tr.chal.Get(bg, res.Challenge.ID); err != nil { t.Fatalf("challenge must remain: %v", err) }
+	tr.rec.failOutcome.Store(false)
+	_, err = tr.svc.AnswerProvisioning(bg, sub, by, res.Challenge.ID, answer("alice", pwCanary))
+	if !errors.Is(err, credential.ErrChallengeExpired) { t.Fatalf("retry after authority loss = %v", err) }
+	out, err := tr.rec.GetOutcome(bg, "o1", by.EventID)
+	if err != nil || out.Result != audit.CriticalFailed || out.ReasonCode != "authority_lost" {
+		t.Fatalf("outcome = %+v, %v", out, err)
+	}
+}
+
+func TestConcurrentProvisioningCancelWithinOneService(t *testing.T) {
+	tr := newTechRig(t)
+	sub, _ := tr.principal(identity.PrincipalTeam, "concurrent-local")
+	by := tr.by("sess-1")
+	res, err := tr.svc.BeginProvisioning(bg, sub, by, desc)
+	if err != nil || res.Challenge == nil { t.Fatalf("BeginProvisioning = %+v, %v", res, err) }
+	var wg sync.WaitGroup
+	errs := make([]error, 2)
+	for i := range errs {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			errs[i] = tr.svc.CancelProvisioning(bg, sub, by, res.Challenge.ID)
+		}(i)
+	}
+	wg.Wait()
+	success, refused := 0, 0
+	for _, err := range errs {
+		if err == nil { success++ } else if errors.Is(err, credential.ErrChallengeExpired) { refused++ } else { t.Errorf("unexpected result: %v", err) }
+	}
+	if success != 1 || refused != 1 { t.Fatalf("results = %v; want one success and one CAS refusal", errs) }
+	out, err := tr.rec.GetOutcome(bg, "o1", by.EventID)
+	if err != nil || out.Result != audit.CriticalFailed { t.Fatalf("outcome = %+v, %v", out, err) }
+}
