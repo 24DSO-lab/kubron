@@ -59,7 +59,7 @@ func DeactivateBinding(current Binding, meta MutationMeta) (Binding, error) {
 	current.Lifecycle=Deactivated;current.Revision++;current.Provenance=updatedProvenance(current.Provenance,meta);return current,nil
 }
 func updatedProvenance(p Provenance,m MutationMeta) Provenance {
-	p.ActorKind=m.ActorKind;p.ActorID=m.ActorID;p.UpdatedAt=m.At.UTC().Round(0);return p
+	p.UpdatedByKind=m.ActorKind;p.UpdatedByID=m.ActorID;p.UpdatedAt=m.At.UTC().Round(0);return p
 }
 
 // ValidateBindingProfile prevents owner changes and cross-owner Profile sharing before persistence.
@@ -74,6 +74,6 @@ func ValidateBindingProfile(binding Binding, profile Profile) error {
 
 // NewProvenance creates canonical provenance for a newly created aggregate.
 func NewProvenance(actorKind,actorID string,at time.Time)(Provenance,error){
-	p:=Provenance{ActorKind:actorKind,ActorID:actorID,CreatedAt:at.UTC().Round(0),UpdatedAt:at.UTC().Round(0)}
+	p:=Provenance{CreatedByKind:actorKind,CreatedByID:actorID,UpdatedByKind:actorKind,UpdatedByID:actorID,CreatedAt:at.UTC().Round(0),UpdatedAt:at.UTC().Round(0)}
 	return p,p.Validate()
 }
