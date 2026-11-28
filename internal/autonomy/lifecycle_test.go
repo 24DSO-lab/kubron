@@ -39,5 +39,5 @@ func TestTeamProfileCannotBindAcrossTeams(t *testing.T){
 	prov,_:=NewProvenance("user","actor",now)
 	profile:=Profile{ID:"profile",Owner:owner,Constraints:Constraints{ModeCeiling:Observe,MaxRisk:0},Revision:1,Lifecycle:Active,Provenance:prov}
 	binding:=Binding{ID:"binding",ProfileID:"profile",Owner:owner,Scope:ScopeRef{Kind:ScopeCluster,OrganizationID:"org",TeamID:"team-b",ClusterID:"cluster"},Revision:1,Lifecycle:Active,Provenance:prov}
-	if err:=ValidateBindingProfile(binding,profile);!errors.Is(err,ErrForbidden){t.Fatalf("cross-team binding must be rejected: %v",err)}
+	if err:=ValidateBindingProfile(binding,profile);!errors.Is(err,ErrInvalid){t.Fatalf("cross-team binding must be rejected: %v",err)}
 }
