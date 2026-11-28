@@ -16,6 +16,7 @@ type HandlerOption func(*handlerOptions)
 
 type handlerOptions struct {
 	webOIDCCallback func(context.Context, any, string, string) error
+	sso             *ssoHandlerConfig
 
 	cspReportOnly bool
 	readyz        ReadyzConfig

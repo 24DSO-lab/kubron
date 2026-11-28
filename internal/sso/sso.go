@@ -202,6 +202,7 @@ type FlowState struct {
 	Nonce       string    `json:"n"`
 	Verifier    string    `json:"v"`
 	RedirectURL string    `json:"r"`
+	ReturnTo    string    `json:"return_to,omitempty"`
 	CreatedAt   time.Time `json:"t"`
 }
 
