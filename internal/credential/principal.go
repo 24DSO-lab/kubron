@@ -811,6 +811,60 @@ func (s *Service) deleteProvisioningChallenges(ctx context.Context, ids ...strin
 }
 
 
+// failedProvisioning mirrors the ordinary failed() policy but keeps the provisioning audit invariant:
+// terminal errors are recorded before deleting the challenge; retryable errors merely release the claim.
+func (s *Service) failedProvisioning(ctx context.Context, claimed ChallengeRecord, prov *provState, d Descriptor,
+	a Answer, perr error, isAnswer bool) (Result, error) {
+	switch {
+	case errors.Is(perr, ErrAnswerRejected):
+		if !isAnswer {
+			err := s.finishProvisioningFailure(ctx, prov, "rejected", ErrAnswerRejected, claimed.ID)
+			if errors.Is(err, audit.ErrOutcomeUnknown) {
+				s.release(ctx, claimed)
+			}
+			return Result{}, err
+		}
+		userKey, idpKey := attemptKeys(Subject{Scope: claimed.Scope, OwnerID: claimed.OwnerID}, d)
+		wait, limitErr := s.attempts.Fail(ctx, userKey, idpKey, s.now(), AttemptWindow,
+			MaxUserAnswerFailures, MaxIDPAnswerFailures, AttemptLockout)
+		if limitErr != nil {
+			s.release(ctx, claimed)
+			return Result{}, limitErr
+		}
+		claimed.Attempts++
+		if claimed.Attempts >= MaxAnswerAttempts {
+			err := s.finishProvisioningFailure(ctx, prov, "rejected", ErrAnswerRejected, claimed.ID)
+			if errors.Is(err, audit.ErrOutcomeUnknown) {
+				s.release(ctx, claimed)
+			}
+			if wait > 0 && err == nil {
+				return Result{}, &RateLimitedError{RetryAfter: wait}
+			}
+			return Result{}, err
+		}
+		claimed.Status, claimed.LockedUntil = ChallengeActive, time.Time{}
+		if _, err := s.chal.Swap(ctx, claimed, claimed.Version); err != nil {
+			return Result{}, mapChallengeErr(err)
+		}
+		if wait > 0 {
+			return Result{}, &RateLimitedError{RetryAfter: wait}
+		}
+		return Result{}, ErrAnswerRejected
+	case errors.Is(perr, ErrInvalidAnswer):
+		s.release(ctx, claimed)
+		return Result{}, ErrInvalidAnswer
+	case errors.Is(perr, ErrChallengeExpired), errors.Is(perr, ErrInvalidGrant), errors.Is(perr, ErrUnsupported):
+		err := s.finishProvisioningFailure(ctx, prov, reasonFor(perr), scrub(perr, d, a, nil), claimed.ID)
+		if errors.Is(err, audit.ErrOutcomeUnknown) {
+			s.release(ctx, claimed)
+		}
+		return Result{}, err
+	default:
+		s.release(ctx, claimed)
+		return Result{}, scrub(perr, d, a, nil)
+	}
+}
+
 // cancelPending releases what a provider holds for a request that will not be stored.
 func (s *Service) cancelPending(d Descriptor, pending []byte) {
 	if p, err := s.reg.Resolve(d); err == nil {
