@@ -1074,6 +1074,14 @@
   "identityForbidden": "identity: доступ запрещён",
   "identityRevoked": "identity: отозвана",
   "identityDependencyUnavailable": "identity: зависимость недоступна",
+
+  "authorizationNotFound": "authorization: не найдено",
+  "authorizationRevisionConflict": "authorization: конфликт ревизии",
+  "authorizationInvalid": "authorization: некорректно",
+  "authorizationForbidden": "authorization: доступ запрещён",
+  "authorizationRevoked": "authorization: отозвано",
+  "authorizationDependencyUnavailable": "authorization: зависимость недоступна"
+
   "credentialBindingCannotBeUsed": "учётная привязка не может быть использована",
   "credentialAssignmentNotConfirmed": "назначение учётных данных не подтверждено",
   "credentialSetupNotAuthorized": "настройка учётных данных не разрешена",
@@ -1094,4 +1102,5 @@
   "deleteProvisioningChallenge": "ошибка удаления challenge подготовки учётных данных: {p0}",
   "provisioningOutcomeIsNotTerminal": "{p0}: результат подготовки не является терминальным",
   "provisioningIntentAlreadyHasNonTerminalOutcome": "{p0}: для операции подготовки уже записан нетерминальный результат"
+
 }

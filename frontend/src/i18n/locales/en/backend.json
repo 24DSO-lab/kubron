@@ -1074,6 +1074,14 @@
   "identityForbidden": "identity: forbidden",
   "identityRevoked": "identity: revoked",
   "identityDependencyUnavailable": "identity: dependency unavailable",
+
+  "authorizationNotFound": "authorization: not found",
+  "authorizationRevisionConflict": "authorization: revision conflict",
+  "authorizationInvalid": "authorization: invalid",
+  "authorizationForbidden": "authorization: forbidden",
+  "authorizationRevoked": "authorization: revoked",
+  "authorizationDependencyUnavailable": "authorization: dependency unavailable"
+
   "credentialBindingCannotBeUsed": "the credential binding cannot be used",
   "credentialAssignmentNotConfirmed": "the credential assignment is not confirmed",
   "credentialSetupNotAuthorized": "the credential setup is not authorized",
