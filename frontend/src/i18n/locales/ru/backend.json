@@ -1101,6 +1101,11 @@
   "provisioningAlreadyHasNonFailedOutcome": "{p0}: для подготовки уже записан результат, отличный от ошибки",
   "deleteProvisioningChallenge": "ошибка удаления challenge подготовки учётных данных: {p0}",
   "provisioningOutcomeIsNotTerminal": "{p0}: результат подготовки не является терминальным",
-  "provisioningIntentAlreadyHasNonTerminalOutcome": "{p0}: для операции подготовки уже записан нетерминальный результат"
-
+  "provisioningIntentAlreadyHasNonTerminalOutcome": "{p0}: для операции подготовки уже записан нетерминальный результат",
+  "autonomyInvalid": "autonomy: некорректные данные",
+  "autonomyNotFound": "autonomy: не найдено",
+  "autonomyRevisionConflict": "autonomy: конфликт ревизии",
+  "autonomyDependencyUnavailable": "autonomy: зависимость недоступна",
+  "autonomyScopeForbidden": "autonomy: недостаточно прав для этой области",
+  "autonomyProfileBindingOwnerMismatch": "{p0}: владелец профиля не совпадает с владельцем привязки"
 }
