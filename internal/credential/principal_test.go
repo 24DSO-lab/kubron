@@ -676,8 +676,6 @@ func TestTokenResolvesIdentityAndBindingOnEveryCall(t *testing.T) {
 	if _, err := tr.token(sub); err != nil {
 		t.Fatal(err)
 	}
-	begins, _ := tr.prov.Calls()
-
 	// The cached token is not served once the identity is suspended.
 	ident, _ := tr.ids.Get(bg, sub.Principal)
 	if _, err := tr.ids.Suspend(bg, identity.TransitionRequest{Actor: admin, Ref: sub.Principal, ExpectedRevision: ident.Revision, MutationID: tr.nextID("ms")}); err != nil {
@@ -695,7 +693,7 @@ func TestTokenResolvesIdentityAndBindingOnEveryCall(t *testing.T) {
 	}
 
 	// A revoked binding blocks issuance at once, without any provider call.
-	begins, _ = tr.prov.Calls()
+	begins, _ := tr.prov.Calls()
 	cur, _ := tr.ids.ResolveBinding(bg, sub.Principal, "c1")
 	if _, err := tr.ids.RevokeBinding(bg, identity.BindingTransitionRequest{Actor: admin, Principal: sub.Principal, ClusterID: "c1", ExpectedRevision: cur.Revision, MutationID: tr.nextID("mv")}); err != nil {
 		t.Fatal(err)
@@ -1088,7 +1086,6 @@ func TestSwappedTechnicalCiphertextsDoNotOpen(t *testing.T) {
 
 	raw, _ := os.ReadFile(tr.storeP)
 	// Swap the ciphertexts of the two records (the secretEnc values) in the file.
-	type pair struct{ k, v string }
 	var encs []string
 	for _, part := range strings.Split(string(raw), `"secretEnc":"`)[1:] {
 		encs = append(encs, part[:strings.Index(part, `"`)])
