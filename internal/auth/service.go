@@ -72,7 +72,7 @@ type UserInfo struct {
 // SSOStatus — public SSO metadata added by the web server layer only.
 type SSOStatus struct {
 	Enabled            bool   `json:"enabled"`
-	Label              string `json:"label,omitempty"`
+	Label              string `json:"label"`
 	LoginURL           string `json:"loginUrl"`
 	LocalLoginDisabled bool   `json:"localLoginDisabled"`
 }
