@@ -1080,7 +1080,7 @@
   "authorizationInvalid": "authorization: invalid",
   "authorizationForbidden": "authorization: forbidden",
   "authorizationRevoked": "authorization: revoked",
-  "authorizationDependencyUnavailable": "authorization: dependency unavailable"
+  "authorizationDependencyUnavailable": "authorization: dependency unavailable",
 
   "credentialBindingCannotBeUsed": "the credential binding cannot be used",
   "credentialAssignmentNotConfirmed": "the credential assignment is not confirmed",
