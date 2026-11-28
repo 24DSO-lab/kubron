@@ -974,8 +974,11 @@ func (s *Service) CancelProvisioning(ctx context.Context, sub Subject, by Provis
 	if rec.Status == ChallengeBusy && s.now().Before(rec.LockedUntil) { return ErrChallengeExpired }
 	claim := rec
 	claim.Status, claim.LockedUntil = ChallengeBusy, s.now().Add(claimTimeout)
-	if _, err := s.chal.Swap(ctx, claim, rec.Version); err != nil { return mapChallengeErr(err) }
-	return s.finishProvisioningFailure(ctx, st.Prov, "cancelled", nil, challengeID)
+	claimed, err := s.chal.Swap(ctx, claim, rec.Version)
+	if err != nil { return mapChallengeErr(err) }
+	err = s.finishProvisioningFailure(ctx, st.Prov, "cancelled", nil, challengeID)
+	if errors.Is(err, audit.ErrOutcomeUnknown) { s.release(ctx, claimed) }
+	return err
 }
 
 
