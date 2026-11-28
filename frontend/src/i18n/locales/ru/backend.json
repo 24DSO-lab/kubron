@@ -1073,5 +1073,21 @@
   "identityInvalid": "identity: некорректные данные",
   "identityForbidden": "identity: доступ запрещён",
   "identityRevoked": "identity: отозвана",
-  "identityDependencyUnavailable": "identity: зависимость недоступна"
+  "identityDependencyUnavailable": "identity: зависимость недоступна",
+  "credentialBindingCannotBeUsed": "учётная привязка не может быть использована",
+  "credentialAssignmentNotConfirmed": "назначение учётных данных не подтверждено",
+  "credentialSetupNotAuthorized": "настройка учётных данных не разрешена",
+  "criticalAuditUnavailable": "критический аудит недоступен",
+  "credentialStoredBindingNotActive": "учётные данные сохранены, но привязка не активна",
+  "onlyAuthenticatedUserSetsUpCredentials": "{p0}: только аутентифицированный пользователь может настраивать учётные данные",
+  "bindingDoesNotBelongToSubject": "{p0}: привязка не принадлежит этому субъекту",
+  "noAuditEvent": "{p0}: отсутствует событие аудита",
+  "outcomeNotSucceeded": "{p0}: результат аудита не имеет статуса успешного",
+  "outcomeNotRecorded": "{p0}: результат аудита не записан",
+  "bindingCannotBeSetUp": "{p0}: невозможно настроить привязку",
+  "bindingWasNotFound": "{p0}: привязка не найдена",
+  "provisioningOutcomeCannotBeIdentified": "{p0}: невозможно определить результат подготовки учётных данных",
+  "provisioningIntentHasNonFailedOutcome": "{p0}: для операции подготовки уже записан результат, отличный от ошибки",
+  "provisioningChallengeOutcomeCannotBeIdentified": "{p0}: невозможно определить результат challenge подготовки учётных данных",
+  "technicalConnectionCannotBePlanned": "невозможно спланировать техническое подключение"
 }
