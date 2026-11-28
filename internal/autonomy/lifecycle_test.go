@@ -53,3 +53,51 @@ func TestTeamProfileCannotBindAcrossTeams(t *testing.T) {
 		t.Fatalf("cross-team binding must be rejected: %v", err)
 	}
 }
+
+func TestProfileAndBindingRevisionCASRaces(t *testing.T) {
+	now := time.Date(2026, 11, 28, 12, 0, 0, 0, time.UTC)
+	owner := OwnerScope{Kind: OwnerOrganization, OrganizationID: "org"}
+	scope := ScopeRef{Kind: ScopeOrganization, OrganizationID: "org"}
+	prov, _ := NewProvenance("user", "actor", now.Add(-time.Hour))
+	meta := MutationMeta{ExpectedRevision: 1, ActorKind: "user", ActorID: "actor", At: now}
+
+	profile := Profile{ID: "profile", Owner: owner, Constraints: Constraints{ModeCeiling: Assisted, MaxRisk: 40}, Revision: 1, Lifecycle: Active, Provenance: prov}
+	nextProfile := profile
+	nextProfile.Constraints.MaxRisk = 20
+	updatedProfile, err := ApplyProfileUpdate(profile, nextProfile, meta)
+	if err != nil || updatedProfile.Revision != 2 {
+		t.Fatalf("profile update failed: %+v %v", updatedProfile, err)
+	}
+	if _, err := ApplyProfileUpdate(profile, nextProfile, meta); !errors.Is(err, ErrConflict) {
+		t.Fatalf("stale profile revision must conflict: %v", err)
+	}
+
+	binding := Binding{ID: "binding", ProfileID: profile.ID, Owner: owner, Scope: scope, Revision: 1, Lifecycle: Active, Provenance: prov}
+	nextBinding := binding
+	nextBinding.Scope = ScopeRef{Kind: ScopeCluster, OrganizationID: "org", ClusterID: "cluster"}
+	updatedBinding, err := ApplyBindingUpdate(binding, nextBinding, meta)
+	if err != nil || updatedBinding.Revision != 2 || updatedBinding.Scope.ClusterID != "cluster" {
+		t.Fatalf("binding update failed: %+v %v", updatedBinding, err)
+	}
+	if _, err := ApplyBindingUpdate(binding, nextBinding, meta); !errors.Is(err, ErrConflict) {
+		t.Fatalf("stale binding revision must conflict: %v", err)
+	}
+}
+
+func TestProfileAndBindingDeactivationAreRevisionedTombstones(t *testing.T) {
+	now := time.Date(2026, 11, 28, 12, 0, 0, 0, time.UTC)
+	owner := OwnerScope{Kind: OwnerOrganization, OrganizationID: "org"}
+	prov, _ := NewProvenance("user", "actor", now.Add(-time.Hour))
+	meta := MutationMeta{ExpectedRevision: 1, ActorKind: "user", ActorID: "actor", At: now}
+	profile := Profile{ID: "profile", Owner: owner, Constraints: Constraints{ModeCeiling: Observe, MaxRisk: 0}, Revision: 1, Lifecycle: Active, Provenance: prov}
+	binding := Binding{ID: "binding", ProfileID: profile.ID, Owner: owner, Scope: ScopeRef{Kind: ScopeOrganization, OrganizationID: "org"}, Revision: 1, Lifecycle: Active, Provenance: prov}
+
+	deactivatedProfile, err := DeactivateProfile(profile, meta)
+	if err != nil || deactivatedProfile.Lifecycle != Deactivated || deactivatedProfile.Revision != 2 {
+		t.Fatalf("profile tombstone failed: %+v %v", deactivatedProfile, err)
+	}
+	deactivatedBinding, err := DeactivateBinding(binding, meta)
+	if err != nil || deactivatedBinding.Lifecycle != Deactivated || deactivatedBinding.Revision != 2 {
+		t.Fatalf("binding tombstone failed: %+v %v", deactivatedBinding, err)
+	}
+}
