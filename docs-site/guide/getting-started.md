@@ -2,8 +2,22 @@
 
 Kubron is a Kubernetes Operations Workspace available in two editions. Both editions provide the Kubron interface for working with clusters, workloads, Helm and GitOps. Choose the way that fits your workflow:
 
-
 New here? Read [What is Kubron](/guide/what-is-kubron) first.
+
+## Choose your edition
+
+| | Desktop | Web |
+| --- | --- | --- |
+| **How you use it** | Native application on your computer | Self-hosted application in a browser |
+| **Deployment** | Install and run locally; no server to deploy | You or your team deploy and operate the Kubron server |
+| **Typical use** | Individual operator | Shared environment with multiple users |
+| **Accounts and access** | No mandatory account | Local accounts and roles |
+| **Audit and configuration** | Kubeconfig remains on your machine | Audit log and centrally stored configuration |
+| **Best fit** | You want to work locally without maintaining a server | Your team needs browser access and shared administration |
+
+Choose **Desktop** if you mainly work independently and want the simplest local setup.
+
+Choose **Web** if several people need to use the same Kubron environment through a browser, with accounts, roles and an audit log.
 
 ## Desktop
 
@@ -25,8 +39,6 @@ You or your team must deploy and operate the Kubron server. Kubron is not a host
 - [Add your first cluster](/guide/first-cluster)
 - [Requirements and download verification](/guide/installation)
 - [Build from source](/guide/build-from-source)
-
 - [Features overview](/features/)
 - [Server mode](/server/) (multi-user)
 - [Keyboard shortcuts](/guide/shortcuts)
-
