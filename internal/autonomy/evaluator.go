@@ -297,6 +297,9 @@ func intersect(all []Constraints) (EffectiveConstraints, bool) {
 		}
 	}
 	if allowedSet != nil {
+		// Preserve the distinction between an unrestricted nil allowlist and an
+		// explicitly empty intersection, which denies every action.
+		e.AllowedActions = make([]ActionRef, 0, len(allowedSet))
 		for a := range allowedSet {
 			e.AllowedActions = append(e.AllowedActions, a)
 		}
