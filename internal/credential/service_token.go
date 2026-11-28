@@ -33,6 +33,9 @@ const maxRefreshRounds = 4
 // (single flight). Between replicas the saved data is guarded by its version: if another replica has already
 // rotated the refresh token, its record is used instead of failing.
 func (s *Service) Token(ctx context.Context, sub Subject, d Descriptor) (Token, error) {
+	if sub.IsPrincipal() {
+		return s.tokenPrincipal(ctx, sub, d) // technical subject: identity-resolved, never interactive
+	}
 	if err := s.validSubject(sub, &d); err != nil {
 		return Token{}, err
 	}
@@ -137,22 +140,33 @@ func (s *Service) savedChanged(ctx context.Context, k Key, base int64) bool {
 // Invalidate implements Invalidator: the API server rejected the token (401), so the cached one is dropped and the
 // next Token call obtains a new one. Saved sign-in data is not touched.
 func (s *Service) Invalidate(k Key) {
+	if k.Scope == ScopePrincipal {
+		s.pcache.remove(k)
+		return
+	}
 	s.cache.remove(k)
 }
 
 // Revoke implements Broker: it removes saved sign-in data and pending requests matching the filter and
 // forgets the cached tokens. Empty fields of the filter match anything.
 func (s *Service) Revoke(ctx context.Context, f RevokeFilter) error {
-	for _, r := range s.live.takeIf(func(r liveRequest) bool {
-		return (f.ClusterID == "" || r.key.ClusterID == f.ClusterID) && (f.OwnerID == "" || r.key.OwnerID == f.OwnerID) &&
-			(f.Scope == "" || r.key.Scope == f.Scope)
-	}) {
+	if f.IsPrincipal() {
+		// Technical credentials are revoked by an exact filter only: no wildcard, nothing partial. The audited use
+		// case is RevokePrincipal; this is the primitive under it.
+		if err := f.ValidatePrincipal(); err != nil {
+			return err
+		}
+		ps, err := s.principalStore()
+		if err != nil {
+			return err
+		}
+		return s.revokeExact(ctx, ps, f)
+	}
+	for _, r := range s.live.takeIf(func(r liveRequest) bool { return f.Matches(r.key) }) {
 		r.cancel()
 	}
-	s.cache.drop(func(k Key) bool {
-		return (f.ClusterID == "" || k.ClusterID == f.ClusterID) && (f.OwnerID == "" || k.OwnerID == f.OwnerID) &&
-			(f.Scope == "" || k.Scope == f.Scope)
-	}, keyFromCache)
+	s.cache.drop(f.Matches, keyFromCache)
+	s.pcache.drop(f.Matches)
 	if _, err := s.chal.DeleteBy(ctx, f); err != nil {
 		return err
 	}
