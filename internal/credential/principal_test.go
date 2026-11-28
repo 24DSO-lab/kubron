@@ -523,29 +523,39 @@ func TestSweepProvisioningExpiryKeepsChallengeWhenOutcomeFails(t *testing.T) {
 	tr := newTechRig(t)
 	sub, _ := tr.principal(identity.PrincipalTeam, "sweep-failure")
 	by := tr.by("sess-1")
-	res, err := tr.svc.BeginProvisioning(bg, sub, by, desc)
+	provider := &auditOrderCancellerProvider{Provider: tr.prov, rec: tr.rec, chal: tr.chal, orgID: "o1", eventID: by.EventID}
+	svc := tr.serviceWithProvider(tr.store, tr.chal, provider)
+	res, err := svc.BeginProvisioning(bg, sub, by, desc)
 	if err != nil || res.Challenge == nil {
 		t.Fatalf("BeginProvisioning = %+v, %v", res, err)
 	}
+	provider.challengeID = res.Challenge.ID
 
 	tr.clk.Advance(credential.ChallengeTTL + time.Second)
 	tr.rec.failOutcome.Store(true)
-	n, err := tr.svc.Sweep(bg)
+	n, err := svc.Sweep(bg)
 	if n != 0 || !errors.Is(err, audit.ErrOutcomeUnknown) || errors.Is(err, credential.ErrChallengeExpired) {
 		t.Fatalf("Sweep = %d, %v; want ErrOutcomeUnknown only", n, err)
 	}
 	if _, err := tr.chal.Get(bg, res.Challenge.ID); err != nil {
 		t.Fatalf("challenge must remain for retry after outcome failure: %v", err)
 	}
+	if provider.canceled.Load() {
+		t.Fatal("provider state must not be canceled while the audit outcome is unknown")
+	}
 
 	tr.rec.failOutcome.Store(false)
-	n, err = tr.svc.Sweep(bg)
+	n, err = svc.Sweep(bg)
 	if err != nil || n != 1 {
 		t.Fatalf("retry Sweep = %d, %v", n, err)
 	}
 	out, err := tr.rec.GetOutcome(bg, "o1", by.EventID)
 	if err != nil || out.Result != audit.CriticalFailed || out.ReasonCode != "expired" {
 		t.Fatalf("retry outcome = %+v, %v", out, err)
+	}
+	if !provider.canceled.Load() || !provider.ordered.Load() {
+		t.Fatalf("provider Cancel must happen after outcome and deletion (canceled=%v ordered=%v)",
+			provider.canceled.Load(), provider.ordered.Load())
 	}
 }
 
