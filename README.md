@@ -21,6 +21,10 @@
 Kubron is an open-source **Kubernetes Operations Workspace** for desktop and web, built with **Go**, **Wails** and **Vue**. Manage clusters, investigate workload issues, and work with Helm and GitOps from one place — without switching between disconnected tools. Choose a local desktop app or a self-hosted web workspace for your team. There is no telemetry or mandatory cloud account. In desktop mode, kubeconfig stays on your machine; in web mode, kubeconfig is stored encrypted on your server.
 
 <p align="center">
+  <img src="docs-site/public/images/kubron-demo.gif" alt="Kubron demo: cluster dashboard, pods and Argo CD applications" width="100%">
+</p>
+
+<p align="center">
   <img src="docs/images/screenshots/overview.png" alt="Kubron cluster overview: node and pod counts, CPU and memory usage, pods closest to their limits, workloads, recent changes, blockers and certificate expiry" width="100%">
 </p>
 
