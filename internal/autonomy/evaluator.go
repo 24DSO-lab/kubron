@@ -41,6 +41,7 @@ type Input struct {
 	Mutating bool
 	Risk uint8
 	ApprovalFactsKnown bool
+	SatisfiedApprovals []string
 	BudgetAvailable bool
 	TargetGroupID string
 	TargetGroupRevision uint64
@@ -141,8 +142,8 @@ func Evaluate(in Input) Decision {
 	if !in.BudgetAvailable { addReason("budget_exceeded") }
 	if !withinWindows(in.At,effective.AllowedTimeWindows) { addReason("time_window_closed") }
 	if in.Mutating && (d.Mode == Observe || d.Mode == "") { addReason("mode_restricted") }
-	d.Allowed = len(d.ReasonCodes)==0 && d.Mode != Observe
-	d.MutatingAllowed = d.Allowed && in.Mutating && in.Action != nil && in.Action.Validate()==nil
+	d.Allowed = len(d.ReasonCodes)==0
+	d.MutatingAllowed = d.Allowed && in.Mutating && d.Mode != Observe && in.Action != nil && in.Action.Validate()==nil
 	return finalize(d)
 }
 
@@ -189,7 +190,12 @@ func scopeApplies(binding, target ScopeRef) bool {
 	}
 	return false
 }
-func ownerApplies(owner,target OwnerScope) bool {\n\tif owner.OrganizationID != target.OrganizationID { return false }\n\tif owner.Kind == OwnerOrganization { return owner.TeamID == "" }\n\treturn owner.Kind == OwnerTeam && target.Kind == OwnerTeam && owner.TeamID == target.TeamID\n}\nfunc compatibleOwner(profile,binding,target OwnerScope) bool {
+func ownerApplies(owner,target OwnerScope) bool {\n\tif owner.OrganizationID != target.OrganizationID { return false }\n\tif owner.Kind == OwnerOrganization { return owner.TeamID == "" }\n\treturn owner.Kind == OwnerTeam && target.Kind == OwnerTeam && owner.TeamID == target.TeamID\n}\nfunc ownerApplies(owner,target OwnerScope) bool {
+	if owner.OrganizationID != target.OrganizationID { return false }
+	if owner.Kind == OwnerOrganization { return owner.TeamID == "" }
+	return owner.Kind == OwnerTeam && target.Kind == OwnerTeam && owner.TeamID == target.TeamID
+}
+func compatibleOwner(profile,binding,target OwnerScope) bool {
 	if profile!=binding || profile.OrganizationID!=target.OrganizationID { return false }
 	if profile.Kind==OwnerOrganization { return profile.TeamID=="" && target.Kind==OwnerOrganization || profile.TeamID=="" && target.Kind==OwnerTeam }
 	return profile.Kind==OwnerTeam && target.Kind==OwnerTeam && profile.TeamID==target.TeamID
