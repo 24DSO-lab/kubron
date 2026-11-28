@@ -169,3 +169,61 @@ func TestTimeWindowCanonicalizationIsDeterministicAndDoesNotMutateInput(t *testi
 		t.Fatalf("effective window days are not canonical: %v", got)
 	}
 }
+
+func TestConstraintRequirementsAreCombinedAndCanonical(t *testing.T) {
+	deniedA := ActionRef{ID: "scale", Version: 1}
+	deniedB := ActionRef{ID: "restart", Version: 2}
+	effective, conflict := intersect([]Constraints{
+		{
+			ModeCeiling: Autonomous, MaxRisk: 80,
+			DeniedActions: []ActionRef{deniedA},
+			RequiredApprovals: []string{"z-approval", "a-approval"},
+			Budgets: []Budget{{MaxExecutions: 5, Period: time.Hour}},
+			RequireVerification: true,
+		},
+		{
+			ModeCeiling: Assisted, MaxRisk: 40,
+			DeniedActions: []ActionRef{deniedB, deniedA},
+			RequiredApprovals: []string{"b-approval", "a-approval"},
+			Budgets: []Budget{{MaxExecutions: 2, Period: time.Hour}},
+			RequireRecovery: true, RequireAudit: true,
+		},
+	})
+	if conflict {
+		t.Fatal("compatible constraints unexpectedly conflicted")
+	}
+	if effective.Mode != Assisted || effective.MaxRisk != 40 {
+		t.Fatalf("mode/risk ceilings were not tightened: %+v", effective)
+	}
+	if !reflect.DeepEqual(effective.RequiredApprovals, []string{"a-approval", "b-approval", "z-approval"}) {
+		t.Fatalf("approval requirements were not unioned canonically: %v", effective.RequiredApprovals)
+	}
+	if len(effective.DeniedActions) != 2 || !effective.DeniedActions[0].Equal(deniedB) || !effective.DeniedActions[1].Equal(deniedA) {
+		t.Fatalf("deny constraints were not unioned canonically: %v", effective.DeniedActions)
+	}
+	if len(effective.Budgets) != 2 || !effective.RequireVerification || !effective.RequireRecovery || !effective.RequireAudit {
+		t.Fatalf("budget or mandatory guardrail constraints were lost: %+v", effective)
+	}
+}
+
+func TestTimeWindowIntersectionIncludesDayIntersection(t *testing.T) {
+	effective, conflict := intersect([]Constraints{
+		{ModeCeiling: Autonomous, MaxRisk: 100, AllowedTimeWindows: []TimeWindow{{StartMinute: 480, EndMinute: 600, Days: []time.Weekday{time.Monday, time.Tuesday}}}},
+		{ModeCeiling: Autonomous, MaxRisk: 100, AllowedTimeWindows: []TimeWindow{{StartMinute: 540, EndMinute: 660, Days: []time.Weekday{time.Tuesday, time.Wednesday}}}},
+	})
+	if conflict || len(effective.AllowedTimeWindows) != 1 {
+		t.Fatalf("expected one overlapping window: %+v, conflict=%v", effective, conflict)
+	}
+	window := effective.AllowedTimeWindows[0]
+	if window.StartMinute != 540 || window.EndMinute != 600 || !reflect.DeepEqual(window.Days, []time.Weekday{time.Tuesday}) {
+		t.Fatalf("unexpected day/time intersection: %+v", window)
+	}
+
+	_, conflict = intersect([]Constraints{
+		{ModeCeiling: Autonomous, MaxRisk: 100, AllowedTimeWindows: []TimeWindow{{StartMinute: 480, EndMinute: 600, Days: []time.Weekday{time.Monday}}}},
+		{ModeCeiling: Autonomous, MaxRisk: 100, AllowedTimeWindows: []TimeWindow{{StartMinute: 480, EndMinute: 600, Days: []time.Weekday{time.Tuesday}}}},
+	})
+	if !conflict {
+		t.Fatal("disjoint weekdays must produce an empty time-window intersection")
+	}
+}
