@@ -12,7 +12,7 @@ func baseInput() Input {
 	now := time.Date(2026, 11, 28, 12, 0, 0, 0, time.UTC)
 	owner := OwnerScope{Kind: OwnerOrganization, OrganizationID: "org"}
 	scope := ScopeRef{Kind: ScopeCluster, OrganizationID: "org", ClusterID: "cluster"}
-	prov := Provenance{ActorKind: "user", ActorID: "actor", CreatedAt: now.Add(-time.Hour), UpdatedAt: now}
+	prov, _ := NewProvenance("user", "actor", now.Add(-time.Hour))
 	p := Policy{ID: "policy", Owner: owner, Scope: ScopeRef{Kind: ScopeOrganization, OrganizationID: "org"}, Constraints: Constraints{ModeCeiling: Autonomous, MaxRisk: 80, RequireAudit: true}, Revision: 1, Lifecycle: Active, Provenance: prov}
 	profile := Profile{ID: "profile", Owner: owner, Constraints: Constraints{ModeCeiling: Autonomous, MaxRisk: 80}, Revision: 1, Lifecycle: Active, Provenance: prov}
 	binding := Binding{ID: "binding", ProfileID: profile.ID, Owner: owner, Scope: scope, Revision: 1, Lifecycle: Active, Provenance: prov}
