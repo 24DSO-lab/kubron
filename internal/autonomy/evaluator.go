@@ -91,13 +91,13 @@ func Evaluate(in Input) Decision {
 		addReason("policy_stale_revision"); addUnknown("revision_vector"); return finalize(d)
 	}
 	for _, p := range in.Policies {
-		if p.Validate() != nil || p.Lifecycle != Active || !scopeApplies(p.Scope, in.Scope) {
+		if p.Validate() != nil || p.Lifecycle != Active || !ownerApplies(p.Owner, in.TargetOwner) || !scopeApplies(p.Scope, in.Scope) {
 			addReason("fact_unknown"); addUnknown("policy_scope_or_record"); return finalize(d)
 		}
 		d.RevisionVector.Policies = append(d.RevisionVector.Policies, Revision{p.ID,p.Revision})
 	}
 	for _, b := range in.Bindings {
-		if b.Validate() != nil || b.Lifecycle != Active {
+		if b.Validate() != nil || b.Lifecycle != Active || !ownerApplies(b.Owner, in.TargetOwner) {
 			addReason("binding_ambiguous"); addUnknown("binding_record"); return finalize(d)
 		}
 		profile, ok := findProfile(in.Profiles, b.ProfileID)
@@ -189,7 +189,7 @@ func scopeApplies(binding, target ScopeRef) bool {
 	}
 	return false
 }
-func compatibleOwner(profile,binding,target OwnerScope) bool {
+func ownerApplies(owner,target OwnerScope) bool {\n\tif owner.OrganizationID != target.OrganizationID { return false }\n\tif owner.Kind == OwnerOrganization { return owner.TeamID == "" }\n\treturn owner.Kind == OwnerTeam && target.Kind == OwnerTeam && owner.TeamID == target.TeamID\n}\nfunc compatibleOwner(profile,binding,target OwnerScope) bool {
 	if profile!=binding || profile.OrganizationID!=target.OrganizationID { return false }
 	if profile.Kind==OwnerOrganization { return profile.TeamID=="" && target.Kind==OwnerOrganization || profile.TeamID=="" && target.Kind==OwnerTeam }
 	return profile.Kind==OwnerTeam && target.Kind==OwnerTeam && profile.TeamID==target.TeamID
