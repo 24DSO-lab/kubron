@@ -31,12 +31,12 @@ type ssoProvider interface {
 type ssoLoginFunc func(context.Context, any, sso.Identity) (*auth.UserInfo, error)
 
 type ssoHandlerConfig struct {
-	provider            ssoProvider
-	flowKey             []byte
-	login               ssoLoginFunc
-	publicURL           string
-	localLoginDisabled  bool
-	label               string
+	provider           ssoProvider
+	flowKey            []byte
+	login              ssoLoginFunc
+	publicURL          string
+	localLoginDisabled bool
+	label              string
 }
 
 // WithSSO registers browser OIDC sign-in without coupling the server package to internal/app.
