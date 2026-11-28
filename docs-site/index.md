@@ -9,11 +9,11 @@ hero:
 
   actions:
     - theme: brand
+      text: Choose your edition
+      link: /guide/getting-started
+    - theme: alt
       text: Download Kubron
       link: https://github.com/24DSO-lab/kubron/releases
-    - theme: alt
-      text: Get started
-      link: /guide/getting-started
     - theme: alt
       text: View on GitHub
       link: https://github.com/24DSO-lab/kubron
