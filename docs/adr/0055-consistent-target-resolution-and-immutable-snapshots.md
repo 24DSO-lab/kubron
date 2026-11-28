@@ -1,6 +1,6 @@
 # ADR-0055: Согласованное разрешение целей и immutable Target Snapshots
 
-- Статус: предложено
+- Статус: принято
 - Дата: 2026-11-28
 - Область: Phase 2 — Target & Policy Foundation
 - Связано: ADR-0040, ADR-0041, ADR-0044, ADR-0045, ADR-0053, ADR-0054
@@ -9,7 +9,7 @@
 
 Target Group может быть динамической, но результат её разрешения не должен изменяться во время последующей работы с ним. ADR-0041 требует закреплённой Group Revision и immutable snapshot. Phase 2 должна реализовать безопасный read/preview path, не создавая пока Plans или Run Engine.
 
-## Предлагаемое решение
+## Решение
 
 1. Resolution является отдельным доменным use case с явным входом: Target Group ID + Expected Group Revision + trusted requester context + bounded resolution options.
 2. Resolver сначала читает группу и фиксирует revision, затем разрешает selector/explicit members через доверенный cluster catalog и Kubernetes read path, после чего повторно проверяет Group Revision перед сохранением результата.
@@ -22,6 +22,20 @@ Target Group может быть динамической, но результа
 9. Сохранённый snapshot не обновляется при изменении Target Group. Новая revision требует нового resolution и нового snapshot.
 10. Размер группы, число кластеров, selector complexity, timeout и общий query budget ограничиваются серверной конфигурацией. Клиент не может повысить лимиты выше установленных backend.
 
+### Нормативное разделение Report и Snapshot
+
+- `ResolutionReport` — диагностический результат, который может быть partial. Он содержит coverage и безопасные reason codes по кластерам/элементам и никогда не используется как executable scope.
+- `TargetSnapshot` создаётся только при полном успешном resolution всех обязательных источников и targets, когда у каждого объекта есть UID. Partial report не преобразуется в snapshot автоматически.
+- Snapshot публикуется атомарно только если Group всё ещё имеет ExpectedRevision. File backend выполняет проверку revision и запись под одной блокировкой; PostgreSQL — в одной транзакции. Повторное чтение revision без атомарной публикации недостаточно.
+- Snapshot хранит Group ID/Revision, время, канонические owner observations, ClusterID, GVK, namespace/name, UID и отдельно ResourceVersion как observed precondition. Snapshot immutable.
+- Изменение ownership кластера во время resolution обнаруживается повторным чтением trusted catalog; при изменении resolution прекращается. Snapshot не является доказательством доступа: ownership, grants, delegation, credentials и Kubernetes RBAC повторно проверяются в будущих Plan/side-effect слоях.
+- Kubernetes read path использует существующие credential/connection seams (`PlanFor` и `ConfigFor` либо их штатный subject-aware эквивалент). Запрещено читать kubeconfig или строить `rest.Config` из Target domain.
+- Preview может показывать partial ResolutionReport. Только complete TargetSnapshot считается стабильным результатом resolution; Phase 2 не создаёт Plan/Approval/Run и не выполняет mutation.
+
+### Outcome и безопасные reason codes
+
+Outcome имеет значения `complete` и `partial`; ошибки, при которых нельзя сформировать безопасный report (например, invalid request или storage failure), возвращаются как доменные ошибки. Reason codes — стабильные машинные коды, а не тексты Kubernetes API. Минимальный набор: `cluster_unavailable`, `cluster_not_visible`, `selector_invalid`, `selector_limit_exceeded`, `target_not_found`, `target_identity_incomplete`, `ownership_unresolved`, `group_revision_changed`, `resolution_timeout`. Report не раскрывает имена/метаданные чужих tenant targets.
+
 ## Альтернативы
 
 - Разрешать selector заново на каждом шаге будущей операции.
@@ -32,7 +46,7 @@ Target Group может быть динамической, но результа
 
 Отклонены из-за нестабильного состава целей, риска исполнения на другом объекте и неконтролируемой нагрузки.
 
-## Последствия и открытые вопросы
+## Последствия и ограничения
 
 - Contract Freeze должен определить формат partial/complete resolution outcome и какие причины допустимо раскрывать без утечки сведений о чужих tenant targets.
 - Нужно определить минимальный Kubernetes read capability, не обходя существующий Broker/Provider/ConfigFor путь.

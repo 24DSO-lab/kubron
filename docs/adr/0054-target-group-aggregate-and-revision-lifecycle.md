@@ -1,6 +1,6 @@
 # ADR-0054: Target Group aggregate и жизненный цикл Revision
 
-- Статус: предложено
+- Статус: принято
 - Дата: 2026-11-28
 - Область: Phase 2 — Target & Policy Foundation
 - Связано: ADR-0026, ADR-0037, ADR-0040, ADR-0041, ADR-0053
@@ -9,7 +9,7 @@
 
 ADR-0041 закрепляет семантику Target Group: один неизменяемый owner scope, sharing не выдаёт доступ, изменения увеличивают revision. Для реализации требуется определить границы агрегата и правила конкурентных изменений, не превращая общий Store в универсальный CRUD и не связывая Target domain с конкретной БД.
 
-## Предлагаемое решение
+## Решение
 
 1. Ввести самостоятельный Target domain с собственными типами, use cases и узким backend-контрактом. Domain package не импортирует transport, Wails/Vue, internal/pgstore или конкретную файловую реализацию.
 2. Target Group является агрегатом с opaque ID, immutable OwnerScope, Creator/CreatedAt provenance, declarative selector definition, sharing metadata, monotonic Revision и timestamps.
@@ -22,6 +22,15 @@ ADR-0041 закрепляет семантику Target Group: один неиз
 9. Backend предоставляет атомарные операции агрегата, а не общий CRUD. File/Desktop реализация должна сериализовать read-modify-write и использовать атомарную durable replacement; PostgreSQL/Web — CAS/transaction/unique constraints.
 10. Target domain не использует internal/tenant.Scope как универсальный owner тип без проверки его семантики: текущий Scope требует OrgID, TeamID и ClusterID, тогда как Target Group owner — ровно Organization или Team. Нужен отдельный явный OwnerScope или эквивалентный тип.
 
+### Нормативный контракт агрегата и хранения
+
+- `OwnerScope` имеет ровно два допустимых вида: `Organization(ID)` и `Team(ID)`. Пустые ID, неизвестный kind и implicit/default owner запрещены. В локальном Desktop используется локальный Organization scope, определённый ADR-0053.
+- Backend API агрегата предоставляет атомарные Create, Get, Update(ExpectedRevision), Deactivate(ExpectedRevision) и List в пределах доверенного owner/visibility scope. Общий CRUD и last-write-wins запрещены.
+- Конфликт ревизии возвращается как стабильная доменная ошибка conflict/stale_revision; повторное сохранение с тем же ExpectedRevision не может перезаписать более новую версию.
+- Для File backend атомарность обеспечивается сериализацией read-modify-write внутри процесса и durable atomic file replacement. Для PostgreSQL — транзакцией и условным UPDATE по текущей revision. Обе реализации проходят один общий contract suite.
+- Удаление в Phase 2 означает Deactivated tombstone. Повторная активация не входит в Phase 2. Физическое удаление не реализуется, пока существуют snapshots/audit references; retention не может удалять Critical Audit.
+- Поля, влияющие на selectors, members, ownership, sharing/visibility или разрешение группы, всегда увеличивают revision. В Phase 2 нет исключений для «косметических» полей, чтобы избежать неоднозначного определения semantic change.
+
 ## Альтернативы
 
 - Хранить Target Groups в общем Store как произвольные map/CRUD записи.
@@ -31,7 +40,7 @@ ADR-0041 закрепляет семантику Target Group: один неиз
 
 Отклонены из-за слабой конкурентной семантики, смешения ownership и visibility, а также риска обхода tenant boundaries.
 
-## Последствия и открытые вопросы
+## Последствия и ограничения
 
 - До реализации integration owner должен подтвердить место композиции Target backend в internal/store.Store и соответствие существующим File/PostgreSQL conventions.
 - Нужно определить tombstone/archival semantics и retention без удаления обязательного audit.
