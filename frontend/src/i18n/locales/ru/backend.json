@@ -1089,5 +1089,9 @@
   "provisioningOutcomeCannotBeIdentified": "{p0}: невозможно определить результат подготовки учётных данных",
   "provisioningIntentHasNonFailedOutcome": "{p0}: для операции подготовки уже записан результат, отличный от ошибки",
   "provisioningChallengeOutcomeCannotBeIdentified": "{p0}: невозможно определить результат challenge подготовки учётных данных",
-  "technicalConnectionCannotBePlanned": "невозможно спланировать техническое подключение"
+  "technicalConnectionCannotBePlanned": "невозможно спланировать техническое подключение",
+  "provisioningAlreadyHasNonFailedOutcome": "{p0}: для подготовки уже записан результат, отличный от ошибки",
+  "deleteProvisioningChallenge": "ошибка удаления challenge подготовки учётных данных: {p0}",
+  "provisioningOutcomeIsNotTerminal": "{p0}: результат подготовки не является терминальным",
+  "provisioningIntentAlreadyHasNonTerminalOutcome": "{p0}: для операции подготовки уже записан нетерминальный результат"
 }
