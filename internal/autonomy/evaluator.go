@@ -214,6 +214,7 @@ func compatibleOwner(profile,binding,target OwnerScope) bool {
 	return profile.Kind==OwnerTeam && target.Kind==OwnerTeam && profile.TeamID==target.TeamID
 }
 func findProfile(ps []Profile,id string)(Profile,bool){ for _,p:=range ps { if p.ID==id{return p,true} }; return Profile{},false }
+func containsString(xs []string,s string)bool{for _,x:=range xs{if x==s{return true}};return false}
 func containsAction(xs []ActionRef,a ActionRef)bool{for _,x:=range xs{if x.Equal(a){return true}};return false}
 func uniqueActions(xs []ActionRef)[]ActionRef{m:=map[ActionRef]bool{};out:=[]ActionRef{};for _,x:=range xs{if !m[x]{m[x]=true;out=append(out,x)}};sort.Slice(out,func(i,j int)bool{if out[i].ID==out[j].ID{return out[i].Version<out[j].Version};return out[i].ID<out[j].ID});return out}
 func uniqueStrings(xs []string)[]string{m:=map[string]bool{};out:=[]string{};for _,x:=range xs{if !m[x]{m[x]=true;out=append(out,x)}};sort.Strings(out);return out}
