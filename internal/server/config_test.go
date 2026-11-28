@@ -17,9 +17,9 @@ func env(m map[string]string) func(string) string { return func(k string) string
 
 func TestLoadConfigOIDC(t *testing.T) {
 	cfg, err := LoadConfig(nil, env(map[string]string{
-		"KUBRON_OIDC_ISSUER": "https://id.example.test",
+		"KUBRON_OIDC_ISSUER":    "https://id.example.test",
 		"KUBRON_OIDC_CLIENT_ID": "kubron",
-		"KUBRON_PUBLIC_URL": "https://kubron.example.test",
+		"KUBRON_PUBLIC_URL":     "https://kubron.example.test",
 	}), io.Discard)
 	if err != nil || cfg.SSO.Issuer != "https://id.example.test" || !cfg.SSO.AutoCreate {
 		t.Fatalf("OIDC config: %+v %v", cfg.SSO, err)
