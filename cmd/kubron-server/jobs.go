@@ -25,7 +25,9 @@ const (
 	loginFailureWindow = 15 * time.Minute
 )
 
-// maintenanceJobs — фоновые задачи сервиса с PostgreSQL. Каждую такт выполняет одна реплика: исполнитель выбирается
+// maintenanceJobs — фоновые задачи сервиса с PostgreSQL. Просроченные credential challenges удаляются только через
+// credential.Service.Sweep: он сначала фиксирует CriticalFailed для provisioning intents. Не вызывайте
+// pg.Challenges().DeleteExpired напрямую из фоновых задач. Каждую такт выполняет одна реплика: исполнитель выбирается
 // блокировкой pg_try_advisory_lock (ADR-0016, раздел 6), поэтому реплик может быть сколько угодно.
 func maintenanceJobs(pg *pgstore.Store, sessions websession.Backend, auditRetention time.Duration, bl baselineRetention, extra ...*jobs.Job) []*jobs.Job {
 	lock := pg.Leader(pgstore.JobsKey) // одно соединение с БД на всю группу
@@ -40,10 +42,6 @@ func maintenanceJobs(pg *pgstore.Store, sessions websession.Backend, auditRetent
 	}, {
 		Name: "login failures", Every: maintenanceEvery, Lock: lock, Logf: log.Printf,
 		Run: func(ctx context.Context) (int, error) { return pg.LoginFailures().Cleanup(ctx, loginFailureWindow) },
-	}, {
-		// Запросы входа в кластер, которые никто не завершил: хранят зашифрованное состояние, живут 10 минут.
-		Name: "expired sign-in requests", Every: maintenanceEvery, Lock: lock, Logf: log.Printf,
-		Run: func(ctx context.Context) (int, error) { return pg.Challenges().DeleteExpired(ctx, time.Now()) },
 	}}
 	if auditRetention > 0 { // по умолчанию журнал хранится бессрочно
 		list = append(list, &jobs.Job{
