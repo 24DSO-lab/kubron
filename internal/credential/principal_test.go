@@ -1123,7 +1123,6 @@ func TestSwappedTechnicalCiphertextsDoNotOpen(t *testing.T) {
 	}
 }
 
-
 // deleteFailChallengeStore injects a one-shot failure into challenge deletion while retaining the shared store
 // and attempt limiter, as happens with a transient PostgreSQL failure.
 type deleteFailChallengeStore struct {
@@ -1145,11 +1144,15 @@ func (tr *techRig) serviceWithChallenges(store credential.CredentialStore, chall
 
 func (tr *techRig) serviceWithProvider(store credential.CredentialStore, challenges credential.ChallengeStore, provider credential.Provider) *credential.Service {
 	reg := credential.NewRegistry(false)
-	if err := reg.Register(provider); err != nil { tr.t.Fatal(err) }
+	if err := reg.Register(provider); err != nil {
+		tr.t.Fatal(err)
+	}
 	svc, err := credential.NewService(credential.Config{Registry: reg, Store: store, Challenges: challenges, Envelope: tr.env,
 		Now: tr.clk.Now, Logger: slog.New(slog.NewTextHandler(tr.logs, &slog.HandlerOptions{Level: slog.LevelDebug})),
 		Identities: tr.ids, Audit: tr.rec, Provisioning: tr.authz})
-	if err != nil { tr.t.Fatal(err) }
+	if err != nil {
+		tr.t.Fatal(err)
+	}
 	return svc
 }
 
@@ -1158,12 +1161,18 @@ func TestCancelProvisioningKeepsChallengeWhenOutcomeAppendFails(t *testing.T) {
 	sub, _ := tr.principal(identity.PrincipalTeam, "cancel-audit-failure")
 	by := tr.by("sess-1")
 	res, err := tr.svc.BeginProvisioning(bg, sub, by, desc)
-	if err != nil || res.Challenge == nil { t.Fatalf("BeginProvisioning = %+v, %v", res, err) }
+	if err != nil || res.Challenge == nil {
+		t.Fatalf("BeginProvisioning = %+v, %v", res, err)
+	}
 
 	tr.rec.failOutcome.Store(true)
 	err = tr.svc.CancelProvisioning(bg, sub, by, res.Challenge.ID)
-	if !errors.Is(err, audit.ErrOutcomeUnknown) { t.Fatalf("CancelProvisioning = %v, want ErrOutcomeUnknown", err) }
-	if _, err := tr.chal.Get(bg, res.Challenge.ID); err != nil { t.Fatalf("challenge must remain recoverable: %v", err) }
+	if !errors.Is(err, audit.ErrOutcomeUnknown) {
+		t.Fatalf("CancelProvisioning = %v, want ErrOutcomeUnknown", err)
+	}
+	if _, err := tr.chal.Get(bg, res.Challenge.ID); err != nil {
+		t.Fatalf("challenge must remain recoverable: %v", err)
+	}
 
 	tr.rec.failOutcome.Store(false)
 	if err := tr.svc.CancelProvisioning(bg, sub, by, res.Challenge.ID); err != nil {
@@ -1182,15 +1191,21 @@ func TestCancelProvisioningRetriesDeleteAfterDurableOutcome(t *testing.T) {
 	store := &deleteFailChallengeStore{ChallengeStore: tr.chal, AttemptLimiter: tr.chal}
 	svc := tr.serviceWithChallenges(tr.store, store)
 	res, err := svc.BeginProvisioning(bg, sub, by, desc)
-	if err != nil || res.Challenge == nil { t.Fatalf("BeginProvisioning = %+v, %v", res, err) }
+	if err != nil || res.Challenge == nil {
+		t.Fatalf("BeginProvisioning = %+v, %v", res, err)
+	}
 
 	store.fail.Store(true)
 	if err := svc.CancelProvisioning(bg, sub, by, res.Challenge.ID); err == nil {
 		t.Fatal("expected the injected delete failure")
 	}
 	out, err := tr.rec.GetOutcome(bg, "o1", by.EventID)
-	if err != nil || out.Result != audit.CriticalFailed { t.Fatalf("outcome must precede deletion: %+v %v", out, err) }
-	if _, err := tr.chal.Get(bg, res.Challenge.ID); err != nil { t.Fatalf("challenge must remain after failed delete: %v", err) }
+	if err != nil || out.Result != audit.CriticalFailed {
+		t.Fatalf("outcome must precede deletion: %+v %v", out, err)
+	}
+	if _, err := tr.chal.Get(bg, res.Challenge.ID); err != nil {
+		t.Fatalf("challenge must remain after failed delete: %v", err)
+	}
 
 	// The retry sees the immutable CriticalFailed, does not append a conflicting outcome, and completes cleanup.
 	if err := svc.CancelProvisioning(bg, sub, by, res.Challenge.ID); !errors.Is(err, credential.ErrChallengeExpired) {
@@ -1206,16 +1221,26 @@ func TestAdvanceProvisioningExpiryAuditsBeforeDelete(t *testing.T) {
 	sub, _ := tr.principal(identity.PrincipalTeam, "advance-expiry")
 	by := tr.by("sess-1")
 	res, err := tr.svc.BeginProvisioning(bg, sub, by, desc)
-	if err != nil || res.Challenge == nil { t.Fatalf("BeginProvisioning = %+v, %v", res, err) }
+	if err != nil || res.Challenge == nil {
+		t.Fatalf("BeginProvisioning = %+v, %v", res, err)
+	}
 	tr.clk.Advance(credential.ChallengeTTL + time.Second)
 	tr.rec.failOutcome.Store(true)
 	_, err = tr.svc.AnswerProvisioning(bg, sub, by, res.Challenge.ID, answer("alice", pwCanary))
-	if !errors.Is(err, audit.ErrOutcomeUnknown) { t.Fatalf("expiry = %v, want ErrOutcomeUnknown", err) }
-	if _, err := tr.chal.Get(bg, res.Challenge.ID); err != nil { t.Fatalf("expired challenge must remain after audit failure: %v", err) }
+	if !errors.Is(err, audit.ErrOutcomeUnknown) {
+		t.Fatalf("expiry = %v, want ErrOutcomeUnknown", err)
+	}
+	if _, err := tr.chal.Get(bg, res.Challenge.ID); err != nil {
+		t.Fatalf("expired challenge must remain after audit failure: %v", err)
+	}
 	tr.rec.failOutcome.Store(false)
 	_, err = tr.svc.AnswerProvisioning(bg, sub, by, res.Challenge.ID, answer("alice", pwCanary))
-	if !errors.Is(err, credential.ErrChallengeExpired) { t.Fatalf("retry expiry = %v", err) }
-	if _, err := tr.chal.Get(bg, res.Challenge.ID); !errors.Is(err, credential.ErrChallengeNotFound) { t.Fatalf("challenge remains: %v", err) }
+	if !errors.Is(err, credential.ErrChallengeExpired) {
+		t.Fatalf("retry expiry = %v", err)
+	}
+	if _, err := tr.chal.Get(bg, res.Challenge.ID); !errors.Is(err, credential.ErrChallengeNotFound) {
+		t.Fatalf("challenge remains: %v", err)
+	}
 }
 
 func TestProvisioningAttemptExhaustionIsAuditedBeforeDelete(t *testing.T) {
@@ -1223,14 +1248,18 @@ func TestProvisioningAttemptExhaustionIsAuditedBeforeDelete(t *testing.T) {
 	sub, _ := tr.principal(identity.PrincipalTeam, "attempt-exhaustion")
 	by := tr.by("sess-1")
 	res, err := tr.svc.BeginProvisioning(bg, sub, by, desc)
-	if err != nil || res.Challenge == nil { t.Fatalf("BeginProvisioning = %+v, %v", res, err) }
+	if err != nil || res.Challenge == nil {
+		t.Fatalf("BeginProvisioning = %+v, %v", res, err)
+	}
 	tr.prov.OnContinue = func(context.Context, credential.Env, credential.Request) (credential.Result, error) {
 		return credential.Result{}, credential.ErrAnswerRejected
 	}
 	for i := 0; i < credential.MaxAnswerAttempts; i++ {
 		_, err = tr.svc.AnswerProvisioning(bg, sub, by, res.Challenge.ID, answer("alice", "wrong"))
 	}
-	if !errors.Is(err, credential.ErrAnswerRejected) { t.Fatalf("last answer = %v", err) }
+	if !errors.Is(err, credential.ErrAnswerRejected) {
+		t.Fatalf("last answer = %v", err)
+	}
 	out, err := tr.rec.GetOutcome(bg, "o1", by.EventID)
 	if err != nil || out.Result != audit.CriticalFailed || out.ReasonCode != "rejected" {
 		t.Fatalf("outcome = %+v, %v", out, err)
@@ -1247,13 +1276,17 @@ func TestProvisioningChallengeTransitionDeleteFailureIsAudited(t *testing.T) {
 	store := &deleteFailChallengeStore{ChallengeStore: tr.chal, AttemptLimiter: tr.chal}
 	svc := tr.serviceWithChallenges(tr.store, store)
 	res, err := svc.BeginProvisioning(bg, sub, by, desc)
-	if err != nil || res.Challenge == nil { t.Fatalf("BeginProvisioning = %+v, %v", res, err) }
+	if err != nil || res.Challenge == nil {
+		t.Fatalf("BeginProvisioning = %+v, %v", res, err)
+	}
 	tr.prov.OnContinue = func(_ context.Context, _ credential.Env, req credential.Request) (credential.Result, error) {
 		return credential.Result{Challenge: &credential.Challenge{Kind: credential.ChallengeDeviceCode, Poll: true}, Pending: []byte("next")}, nil
 	}
 	store.fail.Store(true)
 	_, err = svc.AnswerProvisioning(bg, sub, by, res.Challenge.ID, answer("alice", pwCanary))
-	if err == nil { t.Fatal("expected old challenge deletion failure") }
+	if err == nil {
+		t.Fatal("expected old challenge deletion failure")
+	}
 	out, auditErr := tr.rec.GetOutcome(bg, "o1", by.EventID)
 	if auditErr != nil || out.Result != audit.CriticalFailed {
 		t.Fatalf("transition failure must be audited before cleanup: %+v %v", out, auditErr)
@@ -1268,7 +1301,9 @@ func TestConcurrentProvisioningCancelAcrossServiceInstances(t *testing.T) {
 	sub, _ := tr.principal(identity.PrincipalTeam, "concurrent-cancel")
 	by := tr.by("sess-1")
 	res, err := tr.svc.BeginProvisioning(bg, sub, by, desc)
-	if err != nil || res.Challenge == nil { t.Fatalf("BeginProvisioning = %+v, %v", res, err) }
+	if err != nil || res.Challenge == nil {
+		t.Fatalf("BeginProvisioning = %+v, %v", res, err)
+	}
 	replica := tr.service(tr.store)
 
 	var wg sync.WaitGroup
@@ -1283,28 +1318,45 @@ func TestConcurrentProvisioningCancelAcrossServiceInstances(t *testing.T) {
 	wg.Wait()
 	success, refused := 0, 0
 	for _, err := range errs {
-		if err == nil { success++ } else if errors.Is(err, credential.ErrChallengeExpired) { refused++ } else { t.Errorf("unexpected concurrent result: %v", err) }
+		if err == nil {
+			success++
+		} else if errors.Is(err, credential.ErrChallengeExpired) {
+			refused++
+		} else {
+			t.Errorf("unexpected concurrent result: %v", err)
+		}
 	}
-	if success != 1 || refused != 1 { t.Fatalf("concurrent results = %v; want one success and one CAS refusal", errs) }
+	if success != 1 || refused != 1 {
+		t.Fatalf("concurrent results = %v; want one success and one CAS refusal", errs)
+	}
 	out, err := tr.rec.GetOutcome(bg, "o1", by.EventID)
-	if err != nil || out.Result != audit.CriticalFailed { t.Fatalf("outcome = %+v, %v", out, err) }
+	if err != nil || out.Result != audit.CriticalFailed {
+		t.Fatalf("outcome = %+v, %v", out, err)
+	}
 }
-
 
 func TestAbandonProvisioningAuditsBeforeDelete(t *testing.T) {
 	tr := newTechRig(t)
 	sub, _ := tr.principal(identity.PrincipalTeam, "abandon-order")
 	by := tr.by("sess-1")
 	res, err := tr.svc.BeginProvisioning(bg, sub, by, desc)
-	if err != nil || res.Challenge == nil { t.Fatalf("BeginProvisioning = %+v, %v", res, err) }
+	if err != nil || res.Challenge == nil {
+		t.Fatalf("BeginProvisioning = %+v, %v", res, err)
+	}
 	tr.authz.deny.Store(true)
 	tr.rec.failOutcome.Store(true)
 	_, err = tr.svc.AnswerProvisioning(bg, sub, by, res.Challenge.ID, answer("alice", pwCanary))
-	if !errors.Is(err, audit.ErrOutcomeUnknown) { t.Fatalf("authority loss = %v, want ErrOutcomeUnknown", err) }
-	if _, err := tr.chal.Get(bg, res.Challenge.ID); err != nil { t.Fatalf("challenge must remain: %v", err) }
+	if !errors.Is(err, audit.ErrOutcomeUnknown) {
+		t.Fatalf("authority loss = %v, want ErrOutcomeUnknown", err)
+	}
+	if _, err := tr.chal.Get(bg, res.Challenge.ID); err != nil {
+		t.Fatalf("challenge must remain: %v", err)
+	}
 	tr.rec.failOutcome.Store(false)
 	_, err = tr.svc.AnswerProvisioning(bg, sub, by, res.Challenge.ID, answer("alice", pwCanary))
-	if !errors.Is(err, credential.ErrProvisioningDenied) { t.Fatalf("retry after authority loss = %v", err) }
+	if !errors.Is(err, credential.ErrProvisioningDenied) {
+		t.Fatalf("retry after authority loss = %v", err)
+	}
 	out, err := tr.rec.GetOutcome(bg, "o1", by.EventID)
 	if err != nil || out.Result != audit.CriticalFailed || out.ReasonCode != "authority_lost" {
 		t.Fatalf("outcome = %+v, %v", out, err)
@@ -1316,7 +1368,9 @@ func TestConcurrentProvisioningCancelWithinOneService(t *testing.T) {
 	sub, _ := tr.principal(identity.PrincipalTeam, "concurrent-local")
 	by := tr.by("sess-1")
 	res, err := tr.svc.BeginProvisioning(bg, sub, by, desc)
-	if err != nil || res.Challenge == nil { t.Fatalf("BeginProvisioning = %+v, %v", res, err) }
+	if err != nil || res.Challenge == nil {
+		t.Fatalf("BeginProvisioning = %+v, %v", res, err)
+	}
 	var wg sync.WaitGroup
 	errs := make([]error, 2)
 	for i := range errs {
@@ -1329,13 +1383,22 @@ func TestConcurrentProvisioningCancelWithinOneService(t *testing.T) {
 	wg.Wait()
 	success, refused := 0, 0
 	for _, err := range errs {
-		if err == nil { success++ } else if errors.Is(err, credential.ErrChallengeExpired) { refused++ } else { t.Errorf("unexpected result: %v", err) }
+		if err == nil {
+			success++
+		} else if errors.Is(err, credential.ErrChallengeExpired) {
+			refused++
+		} else {
+			t.Errorf("unexpected result: %v", err)
+		}
 	}
-	if success != 1 || refused != 1 { t.Fatalf("results = %v; want one success and one CAS refusal", errs) }
+	if success != 1 || refused != 1 {
+		t.Fatalf("results = %v; want one success and one CAS refusal", errs)
+	}
 	out, err := tr.rec.GetOutcome(bg, "o1", by.EventID)
-	if err != nil || out.Result != audit.CriticalFailed { t.Fatalf("outcome = %+v, %v", out, err) }
+	if err != nil || out.Result != audit.CriticalFailed {
+		t.Fatalf("outcome = %+v, %v", out, err)
+	}
 }
-
 
 func TestProvisioningSuccessOutcomeSurvivesChallengeDeleteFailure(t *testing.T) {
 	tr := newTechRig(t)
@@ -1344,11 +1407,15 @@ func TestProvisioningSuccessOutcomeSurvivesChallengeDeleteFailure(t *testing.T) 
 	store := &deleteFailChallengeStore{ChallengeStore: tr.chal, AttemptLimiter: tr.chal}
 	svc := tr.serviceWithChallenges(tr.store, store)
 	res, err := svc.BeginProvisioning(bg, sub, by, desc)
-	if err != nil || res.Challenge == nil { t.Fatalf("BeginProvisioning = %+v, %v", res, err) }
+	if err != nil || res.Challenge == nil {
+		t.Fatalf("BeginProvisioning = %+v, %v", res, err)
+	}
 
 	store.fail.Store(true)
 	_, err = svc.AnswerProvisioning(bg, sub, by, res.Challenge.ID, answer("alice", pwCanary))
-	if err == nil { t.Fatal("expected challenge deletion failure after successful outcome") }
+	if err == nil {
+		t.Fatal("expected challenge deletion failure after successful outcome")
+	}
 	out, err := tr.rec.GetOutcome(bg, "o1", by.EventID)
 	if err != nil || out.Result != audit.CriticalSucceeded {
 		t.Fatalf("successful outcome must be durable before challenge deletion: %+v %v", out, err)
@@ -1359,7 +1426,9 @@ func TestProvisioningSuccessOutcomeSurvivesChallengeDeleteFailure(t *testing.T) 
 
 	// The retry recognizes CriticalSucceeded and performs cleanup without re-running the provider.
 	_, err = svc.PollProvisioning(bg, sub, by, res.Challenge.ID)
-	if !errors.Is(err, credential.ErrChallengeExpired) { t.Fatalf("cleanup retry = %v", err) }
+	if !errors.Is(err, credential.ErrChallengeExpired) {
+		t.Fatalf("cleanup retry = %v", err)
+	}
 	if _, err := tr.chal.Get(bg, res.Challenge.ID); !errors.Is(err, credential.ErrChallengeNotFound) {
 		t.Fatalf("challenge still exists: %v", err)
 	}
@@ -1368,13 +1437,14 @@ func TestProvisioningSuccessOutcomeSurvivesChallengeDeleteFailure(t *testing.T) 
 	}
 }
 
-
 func TestConcurrentProvisioningAnswerAcrossServiceInstances(t *testing.T) {
 	tr := newTechRig(t)
 	sub, _ := tr.principal(identity.PrincipalTeam, "concurrent-answer")
 	by := tr.by("sess-1")
 	res, err := tr.svc.BeginProvisioning(bg, sub, by, desc)
-	if err != nil || res.Challenge == nil { t.Fatalf("BeginProvisioning = %+v, %v", res, err) }
+	if err != nil || res.Challenge == nil {
+		t.Fatalf("BeginProvisioning = %+v, %v", res, err)
+	}
 	replica := tr.service(tr.store)
 	started := make(chan struct{})
 	release := make(chan struct{})
@@ -1382,7 +1452,9 @@ func TestConcurrentProvisioningAnswerAcrossServiceInstances(t *testing.T) {
 		close(started)
 		<-release
 		grant, err := tr.idp.Login("alice", pwCanary)
-		if err != nil { return credential.Result{}, err }
+		if err != nil {
+			return credential.Result{}, err
+		}
 		return credential.Result{Token: &credential.Token{Value: grant.Access, Expiry: grant.Expiry, Principal: grant.User},
 			Save: []byte(grant.Refresh)}, nil
 	}
@@ -1396,24 +1468,29 @@ func TestConcurrentProvisioningAnswerAcrossServiceInstances(t *testing.T) {
 		t.Fatalf("concurrent replica must lose the claim: %v", err)
 	}
 	close(release)
-	if err := <-done; err != nil { t.Fatalf("winning answer: %v", err) }
+	if err := <-done; err != nil {
+		t.Fatalf("winning answer: %v", err)
+	}
 	_, continues := tr.prov.Calls()
-	if continues != 1 { t.Fatalf("provider Continue called %d times, want exactly once", continues) }
+	if continues != 1 {
+		t.Fatalf("provider Continue called %d times, want exactly once", continues)
+	}
 	out, err := tr.rec.GetOutcome(bg, "o1", by.EventID)
-	if err != nil || out.Result != audit.CriticalSucceeded { t.Fatalf("outcome = %+v, %v", out, err) }
+	if err != nil || out.Result != audit.CriticalSucceeded {
+		t.Fatalf("outcome = %+v, %v", out, err)
+	}
 	if _, err := tr.chal.Get(bg, res.Challenge.ID); !errors.Is(err, credential.ErrChallengeNotFound) {
 		t.Fatalf("completed challenge remains: %v", err)
 	}
 }
 
-
 type auditOrderCancellerProvider struct {
 	credential.Provider
-	rec audit.CriticalRecorder
-	chal credential.ChallengeStore
+	rec                         audit.CriticalRecorder
+	chal                        credential.ChallengeStore
 	orgID, eventID, challengeID string
-	canceled atomic.Bool
-	ordered atomic.Bool
+	canceled                    atomic.Bool
+	ordered                     atomic.Bool
 }
 
 func (p *auditOrderCancellerProvider) Cancel([]byte) {
@@ -1431,10 +1508,14 @@ func TestSweepCancelsProvisioningProviderOnlyAfterAuditAndDelete(t *testing.T) {
 	provider := &auditOrderCancellerProvider{Provider: tr.prov, rec: tr.rec, chal: tr.chal, orgID: "o1", eventID: by.EventID}
 	svc := tr.serviceWithProvider(tr.store, tr.chal, provider)
 	res, err := svc.BeginProvisioning(bg, sub, by, desc)
-	if err != nil || res.Challenge == nil { t.Fatalf("BeginProvisioning = %+v, %v", res, err) }
+	if err != nil || res.Challenge == nil {
+		t.Fatalf("BeginProvisioning = %+v, %v", res, err)
+	}
 	provider.challengeID = res.Challenge.ID
 	tr.clk.Advance(credential.ChallengeTTL + time.Second)
-	if n, err := svc.Sweep(bg); err != nil || n != 1 { t.Fatalf("Sweep = %d, %v", n, err) }
+	if n, err := svc.Sweep(bg); err != nil || n != 1 {
+		t.Fatalf("Sweep = %d, %v", n, err)
+	}
 	if !provider.canceled.Load() || !provider.ordered.Load() {
 		t.Fatalf("provider Cancel must observe durable CriticalFailed and deleted challenge (canceled=%v ordered=%v)",
 			provider.canceled.Load(), provider.ordered.Load())
@@ -1450,14 +1531,20 @@ func TestRevokePrincipalAuditsProvisioningBeforeProviderCancel(t *testing.T) {
 	svc := tr.serviceWithProvider(tr.store, tr.chal, provider)
 	setupBy := tr.by("sess-1")
 	res, err := svc.BeginProvisioning(bg, sub, setupBy, desc)
-	if err != nil || res.Challenge == nil { t.Fatalf("BeginProvisioning = %+v, %v", res, err) }
+	if err != nil || res.Challenge == nil {
+		t.Fatalf("BeginProvisioning = %+v, %v", res, err)
+	}
 	provider.eventID, provider.challengeID = setupBy.EventID, res.Challenge.ID
 
-	if err := svc.RevokePrincipal(bg, sub, by); err != nil { t.Fatalf("RevokePrincipal: %v", err) }
+	if err := svc.RevokePrincipal(bg, sub, by); err != nil {
+		t.Fatalf("RevokePrincipal: %v", err)
+	}
 	if !provider.canceled.Load() || !provider.ordered.Load() {
 		t.Fatalf("provider Cancel must follow the provisioning outcome and challenge deletion (canceled=%v ordered=%v)",
 			provider.canceled.Load(), provider.ordered.Load())
 	}
 	out, err := tr.rec.GetOutcome(bg, "o1", setupBy.EventID)
-	if err != nil || out.Result != audit.CriticalFailed { t.Fatalf("provisioning outcome = %+v, %v", out, err) }
+	if err != nil || out.Result != audit.CriticalFailed {
+		t.Fatalf("provisioning outcome = %+v, %v", out, err)
+	}
 }
