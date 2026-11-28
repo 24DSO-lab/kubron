@@ -6,6 +6,7 @@
 package autonomy
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -72,6 +73,8 @@ type ScopeRef struct {
 	Namespace string
 	Workload string
 	ObjectUID string
+	ActionID string
+	ActionVersion uint64
 	TargetGroupID string
 }
 func (s ScopeRef) Validate() error {
@@ -210,7 +213,7 @@ func (m MutationMeta) Validate() error {
 // Deactivate writes a tombstone; physical deletion is forbidden while references exist.
 type PolicyRepository interface {
 	CreatePolicy(ctx context.Context, value Policy) error
-	GetPolicy(ctx Context, owner OwnerScope, id string) (Policy, error)
+	GetPolicy(ctx context.Context, owner OwnerScope, id string) (Policy, error)
 	UpdatePolicy(ctx Context, owner OwnerScope, id string, expectedRevision uint64, next Policy) (Policy, error)
 	DeactivatePolicy(ctx Context, owner OwnerScope, id string, expectedRevision uint64, meta MutationMeta) (Policy, error)
 }
@@ -227,8 +230,6 @@ type BindingRepository interface {
 	DeactivateBinding(ctx Context, owner OwnerScope, id string, expectedRevision uint64, meta MutationMeta) (Binding, error)
 }
 
-// Context is an alias seam to keep the repository contract explicit without importing infrastructure.
-type Context interface { Done() <-chan struct{}; Err() error; Deadline() (time.Time, bool); Value(any) any }
 
 func validID(s string) bool {
 	if s == "" || len(s) > 128 { return false }
