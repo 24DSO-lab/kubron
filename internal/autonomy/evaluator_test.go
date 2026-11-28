@@ -5,7 +5,6 @@ package autonomy
 
 import (
 	"testing"
-	"time"
 )
 
 func TestObservePreviewIsAllowedButNeverMutating(t *testing.T) {
@@ -42,4 +41,3 @@ func TestActionScopeRequiresExactVersion(t *testing.T) {
 func TestTimeWindowRejectsOvernightAmbiguity(t *testing.T) {
 	if (TimeWindow{StartMinute:22*60,EndMinute:6*60}).Validate()==nil { t.Fatal("overnight window must be represented explicitly as bounded windows") }
 }
-var _ = time.UTC
